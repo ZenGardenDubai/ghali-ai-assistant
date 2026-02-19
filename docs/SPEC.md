@@ -16,6 +16,7 @@ Ghali (غالي) is an open-source WhatsApp-first AI assistant. Users message Gh
 | Layer | Technology |
 |-------|-----------|
 | Framework | Next.js 15 (App Router, TypeScript, Tailwind) |
+| UI Components | shadcn/ui |
 | Database | Convex |
 | Auth | Clerk |
 | AI Agents | @convex-dev/agent |
