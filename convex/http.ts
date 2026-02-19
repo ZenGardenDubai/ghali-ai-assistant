@@ -43,7 +43,10 @@ http.route({
     // Country code blocking
     if (isBlockedCountryCode(message.from)) {
       console.log(`Blocked message from ${message.from}`);
-      return new Response("OK", { status: 200 });
+      return new Response("<Response></Response>", {
+      status: 200,
+      headers: { "Content-Type": "text/xml" },
+    });
     }
 
     // Find or create user + schedule async processing
@@ -61,7 +64,10 @@ http.route({
     });
 
     // Return 200 immediately
-    return new Response("OK", { status: 200 });
+    return new Response("<Response></Response>", {
+      status: 200,
+      headers: { "Content-Type": "text/xml" },
+    });
   }),
 });
 

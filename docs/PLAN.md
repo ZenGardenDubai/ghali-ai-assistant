@@ -14,40 +14,40 @@
 
 Set up the project structure, install all dependencies, configure TypeScript, and wire up the dev environment. Nothing works until this is solid.
 
-- [ ] **1.1 Initialize Next.js 15 project**
+- [x] **1.1 Initialize Next.js 15 project**
   - `pnpm create next-app@latest . --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*"`
   - Verify: `pnpm dev` serves the default page
 
-- [ ] **1.2 Install and configure Convex**
+- [x] **1.2 Install and configure Convex**
   - `pnpm add convex` + `pnpm dlx convex dev --once` to scaffold `convex/` directory
   - Create `convex/convex.config.ts` with agent, rag, and rate-limiter components
   - Verify: `npx convex dev` starts and connects to Convex Cloud
 
-- [ ] **1.3 Install Convex components**
+- [x] **1.3 Install Convex components**
   - `pnpm add @convex-dev/agent @convex-dev/rag @convex-dev/rate-limiter`
   - Register all three in `convex/convex.config.ts`
   - Verify: `npx convex dev` runs without component errors
 
-- [ ] **1.4 Install AI SDK providers**
+- [x] **1.4 Install AI SDK providers**
   - `pnpm add ai @ai-sdk/google @ai-sdk/anthropic @ai-sdk/openai zod`
   - Verify: imports resolve without errors
 
-- [ ] **1.5 Install Clerk**
+- [x] **1.5 Install Clerk**
   - `pnpm add @clerk/nextjs`
   - Configure `middleware.ts` with Clerk auth
   - Set up `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` env vars
   - Verify: Clerk middleware runs on dev server
 
-- [ ] **1.6 Install Twilio SDK**
+- [x] **1.6 Install Twilio SDK**
   - `pnpm add twilio`
   - Verify: import resolves
 
-- [ ] **1.7 Install shadcn/ui**
+- [x] **1.7 Install shadcn/ui**
   - `pnpm dlx shadcn@latest init`
   - Add base components: button, card, input, badge
   - Verify: a test component renders
 
-- [ ] **1.8 Set up testing infrastructure**
+- [x] **1.8 Set up testing infrastructure**
   - `pnpm add -D vitest convex-test @edge-runtime/vm`
   - Create `vitest.config.ts` with edge runtime
   - Create `convex/vitest.config.ts` for Convex function tests (separate config)
@@ -55,20 +55,20 @@ Set up the project structure, install all dependencies, configure TypeScript, an
   - Write a trivial passing test to verify the pipeline works
   - Verify: `pnpm test` runs and passes
 
-- [ ] **1.9 Install PostHog**
+- [x] **1.9 Install PostHog**
   - `pnpm add posthog-js`
   - Create PostHog provider component
   - Set `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` env vars
   - Verify: PostHog initializes in dev (check network tab)
 
-- [ ] **1.10 Configure environment variables**
+- [x] **1.10 Configure environment variables**
   - Create `.env.local` with all required vars (see SPEC.md)
   - Create `.env.example` with placeholder values (no secrets)
   - Add `.env.local` to `.gitignore`
   - Set Convex environment variables via `npx convex env set`
   - Verify: all env vars accessible in their respective runtimes
 
-- [ ] **1.11 Commit: "Project scaffolding complete"**
+- [x] **1.11 Commit: "Project scaffolding complete"**
 
 ---
 
@@ -76,11 +76,11 @@ Set up the project structure, install all dependencies, configure TypeScript, an
 
 Define the Convex schema. All tables, indexes, and validators. This is the foundation every feature builds on.
 
-- [ ] **2.1 Test: schema validates correctly**
+- [x] **2.1 Test: schema validates correctly**
   - Write a `convex-test` test that instantiates the schema and runs a trivial mutation
   - Verify: test fails (schema doesn't exist yet)
 
-- [ ] **2.2 Define `users` table**
+- [x] **2.2 Define `users` table**
   ```
   phone: string (indexed)
   name?: string
@@ -95,7 +95,7 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
   createdAt: number
   ```
 
-- [ ] **2.3 Define `userFiles` table**
+- [x] **2.3 Define `userFiles` table**
   ```
   userId: Id<"users"> (indexed)
   filename: "memory" | "personality" | "heartbeat"
@@ -104,7 +104,7 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
   ```
   - Compound index on `(userId, filename)` for unique lookup
 
-- [ ] **2.4 Define `usage` table**
+- [x] **2.4 Define `usage` table**
   ```
   userId: Id<"users"> (indexed)
   model: string
@@ -115,7 +115,7 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
   ```
   - Index on `(userId, timestamp)` for billing queries
 
-- [ ] **2.5 Define `scheduledJobs` table**
+- [x] **2.5 Define `scheduledJobs` table**
   ```
   userId: Id<"users"> (indexed)
   kind: "heartbeat" | "reminder" | "followup"
@@ -124,10 +124,10 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
   status: "pending" | "done" | "cancelled"
   ```
 
-- [ ] **2.6 Run tests — all pass**
+- [x] **2.6 Run tests — all pass**
   - Verify: `pnpm test:convex` passes
 
-- [ ] **2.7 Commit: "Add Convex schema — users, userFiles, usage, scheduledJobs"**
+- [x] **2.7 Commit: "Add Convex schema — users, userFiles, usage, scheduledJobs"**
 
 ---
 
@@ -135,44 +135,44 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
 
 CRUD operations for users. Phone-keyed lookup, creation with defaults, and updates.
 
-- [ ] **3.1 Test: findOrCreateUser — new user**
+- [x] **3.1 Test: findOrCreateUser — new user**
   - Given a phone number that doesn't exist
   - When `findOrCreateUser("+971501234567", "Ahmad")` is called
   - Then a new user is created with: tier=basic, credits=60, language=en, timezone=Asia/Dubai, onboardingStep=1
 
-- [ ] **3.2 Test: findOrCreateUser — existing user**
+- [x] **3.2 Test: findOrCreateUser — existing user**
   - Given a user already exists with that phone number
   - When `findOrCreateUser` is called again
   - Then the existing user is returned (no duplicate)
 
-- [ ] **3.3 Test: timezone detection from country code**
+- [x] **3.3 Test: timezone detection from country code**
   - `+971...` → `Asia/Dubai`
   - `+44...` → `Europe/London`
   - `+1...` → `America/New_York`
   - `+33...` → `Europe/Paris`
   - Unknown → `UTC`
 
-- [ ] **3.4 Implement `findOrCreateUser` mutation**
+- [x] **3.4 Implement `findOrCreateUser` mutation**
   - Query by phone index → return if exists
   - Otherwise insert with defaults, auto-detect timezone from country code
 
-- [ ] **3.5 Implement `getUser` query and `updateUser` mutation**
+- [x] **3.5 Implement `getUser` query and `updateUser` mutation**
   - `getUser(userId)` — by ID
   - `getUserByPhone(phone)` — by phone index
   - `updateUser(userId, fields)` — partial update
 
-- [ ] **3.6 Test: user file initialization**
+- [x] **3.6 Test: user file initialization**
   - When a new user is created, 3 userFiles are created: memory, personality, heartbeat
   - All start with empty content
 
-- [ ] **3.7 Implement user file CRUD**
+- [x] **3.7 Implement user file CRUD**
   - `getUserFile(userId, filename)` — query
   - `updateUserFile(userId, filename, content)` — mutation
   - `getUserFiles(userId)` — get all 3 files for a user
 
-- [ ] **3.8 Run all tests — pass**
+- [x] **3.8 Run all tests — pass**
 
-- [ ] **3.9 Commit: "Add user management — findOrCreate, timezone detection, user files"**
+- [x] **3.9 Commit: "Add user management — findOrCreate, timezone detection, user files"**
 
 ---
 
@@ -180,38 +180,38 @@ CRUD operations for users. Phone-keyed lookup, creation with defaults, and updat
 
 Extract and test all pure business logic before wiring anything up. These have zero dependencies and are trivially testable.
 
-- [ ] **4.1 Test: `detectTimezone(phoneNumber)` → timezone string**
+- [x] **4.1 Test: `detectTimezone(phoneNumber)` → timezone string**
   - Map of country code prefixes to IANA timezone strings
   - Edge cases: unknown codes → UTC
 
-- [ ] **4.2 Test: `canAfford(credits, cost)` → boolean**
+- [x] **4.2 Test: `canAfford(credits, cost)` → boolean**
   - `canAfford(5, 1)` → true
   - `canAfford(0, 1)` → false
 
-- [ ] **4.3 Test: `isSystemCommand(message)` → boolean**
+- [x] **4.3 Test: `isSystemCommand(message)` → boolean**
   - "credits" → true, "help" → true, "privacy" → true, "upgrade" → true
   - "what's the weather" → false
   - Case-insensitive: "CREDITS" → true
 
-- [ ] **4.4 Test: `isBlockedCountryCode(phone)` → boolean**
+- [x] **4.4 Test: `isBlockedCountryCode(phone)` → boolean**
   - "+91..." → true (India)
   - "+971..." → false (UAE)
   - Full list from SPEC
 
-- [ ] **4.5 Test: `fillTemplate(template, variables)` → string**
+- [x] **4.5 Test: `fillTemplate(template, variables)` → string**
   - Given `"*Credits:* {{credits}}"` and `{ credits: 45 }`
   - Returns `"*Credits:* 45"`
   - Missing variables throw an error
 
-- [ ] **4.6 Test: `splitLongMessage(text, maxLength)` → string[]**
+- [x] **4.6 Test: `splitLongMessage(text, maxLength)` → string[]**
   - WhatsApp has a ~4096 char limit per message
   - Splits at paragraph boundaries, falls back to sentence boundaries
 
-- [ ] **4.7 Implement all pure functions in `convex/lib/`**
+- [x] **4.7 Implement all pure functions in `convex/lib/`**
 
-- [ ] **4.8 Run all tests — pass**
+- [x] **4.8 Run all tests — pass**
 
-- [ ] **4.9 Commit: "Add pure utility functions — timezone, credits, templates, message splitting"**
+- [x] **4.9 Commit: "Add pure utility functions — timezone, credits, templates, message splitting"**
 
 ---
 
@@ -219,32 +219,32 @@ Extract and test all pure business logic before wiring anything up. These have z
 
 Receive WhatsApp messages. Validate, block bad actors, extract data, return 200 fast.
 
-- [ ] **5.1 Test: signature validation**
+- [x] **5.1 Test: signature validation**
   - Valid Twilio signature → passes
   - Invalid/missing signature → 403
 
-- [ ] **5.2 Test: country code blocking**
+- [x] **5.2 Test: country code blocking**
   - Message from +91... → 200 OK, no processing
   - Message from +971... → processes normally
 
-- [ ] **5.3 Test: message parsing**
+- [x] **5.3 Test: message parsing**
   - Text message → extracts body, sender phone, profile name
   - Media message → extracts media URL, content type, body
 
-- [ ] **5.4 Implement `POST /api/whatsapp/webhook`**
+- [x] **5.4 Implement `POST /api/whatsapp/webhook`**
   - Validate Twilio signature (`twilio.validateRequest`)
   - Check country code blocking → if blocked, return 200 silently
   - Extract: `From`, `Body`, `ProfileName`, `MediaUrl0`, `MediaContentType0`
   - Call Convex mutation to save message + schedule processing
   - Return 200 immediately (async processing)
 
-- [ ] **5.5 Test: webhook returns 200 for valid request**
+- [x] **5.5 Test: webhook returns 200 for valid request**
 
-- [ ] **5.6 Implement Twilio signature validation middleware**
+- [x] **5.6 Implement Twilio signature validation middleware**
 
-- [ ] **5.7 Run all tests — pass**
+- [x] **5.7 Run all tests — pass**
 
-- [ ] **5.8 Commit: "Add Twilio inbound webhook — validation, blocking, message parsing"**
+- [x] **5.8 Commit: "Add Twilio inbound webhook — validation, blocking, message parsing"**
 
 ---
 
@@ -252,26 +252,26 @@ Receive WhatsApp messages. Validate, block bad actors, extract data, return 200 
 
 Send messages back to WhatsApp users via Twilio API.
 
-- [ ] **6.1 Test: sendWhatsAppMessage sends text**
+- [x] **6.1 Test: sendWhatsAppMessage sends text**
   - Given a phone number and text body
   - Twilio client is called with correct params (from, to, body)
 
-- [ ] **6.2 Test: sendWhatsAppMedia sends image**
+- [x] **6.2 Test: sendWhatsAppMedia sends image**
   - Given a phone number, caption, and media URL
   - Twilio client is called with mediaUrl param
 
-- [ ] **6.3 Test: long messages are split**
+- [x] **6.3 Test: long messages are split**
   - Message > 4096 chars → split into multiple Twilio API calls
   - Sent in correct order
 
-- [ ] **6.4 Implement `sendWhatsAppMessage` and `sendWhatsAppMedia`**
+- [x] **6.4 Implement `sendWhatsAppMessage` and `sendWhatsAppMedia`**
   - Convex action (needs HTTP access)
   - Use Twilio REST client
   - Auto-split long messages using `splitLongMessage`
 
-- [ ] **6.5 Run all tests — pass**
+- [x] **6.5 Run all tests — pass**
 
-- [ ] **6.6 Commit: "Add Twilio outbound — text, media, message splitting"**
+- [x] **6.6 Commit: "Add Twilio outbound — text, media, message splitting"**
 
 ---
 
@@ -279,26 +279,26 @@ Send messages back to WhatsApp users via Twilio API.
 
 The heart of the system. Define the Ghali agent with Gemini 3 Flash, configure threads, and wire up the basic message → response flow.
 
-- [ ] **7.1 Define the Ghali agent**
+- [x] **7.1 Define the Ghali agent**
   - Single agent with `@convex-dev/agent`
   - Language model: `google("gemini-3-flash")`
   - Embedding model: `openai.embedding("text-embedding-3-small")`
   - Base system prompt from SPEC (personality system block)
   - `stopWhen: stepCountIs(5)` for tool loop safety
 
-- [ ] **7.2 Test: agent creates a thread**
+- [x] **7.2 Test: agent creates a thread**
   - `createThread` returns a valid threadId
   - Thread is associated with userId
 
-- [ ] **7.3 Test: agent generates a response**
+- [x] **7.3 Test: agent generates a response**
   - Given a thread and a user message
   - Agent returns a non-empty text response
 
-- [ ] **7.4 Implement thread management**
+- [x] **7.4 Implement thread management**
   - `getOrCreateThread(userId)` — one thread per user
   - Store thread mapping in users table or a threads lookup table
 
-- [ ] **7.5 Implement the async message flow**
+- [x] **7.5 Implement the async message flow**
   ```
   sendMessage (mutation):
     → saveMessage to thread
@@ -311,18 +311,18 @@ The heart of the system. Define the Ghali agent with Gemini 3 Flash, configure t
     → Send reply via Twilio outbound
   ```
 
-- [ ] **7.6 Test: full message flow (mutation → action → response)**
+- [x] **7.6 Test: full message flow (mutation → action → response)**
   - Save message → generateResponse runs → response is saved to thread
 
-- [ ] **7.7 Implement `usageHandler`**
+- [x] **7.7 Implement `usageHandler`**
   - On every LLM call: capture model, tokensIn, tokensOut, provider, agentName
   - Write to `usage` table
 
-- [ ] **7.8 Test: usage is tracked after generation**
+- [x] **7.8 Test: usage is tracked after generation**
 
-- [ ] **7.9 Run all tests — pass**
+- [x] **7.9 Run all tests — pass**
 
-- [ ] **7.10 Commit: "Add AI agent core — Flash agent, threads, async flow, usage tracking"**
+- [x] **7.10 Commit: "Add AI agent core — Flash agent, threads, async flow, usage tracking"**
 
 ---
 
@@ -360,41 +360,41 @@ Add deepReasoning and premiumReasoning tools so Flash can self-escalate.
 
 Gate all requests behind credits. Free commands bypass. Monthly resets via cron.
 
-- [ ] **9.1 Test: deductCredit reduces credits by 1**
+- [x] **9.1 Test: deductCredit reduces credits by 1**
   - User has 10 credits → deduct → 9 remaining
 
-- [ ] **9.2 Test: deductCredit fails when credits = 0**
+- [x] **9.2 Test: deductCredit fails when credits = 0**
   - Returns a "no credits" result, does not go negative
 
-- [ ] **9.3 Test: system commands are free**
+- [x] **9.3 Test: system commands are free**
   - "credits", "help", "privacy", "my memory", "clear memory", "upgrade", "account" → 0 credits
   - "what is AI?" → 1 credit
 
-- [ ] **9.4 Test: monthly credit reset**
+- [x] **9.4 Test: monthly credit reset**
   - User's `creditsResetAt` is in the past
   - Cron resets credits to tier limit (60 basic, 600 pro)
   - Updates `creditsResetAt` to next month
 
-- [ ] **9.5 Implement `deductCredit` mutation**
+- [x] **9.5 Implement `deductCredit` mutation**
   - Check `isSystemCommand` → if true, skip deduction
   - Check `canAfford` → if false, return exhausted status
   - Deduct 1 credit, return success
 
-- [ ] **9.6 Implement credit reset cron job**
+- [x] **9.6 Implement credit reset cron job**
   - Convex cron: runs daily
   - Queries all users where `creditsResetAt < now()`
   - Resets credits to tier limit, sets new `creditsResetAt`
 
-- [ ] **9.7 Wire credits into the message flow**
+- [ ] **9.7 Wire credits into the message flow** *(partially done — deductCredit exists but not yet wired into generateResponse)*
   - Before `generateResponse`: check/deduct credits
   - If exhausted: send template `credits_exhausted_basic` or `credits_exhausted_pro` instead of generating
 
 - [ ] **9.8 Implement "credits" command handler**
   - Detects "credits" message → returns `check_credits` template with real data
 
-- [ ] **9.9 Run all tests — pass**
+- [x] **9.9 Run all tests — pass**
 
-- [ ] **9.10 Commit: "Add credit system — deduction, monthly reset cron, system command exemption"**
+- [x] **9.10 Commit: "Add credit system — deduction, monthly reset cron, system command exemption"**
 
 ---
 

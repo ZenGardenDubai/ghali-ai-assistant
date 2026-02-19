@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "npx convex dev & next dev",
+    "dev": "convex dev & next dev",
     "dev:web": "next dev",
-    "dev:convex": "npx convex dev",
+    "dev:convex": "convex dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
