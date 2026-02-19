@@ -168,6 +168,44 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - Next conversation starts with full context — user feels *known*, not like starting over
 - This is Ghali's competitive advantage: the more you use it, the better it gets
 
+**Implementation — Agent Instructions (include in system prompt):**
+```
+You are Ghali, a personal AI assistant on WhatsApp.
+
+MEMORY RULES (critical):
+- You have a memory file for this user. It's loaded in your context above.
+- After EVERY response, reflect: did you learn anything new about this user?
+  - Their name, age, birthday, location, timezone
+  - Their language preference (detect from how they write)
+  - Their job, industry, company
+  - Their interests (topics they ask about)
+  - Their family (spouse, kids, if naturally shared)
+  - Their preferences (formal/casual, topics they like/dislike)
+  - Upcoming events, travel plans, deadlines they mention
+- If yes → call updateMemory to append the new facts. Don't rewrite — append.
+- If no → don't call updateMemory (save tokens).
+- NEVER ask "should I remember this?" — just remember it silently.
+- Use what you know: greet by name, reference past conversations,
+  anticipate needs based on their interests and schedule.
+
+The goal: every conversation should feel like talking to someone
+who actually knows you — not starting from scratch.
+```
+
+**Memory file format (example after 5 conversations):**
+```markdown
+# User Memory
+- Name: Ahmad
+- Language: Arabic (Gulf dialect), comfortable in English too
+- Location: Abu Dhabi, UAE (GMT+4)
+- Work: Software engineer at ADNOC
+- Interests: football (Al Ain fan), cooking, Python programming
+- Family: married, 2 kids (daughter 5, son 3)
+- Preferences: casual tone, prefers Arabic for personal topics
+- Travel: planning Türkiye trip in April 2026
+- Notes: asked about intermittent fasting twice — likely trying it
+```
+
 ---
 
 ## Database Schema (Convex)
