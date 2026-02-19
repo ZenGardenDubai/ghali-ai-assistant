@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
 
 /**
@@ -37,9 +38,11 @@ export const generateResponse = internalAction({
     mediaContentType: v.optional(v.string()),
   },
   handler: async (ctx, { userId, body, mediaUrl, mediaContentType }) => {
+    const typedUserId = userId as Id<"users">;
+
     // Get user info
     const user = await ctx.runQuery(internal.users.internalGetUser, {
-      userId,
+      userId: typedUserId,
     });
 
     if (!user) {
@@ -50,7 +53,7 @@ export const generateResponse = internalAction({
     // Load user files for context injection
     const userFiles = await ctx.runQuery(
       internal.users.internalGetUserFiles,
-      { userId }
+      { userId: typedUserId }
     );
 
     const memoryFile = userFiles.find((f) => f.filename === "memory");

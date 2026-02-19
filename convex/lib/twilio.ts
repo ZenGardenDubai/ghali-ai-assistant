@@ -1,7 +1,7 @@
 /**
  * Twilio signature validation and message parsing utilities.
+ * Uses Web Crypto API (no Node.js dependency) for Convex runtime compatibility.
  */
-import { createHmac } from "crypto";
 
 export interface TwilioMessage {
   from: string; // E.164 phone number
@@ -13,15 +13,15 @@ export interface TwilioMessage {
 }
 
 /**
- * Validate Twilio request signature.
+ * Validate Twilio request signature using Web Crypto API.
  * See: https://www.twilio.com/docs/usage/security#validating-requests
  */
-export function validateTwilioSignature(
+export async function validateTwilioSignature(
   authToken: string,
   signature: string,
   url: string,
   params: Record<string, string>
-): boolean {
+): Promise<boolean> {
   // Sort params alphabetically and concatenate key+value
   const data =
     url +
@@ -29,9 +29,17 @@ export function validateTwilioSignature(
       .sort()
       .reduce((acc, key) => acc + key + params[key], "");
 
-  const expected = createHmac("sha1", authToken)
-    .update(data, "utf-8")
-    .digest("base64");
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(authToken),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"]
+  );
+
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(sig)));
 
   // Constant-time comparison
   if (signature.length !== expected.length) return false;

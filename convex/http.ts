@@ -33,7 +33,7 @@ http.route({
       `${url.protocol}//${url.host}`;
     const validationUrl = `${publicUrl}/whatsapp-webhook`;
 
-    if (!validateTwilioSignature(authToken, signature, validationUrl, params)) {
+    if (!(await validateTwilioSignature(authToken, signature, validationUrl, params))) {
       return new Response("Forbidden", { status: 403 });
     }
 

@@ -3,6 +3,7 @@ import { components, internal } from "./_generated/api";
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
+import { Id } from "./_generated/dataModel";
 
 const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -50,7 +51,7 @@ const updateMemory = createTool({
       return "Error: Memory file exceeds 10KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
-      userId: ctx.userId!,
+      userId: ctx.userId as Id<"users">,
       filename: "memory",
       content,
     });
@@ -71,7 +72,7 @@ const updatePersonality = createTool({
       return "Error: Personality file exceeds 10KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
-      userId: ctx.userId!,
+      userId: ctx.userId as Id<"users">,
       filename: "personality",
       content,
     });
@@ -94,7 +95,7 @@ const updateHeartbeat = createTool({
       return "Error: Heartbeat file exceeds 10KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
-      userId: ctx.userId!,
+      userId: ctx.userId as Id<"users">,
       filename: "heartbeat",
       content,
     });
@@ -121,8 +122,8 @@ export const ghaliAgent = new Agent(components.agent, {
     await ctx.runMutation(internal.usageTracking.trackUsage, {
       userId: args.userId,
       model: args.model ?? "unknown",
-      tokensIn: args.usage?.promptTokens ?? 0,
-      tokensOut: args.usage?.completionTokens ?? 0,
+      tokensIn: args.usage?.inputTokens ?? 0,
+      tokensOut: args.usage?.outputTokens ?? 0,
     });
   },
 });

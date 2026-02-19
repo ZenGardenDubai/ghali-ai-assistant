@@ -23,22 +23,22 @@ describe("validateTwilioSignature", () => {
   const url = "https://example.com/whatsapp-webhook";
   const params = { Body: "Hello", From: "whatsapp:+971501234567" };
 
-  it("accepts valid signature", () => {
+  it("accepts valid signature", async () => {
     const signature = makeSignature(authToken, url, params);
     expect(
-      validateTwilioSignature(authToken, signature, url, params)
+      await validateTwilioSignature(authToken, signature, url, params)
     ).toBe(true);
   });
 
-  it("rejects invalid signature", () => {
+  it("rejects invalid signature", async () => {
     expect(
-      validateTwilioSignature(authToken, "invalid_signature", url, params)
+      await validateTwilioSignature(authToken, "invalid_signature", url, params)
     ).toBe(false);
   });
 
-  it("rejects empty signature", () => {
+  it("rejects empty signature", async () => {
     expect(
-      validateTwilioSignature(authToken, "", url, params)
+      await validateTwilioSignature(authToken, "", url, params)
     ).toBe(false);
   });
 });

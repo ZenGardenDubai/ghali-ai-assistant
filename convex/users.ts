@@ -144,18 +144,18 @@ export const updateUserFile = mutation({
 
 // Internal queries for use by actions
 export const internalGetUser = internalQuery({
-  args: { userId: v.string() },
+  args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    return await ctx.db.get(userId as any);
+    return await ctx.db.get(userId);
   },
 });
 
 export const internalGetUserFiles = internalQuery({
-  args: { userId: v.string() },
+  args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
     return await ctx.db
       .query("userFiles")
-      .withIndex("by_userId", (q) => q.eq("userId", userId as any))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
   },
 });
