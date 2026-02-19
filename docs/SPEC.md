@@ -98,9 +98,10 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - Reply as text (TTS is V2)
 
 ### 8. Credit System
-- Basic tier: 60 text + 20 media credits/month (free)
+- **Basic (free):** 60 credits/month
+- **Pro ($19/month):** 600 credits/month
 - Track usage per message (model, tokens in/out, cost)
-- When credits run out → friendly message, suggest waiting for reset
+- When credits run out → friendly message, upgrade CTA for Basic users, reset date for Pro
 - Monthly reset via Convex cron
 - Convex `usage` table: userId, model, tokensIn, tokensOut, cost, timestamp
 
@@ -159,8 +160,8 @@ Build these in order. Each one: write test → see fail → implement → see pa
   name?: string,          // WhatsApp profile name
   language: string,       // "en" | "ar" | auto-detected
   timezone: string,       // "Asia/Dubai"
-  tier: string,           // "basic" | "premium"
-  credits: { text: number, media: number },
+  tier: string,           // "basic" | "pro"
+  credits: number,        // remaining credits this cycle
   creditsResetAt: number, // next reset timestamp
   createdAt: number,
 }
