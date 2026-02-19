@@ -114,11 +114,15 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - Templates filled with data first, then translated to user's language via LLM
 - Never let LLM generate numbers/credits — only translate text
 
-### 11. Web Chat
-- Landing page at ghali.ae (marketing + "try it" CTA)
-- Chat page: Clerk auth → Convex streaming → same agent, same threads
-- Mobile-first responsive design
+### 11. Landing Page (ghali.ae)
+- Single-page, no web chat — WhatsApp is the only product
+- Goal: convert visitors → WhatsApp conversation (CTA: "Message Ghali on WhatsApp")
+- Elegant, minimalist design. Mobile-first.
+- SEO optimized: meta tags, Open Graph, structured data, fast load (<2s)
 - Colors: Navy `hsl(222, 47%, 11%)` + Orange `#f97316`
+- Sections: Hero (tagline + WhatsApp CTA) → What Ghali Can Do (3-4 bullets) → How It Works (3 steps) → FAQ → Footer
+- No Clerk auth needed. No dashboard. No web chat.
+- Static/SSG — no client-side JS needed beyond the WhatsApp link
 
 ### 12. Heartbeat (Proactive Check-ins)
 - Convex scheduled function runs periodically per user (configurable interval, default 24h)
