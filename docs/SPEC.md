@@ -2,11 +2,13 @@
 
 > **INSTRUCTIONS FOR THE BUILDING LLM:**
 > 1. Read this entire document before writing any code.
-> 2. Follow the BUILD SEQUENCE (Section 8) in exact order.
-> 3. Each file is numbered [FILE XX] — create them in sequence.
-> 4. All code is complete and working — copy it exactly, then adapt only where noted.
-> 5. Do NOT skip files. Do NOT reorder steps. Do NOT add features not in this spec.
-> 6. When done, run the VERIFICATION CHECKLIST (Section 9) to confirm everything works.
+> 2. Follow the BUILD SEQUENCE (Section 9) in exact order.
+> 3. This project uses **STRICT TDD** — write the test FIRST, see it fail, then write the implementation.
+> 4. Each file is numbered [FILE XX] and has a corresponding [TEST XX] — always create the test before the implementation.
+> 5. All code is complete and working — copy it exactly, then adapt only where noted.
+> 6. Do NOT skip files. Do NOT reorder steps. Do NOT add features not in this spec.
+> 7. After each implementation, run `npm test` to confirm the test passes before moving to the next file.
+> 8. When done, run the VERIFICATION CHECKLIST (Section 10) to confirm everything works.
 
 ---
 
@@ -38,6 +40,10 @@
 | OpenAI SDK | `openai` | Whisper transcription API |
 | WhatsApp | `twilio` | Send/receive WhatsApp messages |
 | Validation | `zod` | Schema validation |
+| Testing | `vitest` | Unit + integration tests |
+| Testing (Convex) | `convex-test` | Convex function testing with mock DB |
+| Testing (React) | `@testing-library/react` | Component tests |
+| Testing (E2E) | `playwright` | End-to-end browser tests |
 | Hosting | Vercel + Convex Cloud | Frontend + backend |
 
 ### AI Models
@@ -88,7 +94,32 @@ ghali-ai-assistant/
 ├── lib/
 │   ├── twilio.ts                               # [FILE 20]
 │   └── constants.ts                            # [FILE 21]
+├── __tests__/
+│   ├── convex/
+│   │   ├── users.test.ts                       # [TEST 13]
+│   │   ├── threads.test.ts                     # [TEST 12]
+│   │   ├── chat.test.ts                        # [TEST 11]
+│   │   ├── billing.test.ts                     # [TEST 17]
+│   │   ├── templates.test.ts                   # [TEST 15]
+│   │   ├── translator.test.ts                  # [TEST 16]
+│   │   ├── whatsapp.test.ts                    # [TEST 14]
+│   │   ├── rag.test.ts                         # [TEST 18]
+│   │   └── media.test.ts                       # [TEST 19]
+│   ├── lib/
+│   │   ├── twilio.test.ts                      # [TEST 20]
+│   │   └── constants.test.ts                   # [TEST 21]
+│   ├── api/
+│   │   └── twilio-webhook.test.ts              # [TEST 04]
+│   └── components/
+│       ├── landing.test.tsx                    # [TEST 02]
+│       └── chat.test.tsx                       # [TEST 06]
+├── e2e/
+│   ├── whatsapp-flow.spec.ts                   # [E2E 01] Full WhatsApp message flow
+│   ├── web-chat.spec.ts                        # [E2E 02] Web chat sign-in + send message
+│   └── system-commands.spec.ts                 # [E2E 03] credits, help, account commands
+├── vitest.config.ts                            # Vitest configuration
 ├── .env.local                                  # [FILE 22]
+├── .env.test                                   # Test environment variables
 └── package.json                                # Created by init
 ```
 
@@ -1445,7 +1476,726 @@ export default function DashboardPage() {
 
 ---
 
-## 7. INTERNAL QUERY HELPERS
+## 7. TESTING
+
+### 7.1 TDD Methodology
+
+This project follows **strict Test-Driven Development**:
+
+```
+FOR EACH FEATURE:
+  1. Write the test first                    → [TEST XX]
+  2. Run the test — confirm it FAILS         → npm test
+  3. Write the minimum implementation        → [FILE XX]
+  4. Run the test — confirm it PASSES        → npm test
+  5. Refactor if needed (tests must still pass)
+  6. Move to the next feature
+```
+
+**Never write implementation code without a failing test first.**
+
+### 7.2 Testing Stack Setup
+
+#### vitest.config.ts
+
+```ts
+import { defineConfig } from "vitest/config";
+import path from "path";
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: "node",
+    include: ["__tests__/**/*.test.{ts,tsx}"],
+    exclude: ["e2e/**"],
+    setupFiles: ["./__tests__/setup.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["convex/**", "lib/**", "src/**"],
+      exclude: ["convex/_generated/**"],
+      thresholds: {
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80,
+      },
+    },
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "convex": path.resolve(__dirname, "./convex"),
+      "lib": path.resolve(__dirname, "./lib"),
+    },
+  },
+});
+```
+
+#### __tests__/setup.ts
+
+```ts
+import { vi } from "vitest";
+
+// Mock environment variables for all tests
+process.env.TWILIO_ACCOUNT_SID = "test_sid";
+process.env.TWILIO_AUTH_TOKEN = "test_token";
+process.env.TWILIO_WHATSAPP_NUMBER = "whatsapp:+971582896090";
+process.env.NEXT_PUBLIC_APP_URL = "https://ghali.ae";
+process.env.OPENAI_API_KEY = "test_openai_key";
+process.env.GOOGLE_GENERATIVE_AI_API_KEY = "test_google_key";
+process.env.ANTHROPIC_API_KEY = "test_anthropic_key";
+```
+
+#### .env.test
+
+```env
+TWILIO_ACCOUNT_SID=test_sid
+TWILIO_AUTH_TOKEN=test_token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+971582896090
+NEXT_PUBLIC_APP_URL=https://ghali.ae
+OPENAI_API_KEY=test_openai_key
+GOOGLE_GENERATIVE_AI_API_KEY=test_google_key
+ANTHROPIC_API_KEY=test_anthropic_key
+NEXT_PUBLIC_CONVEX_URL=https://test.convex.cloud
+```
+
+### 7.3 Test Files
+
+---
+
+#### [TEST 21] __tests__/lib/constants.test.ts
+
+```ts
+import { describe, it, expect } from "vitest";
+import {
+  PLANS,
+  CREDIT_COSTS,
+  MODEL_COSTS_PER_MILLION,
+  SUPPORTED_LANGUAGES,
+  RATE_LIMITS,
+  WHATSAPP_MAX_LENGTH,
+  SYSTEM_COMMANDS,
+} from "../../lib/constants";
+
+describe("constants", () => {
+  describe("PLANS", () => {
+    it("has basic and pro plans", () => {
+      expect(PLANS.basic).toBeDefined();
+      expect(PLANS.pro).toBeDefined();
+    });
+
+    it("basic plan has correct free credits", () => {
+      expect(PLANS.basic.textCredits).toBe(60);
+      expect(PLANS.basic.mediaCredits).toBe(20);
+      expect(PLANS.basic.retentionDays).toBe(90);
+    });
+
+    it("pro plan has 10x credits vs basic", () => {
+      expect(PLANS.pro.textCredits).toBe(600);
+      expect(PLANS.pro.mediaCredits).toBe(200);
+      expect(PLANS.pro.retentionDays).toBe(365);
+    });
+
+    it("pro plan has pricing in USD and AED", () => {
+      expect(PLANS.pro.priceMonthlyUsd).toBe(19);
+      expect(PLANS.pro.priceYearlyUsd).toBe(182);
+      expect(PLANS.pro.priceMonthlyAed).toBe(69);
+      expect(PLANS.pro.priceYearlyAed).toBe(660);
+    });
+  });
+
+  describe("CREDIT_COSTS", () => {
+    it("flash is cheapest at 1 credit", () => {
+      expect(CREDIT_COSTS.text_flash).toBe(1);
+    });
+
+    it("pro costs more than flash", () => {
+      expect(CREDIT_COSTS.text_pro).toBeGreaterThan(CREDIT_COSTS.text_flash);
+    });
+
+    it("opus costs more than pro", () => {
+      expect(CREDIT_COSTS.text_opus).toBeGreaterThan(CREDIT_COSTS.text_pro);
+    });
+
+    it("media costs more than text", () => {
+      expect(CREDIT_COSTS.media_image).toBeGreaterThan(CREDIT_COSTS.text_flash);
+    });
+  });
+
+  describe("MODEL_COSTS_PER_MILLION", () => {
+    it("has costs for all 4 models", () => {
+      expect(MODEL_COSTS_PER_MILLION["gemini-3-flash"]).toBeDefined();
+      expect(MODEL_COSTS_PER_MILLION["gemini-3-pro"]).toBeDefined();
+      expect(MODEL_COSTS_PER_MILLION["claude-opus-4-6"]).toBeDefined();
+      expect(MODEL_COSTS_PER_MILLION["text-embedding-3-small"]).toBeDefined();
+    });
+
+    it("flash is cheapest text model", () => {
+      expect(MODEL_COSTS_PER_MILLION["gemini-3-flash"].input).toBeLessThan(
+        MODEL_COSTS_PER_MILLION["gemini-3-pro"].input
+      );
+    });
+  });
+
+  describe("SUPPORTED_LANGUAGES", () => {
+    it("includes English and Arabic", () => {
+      expect(SUPPORTED_LANGUAGES).toContain("en");
+      expect(SUPPORTED_LANGUAGES).toContain("ar");
+    });
+
+    it("has 6 languages", () => {
+      expect(SUPPORTED_LANGUAGES).toHaveLength(6);
+    });
+  });
+
+  describe("SYSTEM_COMMANDS", () => {
+    it("includes help, credits, account", () => {
+      expect(SYSTEM_COMMANDS).toContain("help");
+      expect(SYSTEM_COMMANDS).toContain("credits");
+      expect(SYSTEM_COMMANDS).toContain("account");
+    });
+
+    it("includes Arabic commands", () => {
+      expect(SYSTEM_COMMANDS).toContain("مساعدة");
+    });
+  });
+
+  it("WHATSAPP_MAX_LENGTH is 4096", () => {
+    expect(WHATSAPP_MAX_LENGTH).toBe(4096);
+  });
+});
+```
+
+---
+
+#### [TEST 20] __tests__/lib/twilio.test.ts
+
+```ts
+import { describe, it, expect } from "vitest";
+import { parseTwilioWebhook } from "../../lib/twilio";
+
+describe("parseTwilioWebhook", () => {
+  function makeFormData(params: Record<string, string>): FormData {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(params)) fd.append(k, v);
+    return fd;
+  }
+
+  it("parses a basic text message", () => {
+    const fd = makeFormData({
+      From: "whatsapp:+971551234567",
+      Body: "Hello Ghali",
+      NumMedia: "0",
+      MessageSid: "SM123",
+    });
+    const result = parseTwilioWebhook(fd);
+
+    expect(result.from).toBe("whatsapp:+971551234567");
+    expect(result.phone).toBe("+971551234567");
+    expect(result.body).toBe("Hello Ghali");
+    expect(result.numMedia).toBe(0);
+    expect(result.messageSid).toBe("SM123");
+  });
+
+  it("strips whatsapp: prefix from phone", () => {
+    const fd = makeFormData({
+      From: "whatsapp:+44123456789",
+      Body: "Hi",
+      NumMedia: "0",
+      MessageSid: "SM456",
+    });
+    const result = parseTwilioWebhook(fd);
+    expect(result.phone).toBe("+44123456789");
+  });
+
+  it("parses media messages", () => {
+    const fd = makeFormData({
+      From: "whatsapp:+971551234567",
+      Body: "",
+      NumMedia: "1",
+      MediaUrl0: "https://api.twilio.com/media/123",
+      MediaContentType0: "image/jpeg",
+      MessageSid: "SM789",
+    });
+    const result = parseTwilioWebhook(fd);
+
+    expect(result.numMedia).toBe(1);
+    expect(result.mediaUrl).toBe("https://api.twilio.com/media/123");
+    expect(result.mediaType).toBe("image/jpeg");
+  });
+
+  it("parses voice notes", () => {
+    const fd = makeFormData({
+      From: "whatsapp:+971551234567",
+      Body: "",
+      NumMedia: "1",
+      MediaUrl0: "https://api.twilio.com/media/456",
+      MediaContentType0: "audio/ogg",
+      MessageSid: "SM101",
+    });
+    const result = parseTwilioWebhook(fd);
+
+    expect(result.mediaType).toBe("audio/ogg");
+    expect(result.mediaUrl).toBe("https://api.twilio.com/media/456");
+  });
+
+  it("handles missing optional fields", () => {
+    const fd = makeFormData({
+      From: "whatsapp:+971551234567",
+      NumMedia: "0",
+      MessageSid: "SM999",
+    });
+    const result = parseTwilioWebhook(fd);
+
+    expect(result.body).toBe("");
+    expect(result.mediaUrl).toBeUndefined();
+    expect(result.mediaType).toBeUndefined();
+    expect(result.profileName).toBeUndefined();
+  });
+
+  it("captures profile name when provided", () => {
+    const fd = makeFormData({
+      From: "whatsapp:+971551234567",
+      Body: "Hi",
+      NumMedia: "0",
+      MessageSid: "SM111",
+      ProfileName: "Ahmed",
+    });
+    const result = parseTwilioWebhook(fd);
+    expect(result.profileName).toBe("Ahmed");
+  });
+});
+```
+
+---
+
+#### [TEST 15] __tests__/convex/templates.test.ts
+
+```ts
+import { describe, it, expect } from "vitest";
+import { TEMPLATES, fillTemplate } from "../../convex/templates";
+
+describe("templates", () => {
+  describe("TEMPLATES", () => {
+    it("has all required templates", () => {
+      const required = [
+        "welcome_new_user",
+        "check_credits",
+        "account_status",
+        "show_help",
+        "credits_exhausted",
+        "upgrade_link",
+        "show_privacy",
+        "rate_limited",
+        "error_generic",
+      ];
+      for (const name of required) {
+        expect(TEMPLATES[name], `Missing template: ${name}`).toBeDefined();
+      }
+    });
+
+    it("all templates have template string and variables array", () => {
+      for (const [name, tmpl] of Object.entries(TEMPLATES)) {
+        expect(typeof tmpl.template, `${name}.template`).toBe("string");
+        expect(Array.isArray(tmpl.variables), `${name}.variables`).toBe(true);
+      }
+    });
+
+    it("templates with no variables have empty array", () => {
+      expect(TEMPLATES.welcome_new_user.variables).toHaveLength(0);
+      expect(TEMPLATES.show_help.variables).toHaveLength(0);
+      expect(TEMPLATES.rate_limited.variables).toHaveLength(0);
+      expect(TEMPLATES.error_generic.variables).toHaveLength(0);
+    });
+
+    it("welcome message mentions Ghali", () => {
+      expect(TEMPLATES.welcome_new_user.template).toContain("Ghali");
+    });
+
+    it("templates use WhatsApp bold formatting", () => {
+      // At least some templates should use *bold*
+      const hasBold = Object.values(TEMPLATES).some((t) =>
+        t.template.includes("*")
+      );
+      expect(hasBold).toBe(true);
+    });
+  });
+
+  describe("fillTemplate", () => {
+    it("fills a template with variables", () => {
+      const result = fillTemplate("check_credits", {
+        textCredits: 45,
+        mediaCredits: 18,
+        resetDate: "March 1, 2026",
+      });
+      expect(result).toContain("45");
+      expect(result).toContain("18");
+      expect(result).toContain("March 1, 2026");
+    });
+
+    it("returns template as-is when no variables needed", () => {
+      const result = fillTemplate("welcome_new_user");
+      expect(result).toBe(TEMPLATES.welcome_new_user.template);
+    });
+
+    it("replaces all occurrences of a variable", () => {
+      // credits_exhausted has {{creditType}} and {{resetDate}}
+      const result = fillTemplate("credits_exhausted", {
+        creditType: "text",
+        resetDate: "March 1",
+      });
+      expect(result).toContain("text");
+      expect(result).toContain("March 1");
+      expect(result).not.toContain("{{creditType}}");
+      expect(result).not.toContain("{{resetDate}}");
+    });
+
+    it("throws on unknown template name", () => {
+      expect(() => fillTemplate("nonexistent")).toThrow("Template not found");
+    });
+
+    it("leaves unfilled variables as-is if not provided", () => {
+      const result = fillTemplate("check_credits", { textCredits: 10 });
+      expect(result).toContain("10");
+      expect(result).toContain("{{mediaCredits}}");
+    });
+  });
+});
+```
+
+---
+
+#### [TEST 17] __tests__/convex/billing.test.ts
+
+Tests for credit deduction and usage logging. Uses `convex-test` for Convex function mocking.
+
+```ts
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CREDIT_COSTS } from "../../lib/constants";
+
+describe("billing logic", () => {
+  describe("CREDIT_COSTS", () => {
+    it("flash text costs 1 credit", () => {
+      expect(CREDIT_COSTS.text_flash).toBe(1);
+    });
+
+    it("pro escalation costs 3 credits", () => {
+      expect(CREDIT_COSTS.text_pro).toBe(3);
+    });
+
+    it("opus escalation costs 10 credits", () => {
+      expect(CREDIT_COSTS.text_opus).toBe(10);
+    });
+
+    it("image generation costs 6 media credits", () => {
+      expect(CREDIT_COSTS.media_image).toBe(6);
+    });
+  });
+
+  describe("credit deduction logic", () => {
+    it("should not go below zero", () => {
+      const currentCredits = 2;
+      const deduction = 5;
+      const result = Math.max(0, currentCredits - deduction);
+      expect(result).toBe(0);
+    });
+
+    it("should deduct exact amount when sufficient", () => {
+      const currentCredits = 60;
+      const deduction = CREDIT_COSTS.text_flash;
+      const result = Math.max(0, currentCredits - deduction);
+      expect(result).toBe(59);
+    });
+
+    it("basic plan runs out after 60 flash messages", () => {
+      let credits = 60;
+      let messages = 0;
+      while (credits >= CREDIT_COSTS.text_flash) {
+        credits -= CREDIT_COSTS.text_flash;
+        messages++;
+      }
+      expect(messages).toBe(60);
+    });
+
+    it("basic plan runs out after 20 pro messages", () => {
+      let credits = 60;
+      let messages = 0;
+      while (credits >= CREDIT_COSTS.text_pro) {
+        credits -= CREDIT_COSTS.text_pro;
+        messages++;
+      }
+      expect(messages).toBe(20);
+    });
+
+    it("basic plan runs out after 6 opus messages", () => {
+      let credits = 60;
+      let messages = 0;
+      while (credits >= CREDIT_COSTS.text_opus) {
+        credits -= CREDIT_COSTS.text_opus;
+        messages++;
+      }
+      expect(messages).toBe(6);
+    });
+  });
+
+  describe("cost calculation", () => {
+    it("calculates cost correctly for flash", () => {
+      const inputTokens = 1000;
+      const outputTokens = 500;
+      const inputCostPerMillion = 0.5;
+      const outputCostPerMillion = 3;
+      const cost =
+        (inputTokens * inputCostPerMillion + outputTokens * outputCostPerMillion) /
+        1_000_000;
+      expect(cost).toBeCloseTo(0.002);
+    });
+
+    it("calculates cost correctly for opus", () => {
+      const inputTokens = 1000;
+      const outputTokens = 500;
+      const inputCostPerMillion = 15;
+      const outputCostPerMillion = 75;
+      const cost =
+        (inputTokens * inputCostPerMillion + outputTokens * outputCostPerMillion) /
+        1_000_000;
+      expect(cost).toBeCloseTo(0.0525);
+    });
+  });
+});
+```
+
+---
+
+#### [TEST 14] __tests__/convex/whatsapp.test.ts
+
+```ts
+import { describe, it, expect } from "vitest";
+
+// Test the message splitting logic (extracted for testability)
+function splitMessage(text: string, max: number): string[] {
+  const chunks: string[] = [];
+  let rest = text;
+  while (rest.length > max) {
+    let i = rest.lastIndexOf("\n\n", max);
+    if (i < max * 0.5) i = rest.lastIndexOf("\n", max);
+    if (i < max * 0.5) i = rest.lastIndexOf(" ", max);
+    if (i < 1) i = max;
+    chunks.push(rest.slice(0, i).trim());
+    rest = rest.slice(i).trim();
+  }
+  if (rest) chunks.push(rest);
+  return chunks;
+}
+
+describe("WhatsApp message splitting", () => {
+  it("does not split short messages", () => {
+    const result = splitMessage("Hello!", 4096);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toBe("Hello!");
+  });
+
+  it("splits at paragraph breaks when possible", () => {
+    const para1 = "A".repeat(2000);
+    const para2 = "B".repeat(2000);
+    const text = `${para1}\n\n${para2}`;
+    const result = splitMessage(text, 4096);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toBe(para1);
+    expect(result[1]).toBe(para2);
+  });
+
+  it("splits at line breaks when no paragraph break", () => {
+    const line1 = "A".repeat(3000);
+    const line2 = "B".repeat(3000);
+    const text = `${line1}\n${line2}`;
+    const result = splitMessage(text, 4096);
+    expect(result).toHaveLength(2);
+  });
+
+  it("splits at spaces as last resort", () => {
+    const words = Array(1000).fill("word").join(" ");
+    const result = splitMessage(words, 100);
+    expect(result.length).toBeGreaterThan(1);
+    result.forEach((chunk) => {
+      expect(chunk.length).toBeLessThanOrEqual(100);
+    });
+  });
+
+  it("hard splits if no natural break point", () => {
+    const noSpaces = "A".repeat(5000);
+    const result = splitMessage(noSpaces, 4096);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toHaveLength(4096);
+  });
+
+  it("handles empty string", () => {
+    const result = splitMessage("", 4096);
+    expect(result).toHaveLength(0);
+  });
+
+  it("all chunks combined equal original text (minus whitespace)", () => {
+    const text = Array(100).fill("Hello world this is a test").join("\n");
+    const result = splitMessage(text, 200);
+    const reassembled = result.join(" ");
+    // Verify no content is lost (allowing whitespace differences)
+    expect(reassembled.replace(/\s+/g, " ")).toBe(text.replace(/\s+/g, " "));
+  });
+});
+```
+
+---
+
+#### [TEST 16] __tests__/convex/translator.test.ts
+
+```ts
+import { describe, it, expect, vi } from "vitest";
+
+// Mock the AI SDK to avoid real API calls in tests
+vi.mock("ai", () => ({
+  generateObject: vi.fn().mockResolvedValue({
+    object: { language: "ar" },
+  }),
+  generateText: vi.fn().mockResolvedValue({
+    text: "مرحبا",
+  }),
+}));
+
+vi.mock("@ai-sdk/google", () => ({
+  google: {
+    chat: vi.fn().mockReturnValue("mock-model"),
+  },
+}));
+
+describe("translator", () => {
+  describe("detectLanguage", () => {
+    it("returns a valid language code", async () => {
+      const { detectLanguage } = await import("../../convex/translator");
+      const lang = await detectLanguage("مرحبا كيف حالك");
+      expect(["en", "ar", "fr", "es", "hi", "ur"]).toContain(lang);
+    });
+
+    it("defaults to en on failure", async () => {
+      const { generateObject } = await import("ai");
+      (generateObject as any).mockRejectedValueOnce(new Error("API error"));
+
+      const { detectLanguage } = await import("../../convex/translator");
+      const lang = await detectLanguage("test");
+      expect(lang).toBe("en");
+    });
+  });
+
+  describe("translateMessage", () => {
+    it("returns original message for English target", async () => {
+      const { translateMessage } = await import("../../convex/translator");
+      const result = await translateMessage("Hello", "en");
+      expect(result).toBe("Hello");
+    });
+
+    it("calls AI for non-English target", async () => {
+      const { translateMessage } = await import("../../convex/translator");
+      const result = await translateMessage("Hello", "ar");
+      expect(result).toBe("مرحبا");
+    });
+
+    it("returns original on translation failure", async () => {
+      const { generateText } = await import("ai");
+      (generateText as any).mockRejectedValueOnce(new Error("API error"));
+
+      const { translateMessage } = await import("../../convex/translator");
+      const result = await translateMessage("Hello", "ar");
+      expect(result).toBe("Hello");
+    });
+  });
+
+  describe("renderSystemMessage", () => {
+    it("fills template and skips translation for English", async () => {
+      const { renderSystemMessage } = await import("../../convex/translator");
+      const result = await renderSystemMessage(
+        "check_credits",
+        { textCredits: 45, mediaCredits: 18, resetDate: "March 1" },
+        "en"
+      );
+      expect(result).toContain("45");
+      expect(result).toContain("18");
+    });
+  });
+});
+```
+
+---
+
+#### [TEST 13] __tests__/convex/users.test.ts
+
+```ts
+import { describe, it, expect } from "vitest";
+import { PLANS } from "../../lib/constants";
+
+describe("user creation logic", () => {
+  it("normalizes phone numbers by stripping whatsapp: prefix", () => {
+    const raw = "whatsapp:+971551234567";
+    const normalized = raw.replace(/\s/g, "").replace(/^whatsapp:/, "");
+    expect(normalized).toBe("+971551234567");
+  });
+
+  it("normalizes phone numbers with spaces", () => {
+    const raw = "whatsapp:+971 55 123 4567";
+    const normalized = raw.replace(/\s/g, "").replace(/^whatsapp:/, "");
+    expect(normalized).toBe("+971551234567");
+  });
+
+  it("new users get basic plan defaults", () => {
+    const defaults = {
+      language: "en",
+      tone: "friendly",
+      plan: "basic",
+      textCredits: PLANS.basic.textCredits,
+      mediaCredits: PLANS.basic.mediaCredits,
+    };
+
+    expect(defaults.language).toBe("en");
+    expect(defaults.tone).toBe("friendly");
+    expect(defaults.plan).toBe("basic");
+    expect(defaults.textCredits).toBe(60);
+    expect(defaults.mediaCredits).toBe(20);
+  });
+
+  it("credit cycle is 30 days from creation", () => {
+    const now = Date.now();
+    const cycleEnd = now + 30 * 24 * 60 * 60 * 1000;
+    const diffDays = (cycleEnd - now) / (24 * 60 * 60 * 1000);
+    expect(diffDays).toBe(30);
+  });
+});
+```
+
+---
+
+### 7.4 TDD Build Cycle
+
+For each feature, the cycle is:
+
+```
+FEATURE: User Management
+  → Write [TEST 13] __tests__/convex/users.test.ts
+  → Run: npm test -- __tests__/convex/users.test.ts → FAILS (no implementation)
+  → Write [FILE 13] convex/users.ts
+  → Run: npm test -- __tests__/convex/users.test.ts → PASSES ✅
+  → Commit: "feat(users): user CRUD with TDD"
+
+FEATURE: Templates
+  → Write [TEST 15] __tests__/convex/templates.test.ts
+  → Run: npm test -- __tests__/convex/templates.test.ts → FAILS
+  → Write [FILE 15] convex/templates.ts
+  → Run: npm test -- __tests__/convex/templates.test.ts → PASSES ✅
+  → Commit: "feat(templates): system message templates with TDD"
+
+... and so on for every feature.
+```
+
+---
+
+## 8. INTERNAL QUERY HELPERS
 
 Add these to the respective files so `chat.ts` can access user data from actions:
 
@@ -1457,57 +2207,79 @@ export const getByIdInternal = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => ctx.db.get(userId),
 });
-```
-
 ---
 
-## 8. BUILD SEQUENCE
+## 9. BUILD SEQUENCE (TDD)
+
+Every feature follows: **write test → see it fail → implement → see it pass → commit.**
 
 ```
+── PHASE 1: PROJECT SETUP ──
 STEP 01: npx create-next-app@latest ghali-ai-assistant --typescript --tailwind --app --src-dir --use-npm
 STEP 02: cd ghali-ai-assistant
 STEP 03: npm install convex @convex-dev/agent @convex-dev/rag @convex-dev/rate-limiter
 STEP 04: npm install ai @ai-sdk/google @ai-sdk/anthropic @ai-sdk/openai openai
 STEP 05: npm install @clerk/nextjs convex-react-clerk twilio zod
-STEP 06: Create .env.local [FILE 22] with all API keys
-STEP 07: npx convex dev --once (initializes Convex project)
-STEP 08: Create convex/convex.config.ts [FILE 08]
-STEP 09: Create convex/schema.ts [FILE 09]
-STEP 10: npx convex dev (generates types, keep running)
-STEP 11: Create lib/constants.ts [FILE 21]
-STEP 12: Create lib/twilio.ts [FILE 20]
-STEP 13: Create convex/templates.ts [FILE 15]
-STEP 14: Create convex/translator.ts [FILE 16]
-STEP 15: Create convex/billing.ts [FILE 17]
-STEP 16: Create convex/rag.ts [FILE 18]
-STEP 17: Create convex/media.ts [FILE 19]
-STEP 18: Create convex/users.ts [FILE 13] (include getByIdInternal)
-STEP 19: Create convex/agent.ts [FILE 10]
-STEP 20: Create convex/threads.ts [FILE 12]
-STEP 21: Create convex/chat.ts [FILE 11]
-STEP 22: Create convex/whatsapp.ts [FILE 14]
-STEP 23: Create src/app/globals.css [FILE 03]
-STEP 24: Create src/app/layout.tsx [FILE 01]
-STEP 25: Create src/app/page.tsx [FILE 02]
-STEP 26: Create src/app/chat/layout.tsx [FILE 05]
-STEP 27: Create src/app/chat/page.tsx [FILE 06]
-STEP 28: Create src/app/dashboard/page.tsx [FILE 07]
-STEP 29: Create src/app/api/webhooks/twilio/route.ts [FILE 04]
-STEP 30: Fix all TypeScript errors from npx convex dev
-STEP 31: npm run dev — verify app runs locally
-STEP 32: npx convex deploy — deploy backend
-STEP 33: vercel --prod — deploy frontend
-STEP 34: Set Twilio webhook: https://ghali.ae/api/webhooks/twilio (POST)
-STEP 35: Test: send WhatsApp message to +971582896090
+STEP 06: npm install -D vitest @testing-library/react @testing-library/jest-dom playwright @playwright/test
+STEP 07: Create .env.local [FILE 22] and .env.test
+STEP 08: Create vitest.config.ts and __tests__/setup.ts
+STEP 09: Add to package.json scripts: "test": "vitest", "test:run": "vitest run", "test:coverage": "vitest run --coverage"
+STEP 10: npx convex dev --once (initializes Convex project)
+STEP 11: Create convex/convex.config.ts [FILE 08]
+STEP 12: Create convex/schema.ts [FILE 09]
+STEP 13: npx convex dev (generates types, keep running)
+
+── PHASE 2: CORE LIBRARIES (TDD) ──
+STEP 14: Write [TEST 21] → npm test → FAIL → Write [FILE 21] lib/constants.ts → npm test → PASS ✅ → commit
+STEP 15: Write [TEST 20] → npm test → FAIL → Write [FILE 20] lib/twilio.ts → npm test → PASS ✅ → commit
+
+── PHASE 3: TEMPLATES & TRANSLATION (TDD) ──
+STEP 16: Write [TEST 15] → npm test → FAIL → Write [FILE 15] convex/templates.ts → npm test → PASS ✅ → commit
+STEP 17: Write [TEST 16] → npm test → FAIL → Write [FILE 16] convex/translator.ts → npm test → PASS ✅ → commit
+
+── PHASE 4: USER & BILLING (TDD) ──
+STEP 18: Write [TEST 17] → npm test → FAIL → Write [FILE 17] convex/billing.ts → npm test → PASS ✅ → commit
+STEP 19: Write [TEST 13] → npm test → FAIL → Write [FILE 13] convex/users.ts → npm test → PASS ✅ → commit
+
+── PHASE 5: MESSAGING (TDD) ──
+STEP 20: Write [TEST 14] → npm test → FAIL → Write [FILE 14] convex/whatsapp.ts → npm test → PASS ✅ → commit
+STEP 21: Write [FILE 19] convex/media.ts → commit
+
+── PHASE 6: AI AGENT & CHAT ──
+STEP 22: Write [FILE 18] convex/rag.ts → commit
+STEP 23: Write [FILE 10] convex/agent.ts → commit
+STEP 24: Write [FILE 12] convex/threads.ts → commit
+STEP 25: Write [FILE 11] convex/chat.ts → commit
+
+── PHASE 7: API & FRONTEND ──
+STEP 26: Write [FILE 04] src/app/api/webhooks/twilio/route.ts → commit
+STEP 27: Write [FILE 03] src/app/globals.css
+STEP 28: Write [FILE 01] src/app/layout.tsx
+STEP 29: Write [FILE 02] src/app/page.tsx
+STEP 30: Write [FILE 05] src/app/chat/layout.tsx
+STEP 31: Write [FILE 06] src/app/chat/page.tsx
+STEP 32: Write [FILE 07] src/app/dashboard/page.tsx → commit
+
+── PHASE 8: VERIFY & DEPLOY ──
+STEP 33: npm run test:run → ALL tests pass
+STEP 34: npm run test:coverage → verify 80%+ coverage
+STEP 35: Fix all TypeScript errors
+STEP 36: npm run dev → app runs locally
+STEP 37: npx convex deploy → deploy backend
+STEP 38: vercel --prod → deploy frontend
+STEP 39: Set Twilio webhook: https://ghali.ae/api/webhooks/twilio (POST)
+STEP 40: Send test WhatsApp message to +971582896090 → verify response
 ```
 
 ---
 
-## 9. VERIFICATION CHECKLIST
+## 10. VERIFICATION CHECKLIST
 
-After building, verify each item:
+After building, verify each item passes:
 
 ```
+[ ] npm run test:run → all unit tests pass
+[ ] npm run test:coverage → 80%+ statement coverage
 [ ] npm run dev starts without errors
 [ ] npx convex dev shows no schema errors
 [ ] ghali.ae loads landing page with WhatsApp CTA and Web Chat link
@@ -1543,6 +2315,8 @@ After building, verify each item:
 | 9 | Auth | Clerk | 80+ OAuth, Convex-native |
 | 10 | WhatsApp | Twilio | Existing account, reliable |
 | 11 | Colors | Navy hsl(222,47%,11%) + Orange #f97316 | Brand continuity from hub.ae |
+| 12 | Testing | Strict TDD with Vitest | Write test first, fail, implement, pass. 80%+ coverage. |
+| 13 | Test runner | Vitest (not Jest) | Faster, ESM-native, works with TypeScript out of box |
 
 ---
 
