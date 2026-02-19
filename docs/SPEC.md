@@ -50,23 +50,79 @@ A WhatsApp-first AI assistant. Users message a WhatsApp number and chat with AI.
 
 Build these in order. Each one: write test → see fail → implement → see pass → commit.
 
-### 1. Twilio Webhook
+### 1. New User Onboarding
+When a new user messages Ghali for the first time, run a lightweight conversational onboarding.
+Max 3 messages. Everything skippable — if user ignores and asks a question, just answer it.
+
+**Step 1 — Name verification (always):**
+```
+Hey! 👋 I'm Ghali, your AI assistant.
+
+I see your name is {{whatsappProfileName}} — should I call you that, or something else?
+
+(Skip: just start chatting anytime)
+```
+- Pull name from Twilio webhook `ProfileName` field
+- If they confirm or give a nickname → store in memory
+- If they skip (ask a question instead) → use profile name, move on
+
+**Step 2 — Language (only if ambiguous):**
+```
+What language do you prefer?
+🇬🇧 English
+🇦🇪 العربية
+🇫🇷 Français
+
+Or just reply in your language and I'll match you automatically ✨
+```
+- SKIP this step if language was already clear from Step 1 reply
+- "نعم" → Arabic detected, no need to ask
+- Only ask if first reply was mixed/unclear
+
+**Step 3 — Personality style:**
+```
+Last thing — how would you like me to be?
+
+😊 Cheerful & friendly
+📋 Professional & serious
+⚡ Brief & to-the-point
+📚 Detailed & thorough
+
+Pick one, or say "skip" — you can change this anytime.
+```
+- Map choice to personality user block (tone + verbosity)
+- Cheerful → tone: playful, emoji: lots
+- Professional → tone: formal, emoji: minimal
+- Brief → verbosity: concise, emoji: minimal
+- Detailed → verbosity: detailed, emoji: moderate
+
+**After onboarding (or skip):**
+```
+All set! Ask me anything 💬
+```
+
+- Store all answers in personality user block + memory
+- Don't ask: timezone (detect from +country code), location, interests (learn organically)
+- Track onboarding state: `onboardingStep` field on user record (null = done)
+- If user messages mid-onboarding with a real question → answer it, mark onboarding done
+
+### 2. Twilio Webhook
 - `POST /api/whatsapp/webhook` receives messages from Twilio
 - Validates Twilio signature
 - Extracts: sender phone, message body, media URLs
 - Returns 200 immediately, processes async
 
-### 2. User Management
+### 3. User Management
 - Find or create user by phone number
 - Store: phone, name (from WhatsApp profile), language, timezone, createdAt
 - Convex `users` table
 
-### 3. Conversation Threads
+### 4. Conversation Threads
 - One thread per user (Convex Agent threads)
 - All messages stored with role, content, timestamp, model used, token counts
 - Thread history auto-included in agent context
 
-### 4. AI Agent (Core)
+### 5. AI Agent (Core)
 - Define agent with `@convex-dev/agent`:
   ```typescript
   const ghali = new Agent(components.agent, {
@@ -83,21 +139,21 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - If personality file exists, it overrides/extends the base instructions for this user
 - Process incoming message → run agent on user's thread → send reply via Twilio
 
-### 5. Escalation Tools
+### 6. Escalation Tools
 - `deepReasoning`: Calls Gemini 3 Pro for complex tasks. Returns result to Flash.
 - `premiumReasoning`: Calls Claude Opus 4.6. Returns result to Flash.
 - Flash formats and delivers the final response.
 
-### 6. Image Generation
+### 7. Image Generation
 - `generateImage`: Calls Gemini 3 Pro in image mode
 - Returns image URL/buffer → send as WhatsApp media message
 
-### 7. Voice Notes
+### 8. Voice Notes
 - Twilio delivers voice as media URL
 - Download → transcribe with Whisper API → process as text message
 - Reply as text (TTS is V2)
 
-### 8. Credit System
+### 9. Credit System
 - **Basic (free):** 60 credits/month
 - **Pro ($19/month):** 600 credits/month
 - Track usage per message (model, tokens in/out, cost)
@@ -110,7 +166,7 @@ Build these in order. Each one: write test → see fail → implement → see pa
   - Verify webhook signature with Clerk signing secret
 - Convex `usage` table: userId, model, tokensIn, tokensOut, cost, timestamp
 
-### 9. Document Processing + RAG
+### 10. Document Processing + RAG
 When a user sends any file, two things happen simultaneously:
 1. **Immediate processing** — extract content, answer the user's question about it
 2. **Store in personal knowledge base** — chunk, embed, store for future retrieval
@@ -147,7 +203,7 @@ When a user sends any file, two things happen simultaneously:
 - Send a contract PDF → "What are the payment terms?" → instant answer
 - 2 weeks later → "What was the deadline in that contract?" → agent searches RAG, finds it
 
-### 10. System Message Templates
+### 11. System Message Templates
 Templates guarantee data accuracy (numbers, credits, dates). LLM only translates text.
 Pattern: fill template with data → detect user language → translate if not English.
 
@@ -418,7 +474,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 } as const;
 ```
 
-### 11. Landing Page (ghali.ae)
+### 12. Landing Page (ghali.ae)
 - Single-page, no web chat — WhatsApp is the only product
 - Goal: convert visitors → WhatsApp conversation (CTA: "Message Ghali on WhatsApp")
 - Elegant, minimalist design. Mobile-first.
@@ -439,7 +495,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - Static/SSG — minimal client-side JS (just PostHog + WhatsApp link)
 - **PostHog analytics:** page views, CTA clicks, UTM tracking, conversion funnel
 
-### 12. Heartbeat (Proactive Check-ins)
+### 13. Heartbeat (Proactive Check-ins)
 - Convex scheduled function runs periodically per user (configurable interval, default 24h)
 - Checks: pending reminders, follow-ups, anything the agent noted to revisit
 - If something needs attention → send WhatsApp message
@@ -447,7 +503,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - Respect active hours (don't message at 3am)
 - Store heartbeat config per user: interval, activeHoursStart, activeHoursEnd, timezone
 
-### 13. Personality (SOUL) + User Files
+### 14. Personality (SOUL) + User Files
 - **Per-user files** (stored in `userFiles` table, loaded every turn):
   - `memory` — agent writes facts, preferences, history ("prefers Arabic", "works in finance")
   - `personality` — two-layer system (see below)
