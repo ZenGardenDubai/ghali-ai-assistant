@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { detectTimezone } from "./lib/utils";
 
 export const findOrCreateUser = mutation({
@@ -114,6 +114,54 @@ export const getUserFiles = query({
 });
 
 export const updateUserFile = mutation({
+  args: {
+    userId: v.id("users"),
+    filename: v.union(
+      v.literal("memory"),
+      v.literal("personality"),
+      v.literal("heartbeat")
+    ),
+    content: v.string(),
+  },
+  handler: async (ctx, { userId, filename, content }) => {
+    const file = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", filename)
+      )
+      .unique();
+
+    if (!file) {
+      throw new Error(`User file not found: ${filename}`);
+    }
+
+    await ctx.db.patch(file._id, {
+      content,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Internal queries for use by actions
+export const internalGetUser = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db.get(userId as any);
+  },
+});
+
+export const internalGetUserFiles = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId as any))
+      .collect();
+  },
+});
+
+// Internal version for agent tools (called via ctx.runMutation)
+export const internalUpdateUserFile = internalMutation({
   args: {
     userId: v.id("users"),
     filename: v.union(
