@@ -74,24 +74,126 @@ Single Ghali agent on Gemini 3 Flash. Escalates to Pro or Opus via tool calls wh
 
 ## Core Concepts (from OpenClaw)
 
-Ghali borrows key architectural ideas from [OpenClaw](https://github.com/openclaw/openclaw):
+Ghali borrows key architectural ideas from [OpenClaw](https://github.com/openclaw/openclaw). Below is how OpenClaw implements each concept and how Ghali will adapt it.
 
-### 🫀 Heartbeat
-Periodic background check-ins. Instead of only responding to messages, Ghali can proactively check things (reminders, calendar, notifications) and reach out when relevant. Configurable interval.
-
-### 👤 Personality (SOUL)
-Each Ghali instance has a personality file that defines tone, language preferences, behavior rules, and capabilities. This makes Ghali customizable — users (or deployers) can shape how Ghali communicates.
-
-### ⏰ Cron Jobs
-Scheduled tasks that run independently — reminders, recurring checks, background work. Separate from the main conversation thread.
+---
 
 ### 🧠 Memory
-Persistent memory across conversations. Ghali remembers context, user preferences, and past interactions using vector search + conversation history.
+
+**How OpenClaw does it:**
+
+OpenClaw memory is **plain Markdown files** in the agent workspace. The model only "remembers" what's written to disk — there is no hidden state.
+
+**Two layers:**
+- `memory/YYYY-MM-DD.md` — Daily log files. Append-only. Read today + yesterday at session start.
+- `MEMORY.md` — Curated long-term memory. Distilled insights, not raw logs. Only loaded in private sessions (never in group chats for privacy).
+
+**Vector search:** OpenClaw indexes all memory files using embeddings (OpenAI, Gemini, or local GGUF models) stored in SQLite. Two tools are exposed:
+- `memory_search` — semantic search across all memory files. Uses hybrid search: vector similarity (finds paraphrased matches) + BM25 keyword search (finds exact IDs, code, names). Returns snippets with file path + line numbers.
+- `memory_get` — read specific lines from a memory file.
+
+**Auto memory flush:** Before session context is compacted (hitting token limits), OpenClaw triggers a silent turn asking the model to write durable notes to memory files. This prevents context loss.
+
+**Ghali adaptation:**
+- Conversation memory handled by **Convex Agent component** (auto-includes thread history + vector search across messages).
+- Document/knowledge memory handled by **Convex RAG component** (per-user namespace, semantic search).
+- Long-term user preferences stored in the **users table** (language, timezone, tone, name).
+- No filesystem — everything in Convex database (serverless, real-time).
+
+---
+
+### 🫀 Heartbeat
+
+**How OpenClaw does it:**
+
+Heartbeat runs **periodic agent turns** in the main session at a configurable interval (default: 30 minutes). The model receives a prompt and can either surface something important or reply `HEARTBEAT_OK` (which is silently discarded).
+
+**Key mechanics:**
+- **Interval:** Configurable (`every: "30m"`). Can be different per agent.
+- **Prompt:** Sent verbatim as a user message. Default: *"Read HEARTBEAT.md if it exists. Follow it strictly. If nothing needs attention, reply HEARTBEAT_OK."*
+- **HEARTBEAT.md:** Optional checklist file the agent reads each heartbeat. Kept tiny to minimize token burn. The agent can update it. Example:
+  ```md
+  # Heartbeat checklist
+  - Quick scan: anything urgent in inboxes?
+  - If daytime, lightweight check-in if nothing pending.
+  ```
+- **Response contract:** `HEARTBEAT_OK` = nothing to report (silently dropped). Any other response = alert, delivered to the configured channel.
+- **Target:** Where to deliver alerts — `last` (last used channel), a specific channel (`whatsapp`, `telegram`), or `none` (run but don't deliver).
+- **Active hours:** Can restrict heartbeats to e.g. 08:00–22:00 in user's timezone. Outside the window, heartbeats are skipped.
+- **Cost awareness:** Each heartbeat is a full agent turn. Shorter intervals = more tokens. Use a cheaper model for heartbeats if needed.
+
+**Ghali adaptation:**
+- Use **Convex scheduled functions** (`ctx.scheduler.runAfter`) to implement periodic heartbeat checks.
+- Store heartbeat config per user (interval, active hours, checklist).
+- On each heartbeat: check reminders, upcoming events, pending follow-ups.
+- If something needs attention → send WhatsApp message.
+- If nothing → skip silently.
+- V2 feature — not in MVP.
+
+---
+
+### 👤 Personality (SOUL)
+
+**How OpenClaw does it:**
+
+Personality is defined through **workspace files** that are injected into the system prompt on every turn:
+
+- **`SOUL.md`** — The agent's core persona and tone. *"You're not a chatbot. You're becoming someone."* Defines:
+  - How to communicate (concise, opinionated, not sycophantic)
+  - Boundaries (private things stay private, ask before acting externally)
+  - Vibe ("Be the assistant you'd actually want to talk to")
+  - The agent can evolve this file over time.
+
+- **`IDENTITY.md`** — Name, emoji, avatar, creature type. Created during first-run bootstrap.
+
+- **`USER.md`** — Who the user is: name, timezone, birthday, family, work context, preferences, communication style. The agent uses this to personalize every response.
+
+- **`AGENTS.md`** — Operating instructions: how to use memory, when to speak in group chats, safety rules, tool usage guidelines.
+
+- **`TOOLS.md`** — Notes about available tools, local configs, API details.
+
+All these files are **injected into context** on every turn (capped at 20KB per file, 150KB total). They're editable by both the user and the agent.
+
+**Key principle:** The personality is in the files, not hardcoded. Different users can have completely different agent personalities by editing these files.
+
+**Ghali adaptation:**
+- Agent personality defined in the `instructions` field of the Convex Agent definition.
+- Per-user personalization stored in the **users table** (language, tone, name, timezone).
+- System prompt adapts based on user preferences (formal vs casual, Arabic vs English).
+- Future: allow users to customize Ghali's personality via commands ("be more formal", "speak Arabic only").
+
+---
+
+### ⏰ Cron Jobs
+
+**How OpenClaw does it:**
+
+Cron jobs are scheduled tasks that run independently from the main conversation. Two types:
+- **`systemEvent`** — Injects a message into the main session (like a reminder).
+- **`agentTurn`** — Runs a full agent turn in an isolated session (for background work).
+
+Cron supports: one-shot (`at`), recurring interval (`every`), and cron expressions (`cron`). Jobs can target the main session or spawn isolated sessions.
+
+**Ghali adaptation:**
+- Use **Convex scheduled functions** for reminders and recurring tasks.
+- Store scheduled tasks in a `scheduledJobs` table per user.
+- V2 feature — not in MVP.
+
+---
 
 ### 🔧 Tools
-Extensible tool system. Ghali can call external APIs, search documents, generate images, and perform actions in the real world.
 
-*These features will be implemented progressively. Heartbeat and cron are V2 — the MVP focuses on reactive chat with memory and tools.*
+**How OpenClaw does it:**
+
+Tools are the agent's hands. OpenClaw provides built-in tools (file read/write, exec, web search, browser control, memory search, messaging) and supports custom tools via skills.
+
+Skills are modular packages with a `SKILL.md` file. The agent reads the skill file on demand and follows its instructions.
+
+**Ghali adaptation:**
+- Tools defined as Convex Agent `createTool()` — deeply integrated with the database.
+- Built-in tools: `deepReasoning`, `premiumReasoning`, `generateImage`, `searchDocuments`.
+- Extensible: add new tools without changing the routing logic.
+- The AI SDK tool format is compatible with any function — web search, calendar, email, etc.
 
 ---
 
