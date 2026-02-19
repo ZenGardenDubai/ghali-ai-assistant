@@ -1,57 +1,35 @@
 # Ghali غالي
 
-**Your AI assistant on WhatsApp.**
+**Your AI on WhatsApp.**
 
-One chat. Every AI. No apps, no accounts — just message.
+Message. Get answers. No apps, no accounts.
 
-## What is Ghali?
+## What is this?
 
-Ghali is a WhatsApp-native AI assistant that gives you access to the world's best AI models through a simple chat. Smart routing sends each query to the right model — fast and cheap for simple tasks, powerful for complex ones.
+An open-source WhatsApp AI assistant. One chat gives you access to the best AI models — Gemini, Claude, GPT. Smart routing picks the right model automatically.
 
-## Core Concepts (inspired by [OpenClaw](https://github.com/openclaw/openclaw))
+Inspired by [OpenClaw](https://github.com/openclaw/openclaw)'s approach to AI assistants: personality, memory, heartbeat, tools.
 
-- **🫀 Heartbeat** — Proactive check-ins, not just reactive responses
-- **👤 Personality (SOUL)** — Configurable personality and tone
-- **⏰ Cron Jobs** — Scheduled tasks, reminders, background work
-- **🧠 Memory** — Persistent memory across conversations with vector search
-- **🔧 Tools** — Extensible tool system for real-world actions
-- **🤖 Smart Routing** — Right model for the right task, automatically
+## Stack
 
-## Architecture
+Next.js 15 · Convex · Clerk · Gemini 3 Flash/Pro · Claude Opus · Twilio · Vitest
 
-```
-WhatsApp (Twilio) → Next.js API → Convex Agent → Smart Router
-  ├── 85% → Gemini 3 Flash     (fast, cheap, multilingual)
-  ├── 10% → Gemini 3 Pro       (complex reasoning)
-  ├──  5% → Claude Opus 4.6    (premium deep reasoning)
-  └── Images → Gemini 3 Pro    (Nano Banana Pro generation)
-```
+## Key Ideas
 
-## Tech Stack
+- **🫀 Heartbeat** — Proactive, not just reactive. Checks in when something needs attention.
+- **👤 Personality** — Not a generic chatbot. Has a voice, adapts to each user.
+- **🧠 Memory** — Remembers across conversations. Per-user document search.
+- **🤖 Smart Routing** — Flash for speed, Pro for depth, Opus for precision. One agent decides.
 
-| Layer | Technology |
-|-------|-----------|
-| **Framework** | Next.js 15 (App Router, TypeScript) |
-| **Database** | Convex (real-time serverless) |
-| **AI Agents** | Convex Agent Component |
-| **Tagging** | Convex Tag Component |
-| **Auth** | Clerk |
-| **Embeddings** | OpenAI text-embedding-3-small |
-| **Messaging** | Twilio WhatsApp Business API |
-| **Hosting** | Vercel + Convex Cloud |
+## Docs
 
-## AI Models
-
-| Tier | Model | Cost (in/out per M tokens) | Use Case |
-|------|-------|---------------------------|----------|
-| Primary | Gemini 3 Flash | $0.50 / $3 | Daily chat, Q&A, translations |
-| Reasoning | Gemini 3 Pro | $2 / $12 | Complex analysis, coding |
-| Premium | Claude Opus 4.6 | $15 / $75 | Deep reasoning, nuanced writing |
-| Images | Gemini 3 Pro | ~$0.13/image | Image generation |
+- **[SPEC.md](docs/SPEC.md)** — Full build spec (feed this to an LLM to scaffold the app)
+- **[Convex Agent](https://docs.convex.dev/agents)** — Agent framework docs
+- **[Convex RAG](https://www.convex.dev/components/rag)** — Document search component
 
 ## Status
 
-🚧 Early development — not yet ready for public use.
+🚧 Early development.
 
 ## License
 
