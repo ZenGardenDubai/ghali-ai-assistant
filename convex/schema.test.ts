@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import schema from "./schema";
+import { MODELS } from "./models";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -136,7 +137,7 @@ describe("schema", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("usage", {
         userId,
-        model: "gemini-3-flash",
+        model: MODELS.FLASH,
         tokensIn: 100,
         tokensOut: 50,
         cost: 0.001,
@@ -153,7 +154,7 @@ describe("schema", () => {
 
     expect(records).toHaveLength(1);
     expect(records[0]).toMatchObject({
-      model: "gemini-3-flash",
+      model: MODELS.FLASH,
       tokensIn: 100,
       tokensOut: 50,
     });

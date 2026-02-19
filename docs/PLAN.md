@@ -204,7 +204,7 @@ Extract and test all pure business logic before wiring anything up. These have z
   - Missing variables throw an error
 
 - [x] **4.6 Test: `splitLongMessage(text, maxLength)` → string[]**
-  - WhatsApp has a ~4096 char limit per message
+  - Twilio sandbox limit: 1600 chars (production WhatsApp: 4096). Default set to 1500 for safety.
   - Splits at paragraph boundaries, falls back to sentence boundaries
 
 - [x] **4.7 Implement all pure functions in `convex/lib/`**
@@ -326,33 +326,51 @@ The heart of the system. Define the Ghali agent with Gemini 3 Flash, configure t
 
 ---
 
-## 8. Escalation Tools
+## 8. Escalation Tool + WhatsApp Formatter
 
-Add deepReasoning and premiumReasoning tools so Flash can self-escalate.
+Add a single `deepReasoning` tool so Flash can self-escalate to Claude Opus 4.6 for complex tasks. Format all responses for WhatsApp before sending.
 
-- [ ] **8.1 Test: deepReasoning tool calls Gemini 3 Pro**
-  - Tool receives a prompt
-  - Returns a non-empty response
-  - Usage is tracked with model="gemini-3-pro"
-
-- [ ] **8.2 Test: premiumReasoning tool calls Claude Opus**
-  - Tool receives a prompt
-  - Returns a non-empty response
-  - Usage is tracked with model="claude-opus-4-6"
-
-- [ ] **8.3 Implement `deepReasoning` tool**
+- [x] **8.1 Implement `deepReasoning` tool**
   - `createTool` with description guiding Flash on when to use it
-  - Internally calls `generateText` with `google("gemini-3-pro")`
-  - Returns result text to Flash
+  - Internally calls `generateText` with `anthropic(MODELS.DEEP_REASONING)`
+  - Returns result text to Flash, with try/catch fallback
+  - Set `maxSteps: 5` on agent so tool results get a final text response
 
-- [ ] **8.4 Implement `premiumReasoning` tool**
-  - Same pattern, calls `anthropic("claude-opus-4-6")`
+- [x] **8.2 Register tool on the Ghali agent**
 
-- [ ] **8.5 Register both tools on the Ghali agent**
+- [x] **8.3 Create `convex/models.ts` — Single Source of Truth for model constants**
+  - `MODELS` object: `FLASH`, `DEEP_REASONING`, `PREMIUM_REASONING`, `IMAGE_GENERATION`, `EMBEDDING`
+  - `MODEL_COSTS` table with per-1M-token rates
+  - All consumers import from here — no hardcoded model strings
 
-- [ ] **8.6 Run all tests — pass**
+- [x] **8.4 Fix message splitting limit**
+  - Twilio sandbox limit is 1600 chars (not 4096)
+  - Updated `WHATSAPP_MAX_LENGTH` to 1500 (with safety margin)
 
-- [ ] **8.7 Commit: "Add escalation tools — deepReasoning (Pro) + premiumReasoning (Opus)"**
+- [x] **8.5 Add error handling to message flow**
+  - `deepReasoning` handler: try/catch returns graceful fallback on failure
+  - `generateResponse` action: try/catch sends "Sorry" message instead of silent failure
+
+- [ ] **8.6 Implement `formatForWhatsApp` utility** *(from hub-ai-v2 pattern)*
+  - Port `convex/ghali/formatter.ts` from hub-ai-v2
+  - Pipeline: strip code block markers → convert `**bold**` to `*bold*` → strip headers → strip markdown links (keep text) → convert `* item` to `- item` → strip blockquotes → remove horizontal rules → collapse whitespace
+  - Apply to ALL outbound messages before splitting
+  - Add 500ms delay between multi-part messages to preserve ordering
+
+- [ ] **8.7 Test: formatForWhatsApp converts markdown correctly**
+  - `**bold**` → `*bold*`
+  - `## Header` → `Header`
+  - `[link](url)` → `link`
+  - Code blocks → plain code text
+  - Combined markdown → clean WhatsApp text
+
+- [ ] **8.8 Add formatting instructions to agent system prompt and escalation prompts**
+  - System prompt: "Format for WhatsApp — use *bold*, _italic_, plain text. No markdown headers, tables, or code blocks."
+  - Deep reasoning prompt: same rules
+
+- [ ] **8.9 Run all tests — pass**
+
+- [ ] **8.10 Commit: "Add escalation tool, WhatsApp formatter, model constants SSOT"**
 
 ---
 
@@ -971,3 +989,141 @@ Final polish and monitoring after the system is live.
   - Document recovery procedure
 
 - [ ] **24.6 Commit: "Add monitoring and post-launch hardening"**
+
+---
+
+## 25. Constants Single Source of Truth
+
+Consolidate ALL business rule constants into a single file (`convex/constants.ts`). Nothing hardcoded anywhere else. Every constant imported from one place.
+
+- [ ] **25.1 Create `convex/constants.ts` — the SSOT file**
+  - Merge existing `convex/models.ts` into this file (models become a section)
+  - All business rules, limits, and configuration in one place
+
+- [ ] **25.2 Tier & Credit Constants**
+  ```
+  USER_TIERS = ["basic", "pro"]
+  BASIC_TIER_CREDITS = 60
+  PRO_TIER_CREDITS = 600
+  CREDITS_PER_MESSAGE = 1
+  CREDITS_RESET_DAYS = 30
+  ```
+
+- [ ] **25.3 Storage & File Limits**
+  ```
+  MAX_USER_FILE_SIZE = 10 * 1024          // 10 KB per user file
+  MAX_MEDIA_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
+  MIN_MEDIA_SIZE_BYTES = 1024             // 1 KB
+  MAX_EXTRACTION_LENGTH = 50000           // 50K chars from docs
+  RAG_CHUNK_SIZE = 2000
+  RAG_CHUNK_OVERLAP = 200
+  ```
+
+- [ ] **25.4 WhatsApp & Messaging Constants**
+  ```
+  WHATSAPP_MAX_MESSAGE_LENGTH = 1500
+  WHATSAPP_MULTI_PART_DELAY_MS = 500
+  WHATSAPP_NUMBER = "+971582896090"
+  ```
+
+- [ ] **25.5 Agent Configuration**
+  ```
+  AGENT_MAX_STEPS = 5
+  AGENT_CONTEXT_MESSAGES = 50
+  DEFAULT_TEMPERATURE = 0.7
+  ```
+
+- [ ] **25.6 Model Constants (from existing `convex/models.ts`)**
+  ```
+  MODELS = { FLASH, DEEP_REASONING, PREMIUM_REASONING, IMAGE_GENERATION, EMBEDDING }
+  MODEL_COSTS = { ... per 1M token rates ... }
+  ```
+
+- [ ] **25.7 Blocked Country Codes**
+  ```
+  BLOCKED_COUNTRY_CODES = ["+91", "+92", "+880", "+234", "+62", "+263"]
+  ```
+
+- [ ] **25.8 System Commands**
+  ```
+  SYSTEM_COMMANDS = ["credits", "help", "privacy", "upgrade", "account", "my memory", "clear memory", "clear documents", "clear everything"]
+  ```
+
+- [ ] **25.9 Brand & Company**
+  ```
+  DOMAIN = "ghali.ae"
+  SITE_URL = "https://ghali.ae"
+  SUPPORT_EMAIL = "support@ghali.ae"
+  COMPANY_NAME = "SAHEM DATA TECHNOLOGY"
+  ```
+
+- [ ] **25.10 Helper Functions**
+  - `getCreditsForTier(tier)` — returns credit limit for tier
+  - `getModelApiName(modelId)` — if any internal→API name mapping needed
+
+- [ ] **25.11 Audit: replace all hardcoded values across codebase**
+  - `convex/agent.ts` — imports from constants
+  - `convex/usageTracking.ts` — imports MODEL_COSTS from constants
+  - `convex/lib/utils.ts` — imports BLOCKED_COUNTRY_CODES, SYSTEM_COMMANDS, WHATSAPP_MAX_MESSAGE_LENGTH
+  - `convex/credits.ts` — imports tier limits
+  - `convex/schema.test.ts` — imports from constants
+  - Grep entire codebase for remaining hardcoded strings
+
+- [ ] **25.12 Run all tests — pass**
+
+- [ ] **25.13 Commit: "Consolidate all constants into single source of truth"**
+
+---
+
+## 26. Documentation
+
+Comprehensive project documentation: README, business rules, and architecture references.
+
+- [ ] **26.1 Update `README.md`**
+  - Project overview: what Ghali is, who it's for
+  - Tech stack summary (with versions)
+  - Getting started: prerequisites, env vars, `pnpm install`, `pnpm dev`
+  - Project structure: key directories and files
+  - Architecture overview: message flow diagram (text), agent escalation, credit system
+  - Available commands: system commands, admin commands
+  - Development: testing, linting, type-checking, deployment
+  - Environment variables: full list with descriptions (no secrets)
+  - License: Apache 2.0
+
+- [ ] **26.2 Create `docs/BusinessRules.md`**
+  - **Tier System**
+    - Basic (free): 60 credits/month, standard features
+    - Pro ($19/month): 600 credits/month, priority features
+    - Credit cost: 1 per request (text), system commands free
+    - Monthly reset via cron (30-day cycle)
+  - **Model Escalation**
+    - Flash (85%): fast, cheap, default
+    - Deep Reasoning / Opus 4.6 (10%): complex math, logic, analysis, coding
+    - Premium Reasoning / Gemini 3 Pro (5%): premium writing, deep research
+    - Image Generation / Gemini 3 Pro Image: on-demand
+  - **WhatsApp Constraints**
+    - Max message length: 1500 chars (Twilio sandbox) / 1600 chars (production)
+    - Multi-part messages: 500ms delay between parts
+    - Formatting: WhatsApp native (*bold*, _italic_), no markdown
+    - Blocked country codes: India, Pakistan, Bangladesh, Nigeria, Indonesia, Zimbabwe
+  - **Storage Limits**
+    - User files (memory/personality/heartbeat): 10 KB each
+    - Media uploads: 10 MB max, 1 KB min
+    - RAG: 2000-char chunks, 200-char overlap, 25 max chunks per document
+  - **Rate Limiting**
+    - 30 messages/minute per user (token bucket)
+  - **Data Management**
+    - Users can clear: memory, documents, everything
+    - Confirmation required for destructive actions
+  - **Admin Commands**
+    - stats, search, grant, broadcast
+    - Only accessible to users with `isAdmin: true`
+
+- [ ] **26.3 Update `docs/ARCHITECTURE.md`** (if exists, or create)
+  - Single agent with escalation tools (no multi-agent)
+  - Async message flow diagram
+  - Per-user files system
+  - Credit system flow
+  - Constants SSOT pattern
+
+- [ ] **26.4 Commit: "Add comprehensive documentation — README, BusinessRules, Architecture"**

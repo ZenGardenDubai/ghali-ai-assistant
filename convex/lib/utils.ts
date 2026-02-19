@@ -90,7 +90,10 @@ export function fillTemplate(
   });
 }
 
-const WHATSAPP_MAX_LENGTH = 4096;
+// Twilio sandbox limit is 1600 chars per message segment.
+// Production WhatsApp Business API supports 4096, but we use the lower
+// limit so it works in both environments.
+const WHATSAPP_MAX_LENGTH = 1500;
 
 export function splitLongMessage(
   text: string,

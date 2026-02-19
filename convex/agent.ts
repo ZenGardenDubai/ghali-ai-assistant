@@ -1,9 +1,12 @@
 import { Agent, createTool } from "@convex-dev/agent";
 import { components, internal } from "./_generated/api";
 import { google } from "@ai-sdk/google";
+import { anthropic } from "@ai-sdk/anthropic";
 import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 import { z } from "zod";
 import { Id } from "./_generated/dataModel";
+import { MODELS } from "./models";
 
 const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -103,17 +106,51 @@ const updateHeartbeat = createTool({
   },
 });
 
+const deepReasoning = createTool({
+  description:
+    "Escalate to Claude Opus 4.6 for complex reasoning tasks: math, logic, analysis, strategy, coding, or anything requiring deep thought. Pass the full task/question — Opus will return a thorough answer.",
+  args: z.object({
+    task: z
+      .string()
+      .describe(
+        "The reasoning task or question to solve. Include all relevant context."
+      ),
+  }),
+  handler: async (_ctx, { task }) => {
+    try {
+      const result = await generateText({
+        model: anthropic(MODELS.DEEP_REASONING),
+        system: `You are a deep reasoning engine. Solve the given task thoroughly and accurately.
+
+Rules:
+- Think step-by-step for complex problems
+- Be precise with math, logic, and code
+- Format for WhatsApp: use *bold*, _italic_, and plain text — no markdown headers or tables
+- Keep response concise but complete — aim for clarity over length
+- If the task involves code, provide working code with brief explanation`,
+        prompt: task,
+      });
+      return result.text;
+    } catch (error) {
+      console.error("deepReasoning tool failed:", error);
+      return `I attempted deep analysis but encountered an error. Let me answer directly instead.\n\nTask: ${task}`;
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
-  languageModel: google("gemini-2.0-flash"),
-  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+  languageModel: google(MODELS.FLASH),
+  textEmbeddingModel: openai.embedding(MODELS.EMBEDDING),
   instructions: AGENT_INSTRUCTIONS,
   tools: {
     updateMemory,
     updatePersonality,
     updateHeartbeat,
-    // TODO: deepReasoning, premiumReasoning, generateImage, searchDocuments
+    deepReasoning,
+    // TODO: premiumReasoning, generateImage, searchDocuments
   },
+  maxSteps: 5,
   contextOptions: {
     recentMessages: 50,
   },

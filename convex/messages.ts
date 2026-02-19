@@ -88,17 +88,22 @@ export const generateResponse = internalAction({
     });
 
     // Generate response
-    const result = await ghaliAgent.generateText(
-      ctx,
-      { threadId },
-      {
-        prompt: userContext
-          ? `${userContext}\n\n---\nUser message: ${prompt}`
-          : prompt,
-      }
-    );
-
-    const responseText = result.text;
+    let responseText: string | undefined;
+    try {
+      const result = await ghaliAgent.generateText(
+        ctx,
+        { threadId },
+        {
+          prompt: userContext
+            ? `${userContext}\n\n---\nUser message: ${prompt}`
+            : prompt,
+        }
+      );
+      responseText = result.text;
+    } catch (error) {
+      console.error("Agent generateText failed:", error);
+      responseText = "Sorry, I ran into an issue processing your message. Please try again.";
+    }
 
     if (responseText) {
       // Send reply via Twilio

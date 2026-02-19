@@ -1,14 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-
-// Cost per 1M tokens (approximate)
-const MODEL_COSTS: Record<string, { input: number; output: number }> = {
-  "gemini-2.0-flash": { input: 0.1, output: 0.4 },
-  "gemini-2.0-pro": { input: 1.25, output: 10.0 },
-  "claude-opus-4-6": { input: 15.0, output: 75.0 },
-  "text-embedding-3-small": { input: 0.02, output: 0 },
-};
+import { MODEL_COSTS } from "./models";
 
 function estimateCost(
   model: string,
