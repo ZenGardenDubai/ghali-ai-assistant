@@ -35,61 +35,15 @@ The core of Ghali's AI layer. Handles:
 - **Usage tracking** — Per-model, per-user, per-agent cost tracking via `usageHandler`.
 - **Rate limiting** — Via Convex Rate Limiter Component.
 
-### Agent Definitions
+### Agent Definition
 
-Three agents sharing the same embedding model and thread system:
-
-```ts
-import { Agent } from "@convex-dev/agent";
-import { google } from "@ai-sdk/google";
-import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
-import { components } from "./_generated/api";
-
-const sharedConfig = {
-  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
-  usageHandler: async (ctx, args) => {
-    // Track usage per user, model, agent for billing/credits
-  },
-};
-
-// Primary — 85% of queries
-const ghaliFlash = new Agent(components.agent, {
-  name: "Ghali Flash",
-  languageModel: google.chat("gemini-3-flash"),
-  instructions: "You are Ghali, a friendly AI assistant...",
-  tools: { /* common tools */ },
-  ...sharedConfig,
-});
-
-// Reasoning — 10% of queries
-const ghaliPro = new Agent(components.agent, {
-  name: "Ghali Pro",
-  languageModel: google.chat("gemini-3-pro"),
-  instructions: "You are Ghali. Use deep reasoning for complex tasks...",
-  tools: { /* common + advanced tools */ },
-  ...sharedConfig,
-});
-
-// Premium — 5% of queries
-const ghaliOpus = new Agent(components.agent, {
-  name: "Ghali Opus",
-  languageModel: anthropic.chat("claude-opus-4-6"),
-  instructions: "You are Ghali. Provide the highest quality response...",
-  tools: { /* common + advanced tools */ },
-  ...sharedConfig,
-});
-```
+Single agent with escalation tools. See [Routing Strategy](#routing-strategy-hybrid-single-agent--escalation-tools) for full details.
 
 ### Thread Management
 
 - Each WhatsApp user gets a persistent thread (keyed by phone number)
 - Web chat users get threads keyed by Clerk user ID
-- Agents can hand off within the same thread:
-  ```ts
-  // Flash starts, but if complex, Pro continues on the same thread
-  const { thread } = await ghaliPro.continueThread(ctx, { threadId });
-  ```
+- Single agent per thread — no handoff complexity
 
 ### Message Flow (Async Pattern)
 
@@ -109,41 +63,89 @@ export const sendMessage = mutation({
   },
 });
 
-// Step 2: Route and generate (action — retryable)
+// Step 2: Generate response (action — retryable)
+// No classifier needed — Flash handles directly or escalates via tools
 export const generateResponse = internalAction({
   args: { threadId: v.string(), promptMessageId: v.string() },
   handler: async (ctx, { threadId, promptMessageId }) => {
-    const tier = await classifyQuery(ctx, threadId, promptMessageId);
-    const agent = tier === "pro" ? ghaliPro
-                : tier === "opus" ? ghaliOpus
-                : ghaliFlash;
-    await agent.generateText(ctx, { threadId }, { promptMessageId });
+    await ghali.generateText(ctx, { threadId }, { promptMessageId });
   },
 });
 ```
 
-## Smart Router
+## Routing Strategy: Hybrid (Single Agent + Escalation Tools)
 
-Classifies each incoming message to determine the right model tier.
+Instead of multiple agents with an external classifier, Ghali uses a **single primary agent (Gemini 3 Flash)** that can escalate to more powerful models via tool calls. This saves one LLM call per message and keeps the codebase simple.
 
-### Classification Logic
+### How It Works
 
 ```
-User message → Gemini 3 Flash (classifier)
-  → "simple"   → Ghali Flash   (general chat, Q&A, translations)
-  → "complex"  → Ghali Pro     (coding, analysis, multi-step reasoning)
-  → "premium"  → Ghali Opus    (nuanced writing, deep research)
-  → "image"    → Nano Banana   (image generation via Gemini 3 Pro)
+User message → Ghali Agent (Gemini 3 Flash)
+  → Handles directly (85% of queries — fast, cheap)
+  → OR calls `deepReasoning` tool → Gemini 3 Pro (complex tasks)
+  → OR calls `premiumReasoning` tool → Claude Opus 4.6 (premium tasks)
+  → OR calls `generateImage` tool → Gemini 3 Pro / Nano Banana Pro
 ```
 
-### Classification Criteria
+The LLM itself decides when a task requires escalation — no separate classifier needed.
 
-| Tier | Triggers |
-|------|----------|
-| Flash | Greetings, simple Q&A, translations, summaries, casual chat |
-| Pro | Code generation, data analysis, document analysis, multi-step tasks |
-| Opus | Creative writing, deep research, complex reasoning, sensitive topics |
-| Image | Any request for image creation/editing |
+### Agent Definition
+
+```ts
+const ghali = new Agent(components.agent, {
+  name: "Ghali",
+  languageModel: google.chat("gemini-3-flash"),
+  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+  instructions: `You are Ghali, a friendly and helpful AI assistant on WhatsApp.
+    You speak Arabic and English fluently.
+    For complex reasoning, coding, or analysis — use the deepReasoning tool.
+    For premium quality writing or deep research — use the premiumReasoning tool.
+    For image generation — use the generateImage tool.
+    Handle everything else directly.`,
+  tools: {
+    deepReasoning: createTool({
+      description: "Use for complex tasks: coding, data analysis, multi-step reasoning, document analysis. Routes to a more powerful model.",
+      args: z.object({ prompt: z.string() }),
+      handler: async (ctx, args): Promise<string> => {
+        // Calls Gemini 3 Pro internally
+        const result = await generateWithModel("gemini-3-pro", args.prompt, ctx);
+        return result.text;
+      },
+    }),
+    premiumReasoning: createTool({
+      description: "Use for the highest quality: nuanced creative writing, deep research, complex multi-domain reasoning. Most expensive — use sparingly.",
+      args: z.object({ prompt: z.string() }),
+      handler: async (ctx, args): Promise<string> => {
+        // Calls Claude Opus 4.6 internally
+        const result = await generateWithModel("claude-opus-4-6", args.prompt, ctx);
+        return result.text;
+      },
+    }),
+    generateImage: createTool({
+      description: "Generate an image from a text description.",
+      args: z.object({ prompt: z.string(), aspectRatio: z.string().optional() }),
+      handler: async (ctx, args): Promise<string> => {
+        // Calls Gemini 3 Pro image generation (Nano Banana Pro)
+        return await generateImage(args.prompt, args.aspectRatio);
+      },
+    }),
+    // More tools: web search, calculator, file handling, etc.
+  },
+  stopWhen: stepCountIs(5),
+  ...sharedConfig,
+});
+```
+
+### Benefits of This Approach
+
+| Benefit | Detail |
+|---------|--------|
+| **No classifier cost** | No extra LLM call to classify each message |
+| **Simple codebase** | One agent definition, not three |
+| **Smart escalation** | Flash decides when it needs help — it knows its own limits |
+| **Cost control** | Tool descriptions guide the LLM on when to escalate |
+| **Shared thread** | All responses in one thread, seamless conversation |
+| **Extensible** | Add new tools (web search, calendar, etc.) without changing routing |
 
 ## WhatsApp Integration (Twilio)
 
