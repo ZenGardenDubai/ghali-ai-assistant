@@ -116,17 +116,19 @@ When a user sends any file, two things happen simultaneously:
 2. **Store in personal knowledge base** — chunk, embed, store for future retrieval
 
 **Supported formats:**
-| Format | Method | Notes |
-|--------|--------|-------|
-| PDF | pdf-parse (npm) | Text extraction, fallback OCR for scanned PDFs |
-| Word (.docx) | mammoth (npm) | Preserves structure |
-| PowerPoint (.pptx) | officegen or pptx-parser | Extract slide text + notes |
-| Excel (.xlsx) | xlsx (SheetJS) | Extract as structured text |
-| Images (jpg/png/webp) | Gemini Vision API | OCR + visual description |
+| Format | Method |
+|--------|--------|
+| PDF | Gemini 3 Flash (native PDF support) |
+| Images (jpg/png/webp) | Gemini 3 Flash (vision) |
+| Word (.docx) | CloudConvert → PDF → Gemini 3 Flash |
+| PowerPoint (.pptx) | CloudConvert → PDF → Gemini 3 Flash |
+| Excel (.xlsx) | CloudConvert → PDF → Gemini 3 Flash |
 
 **Flow:**
-- Twilio delivers media URL → download file → detect type → extract text
-- Pass extracted text to agent as context for immediate response
+- Twilio delivers media URL → download file → detect type
+- PDF/Images → send directly to Gemini 3 Flash
+- Word/PowerPoint/Excel → CloudConvert API → PDF → Gemini 3 Flash
+- Pass extracted content to agent for immediate response
 - Async: chunk text (500 tokens, 100 overlap) → embed with OpenAI → store in `@convex-dev/rag`
 - Per-user namespace — each user's docs are isolated
 - `searchDocuments` tool: agent searches user's documents when relevant in future conversations
@@ -343,4 +345,5 @@ TWILIO_WHATSAPP_NUMBER=+971582896090
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 CLERK_WEBHOOK_SIGNING_SECRET=
+CLOUDCONVERT_API_KEY=
 ```
