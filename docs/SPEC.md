@@ -751,7 +751,8 @@ Read these before building:
 
 ## Development Rules
 
-1. **Strict TDD** — write test first, see it fail, implement, see it pass, commit
+1. **pnpm** — use pnpm for all package management (not npm/yarn)
+2. **Strict TDD** — write test first, see it fail, implement, see it pass, commit
 2. **Feature-by-feature** — build in the order listed above
 3. **Extract pure functions** for testability (`canAfford()`, `calculateCost()`, `splitMessage()`)
 4. **Vitest** for all tests
