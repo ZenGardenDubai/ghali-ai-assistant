@@ -102,7 +102,12 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - **Pro ($19/month):** 600 credits/month
 - Track usage per message (model, tokens in/out, cost)
 - When credits run out → friendly message, upgrade CTA for Basic users, reset date for Pro
-- Monthly reset via Convex cron
+- **Monthly reset:** Convex cron job runs daily, resets credits for users whose `creditsResetAt` has passed
+- **Billing:** Clerk Billing for Pro subscriptions. Webhook at `POST /api/clerk/webhook`:
+  - `subscription.created` → upgrade user to Pro (600 credits)
+  - `subscription.cancelled` → downgrade to Basic at period end
+  - `subscription.updated` → handle plan changes
+  - Verify webhook signature with Clerk signing secret
 - Convex `usage` table: userId, model, tokensIn, tokensOut, cost, timestamp
 
 ### 9. Document Upload + RAG
@@ -261,4 +266,5 @@ TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_NUMBER=+971582896090
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+CLERK_WEBHOOK_SIGNING_SECRET=
 ```
