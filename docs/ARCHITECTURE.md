@@ -182,15 +182,86 @@ Response generated in Convex action
 
 ## Memory & RAG
 
-### Built-in (Convex Agent)
-- Message history auto-included as context
+### Conversation Memory (Convex Agent — built-in)
+- Message history auto-included as context per thread
 - Hybrid vector + text search across thread messages
 - Cross-thread search for same user (opt-in)
+- No extra setup needed — comes with the Agent component
 
-### Extended (Convex RAG Component)
-- Document storage and retrieval
-- User-uploaded files indexed and searchable
-- Knowledge base for domain-specific answers
+### Document Memory / Knowledge Base (Convex RAG Component)
+
+Users can upload documents via WhatsApp or web chat. These are chunked, embedded, and stored per-user for retrieval.
+
+```ts
+import { RAG } from "@convex-dev/rag";
+import { openai } from "@ai-sdk/openai";
+import { components } from "./_generated/api";
+
+const rag = new RAG(components.rag, {
+  textEmbeddingModel: openai.embedding("text-embedding-3-small"),
+  embeddingDimension: 1536,
+  filterNames: ["category", "contentType"],
+});
+```
+
+#### Adding Documents
+
+```ts
+// When user uploads a document via WhatsApp or web
+export const ingestDocument = action({
+  args: { userId: v.string(), text: v.string(), title: v.string(), contentType: v.string() },
+  handler: async (ctx, { userId, text, title, contentType }) => {
+    await rag.add(ctx, {
+      namespace: userId,  // Per-user isolation
+      text,
+      title,
+      filterValues: [
+        { name: "contentType", value: contentType },
+      ],
+    });
+  },
+});
+```
+
+#### Search as Agent Tool
+
+```ts
+// Inside ghali agent tools:
+searchDocuments: createTool({
+  description: "Search the user's uploaded documents and knowledge base for relevant information.",
+  args: z.object({ query: z.string() }),
+  handler: async (ctx, args): Promise<string> => {
+    const { text } = await rag.search(ctx, {
+      namespace: userId,
+      query: args.query,
+      chunkContext: { before: 2, after: 1 },  // Include surrounding chunks
+      limit: 10,
+      vectorScoreThreshold: 0.5,
+    });
+    return text || "No relevant documents found.";
+  },
+}),
+```
+
+#### Key Features
+| Feature | Detail |
+|---------|--------|
+| **Per-user namespaces** | Each user's documents are isolated and only searchable by them |
+| **Filtered search** | Filter by content type (PDF, image, note, etc.) |
+| **Chunk context** | Returns surrounding chunks for better answers, not just the match |
+| **Importance weighting** | Prioritize key documents (0-1 score) |
+| **Graceful migrations** | Re-embed all content without disruption if we change models |
+
+#### Supported Document Types (via WhatsApp)
+| Type | Processing |
+|------|-----------|
+| **Text messages** | Direct storage |
+| **PDFs** | Extract text → chunk → embed |
+| **Images** | Vision model OCR → text → embed |
+| **Voice notes** | Whisper transcription → text → embed |
+| **Documents (DOCX, XLSX)** | Extract text → chunk → embed |
+
+This replaces the "Memory Vault" concept from hub.ae with a cleaner, component-based architecture.
 
 ## Usage & Credits
 
