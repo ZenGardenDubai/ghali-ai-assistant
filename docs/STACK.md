@@ -37,6 +37,17 @@
 - **Vercel** — Next.js deployment
 - **Convex Cloud** — Database & serverless
 
+## Convex Components
+- **@convex-dev/agent** — AI agent framework (threads, messages, tools, streaming, RAG, usage tracking)
+- **@convex-dev/tags** — Tagging/categorization system
+- **@convex-dev/rate-limiter** — Per-user rate limiting
+- **@convex-dev/rag** — Extended RAG for document storage (if needed)
+
+## AI SDK Providers
+- **@ai-sdk/google** — Gemini 3 Flash, Gemini 3 Pro
+- **@ai-sdk/anthropic** — Claude Opus 4.6
+- **@ai-sdk/openai** — text-embedding-3-small (embeddings only)
+
 ## Project Structure (planned)
 ```
 ghali-ai-assistant/
@@ -47,14 +58,17 @@ ghali-ai-assistant/
 │   ├── chat/               # Web chat interface
 │   └── dashboard/          # Admin dashboard
 ├── convex/
-│   ├── agents/             # Convex Agent definitions
-│   ├── messages/           # Message handling
-│   ├── memory/             # User memory/context
-│   └── schema.ts           # Database schema
+│   ├── agents.ts           # Agent definitions (Flash, Pro, Opus)
+│   ├── chat.ts             # Message handling & routing
+│   ├── schema.ts           # Database schema
+│   └── ...
 ├── lib/
-│   ├── ai/                 # Model routing logic
-│   ├── twilio/             # WhatsApp integration
-│   └── embeddings/         # Embedding utilities
+│   ├── router.ts           # Smart model routing/classification
+│   └── twilio.ts           # WhatsApp integration
 ├── docs/
 └── public/
 ```
+
+## Related Docs
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — Full architecture, flows, and code patterns
+- [Convex Agent docs](https://docs.convex.dev/agents) — Official Agent component documentation
