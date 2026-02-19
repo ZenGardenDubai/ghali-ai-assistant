@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 // Cost per 1M tokens (approximate)
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
@@ -27,7 +28,7 @@ export const trackUsage = internalMutation({
   },
   handler: async (ctx, { userId, model, tokensIn, tokensOut }) => {
     await ctx.db.insert("usage", {
-      userId: userId as any,
+      userId: userId as Id<"users">,
       model,
       tokensIn,
       tokensOut,
@@ -43,7 +44,7 @@ export const getUserUsage = query({
     since: v.optional(v.number()),
   },
   handler: async (ctx, { userId, since }) => {
-    let q = ctx.db
+    const q = ctx.db
       .query("usage")
       .withIndex("by_userId_timestamp", (q) => {
         const base = q.eq("userId", userId);
