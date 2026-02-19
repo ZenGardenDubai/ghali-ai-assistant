@@ -177,6 +177,8 @@ All set! Ask me anything 💬
 ### 9. Credit System
 - **Basic (free):** 60 credits/month
 - **Pro ($19/month):** 600 credits/month
+- **1 credit per request** — regardless of model used (Flash, Pro, or Opus escalation)
+- **Free (0 credits):** system commands — "credits", "help", "privacy", "my memory", "clear memory", "upgrade", "account", admin commands
 - Track usage per message (model, tokens in/out, cost)
 - When credits run out → friendly message, upgrade CTA for Basic users, reset date for Pro
 - **Monthly reset:** Convex cron job runs daily, resets credits for users whose `creditsResetAt` has passed
