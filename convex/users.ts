@@ -78,17 +78,9 @@ export const updateUser = mutation({
       clerkUserId: v.optional(v.string()),
     }),
   },
-  handler: async (ctx, { userId, fields }) => {
-    // Filter out undefined values
-    const updates: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(fields)) {
-      if (value !== undefined) {
-        updates[key] = value;
-      }
-    }
-    if (Object.keys(updates).length > 0) {
-      await ctx.db.patch(userId, updates);
-    }
+  handler: async (ctx, args) => {
+    const { userId, fields } = args;
+    await ctx.db.patch(userId, fields as Record<string, unknown>);
   },
 });
 
