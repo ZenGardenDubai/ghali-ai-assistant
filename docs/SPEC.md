@@ -116,6 +116,20 @@ All set! Ask me anything 💬
 ### 2. Twilio Webhook
 - `POST /api/whatsapp/webhook` receives messages from Twilio
 - Validates Twilio signature
+- **Country code blocking (fraud prevention):** Before any processing, check sender's number against blocked list. If blocked → log, return 200 OK silently. No response, no processing, no credits used.
+  ```typescript
+  const BLOCKED_COUNTRY_CODES = [
+    "+91",  // India
+    "+92",  // Pakistan
+    "+880", // Bangladesh
+    "+234", // Nigeria
+    "+62",  // Indonesia
+    "+263", // Zimbabwe
+  ];
+  // Block check: BLOCKED_COUNTRY_CODES.some(code => from.startsWith(code))
+  ```
+  - Configurable: store in constants, easy to add/remove countries
+  - Prevents SMS traffic pumping attacks and spam
 - Extracts: sender phone, message body, media URLs
 - Returns 200 immediately, processes async
 
