@@ -110,11 +110,35 @@ Build these in order. Each one: write test → see fail → implement → see pa
   - Verify webhook signature with Clerk signing secret
 - Convex `usage` table: userId, model, tokensIn, tokensOut, cost, timestamp
 
-### 9. Document Upload + RAG
-- User sends PDF/image → extract text → chunk → embed → store in RAG
-- `@convex-dev/rag` with per-user namespace
-- `searchDocuments` tool: agent searches user's documents when relevant
-- Supported: PDF, images (OCR via Gemini Vision)
+### 9. Document Processing + RAG
+When a user sends any file, two things happen simultaneously:
+1. **Immediate processing** — extract content, answer the user's question about it
+2. **Store in personal knowledge base** — chunk, embed, store for future retrieval
+
+**Supported formats:**
+| Format | Method | Notes |
+|--------|--------|-------|
+| PDF | pdf-parse (npm) | Text extraction, fallback OCR for scanned PDFs |
+| Word (.docx) | mammoth (npm) | Preserves structure |
+| PowerPoint (.pptx) | officegen or pptx-parser | Extract slide text + notes |
+| Excel (.xlsx) | xlsx (SheetJS) | Extract as structured text |
+| Images (jpg/png/webp) | Gemini Vision API | OCR + visual description |
+
+**Flow:**
+- Twilio delivers media URL → download file → detect type → extract text
+- Pass extracted text to agent as context for immediate response
+- Async: chunk text (500 tokens, 100 overlap) → embed with OpenAI → store in `@convex-dev/rag`
+- Per-user namespace — each user's docs are isolated
+- `searchDocuments` tool: agent searches user's documents when relevant in future conversations
+
+**Limits:**
+- Max file size: 20MB (Twilio limit)
+- Max 50 documents per Basic user, 200 per Pro user
+- Supported via WhatsApp media messages only (no web upload in MVP)
+
+**User experience:**
+- Send a contract PDF → "What are the payment terms?" → instant answer
+- 2 weeks later → "What was the deadline in that contract?" → agent searches RAG, finds it
 
 ### 10. System Message Templates
 - Predefined templates for system messages (welcome, credits low, credits empty, error)
