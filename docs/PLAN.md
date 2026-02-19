@@ -326,9 +326,9 @@ The heart of the system. Define the Ghali agent with Gemini 3 Flash, configure t
 
 ---
 
-## 8. Escalation Tool + WhatsApp Formatter
+## 8. Escalation Tool + WhatsApp Formatter + Search Grounding + Date/Time
 
-Add a single `deepReasoning` tool so Flash can self-escalate to Claude Opus 4.6 for complex tasks. Format all responses for WhatsApp before sending.
+Add deepReasoning tool, Google Search grounding, current date/time awareness, and WhatsApp response formatting.
 
 - [x] **8.1 Implement `deepReasoning` tool**
   - `createTool` with description guiding Flash on when to use it
@@ -351,26 +351,40 @@ Add a single `deepReasoning` tool so Flash can self-escalate to Claude Opus 4.6 
   - `deepReasoning` handler: try/catch returns graceful fallback on failure
   - `generateResponse` action: try/catch sends "Sorry" message instead of silent failure
 
-- [ ] **8.6 Implement `formatForWhatsApp` utility** *(from hub-ai-v2 pattern)*
+- [ ] **8.6 Inject current date/time into every agent turn**
+  - Build `getCurrentDateTime(timezone)` helper — formats date/time in user's timezone
+  - Inject into prompt context: `CURRENT CONTEXT: Today is Thursday, February 20, 2026 / Current time: 02:30 AM (Asia/Dubai)`
+  - Uses user's timezone from their profile (detected from phone country code)
+  - Always included — agent should never be unaware of current date/time
+  - Pattern from hub-ai-v2: `convex/ghali/prompts.ts` → `buildGhaliContext()`
+
+- [ ] **8.7 Add Google Search grounding to Flash agent**
+  - Import `google.tools.googleSearch` from `@ai-sdk/google`
+  - Register as a tool on the agent: `googleSearch: google.tools.googleSearch({})`
+  - Gemini's native search grounding — real-time web data (weather, news, prices, sports, current events)
+  - System prompt instruction: "For ANY current/real-time information, use google_search. ALWAYS search for time-sensitive questions."
+  - Pattern from hub-ai-v2: `convex/toolAgent.ts` line 1221, `convex/ghali/handler.ts` line 1532
+
+- [ ] **8.8 Implement `formatForWhatsApp` utility** *(from hub-ai-v2 pattern)*
   - Port `convex/ghali/formatter.ts` from hub-ai-v2
   - Pipeline: strip code block markers → convert `**bold**` to `*bold*` → strip headers → strip markdown links (keep text) → convert `* item` to `- item` → strip blockquotes → remove horizontal rules → collapse whitespace
   - Apply to ALL outbound messages before splitting
   - Add 500ms delay between multi-part messages to preserve ordering
 
-- [ ] **8.7 Test: formatForWhatsApp converts markdown correctly**
+- [ ] **8.9 Test: formatForWhatsApp converts markdown correctly**
   - `**bold**` → `*bold*`
   - `## Header` → `Header`
   - `[link](url)` → `link`
   - Code blocks → plain code text
   - Combined markdown → clean WhatsApp text
 
-- [ ] **8.8 Add formatting instructions to agent system prompt and escalation prompts**
+- [ ] **8.10 Add formatting instructions to agent system prompt and escalation prompts**
   - System prompt: "Format for WhatsApp — use *bold*, _italic_, plain text. No markdown headers, tables, or code blocks."
   - Deep reasoning prompt: same rules
 
-- [ ] **8.9 Run all tests — pass**
+- [ ] **8.11 Run all tests — pass**
 
-- [ ] **8.10 Commit: "Add escalation tool, WhatsApp formatter, model constants SSOT"**
+- [ ] **8.12 Commit: "Add escalation, search grounding, date/time, WhatsApp formatter"**
 
 ---
 
