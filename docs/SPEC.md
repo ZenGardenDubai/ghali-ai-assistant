@@ -425,6 +425,16 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - SEO optimized: meta tags, Open Graph, structured data, fast load (<2s)
 - Colors: Navy `hsl(222, 47%, 11%)` + Orange `#f97316`
 - Sections: Hero (tagline + WhatsApp CTA) → What Ghali Can Do (3-4 bullets) → How It Works (3 steps) → FAQ → Footer
+- **Legal pages (required):**
+  - `/privacy` — Privacy Policy
+  - `/terms` — Terms of Service
+  - Both branded under **SAHEM DATA TECHNOLOGY** (registered in Dubai, UAE)
+  - Address: Villa 49, Street 38B, Barsha 2, Dubai, UAE
+  - Contact: support@ghali.ae
+  - Governing law: UAE, disputes in Dubai courts
+  - Privacy covers: data collected (phone, messages, documents, usage), AI processing (Google, Anthropic, OpenAI), no selling data, user rights (access, delete, export), PostHog analytics, data retention
+  - Terms covers: credit system (Basic/Pro), acceptable use, AI limitations disclaimer, content ownership (user owns their content + AI output), third-party services, limitation of liability
+  - Footer links to both pages from landing page
 - No Clerk auth needed. No dashboard. No web chat.
 - Static/SSG — minimal client-side JS (just PostHog + WhatsApp link)
 - **PostHog analytics:** page views, CTA clicks, UTM tracking, conversion funnel
