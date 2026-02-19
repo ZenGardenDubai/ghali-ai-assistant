@@ -133,9 +133,14 @@ When a user sends any file, two things happen simultaneously:
 - Per-user namespace — each user's docs are isolated
 - `searchDocuments` tool: agent searches user's documents when relevant in future conversations
 
+**Image handling:**
+- Gemini Flash describes/OCRs the image → text description stored in RAG
+- Original image stored in Convex file storage, linked to RAG entry
+- Future queries about past images work via text search on descriptions
+
 **Limits:**
-- Max file size: 20MB (Twilio limit)
-- Max 50 documents per Basic user, 200 per Pro user
+- Max file size: 20MB per file (Twilio limit)
+- Total storage: 100MB Basic / 500MB Pro
 - Supported via WhatsApp media messages only (no web upload in MVP)
 
 **User experience:**
