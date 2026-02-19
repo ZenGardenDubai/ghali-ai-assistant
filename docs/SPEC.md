@@ -154,6 +154,20 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - Web UI: markdown editor for each file (direct editing)
 - Max 10KB per file — keeps context small
 
+**Proactive memory capture (critical for user retention):**
+- The agent doesn't wait to be told "remember this" — it actively listens and captures:
+  - **Name** — first mention, store immediately
+  - **Language** — detect from first message, adapt instantly
+  - **Age/birthday** — if mentioned in conversation
+  - **Location/timezone** — from context clues or when asked
+  - **Interests** — topics they ask about repeatedly (cooking, football, coding, etc.)
+  - **Work/role** — what they do, industry, company
+  - **Family** — kids, spouse, if naturally shared
+  - **Preferences** — communication style, favorite topics, things they dislike
+- After every conversation, the agent reviews what it learned and updates the memory file
+- Next conversation starts with full context — user feels *known*, not like starting over
+- This is Ghali's competitive advantage: the more you use it, the better it gets
+
 ---
 
 ## Database Schema (Convex)
