@@ -54,17 +54,23 @@ Build these in order. Each one: write test → see fail → implement → see pa
 When a new user messages Ghali for the first time, run a lightweight conversational onboarding.
 Max 3 messages. Everything skippable — if user ignores and asks a question, just answer it.
 
-**Step 1 — Name verification (always):**
+**Step 1 — Name + timezone verification (always, one message):**
 ```
 Hey! 👋 I'm Ghali, your AI assistant.
 
 I see your name is {{whatsappProfileName}} — should I call you that, or something else?
 
+🕐 I've set your timezone to {{detectedTimezone}} based on your number. If you're elsewhere, just tell me your city.
+
 (Skip: just start chatting anytime)
 ```
 - Pull name from Twilio webhook `ProfileName` field
+- Detect timezone from phone country code (+971 → Asia/Dubai, +44 → Europe/London, +1 → America/New_York, etc.)
 - If they confirm or give a nickname → store in memory
-- If they skip (ask a question instead) → use profile name, move on
+- If they correct timezone ("I'm in London") → update immediately
+- If they skip (ask a question instead) → use profile name + detected timezone, move on
+- Timezone can be updated anytime: "I'm traveling to Paris" → agent updates timezone
+- Affects all scheduled jobs (heartbeat, reminders, active hours)
 
 **Step 2 — Language (only if ambiguous):**
 ```
@@ -102,7 +108,8 @@ All set! Ask me anything 💬
 ```
 
 - Store all answers in personality user block + memory
-- Don't ask: timezone (detect from +country code), location, interests (learn organically)
+- Don't ask: location, interests (learn organically)
+- Timezone: auto-detect from country code, soft-confirm in Step 1, updatable anytime
 - Track onboarding state: `onboardingStep` field on user record (null = done)
 - If user messages mid-onboarding with a real question → answer it, mark onboarding done
 
