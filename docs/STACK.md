@@ -23,11 +23,7 @@
 | Premium (5%) | Claude Opus 4.6 | Deep reasoning, nuanced writing | $15 / $75 |
 
 ### Embeddings
-- TBD — Options:
-  - **OpenAI text-embedding-3-small** — $0.02/M tokens, 1536 dims (proven, widely used)
-  - **OpenAI text-embedding-3-large** — $0.13/M tokens, 3072 dims (higher quality)
-  - **Gemini text-embedding-004** — Free tier available, 768 dims
-  - **Voyage AI** — Strong multilingual/Arabic support
+- **OpenAI text-embedding-3-small** — $0.02/M tokens, 1536 dims
 
 ### Image Generation
 - **Gemini 3 Pro** (Nano Banana Pro) — ~$0.13/image
