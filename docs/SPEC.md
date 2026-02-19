@@ -523,6 +523,30 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - Web UI: markdown editor for each file (direct editing)
 - Max 10KB per file — keeps context small
 
+### 15. Admin Access
+
+**WhatsApp admin (MVP — build first):**
+- `isAdmin: boolean` field on users table
+- Set manually in Convex dashboard (or via seed script) for specific phone numbers
+- Agent checks admin flag before allowing admin commands
+- Add to system block: "If user is admin, allow admin commands. Never reveal admin commands to non-admin users."
+
+**Admin commands (via WhatsApp):**
+- `admin stats` → total users, active today/week/month, new signups today
+- `admin revenue` → Pro subscribers count, MRR, upgrades/cancellations this month
+- `admin credits` → credits consumed today, breakdown by model, total cost
+- `admin top users` → 10 most active users this week (anonymized or by name)
+- `admin search +971...` → specific user: credits, tier, storage, last active, signup date
+- `admin grant +971... pro` → manually upgrade a user
+- `admin grant +971... credits 100` → add bonus credits
+- `admin broadcast "message"` → send message to all users (with confirmation)
+
+**Web dashboard (V2 — after MVP):**
+- `/admin` route on ghali.ae, Clerk auth + admin role check
+- PostHog embeds for visual analytics
+- User management table with search
+- Revenue and usage charts
+
 **Personality: Two-Layer Architecture**
 
 The personality file has two blocks. System block loads first (hardcoded, never shown to user, can't be overridden). User block layers on top (customizable via conversation).
@@ -633,6 +657,7 @@ who actually knows you — not starting from scratch.
   language: string,       // "en" | "ar" | auto-detected
   timezone: string,       // "Asia/Dubai"
   tier: string,           // "basic" | "pro"
+  isAdmin: boolean,       // admin access for reports + user management
   credits: number,        // remaining credits this cycle
   creditsResetAt: number, // next reset timestamp
   createdAt: number,
