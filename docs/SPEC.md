@@ -7,7 +7,7 @@
 A WhatsApp-first AI assistant. Users message a WhatsApp number and chat with AI. Web chat is secondary. That's it.
 
 - **WhatsApp:** +971582896090 (Twilio Business API)
-- **Web:** ghali.ae (Clerk auth, streaming chat)
+- **Web:** ghali.ae (landing page only — conversion to WhatsApp)
 - **License:** Apache 2.0
 
 ---
@@ -262,7 +262,7 @@ You have *{{credits}} credits* this month. Say "credits" anytime to check.`,
 *Plan:* {{tier}}
 *Resets:* {{resetDate}}
 
-Each message uses 1 credit. Images use 5.`,
+Each message uses 1 credit.`,
     variables: ["credits", "tier", "resetDate"],
   },
 
@@ -709,7 +709,6 @@ who actually knows you — not starting from scratch.
   tokensIn: number,
   tokensOut: number,
   cost: number,
-  creditType: "text" | "media",
   timestamp: number,
 }
 
@@ -753,10 +752,10 @@ Read these before building:
 
 1. **pnpm** — use pnpm for all package management (not npm/yarn)
 2. **Strict TDD** — write test first, see it fail, implement, see it pass, commit
-2. **Feature-by-feature** — build in the order listed above
-3. **Extract pure functions** for testability (`canAfford()`, `calculateCost()`, `splitMessage()`)
-4. **Vitest** for all tests
-5. **No premature optimization** — get it working, then improve
+3. **Feature-by-feature** — build in the order listed above
+4. **Extract pure functions** for testability (`canAfford()`, `calculateCost()`, `splitMessage()`)
+5. **Vitest** for all tests
+6. **No premature optimization** — get it working, then improve
 
 ---
 

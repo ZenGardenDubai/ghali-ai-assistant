@@ -12,7 +12,7 @@ Inspired by [OpenClaw](https://github.com/openclaw/openclaw)'s approach to AI as
 
 ## Stack
 
-Next.js 15 · Convex · Clerk · Gemini 3 Flash/Pro · Claude Opus · Twilio · Vitest
+Next.js 15 · Convex · Clerk · Gemini 3 Flash/Pro · Claude Opus · Twilio · PostHog · Vitest
 
 ## Key Ideas
 
@@ -24,8 +24,8 @@ Next.js 15 · Convex · Clerk · Gemini 3 Flash/Pro · Claude Opus · Twilio · 
 ## Docs
 
 - **[SPEC.md](docs/SPEC.md)** — Full build spec (feed this to an LLM to scaffold the app)
-- **[Convex Agent](https://docs.convex.dev/agents)** — Agent framework docs
-- **[Convex RAG](https://www.convex.dev/components/rag)** — Document search component
+- **[Convex Agent](https://docs.convex.dev/agents)** — Agent framework
+- **[Convex RAG](https://www.convex.dev/components/rag)** — Document search
 
 ## Status
 
