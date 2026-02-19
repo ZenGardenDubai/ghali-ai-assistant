@@ -332,9 +332,10 @@ Add deepReasoning tool, Google Search grounding, current date/time awareness, an
 
 - [x] **8.1 Implement `deepReasoning` tool**
   - `createTool` with description guiding Flash on when to use it
-  - Internally calls `generateText` with `anthropic(MODELS.DEEP_REASONING)`
+  - Internally calls `generateText` with Gemini 3 Pro (complex reasoning, coding, analysis)
   - Returns result text to Flash, with try/catch fallback
   - Set `maxSteps: 5` on agent so tool results get a final text response
+  - Note: `premiumReasoning` tool (Section 8 future) uses Claude Opus 4.6 for premium tasks
 
 - [x] **8.2 Register tool on the Ghali agent**
 
@@ -542,8 +543,11 @@ Agent tools to read and update the 3 per-user files. These are loaded into conte
   - Memory file content is updated
 
 - [ ] **12.3 Test: `updatePersonality` tool updates user block only**
-  - System block is never modified
-  - User block is replaced with new content
+  - Personality has two layers: SYSTEM BLOCK (readonly, hardcoded) + USER BLOCK (editable)
+  - System block: safety, honesty, privacy, accuracy, language detection, credit awareness, template delivery, identity
+  - User block: tone, name, language preference, verbosity, expertise level, emoji usage, interests, off-limits topics
+  - `updatePersonality` only modifies the user block — system block is prepended at runtime, never stored in userFiles
+  - Off-limits rule: "don't bring up proactively" not "never discuss" — direct questions still get answered
 
 - [ ] **12.4 Test: `updateHeartbeat` tool rewrites heartbeat file**
   - Content is fully replaced
@@ -1091,53 +1095,27 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
 
 ## 26. Documentation
 
-Comprehensive project documentation: README, business rules, and architecture references.
+Update README and ensure docs are complete. SPEC.md is the single source of truth for architecture and business rules — no separate architecture or business rules docs.
 
 - [ ] **26.1 Update `README.md`**
   - Project overview: what Ghali is, who it's for
   - Tech stack summary (with versions)
   - Getting started: prerequisites, env vars, `pnpm install`, `pnpm dev`
   - Project structure: key directories and files
-  - Architecture overview: message flow diagram (text), agent escalation, credit system
-  - Available commands: system commands, admin commands
   - Development: testing, linting, type-checking, deployment
   - Environment variables: full list with descriptions (no secrets)
+  - Link to SPEC.md (architecture + business rules) and PLAN.md (execution plan)
   - License: Apache 2.0
 
-- [ ] **26.2 Create `docs/BusinessRules.md`**
-  - **Tier System**
-    - Basic (free): 60 credits/month, standard features
-    - Pro ($19/month): 600 credits/month, priority features
-    - Credit cost: 1 per request (text), system commands free
-    - Monthly reset via cron (30-day cycle)
-  - **Model Escalation**
-    - Flash (85%): fast, cheap, default
-    - Deep Reasoning / Opus 4.6 (10%): complex math, logic, analysis, coding
-    - Premium Reasoning / Gemini 3 Pro (5%): premium writing, deep research
-    - Image Generation / Gemini 3 Pro Image: on-demand
-  - **WhatsApp Constraints**
-    - Max message length: 1500 chars (Twilio sandbox) / 1600 chars (production)
-    - Multi-part messages: 500ms delay between parts
-    - Formatting: WhatsApp native (*bold*, _italic_), no markdown
-    - Blocked country codes: India, Pakistan, Bangladesh, Nigeria, Indonesia, Zimbabwe
-  - **Storage Limits**
-    - User files (memory/personality/heartbeat): 10 KB each
-    - Media uploads: 10 MB max, 1 KB min
-    - RAG: 2000-char chunks, 200-char overlap, 25 max chunks per document
-  - **Rate Limiting**
-    - 30 messages/minute per user (token bucket)
-  - **Data Management**
-    - Users can clear: memory, documents, everything
-    - Confirmation required for destructive actions
-  - **Admin Commands**
-    - stats, search, grant, broadcast
-    - Only accessible to users with `isAdmin: true`
+- [ ] **26.2 Review SPEC.md for accuracy**
+  - Verify all business rules match the implemented code
+  - Verify model assignments match code (Flash, Pro, Opus)
+  - Verify credit system matches implementation
+  - Update any sections that drifted during development
 
-- [ ] **26.3 Update `docs/ARCHITECTURE.md`** (if exists, or create)
-  - Single agent with escalation tools (no multi-agent)
-  - Async message flow diagram
-  - Per-user files system
-  - Credit system flow
-  - Constants SSOT pattern
+- [ ] **26.3 Review PLAN.md for accuracy**
+  - Mark all completed sections accurately
+  - Remove any tasks that were skipped with reasons
+  - Ensure remaining tasks are still relevant
 
-- [ ] **26.4 Commit: "Add comprehensive documentation — README, BusinessRules, Architecture"**
+- [ ] **26.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**

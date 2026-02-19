@@ -23,7 +23,8 @@ Next.js 15 · Convex · Clerk · Gemini 3 Flash/Pro · Claude Opus · Twilio · 
 
 ## Docs
 
-- **[SPEC.md](docs/SPEC.md)** — Full build spec (feed this to an LLM to scaffold the app)
+- **[SPEC.md](docs/SPEC.md)** — Build spec & architecture (feed to an LLM to scaffold)
+- **[PLAN.md](docs/PLAN.md)** — Step-by-step execution plan with TDD tasks
 - **[Convex Agent](https://docs.convex.dev/agents)** — Agent framework
 - **[Convex RAG](https://www.convex.dev/components/rag)** — Document search
 
