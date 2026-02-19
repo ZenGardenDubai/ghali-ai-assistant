@@ -37,12 +37,11 @@ A WhatsApp-first AI assistant. Users message a WhatsApp number and chat with AI.
 | Role | Model | When |
 |------|-------|------|
 | Primary (85%) | Gemini 3 Flash | Default for all messages |
-| Reasoning (10%) | Gemini 3 Pro | Agent calls `deepReasoning` tool |
-| Premium (5%) | Claude Opus 4.6 | Agent calls `premiumReasoning` tool |
+| Reasoning (10%) | Claude Opus 4.6 | Agent calls `deepReasoning` tool |
 | Images | Gemini 3 Pro (image mode) | Agent calls `generateImage` tool |
 | Voice → Text | Whisper | Voice notes received via Twilio |
 
-**Routing:** Single Flash agent with escalation tools. No separate classifier. Flash decides when to escalate.
+**Routing:** Single Flash agent with one escalation tool (deepReasoning → Opus). No separate classifier. Flash decides when to escalate.
 
 ---
 
@@ -151,7 +150,7 @@ All set! Ask me anything 💬
     model: google("gemini-3-flash"),
     instructions: "...", // base personality (warm, concise, multilingual)
     tools: {
-      deepReasoning, premiumReasoning, generateImage, searchDocuments,
+      deepReasoning, generateImage, searchDocuments,
       updateMemory, updatePersonality, updateHeartbeat,
     },
   });
@@ -160,10 +159,10 @@ All set! Ask me anything 💬
 - If personality file exists, it overrides/extends the base instructions for this user
 - Process incoming message → run agent on user's thread → send reply via Twilio
 
-### 6. Escalation Tools
-- `deepReasoning`: Calls Gemini 3 Pro for complex tasks. Returns result to Flash.
-- `premiumReasoning`: Calls Claude Opus 4.6. Returns result to Flash.
+### 6. Escalation Tool
+- `deepReasoning`: Calls Claude Opus 4.6 for complex tasks (coding, analysis, deep reasoning, nuanced writing). Returns result to Flash.
 - Flash formats and delivers the final response.
+- Only one escalation tier — keeps it simple.
 
 ### 7. Image Generation
 - `generateImage`: Calls Gemini 3 Pro in image mode

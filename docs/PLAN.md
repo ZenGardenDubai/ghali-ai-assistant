@@ -332,10 +332,10 @@ Add deepReasoning tool, Google Search grounding, current date/time awareness, an
 
 - [x] **8.1 Implement `deepReasoning` tool**
   - `createTool` with description guiding Flash on when to use it
-  - Internally calls `generateText` with Gemini 3 Pro (complex reasoning, coding, analysis)
+  - Internally calls `generateText` with Claude Opus 4.6 (complex reasoning, coding, analysis, nuanced writing)
   - Returns result text to Flash, with try/catch fallback
   - Set `maxSteps: 5` on agent so tool results get a final text response
-  - Note: `premiumReasoning` tool (Section 8 future) uses Claude Opus 4.6 for premium tasks
+  - Only one escalation tier — Flash + Opus. No premiumReasoning (removed).
 
 - [x] **8.2 Register tool on the Ghali agent**
 
