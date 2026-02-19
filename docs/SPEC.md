@@ -148,9 +148,275 @@ When a user sends any file, two things happen simultaneously:
 - 2 weeks later → "What was the deadline in that contract?" → agent searches RAG, finds it
 
 ### 10. System Message Templates
-- Predefined templates for system messages (welcome, credits low, credits empty, error)
-- Templates filled with data first, then translated to user's language via LLM
-- Never let LLM generate numbers/credits — only translate text
+Templates guarantee data accuracy (numbers, credits, dates). LLM only translates text.
+Pattern: fill template with data → detect user language → translate if not English.
+
+**Translation:** Detect language from user's message (Flash, zero-temp). Supports en, ar, fr, es, hi, ur.
+Critical: never let LLM change numbers, emoji, or *bold* formatting — only translate words.
+
+**Templates:**
+
+```typescript
+export const TEMPLATES = {
+  // === Onboarding ===
+  welcome: {
+    template: `*Hey!* 👋 I'm Ghali, your AI assistant on WhatsApp.
+
+Send me anything:
+💬 Questions — I'll find answers
+📄 Documents — PDFs, Word, PowerPoint
+🖼️ Images — I'll describe, read, or analyze them
+🎤 Voice notes — I understand those too
+🎨 "Generate an image of..." — I'll create it
+
+The more we talk, the better I get to know you ✨
+
+You have *{{credits}} credits* this month. Say "credits" anytime to check.`,
+    variables: ["credits"],
+  },
+
+  // === Credits ===
+  check_credits: {
+    template: `*Your Credits* 🪙
+
+*Remaining:* {{credits}}
+*Plan:* {{tier}}
+*Resets:* {{resetDate}}
+
+Each message uses 1 credit. Images use 5.`,
+    variables: ["credits", "tier", "resetDate"],
+  },
+
+  credits_exhausted_basic: {
+    template: `*Credits Used Up* 😅
+
+You've used all {{maxCredits}} credits this month.
+
+*Resets:* {{resetDate}}
+
+Want 10x more? *Ghali Pro* — 600 credits/month for just $19.
+
+Say "upgrade" to get started ⭐`,
+    variables: ["maxCredits", "resetDate"],
+  },
+
+  credits_exhausted_pro: {
+    template: `*Credits Used Up* 🪙
+
+You've used all {{maxCredits}} credits this month.
+
+*Resets:* {{resetDate}}
+
+Thanks for being Pro! 💎`,
+    variables: ["maxCredits", "resetDate"],
+  },
+
+  // === Help ===
+  help: {
+    template: `*Ghali Quick Guide* 💡
+
+💬 *Chat* — Ask anything
+📄 *Documents* — Send PDFs, Word, PowerPoint
+🖼️ *Images* — Send photos or say "generate an image of..."
+🎤 *Voice* — Send voice notes
+🧠 *Memory* — I remember our conversations
+
+*Commands:*
+• "credits" — check your balance
+• "my memory" — what I know about you
+• "clear memory" — forget our conversations
+• "clear documents" — delete stored files
+• "clear everything" — full reset
+• "upgrade" — get Pro
+• "privacy" — how your data is handled
+• "help" — this guide`,
+    variables: [],
+  },
+
+  // === Privacy ===
+  privacy: {
+    template: `*Your Privacy* 🔒
+
+*What I store:*
+• Our conversations (so I remember context)
+• Documents you send (for future reference)
+• What I learn about you (preferences, interests)
+
+*What I never do:*
+• Share your data with anyone
+• Use it for ads
+• Sell it
+
+*You control everything:*
+• "clear memory" — forget conversations
+• "clear documents" — delete files
+• "clear everything" — total reset
+
+Your data. Your rules.`,
+    variables: [],
+  },
+
+  // === Upgrade ===
+  upgrade: {
+    template: `*Ghali Pro* ⭐
+
+*What you get:*
+✅ 600 credits/month (10x Basic)
+✅ 500MB document storage (5x Basic)
+✅ Priority responses
+✅ Heartbeat — proactive check-ins
+
+*$19/month*
+
+👉 {{upgradeUrl}}`,
+    variables: ["upgradeUrl"],
+  },
+
+  already_pro: {
+    template: `*You're Pro!* ⭐
+
+*Credits:* {{credits}}/600
+*Storage:* {{storageUsed}} of 500MB
+*Renews:* {{renewDate}}
+
+Thanks for being a Pro member 💎`,
+    variables: ["credits", "storageUsed", "renewDate"],
+  },
+
+  // === Memory ===
+  memory_summary: {
+    template: `*What I Know About You* 🧠
+
+{{memoryContent}}
+
+Want me to forget something? Just say "forget that I..." or "clear memory" for a full reset.`,
+    variables: ["memoryContent"],
+  },
+
+  memory_updated: {
+    template: `Got it ✅`,
+    variables: [],
+  },
+
+  // === Documents ===
+  document_stored: {
+    template: `*Saved* 📄
+
+"{{docName}}" is in your knowledge base. Ask me about it anytime.
+
+*Storage:* {{storageUsed}} of {{storageLimit}} used`,
+    variables: ["docName", "storageUsed", "storageLimit"],
+  },
+
+  document_limit_reached: {
+    template: `*Storage Full* 📦
+
+You've used {{storageLimit}} of storage.
+
+• "clear documents" — delete all files
+• "upgrade" — get 500MB with Pro
+
+Or tell me which document to remove.`,
+    variables: ["storageLimit"],
+  },
+
+  // === Clear Data ===
+  clear_memory_confirm: {
+    template: `*Clear Memory?* 🧠
+
+I'll forget everything I've learned about you — preferences, past conversations, personal details.
+
+Your documents stay safe.
+
+Say "yes" to confirm.`,
+    variables: [],
+  },
+
+  clear_memory_done: {
+    template: `*Memory Cleared* 🧹
+
+Fresh start. I don't remember our past conversations.
+
+Let's get to know each other again ✨`,
+    variables: [],
+  },
+
+  clear_documents_confirm: {
+    template: `*Clear Documents?* 📄
+
+I'll delete all {{docCount}} stored documents.
+
+Your memory and conversations stay safe.
+
+Say "yes" to confirm.`,
+    variables: ["docCount"],
+  },
+
+  clear_documents_done: {
+    template: `*Documents Cleared* 🧹
+
+All files deleted. Send me new ones anytime.`,
+    variables: [],
+  },
+
+  clear_everything_confirm: {
+    template: `*Clear Everything?* ⚠️
+
+This deletes:
+• All memory and preferences
+• All stored documents
+• Conversation history
+
+Only your account and credits remain.
+
+Say "yes" to confirm.`,
+    variables: [],
+  },
+
+  clear_everything_done: {
+    template: `*Complete Reset* 🧹
+
+Everything cleared. Your account and credits are still here.
+
+Fresh start! 👋`,
+    variables: [],
+  },
+
+  // === Heartbeat ===
+  heartbeat_alert: {
+    template: `{{message}}`,
+    variables: ["message"],
+  },
+
+  // === Billing ===
+  payment_failed: {
+    template: `*Payment Issue* ⚠️
+
+Couldn't process your Pro payment. You still have Pro access while we retry.
+
+Update your payment method:
+{{updateUrl}}`,
+    variables: ["updateUrl"],
+  },
+
+  subscription_canceled: {
+    template: `*Subscription Canceled* 📋
+
+You'll keep Pro until *{{endDate}}*.
+
+After that: Basic plan (60 credits/month).
+
+Changed your mind? Say "upgrade" anytime 💫`,
+    variables: ["endDate"],
+  },
+
+  // === Language ===
+  language_detected: {
+    template: `{{confirmMessage}} ✅`,
+    variables: ["confirmMessage"],
+  },
+} as const;
+```
 
 ### 11. Landing Page (ghali.ae)
 - Single-page, no web chat — WhatsApp is the only product
