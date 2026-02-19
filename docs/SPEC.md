@@ -71,10 +71,15 @@ Build these in order. Each one: write test → see fail → implement → see pa
   const ghali = new Agent(components.agent, {
     name: "Ghali",
     model: google("gemini-3-flash"),
-    instructions: "...", // personality + rules
-    tools: { deepReasoning, premiumReasoning, generateImage, searchDocuments },
+    instructions: "...", // base personality (warm, concise, multilingual)
+    tools: {
+      deepReasoning, premiumReasoning, generateImage, searchDocuments,
+      updateMemory, updatePersonality, updateHeartbeat,
+    },
   });
   ```
+- On each turn: load user's 3 files (memory, personality, heartbeat) and prepend to context
+- If personality file exists, it overrides/extends the base instructions for this user
 - Process incoming message → run agent on user's thread → send reply via Twilio
 
 ### 5. Escalation Tools
@@ -123,15 +128,19 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - Respect active hours (don't message at 3am)
 - Store heartbeat config per user: interval, activeHoursStart, activeHoursEnd, timezone
 
-### 13. Personality (SOUL)
-- Agent instructions define Ghali's personality:
-  - Warm, helpful, slightly playful
-  - Concise — no filler ("Great question!", "I'd be happy to help!")
-  - Multilingual — responds in the user's language automatically
-  - Opinionated when asked
-  - Knows when NOT to respond (in future group chat scenarios)
-- Per-user preferences stored in users table (tone, language, name to use)
-- Future: users customize via commands ("be more formal", "always reply in Arabic")
+### 13. Personality (SOUL) + User Files
+- Base personality in agent instructions: warm, concise, multilingual, no filler
+- **Per-user files** (stored in `userFiles` table, loaded every turn):
+  - `memory` — agent writes facts, preferences, history ("prefers Arabic", "works in finance")
+  - `personality` — overrides base tone/style ("formal", "always greet in Arabic", "call me Abu Ahmad")
+  - `heartbeat` — checklist for periodic proactive messages ("remind gym 7am", "check report Mondays")
+- **Agent tools** to update files:
+  - `updateMemory(content)` — rewrite memory file
+  - `updatePersonality(content)` — rewrite personality file
+  - `updateHeartbeat(content)` — rewrite heartbeat file
+- Users edit naturally: "remember I like coffee at 7am" → agent calls `updateMemory`
+- Web UI: markdown editor for each file (direct editing)
+- Max 10KB per file — keeps context small
 
 ---
 
@@ -147,14 +156,31 @@ Build these in order. Each one: write test → see fail → implement → see pa
   tier: string,           // "basic" | "premium"
   credits: { text: number, media: number },
   creditsResetAt: number, // next reset timestamp
-  preferences: {
-    tone?: string,        // "casual" | "formal"
-    heartbeatInterval?: number, // ms
-    activeHoursStart?: number,  // 0-23
-    activeHoursEnd?: number,
-  },
   createdAt: number,
 }
+
+// userFiles table — per-user markdown files (OpenClaw-inspired)
+// Each user gets 3 files. The agent reads them every turn and can update them via tools.
+// Max 10KB per file. Raw markdown — flexible, no schema migrations needed.
+{
+  userId: Id<"users">,
+  filename: string,       // "memory" | "personality" | "heartbeat"
+  content: string,        // raw markdown
+  updatedAt: number,
+}
+// "memory" — long-term memory. Agent writes: preferences, facts, history.
+//   e.g. "Prefers Arabic. Works in finance. Has 2 kids. Reminded about dentist."
+// "personality" — how the agent behaves with this user.
+//   e.g. "Formal tone. Always greet with السلام عليكم. Use Arabic for replies."
+//   Defaults to Ghali's base personality if empty.
+// "heartbeat" — what to check on periodic heartbeats.
+//   e.g. "- Remind about gym at 7am\n- Check if quarterly report is due"
+//
+// Users edit via natural language:
+//   "remember I like coffee at 7am" → agent updates memory file
+//   "be more casual with me" → agent updates personality file
+//   "remind me every Monday to call mom" → agent updates heartbeat file
+// Web UI: direct markdown editor for each file.
 
 // usage table
 {
