@@ -26,6 +26,7 @@ A WhatsApp-first AI assistant. Users message a WhatsApp number and chat with AI.
 | AI SDK | ai + @ai-sdk/google + @ai-sdk/anthropic + @ai-sdk/openai | https://ai-sdk.dev/docs |
 | Embeddings | OpenAI text-embedding-3-small (1536d) | https://ai-sdk.dev/providers/ai-sdk-provider/openai |
 | WhatsApp | Twilio | https://www.twilio.com/docs/whatsapp |
+| Analytics | PostHog | https://posthog.com/docs |
 | Testing | Vitest | https://vitest.dev |
 | Hosting | Vercel + Convex Cloud | — |
 
@@ -122,7 +123,8 @@ Build these in order. Each one: write test → see fail → implement → see pa
 - Colors: Navy `hsl(222, 47%, 11%)` + Orange `#f97316`
 - Sections: Hero (tagline + WhatsApp CTA) → What Ghali Can Do (3-4 bullets) → How It Works (3 steps) → FAQ → Footer
 - No Clerk auth needed. No dashboard. No web chat.
-- Static/SSG — no client-side JS needed beyond the WhatsApp link
+- Static/SSG — minimal client-side JS (just PostHog + WhatsApp link)
+- **PostHog analytics:** page views, CTA clicks, UTM tracking, conversion funnel
 
 ### 12. Heartbeat (Proactive Check-ins)
 - Convex scheduled function runs periodically per user (configurable interval, default 24h)
@@ -256,4 +258,6 @@ OPENAI_API_KEY=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_NUMBER=+971582896090
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
