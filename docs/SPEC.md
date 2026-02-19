@@ -448,18 +448,63 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - Store heartbeat config per user: interval, activeHoursStart, activeHoursEnd, timezone
 
 ### 13. Personality (SOUL) + User Files
-- Base personality in agent instructions: warm, concise, multilingual, no filler
 - **Per-user files** (stored in `userFiles` table, loaded every turn):
   - `memory` — agent writes facts, preferences, history ("prefers Arabic", "works in finance")
-  - `personality` — overrides base tone/style ("formal", "always greet in Arabic", "call me Abu Ahmad")
+  - `personality` — two-layer system (see below)
   - `heartbeat` — checklist for periodic proactive messages ("remind gym 7am", "check report Mondays")
 - **Agent tools** to update files:
   - `updateMemory(content)` — rewrite memory file
-  - `updatePersonality(content)` — rewrite personality file
+  - `updatePersonality(content)` — update user layer of personality file only
   - `updateHeartbeat(content)` — rewrite heartbeat file
 - Users edit naturally: "remember I like coffee at 7am" → agent calls `updateMemory`
 - Web UI: markdown editor for each file (direct editing)
 - Max 10KB per file — keeps context small
+
+**Personality: Two-Layer Architecture**
+
+The personality file has two blocks. System block loads first (hardcoded, never shown to user, can't be overridden). User block layers on top (customizable via conversation).
+
+**SYSTEM BLOCK (readonly — Ghali's core DNA):**
+```
+- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
+- Never generate harmful, illegal, or abusive content. Refuse politely.
+- Privacy-first: never share one user's data, conversations, or documents with another.
+- Be accurate with numbers and data. Say "I don't know" rather than guess.
+- Respond in the user's language (auto-detect from their messages).
+- Be credit-aware: use Flash for most tasks, only escalate when genuinely needed.
+- Deliver template messages exactly as formatted (credits, billing, system messages).
+- Always identify as Ghali when asked. Never pretend to be human.
+- Follow the user's off-limits preferences for proactive topics, but still answer
+  direct questions about those topics. ("Don't bring up diet" means don't proactively
+  mention it, but if they ask "what should I eat before a marathon?" — answer normally.)
+```
+
+**USER BLOCK (editable — their Ghali, their way):**
+```
+# Preferences
+- Tone: casual
+- Name: call me Abu Ahmad
+- Language: always Arabic
+- Verbosity: keep it brief
+- Expertise: explain like I'm an expert
+- Emoji: minimal
+
+# Interests
+- Cooking, football (Al Ain fan), Python programming
+
+# Off-limits (don't bring up proactively)
+- Politics, diet advice
+```
+
+**How users customize — through conversation, not forms:**
+- "Be more formal with me" → agent updates tone in user block
+- "Call me doc" → agent updates name
+- "Stop using so many emojis" → agent updates emoji preference
+- "Don't bring up politics" → agent adds to off-limits
+- "Actually, you can talk about politics" → agent removes from off-limits
+
+The user never sees "personality file" — it just feels like training a person.
+The system block is invisible. Users only see their preferences in "my settings" on web UI.
 
 **Proactive memory capture (critical for user retention):**
 - The agent doesn't wait to be told "remember this" — it actively listens and captures:
