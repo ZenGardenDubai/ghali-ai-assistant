@@ -1,0 +1,2 @@
+# Pre-commit hook - minimal, keep commits fast
+# Full validation runs on pre-push
