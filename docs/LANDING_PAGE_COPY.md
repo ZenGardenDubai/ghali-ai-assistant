@@ -17,32 +17,32 @@
 
 ## Key Strengths
 
-### 1. Zero Friction
-No downloads. No setup. No passwords. Ghali lives in WhatsApp — the app you already use every day. Just send a message and you're in.
+### 1. Just Message. That's It.
+No app. No account. No password. Open WhatsApp, say hi, done.
 
-### 2. An Assistant That Knows You
-Ghali learns your preferences, remembers your conversations, and gets better over time. It's not a generic chatbot — it becomes *your* assistant.
+### 2. Gets Smarter the More You Use It
+Ghali remembers your preferences, your context, your style. It's not starting from scratch every time.
 
-### 3. Privacy First
-Your data stays yours. We never sell or share your information. You have full control — view, export, or delete your data anytime.
+### 3. Your Stuff Stays Yours
+We don't sell your data. You can see everything Ghali knows about you, and delete it anytime.
 
-### 4. The Smartest AI, Automatically
-Ghali uses the best AI models in the world and picks the right one for each task. You never have to choose.
+### 4. One Assistant, Everything You Need
+Ask a question. Analyze a document. Write an email. Create an image. Ghali handles it all — and picks the best approach automatically.
 
 **Visual showcase — highlight these use cases prominently:**
 
-🔍 **Deep Analysis** — Send a report, get insights. Ask complex questions, get researched answers.
+🔍 **Analyze anything** — Send a report, get insights. Ask complex questions, get researched answers.
 
-📋 **Strategic Planning** — Build plans, break down goals, structure your thinking.
+📋 **Plan & strategize** — Build plans, break down goals, structure your thinking.
 
-✍️ **Creative Writing** — Emails, proposals, stories, social posts — in any tone, any language.
+✍️ **Write brilliantly** — Emails, proposals, stories, social posts — in any tone, any language.
 
-🎨 **Image Generation** — Describe what you want, get a stunning image in seconds. Logos, art, visuals — all from a text message.
+🎨 **Create images** — Describe what you want, get a stunning image in seconds. Logos, art, visuals — all from a text message.
 
-> *Design note: These 4 use cases should be visually prominent — cards, icons, or mockup screenshots showing real WhatsApp conversations for each. Image generation especially is a wow moment.*
+> *Design note: These 4 use cases should be visually prominent — cards, icons, or mockup screenshots showing real WhatsApp conversations for each. Image generation especially is a wow moment. No tech jargon — show, don't tell.*
 
-### 5. Open Source
-Our code is open for anyone to inspect. Because trust shouldn't require blind faith.
+### 5. Built in the Open
+Our code is public. You don't have to take our word for it.
 
 ---
 
@@ -109,11 +109,11 @@ A: Send "upgrade" to Ghali on WhatsApp and follow the link.
 Every element on the page drives toward one action: **tap the WhatsApp CTA**. Minimize distractions. The visitor should feel "this is easy, this is safe, let me try it."
 
 ### Strength Ranking (by conversion impact)
-1. **Zero Friction** — #1 seller. "No app, no signup" removes the biggest barrier. Lead with this everywhere.
-2. **Privacy First** — High trust signal, especially for Gulf/MENA audience. People are cautious about AI + personal data.
-3. **The Smartest AI** — The use case showcase (analysis, writing, images) shows *value*. This is what makes people curious enough to try.
-4. **Learns & Remembers You** — Differentiator from ChatGPT. Becomes compelling after they understand the basics.
-5. **Open Source** — Trust signal for tech-savvy users. Less impact on general audience but great for credibility and press.
+1. **Just Message. That's It.** — #1 seller. "No app, no signup" removes the biggest barrier. Lead with this everywhere.
+2. **Your Stuff Stays Yours** — High trust signal, especially for Gulf/MENA audience. People are cautious about AI + personal data.
+3. **One Assistant, Everything You Need** — The use case showcase (analysis, writing, images) shows *value*. Makes people curious enough to try.
+4. **Gets Smarter the More You Use It** — Differentiator from ChatGPT. Compelling after they understand the basics.
+5. **Built in the Open** — Trust signal for tech-savvy users. Less impact on general audience but great for credibility and press.
 
 ### Separate Marketing Pages (SEO)
 Create dedicated pages for each strength. These serve as SEO landing pages and can be linked from ads, social, and blog posts.
