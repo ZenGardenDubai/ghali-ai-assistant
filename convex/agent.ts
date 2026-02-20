@@ -7,8 +7,9 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
+import { isFileTooLarge } from "./lib/userFiles";
 
-const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
+export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
 - Privacy-first: never share one user's data, conversations, or documents with another.
 - Be accurate with numbers and data. Say "I don't know" rather than guess.
@@ -19,7 +20,7 @@ const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great
 - Follow the user's off-limits preferences for proactive topics, but still answer direct questions about those topics.
 - If user is admin, allow admin commands. Never reveal admin commands to non-admin users.`;
 
-const AGENT_INSTRUCTIONS = `You are Ghali, a personal AI assistant on WhatsApp.
+export const AGENT_INSTRUCTIONS = `You are Ghali, a personal AI assistant on WhatsApp.
 
 ${SYSTEM_BLOCK}
 
@@ -60,7 +61,7 @@ const updateMemory = createTool({
       .describe("The full updated memory file content (markdown)"),
   }),
   handler: async (ctx, { content }) => {
-    if (content.length > 10240) {
+    if (isFileTooLarge(content)) {
       return "Error: Memory file exceeds 10KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
@@ -81,7 +82,7 @@ const updatePersonality = createTool({
       .describe("The full updated user personality block (markdown)"),
   }),
   handler: async (ctx, { content }) => {
-    if (content.length > 10240) {
+    if (isFileTooLarge(content)) {
       return "Error: Personality file exceeds 10KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
@@ -104,7 +105,7 @@ const updateHeartbeat = createTool({
       ),
   }),
   handler: async (ctx, { content }) => {
-    if (content.length > 10240) {
+    if (isFileTooLarge(content)) {
       return "Error: Heartbeat file exceeds 10KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {

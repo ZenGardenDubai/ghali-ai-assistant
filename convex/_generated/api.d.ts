@@ -17,6 +17,7 @@ import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as lib_systemCommands from "../lib/systemCommands.js";
 import type * as lib_twilio from "../lib/twilio.js";
 import type * as lib_twilioSend from "../lib/twilioSend.js";
+import type * as lib_userFiles from "../lib/userFiles.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as messages from "../messages.js";
 import type * as models from "../models.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   "lib/systemCommands": typeof lib_systemCommands;
   "lib/twilio": typeof lib_twilio;
   "lib/twilioSend": typeof lib_twilioSend;
+  "lib/userFiles": typeof lib_userFiles;
   "lib/utils": typeof lib_utils;
   messages: typeof messages;
   models: typeof models;

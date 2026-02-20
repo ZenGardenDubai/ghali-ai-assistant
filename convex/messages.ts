@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
 import { getCurrentDateTime, fillTemplate, isSystemCommand } from "./lib/utils";
+import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand } from "./lib/systemCommands";
 import { handleOnboarding } from "./lib/onboarding";
@@ -157,28 +158,9 @@ export const generateResponse = internalAction({
       return;
     }
 
-    const memoryFile = userFiles.find((f) => f.filename === "memory");
-    const personalityFile = userFiles.find((f) => f.filename === "personality");
-    const heartbeatFile = userFiles.find((f) => f.filename === "heartbeat");
-
-    // Inject current date/time context
+    // Build user context from per-user files + datetime
     const { date, time, tz } = getCurrentDateTime(user.timezone);
-    const contextParts: string[] = [
-      `CURRENT CONTEXT:\nToday is ${date}\nCurrent time: ${time} (${tz})`,
-    ];
-    if (personalityFile?.content) {
-      contextParts.push(`## User Personality Preferences\n${personalityFile.content}`);
-    }
-    if (memoryFile?.content) {
-      contextParts.push(`## User Memory\n${memoryFile.content}`);
-    }
-    if (heartbeatFile?.content) {
-      contextParts.push(`## User Heartbeat/Reminders\n${heartbeatFile.content}`);
-    }
-
-    const userContext = contextParts.length > 0
-      ? contextParts.join("\n\n")
-      : "";
+    const userContext = buildUserContext(userFiles, { date, time, tz });
 
     // Build prompt
     let prompt = body;

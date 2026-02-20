@@ -480,52 +480,52 @@ Handle system commands (credits, help, privacy, upgrade, etc.) using pre-defined
 
 3-step conversational onboarding for new users. Skippable — if user asks a real question, answer it and mark onboarding done.
 
-- [ ] **11.1 Test: new user gets welcome + Step 1 (name + timezone)**
+- [x] **11.1 Test: new user gets welcome + Step 1 (name + timezone)**
   - First message from unknown number triggers onboarding
   - Response includes detected name and timezone
   - `onboardingStep` set to 1
 
-- [ ] **11.2 Test: user confirms name → moves to Step 2 or 3**
+- [x] **11.2 Test: user confirms name → moves to Step 2 or 3**
   - If language is clear from reply → skip Step 2, go to Step 3
   - If ambiguous → show Step 2 (language selection)
 
-- [ ] **11.3 Test: user skips onboarding**
+- [x] **11.3 Test: user skips onboarding**
   - User sends a real question ("what's 2+2?") during onboarding
   - Agent answers the question
   - Onboarding marked as done (onboardingStep = null)
   - Defaults applied: profile name, detected timezone
 
-- [ ] **11.4 Test: user corrects timezone**
+- [x] **11.4 Test: user corrects timezone**
   - "I'm in London" during Step 1 → timezone updated to Europe/London
 
-- [ ] **11.5 Test: personality style selection**
+- [x] **11.5 Test: personality style selection**
   - User picks "Brief & to-the-point" → personality user block updated with: verbosity=concise, emoji=minimal
 
-- [ ] **11.6 Implement onboarding state machine**
+- [x] **11.6 Implement onboarding state machine**
   - Check `onboardingStep` on every incoming message
   - If non-null → run onboarding logic for that step
   - If user sends a real question → answer it, set onboardingStep=null
 
-- [ ] **11.7 Implement Step 1: name + timezone verification**
+- [x] **11.7 Implement Step 1: name + timezone verification**
   - Pull `ProfileName` from Twilio payload
   - Detect timezone from phone country code
   - Send greeting template with name and timezone
 
-- [ ] **11.8 Implement Step 2: language (conditional)**
+- [x] **11.8 Implement Step 2: language (conditional)**
   - Only if language wasn't clear from Step 1 reply
 
-- [ ] **11.9 Implement Step 3: personality style**
+- [x] **11.9 Implement Step 3: personality style**
   - Map choices to personality user block settings
   - Save to userFiles
 
-- [ ] **11.10 Implement onboarding completion**
+- [x] **11.10 Implement onboarding completion**
   - Save all preferences to memory + personality files
   - Set `onboardingStep = null`
   - Send "All set!" message
 
-- [ ] **11.11 Run all tests — pass**
+- [x] **11.11 Run all tests — pass**
 
-- [ ] **11.12 Commit: "Add conversational onboarding — 3 steps, skippable, timezone detection"**
+- [x] **11.12 Commit: "Add conversational onboarding — 3 steps, skippable, timezone detection"**
 
 ---
 
@@ -533,46 +533,46 @@ Handle system commands (credits, help, privacy, upgrade, etc.) using pre-defined
 
 Agent tools to read and update the 3 per-user files. These are loaded into context every turn and updated organically through conversation.
 
-- [ ] **12.1 Test: user files loaded into agent context**
+- [x] **12.1 Test: user files loaded into agent context**
   - Before each agent turn, all 3 files are fetched and prepended
   - If files are empty, no extra context is added
 
-- [ ] **12.2 Test: `updateMemory` tool appends to memory file**
+- [x] **12.2 Test: `updateMemory` tool appends to memory file**
   - Given existing memory "Name: Ahmad"
   - Agent calls `updateMemory("Name: Ahmad\nWork: ADNOC")`
   - Memory file content is updated
 
-- [ ] **12.3 Test: `updatePersonality` tool updates user block only**
+- [x] **12.3 Test: `updatePersonality` tool updates user block only**
   - Personality has two layers: SYSTEM BLOCK (readonly, hardcoded) + USER BLOCK (editable)
   - System block: safety, honesty, privacy, accuracy, language detection, credit awareness, template delivery, identity
   - User block: tone, name, language preference, verbosity, expertise level, emoji usage, interests, off-limits topics
   - `updatePersonality` only modifies the user block — system block is prepended at runtime, never stored in userFiles
   - Off-limits rule: "don't bring up proactively" not "never discuss" — direct questions still get answered
 
-- [ ] **12.4 Test: `updateHeartbeat` tool rewrites heartbeat file**
+- [x] **12.4 Test: `updateHeartbeat` tool rewrites heartbeat file**
   - Content is fully replaced
 
-- [ ] **12.5 Test: file size limit (10KB max)**
+- [x] **12.5 Test: file size limit (10KB max)**
   - Content exceeding 10KB is rejected with a friendly error
 
-- [ ] **12.6 Implement `updateMemory` tool**
+- [x] **12.6 Implement `updateMemory` tool**
   - `createTool` — agent calls this to persist user facts
   - Writes to `userFiles` where filename="memory"
 
-- [ ] **12.7 Implement `updatePersonality` tool**
+- [x] **12.7 Implement `updatePersonality` tool**
   - Only updates the user block section
   - System block is hardcoded and prepended at runtime
 
-- [ ] **12.8 Implement `updateHeartbeat` tool**
+- [x] **12.8 Implement `updateHeartbeat` tool**
   - Rewrites the heartbeat checklist
 
-- [ ] **12.9 Implement context loading in `generateResponse`**
+- [x] **12.9 Implement context loading in `generateResponse`**
   - Before calling `ghali.generateText`:
     - Fetch all 3 userFiles
     - Prepend system block + user personality + memory + heartbeat as system messages
   - Use `contextHandler` or manual prepend
 
-- [ ] **12.10 Run all tests — pass**
+- [x] **12.10 Run all tests — pass**
 
 - [ ] **12.11 Commit: "Add per-user files — memory, personality, heartbeat with agent tools"**
 
