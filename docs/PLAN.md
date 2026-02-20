@@ -868,9 +868,12 @@ Pro subscriptions via Clerk Billing. Webhook handles subscription lifecycle.
 Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO optimized.
 
 - [ ] **21.1 Build landing page layout**
+  - **Copy & content:** See `docs/LANDING_PAGE_COPY.md` for all text, structure, and messaging
   - Hero section: tagline + WhatsApp CTA button
-  - "What Ghali Can Do" — 3-4 feature bullets
+  - Key Strengths — 5 blocks (zero friction, learns you, privacy, smartest AI, open source)
   - "How It Works" — 3 steps
+  - "What Ghali Can Do" — 6 capability bullets
+  - Pricing — Basic (free) vs Pro ($19/mo)
   - FAQ section (collapsible)
   - Footer with legal links
 
