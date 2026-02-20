@@ -220,17 +220,15 @@ describe("buildPersonalityContent", () => {
 // ============================================================================
 
 describe("buildOnboardingMemory", () => {
-  it("builds memory with all fields", () => {
-    const memory = buildOnboardingMemory("Ahmad", "Asia/Dubai", "ar");
+  it("builds memory with name only", () => {
+    const memory = buildOnboardingMemory("Ahmad");
     expect(memory).toContain("Name: Ahmad");
-    expect(memory).toContain("Timezone: Asia/Dubai");
-    expect(memory).toContain("Language: ar");
   });
 
-  it("builds memory with partial fields", () => {
-    const memory = buildOnboardingMemory("Ahmad", "Asia/Dubai", "en");
-    expect(memory).toContain("Name: Ahmad");
-    expect(memory).toContain("Timezone: Asia/Dubai");
+  it("does not include language or timezone (stored in users table)", () => {
+    const memory = buildOnboardingMemory("Ahmad");
+    expect(memory).not.toContain("Language");
+    expect(memory).not.toContain("Timezone");
   });
 });
 

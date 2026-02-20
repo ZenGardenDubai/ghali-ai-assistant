@@ -135,18 +135,8 @@ export function buildPersonalityContent(style: string): string {
 // buildOnboardingMemory — initial memory markdown
 // ============================================================================
 
-export function buildOnboardingMemory(
-  name: string,
-  timezone: string,
-  language: string
-): string {
-  const lines = ["# User Memory"];
-  lines.push(`- Name: ${name}`);
-  lines.push(`- Timezone: ${timezone}`);
-  if (language !== "en") {
-    lines.push(`- Language: ${language}`);
-  }
-  return lines.join("\n");
+export function buildOnboardingMemory(name: string): string {
+  return `# User Memory\n- Name: ${name}`;
 }
 
 // ============================================================================
@@ -340,11 +330,7 @@ export async function handleOnboarding(
 
       // Build memory from what we know
       const name = user.name || "there";
-      fileUpdates.memory = buildOnboardingMemory(
-        name,
-        user.timezone,
-        user.language
-      );
+      fileUpdates.memory = buildOnboardingMemory(name);
 
       const response = fillTemplate(
         TEMPLATES.onboarding_complete.template,
