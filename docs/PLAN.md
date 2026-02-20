@@ -613,28 +613,29 @@ Receive WhatsApp voice notes, transcribe with Whisper, process as text.
 
 Agent tool to generate images from text descriptions, sent as WhatsApp media messages.
 
-- [ ] **14.1 Test: generateImage tool returns an image URL/buffer**
+- [x] **14.1 Test: generateImage tool returns an image URL/buffer**
   - Given a prompt "a sunset over Dubai"
   - Returns a valid image
 
-- [ ] **14.2 Test: generated image is sent via Twilio media**
+- [x] **14.2 Test: generated image is sent via Twilio media**
   - Image is sent as a WhatsApp media message, not a text link
 
-- [ ] **14.3 Implement `generateImage` tool**
+- [x] **14.3 Implement `generateImage` tool**
   - `createTool` with description for the agent
-  - Calls Gemini 3 Pro in image generation mode
-  - Returns image data
+  - Calls Gemini 3 Pro in image generation mode via `@google/genai` SDK
+  - Returns JSON `{ imageUrl, caption }` for reliable extraction from tool results
 
-- [ ] **14.4 Implement image delivery via Twilio**
+- [x] **14.4 Implement image delivery via Twilio**
   - Store generated image in Convex file storage
   - Get a serving URL
-  - Send via `sendWhatsAppMedia`
+  - Send via `sendWhatsAppMedia` with fallback to text if media fails
 
-- [ ] **14.5 Register tool on the Ghali agent**
+- [x] **14.5 Register tool on the Ghali agent**
 
-- [ ] **14.6 Run all tests — pass**
+- [x] **14.6 Run all tests — pass**
+  - 12 new tests for `parseImageToolResult` and `extractImageFromSteps`
 
-- [ ] **14.7 Commit: "Add image generation tool — Gemini 3 Pro + WhatsApp delivery"**
+- [x] **14.7 Commit: "Add image generation tool — Gemini 3 Pro + WhatsApp delivery"**
 
 ---
 
