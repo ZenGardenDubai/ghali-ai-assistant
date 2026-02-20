@@ -197,4 +197,9 @@ Only your account and credits remain.
 Say "yes" to confirm.`,
     variables: [],
   },
+  // === Voice ===
+  voice_transcription_failed: {
+    template: `Sorry, I couldn't process that voice message. Please try again or send a text message instead.`,
+    variables: [],
+  },
 } as const;

@@ -19,12 +19,14 @@ import type * as lib_twilio from "../lib/twilio.js";
 import type * as lib_twilioSend from "../lib/twilioSend.js";
 import type * as lib_userFiles from "../lib/userFiles.js";
 import type * as lib_utils from "../lib/utils.js";
+import type * as lib_voice from "../lib/voice.js";
 import type * as messages from "../messages.js";
 import type * as models from "../models.js";
 import type * as templates from "../templates.js";
 import type * as twilio from "../twilio.js";
 import type * as usageTracking from "../usageTracking.js";
 import type * as users from "../users.js";
+import type * as voice from "../voice.js";
 
 import type {
   ApiFromModules,
@@ -44,12 +46,14 @@ declare const fullApi: ApiFromModules<{
   "lib/twilioSend": typeof lib_twilioSend;
   "lib/userFiles": typeof lib_userFiles;
   "lib/utils": typeof lib_utils;
+  "lib/voice": typeof lib_voice;
   messages: typeof messages;
   models: typeof models;
   templates: typeof templates;
   twilio: typeof twilio;
   usageTracking: typeof usageTracking;
   users: typeof users;
+  voice: typeof voice;
 }>;
 
 /**

@@ -8,6 +8,7 @@ import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand } from "./lib/systemCommands";
 import { handleOnboarding } from "./lib/onboarding";
+import { isAudioType } from "./lib/voice";
 
 /**
  * Save an incoming WhatsApp message and schedule async processing.
@@ -42,7 +43,9 @@ export const generateResponse = internalAction({
     mediaUrl: v.optional(v.string()),
     mediaContentType: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, body, mediaUrl, mediaContentType }) => {
+  handler: async (ctx, args) => {
+    const { userId } = args;
+    let { body, mediaUrl, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
 
     // Get user info
@@ -161,6 +164,27 @@ export const generateResponse = internalAction({
     // Build user context from per-user files + datetime
     const { date, time, tz } = getCurrentDateTime(user.timezone);
     const userContext = buildUserContext(userFiles, { date, time, tz });
+
+    // Voice note intercept — transcribe audio before AI processing
+    if (mediaUrl && mediaContentType && isAudioType(mediaContentType)) {
+      const transcript = await ctx.runAction(
+        internal.voice.transcribeVoiceMessage,
+        { mediaUrl, mediaType: mediaContentType }
+      );
+
+      if (!transcript) {
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: TEMPLATES.voice_transcription_failed.template,
+        });
+        return;
+      }
+
+      // Replace body with transcript, clear media fields
+      body = transcript;
+      mediaUrl = undefined;
+      mediaContentType = undefined;
+    }
 
     // Build prompt
     let prompt = body;
