@@ -5,6 +5,7 @@ import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
 import { getCurrentDateTime, fillTemplate } from "./lib/utils";
 import { TEMPLATES } from "./templates";
+import { handleSystemCommand } from "./lib/systemCommands";
 
 /**
  * Save an incoming WhatsApp message and schedule async processing.
@@ -58,26 +59,28 @@ export const generateResponse = internalAction({
       message: body,
     });
 
-    // Handle system command: "credits"
+    // Load user files early — needed for both system commands and AI context
+    const userFiles = await ctx.runQuery(
+      internal.users.internalGetUserFiles,
+      { userId: typedUserId }
+    );
+
+    // Handle system commands via templates (no AI generation)
     if (creditCheck.status === "free") {
-      const command = body.toLowerCase().trim();
-      if (command === "credits") {
-        const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
-          "en-US",
-          { month: "long", day: "numeric", year: "numeric" }
-        );
-        const message = fillTemplate(TEMPLATES.check_credits.template, {
-          credits: creditCheck.credits,
-          tier: user.tier === "pro" ? "Pro" : "Basic",
-          resetDate,
-        });
+      const systemResponse = await handleSystemCommand(
+        body,
+        user,
+        userFiles,
+        body
+      );
+      if (systemResponse) {
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
-          body: message,
+          body: systemResponse,
         });
         return;
       }
-      // Other system commands — pass through to AI for now (Section 10)
+      // "account" or unrecognized → fall through to AI
     }
 
     // Handle exhausted credits
@@ -101,12 +104,6 @@ export const generateResponse = internalAction({
       });
       return;
     }
-
-    // Load user files for context injection
-    const userFiles = await ctx.runQuery(
-      internal.users.internalGetUserFiles,
-      { userId: typedUserId }
-    );
 
     const memoryFile = userFiles.find((f) => f.filename === "memory");
     const personalityFile = userFiles.find((f) => f.filename === "personality");

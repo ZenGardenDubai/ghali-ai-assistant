@@ -100,4 +100,62 @@ Your data. Your rules.`,
 👉 {{upgradeUrl}}`,
     variables: ["upgradeUrl"],
   },
+  // === Upgrade (already Pro) ===
+  already_pro: {
+    template: `*You're Pro!* ⭐
+
+*Credits:* {{credits}}/600
+*Storage:* {{storageUsed}} of 500MB
+*Renews:* {{renewDate}}
+
+Thanks for being a Pro member 💎`,
+    variables: ["credits", "storageUsed", "renewDate"],
+  },
+
+  // === Memory ===
+  memory_summary: {
+    template: `*What I Know About You* 🧠
+
+{{memoryContent}}
+
+Want me to forget something? Just say "forget that I..." or "clear memory" for a full reset.`,
+    variables: ["memoryContent"],
+  },
+
+  // === Clear Data ===
+  clear_memory_confirm: {
+    template: `*Clear Memory?* 🧠
+
+I'll forget everything I've learned about you — preferences, past conversations, personal details.
+
+Your documents stay safe.
+
+Say "yes" to confirm.`,
+    variables: [],
+  },
+
+  clear_documents_confirm: {
+    template: `*Clear Documents?* 📄
+
+I'll delete all {{docCount}} stored documents.
+
+Your memory and conversations stay safe.
+
+Say "yes" to confirm.`,
+    variables: ["docCount"],
+  },
+
+  clear_everything_confirm: {
+    template: `*Clear Everything?* ⚠️
+
+This deletes:
+• All memory and preferences
+• All stored documents
+• Conversation history
+
+Only your account and credits remain.
+
+Say "yes" to confirm.`,
+    variables: [],
+  },
 } as const;

@@ -435,44 +435,44 @@ Gate all requests behind credits. Free commands bypass. Monthly resets via cron.
 
 Handle system commands (credits, help, privacy, upgrade, etc.) using pre-defined templates. No LLM generation for data-sensitive messages.
 
-- [ ] **10.1 Test: template rendering for all system commands**
+- [x] **10.1 Test: template rendering for all system commands**
   - "credits" → `check_credits` template with variables filled
   - "help" → `help` template
   - "privacy" → `privacy` template
   - "upgrade" → `upgrade` template (with URL)
 
-- [ ] **10.2 Test: language detection**
+- [x] **10.2 Test: language detection**
   - "كم رصيدي؟" → "ar"
   - "How many credits?" → "en"
   - "Combien de crédits?" → "fr"
 
-- [ ] **10.3 Test: template translation preserves numbers and formatting**
+- [x] **10.3 Test: template translation preserves numbers and formatting**
   - Translate `"*Credits:* 45"` to Arabic
   - "45" and "*" must remain unchanged
 
-- [ ] **10.4 Implement all templates from SPEC**
+- [x] **10.4 Implement all templates from SPEC**
   - `TEMPLATES` object with all template definitions
   - `fillTemplate` (already done in Section 4)
 
-- [ ] **10.5 Implement `detectLanguage` helper**
+- [x] **10.5 Implement `detectLanguage` helper**
   - Use Gemini 3 Flash with zero temperature
   - Returns ISO 639-1 code
 
-- [ ] **10.6 Implement `translateMessage` helper**
+- [x] **10.6 Implement `translateMessage` helper**
   - Takes filled template + target language
   - Translates text only — preserves numbers, emoji, formatting, URLs
 
-- [ ] **10.7 Implement `renderSystemMessage` pipeline**
+- [x] **10.7 Implement `renderSystemMessage` pipeline**
   - Fill template → detect language → translate if not English → return
 
-- [ ] **10.8 Implement system command router**
+- [x] **10.8 Implement system command router**
   - Detects system commands from user message
   - Routes to correct template + data fetch
   - Returns rendered message (bypasses AI agent)
 
-- [ ] **10.9 Run all tests — pass**
+- [x] **10.9 Run all tests — pass**
 
-- [ ] **10.10 Commit: "Add system commands and template rendering with translation"**
+- [x] **10.10 Commit: "Add system commands and template rendering with translation"**
 
 ---
 

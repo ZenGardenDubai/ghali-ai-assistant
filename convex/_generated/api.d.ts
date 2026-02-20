@@ -13,6 +13,7 @@ import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_formatter from "../lib/formatter.js";
+import type * as lib_systemCommands from "../lib/systemCommands.js";
 import type * as lib_twilio from "../lib/twilio.js";
 import type * as lib_twilioSend from "../lib/twilioSend.js";
 import type * as lib_utils from "../lib/utils.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   http: typeof http;
   "lib/formatter": typeof lib_formatter;
+  "lib/systemCommands": typeof lib_systemCommands;
   "lib/twilio": typeof lib_twilio;
   "lib/twilioSend": typeof lib_twilioSend;
   "lib/utils": typeof lib_utils;
