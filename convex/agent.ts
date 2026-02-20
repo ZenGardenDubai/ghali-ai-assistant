@@ -269,13 +269,4 @@ export const ghaliAgent = new Agent(components.agent, {
   contextOptions: {
     recentMessages: AGENT_RECENT_MESSAGES,
   },
-  usageHandler: async (ctx, args) => {
-    if (!args.userId) return;
-    await ctx.runMutation(internal.usageTracking.trackUsage, {
-      userId: args.userId,
-      model: args.model ?? "unknown",
-      tokensIn: args.usage?.inputTokens ?? 0,
-      tokensOut: args.usage?.outputTokens ?? 0,
-    });
-  },
 });

@@ -1,7 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import schema from "./schema";
-import { MODELS } from "./models";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -115,49 +114,6 @@ describe("schema", () => {
       "memory",
       "personality",
     ]);
-  });
-
-  it("creates usage records", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.run(async (ctx) => {
-      return await ctx.db.insert("users", {
-        phone: "+971501234567",
-        language: "en",
-        timezone: "Asia/Dubai",
-        tier: "basic",
-        isAdmin: false,
-        credits: 60,
-        creditsResetAt: Date.now(),
-        onboardingStep: null,
-        createdAt: Date.now(),
-      });
-    });
-
-    await t.run(async (ctx) => {
-      await ctx.db.insert("usage", {
-        userId,
-        model: MODELS.FLASH,
-        tokensIn: 100,
-        tokensOut: 50,
-        cost: 0.001,
-        timestamp: Date.now(),
-      });
-    });
-
-    const records = await t.run(async (ctx) => {
-      return await ctx.db
-        .query("usage")
-        .withIndex("by_userId", (q) => q.eq("userId", userId))
-        .collect();
-    });
-
-    expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({
-      model: MODELS.FLASH,
-      tokensIn: 100,
-      tokensOut: 50,
-    });
   });
 
   it("creates scheduledJobs", async () => {

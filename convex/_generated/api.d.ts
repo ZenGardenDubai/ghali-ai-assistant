@@ -31,7 +31,6 @@ import type * as models from "../models.js";
 import type * as rag from "../rag.js";
 import type * as templates from "../templates.js";
 import type * as twilio from "../twilio.js";
-import type * as usageTracking from "../usageTracking.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
 
@@ -65,7 +64,6 @@ declare const fullApi: ApiFromModules<{
   rag: typeof rag;
   templates: typeof templates;
   twilio: typeof twilio;
-  usageTracking: typeof usageTracking;
   users: typeof users;
   voice: typeof voice;
 }>;

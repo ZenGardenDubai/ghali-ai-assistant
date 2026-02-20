@@ -1,7 +1,7 @@
 # Business Rules
 
 All business constants are defined in `convex/constants.ts` (single source of truth).
-Model identifiers and costs are in `convex/models.ts`.
+Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog (not in-app).
 
 ## Credit System
 
@@ -27,16 +27,16 @@ Constants: `PRO_PLAN_PRICE_USD`, `STORAGE_LIMIT_BASIC_MB`, `STORAGE_LIMIT_PRO_MB
 
 Defined in `convex/models.ts`:
 
-| Constant | Model ID | Role | Input $/1M | Output $/1M |
-|----------|----------|------|-----------|------------|
-| `FLASH` | gemini-3-flash-preview | Primary agent (~85%) | 0.10 | 0.40 |
-| `DEEP_REASONING` | claude-opus-4-6 | Complex reasoning (~15%) | 15.00 | 75.00 |
-| `IMAGE_GENERATION` | gemini-3-pro-image-preview | Image generation | 1.25 | 30.00 |
-| `EMBEDDING` | text-embedding-3-small | RAG embeddings | 0.02 | 0.00 |
+| Constant | Model ID | Role |
+|----------|----------|------|
+| `FLASH` | gemini-3-flash-preview | Primary agent (~85%) |
+| `DEEP_REASONING` | claude-opus-4-6 | Complex reasoning (~15%) |
+| `IMAGE_GENERATION` | gemini-3-pro-image-preview | Image generation |
+| `EMBEDDING` | text-embedding-3-small | RAG embeddings |
 
 Whisper (`whisper-1`) is used for voice transcription in `convex/voice.ts`.
 
-Fallback cost rates for unknown models: `{ input: 0.5, output: 1.5 }` in `convex/usageTracking.ts`.
+Usage and cost tracking is handled by PostHog analytics, not stored in Convex.
 
 ## Agent Configuration
 

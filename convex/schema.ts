@@ -31,17 +31,6 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_filename", ["userId", "filename"]),
 
-  usage: defineTable({
-    userId: v.id("users"),
-    model: v.string(),
-    tokensIn: v.number(),
-    tokensOut: v.number(),
-    cost: v.number(),
-    timestamp: v.number(),
-  })
-    .index("by_userId", ["userId"])
-    .index("by_userId_timestamp", ["userId", "timestamp"]),
-
   generatedImages: defineTable({
     userId: v.id("users"),
     storageId: v.id("_storage"),
