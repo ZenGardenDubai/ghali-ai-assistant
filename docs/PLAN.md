@@ -632,56 +632,63 @@ Agent tool to generate images from text descriptions, sent as WhatsApp media mes
 
 Users send files via WhatsApp → extract content → answer immediately → store in personal knowledge base for future retrieval.
 
-- [ ] **15.1 Test: PDF processing**
+- [x] **15.1 Test: PDF processing**
   - Given a PDF media URL
   - Content is extracted via Gemini 3 Flash (native PDF support)
   - Agent answers user's question about the PDF
 
-- [ ] **15.2 Test: image OCR/description**
+- [x] **15.2 Test: image OCR/description**
   - Given an image media URL
   - Gemini Flash describes/OCRs the image
   - Text description is returned
 
-- [ ] **15.3 Test: document stored in RAG**
+- [x] **15.3 Test: document stored in RAG**
   - After processing, document is chunked and embedded
   - Stored in user's namespace (per-user isolation)
 
-- [ ] **15.4 Test: searchDocuments finds stored content**
+- [x] **15.4 Test: searchDocuments finds stored content**
   - User uploaded a contract last week
   - Query "payment terms" returns relevant chunks from that contract
 
-- [ ] **15.5 Initialize RAG component**
+- [x] **15.5 Initialize RAG component**
   - Configure `@convex-dev/rag` with OpenAI embeddings (1536d)
-  - Set up filter names: `contentType`
+  - Pre-compute embeddings with ai@5 to avoid ai@6 incompatibility
 
-- [ ] **15.6 Implement document detection in webhook**
-  - Check `MediaContentType0` for document types (PDF, image, etc.)
-  - Route to appropriate processor
+- [x] **15.6 Implement document detection in webhook**
+  - Check `MediaContentType0` for document types (PDF, image, audio, video, etc.)
+  - Route to appropriate processor via `isSupportedMediaType`
 
-- [ ] **15.7 Implement PDF/image processing**
-  - Download from Twilio media URL
+- [x] **15.7 Implement PDF/image/audio/video processing**
+  - Download from Twilio media URL (with SSRF protection)
   - Send to Gemini 3 Flash for content extraction
   - Return extracted text
 
-- [ ] **15.8 Implement DOCX/PPTX/XLSX processing**
+- [x] **15.8 Implement DOCX/PPTX/XLSX processing**
   - Send to CloudConvert API → PDF → Gemini 3 Flash
   - Return extracted text
 
-- [ ] **15.9 Implement RAG storage pipeline**
-  - Chunk extracted text (500 tokens, 100 overlap)
-  - Embed with OpenAI
+- [x] **15.9 Implement RAG storage pipeline**
+  - Chunk extracted text using `@convex-dev/rag` default chunker
+  - Pre-embed with OpenAI text-embedding-3-small (1536d)
   - Store in `@convex-dev/rag` with user's namespace
-  - Link original file in Convex file storage
+  - Store original file in Convex file storage for reply-to-media
 
-- [ ] **15.10 Implement `searchDocuments` agent tool**
+- [x] **15.10 Implement `searchDocuments` agent tool**
   - `createTool` — agent uses this to search user's knowledge base
   - Searches by namespace (userId), returns relevant chunks with context
 
-- [ ] **15.11 Register tool on Ghali agent**
+- [x] **15.11 Register tool on Ghali agent**
 
-- [ ] **15.12 Run all tests — pass**
+- [x] **15.12 Implement media storage & reply-to-media**
+  - Store incoming media in Convex file storage keyed by Twilio `MessageSid`
+  - Parse `OriginalRepliedMessageSid` from Twilio webhook
+  - On reply: fetch stored file, re-process with new question via Gemini Flash
+  - 90-day retention with daily cleanup cron
+  - Voice notes excluded (transcribed, not stored)
 
-- [ ] **15.13 Commit: "Add document processing + RAG — PDF, images, Office files, search"**
+- [x] **15.13 Run all tests — pass (281 tests)**
+
+- [x] **15.14 Commit: "Add document processing, RAG, media storage, and reply-to-media"**
 
 ---
 
