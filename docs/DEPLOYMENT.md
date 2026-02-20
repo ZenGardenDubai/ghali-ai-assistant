@@ -103,7 +103,7 @@ Replicate from hub-ai-v2. Triggers: `@claude` mentions in issues, PR comments, P
 
 Used in Convex actions (`"use node"`) and Next.js API routes:
 
-- **AI generation events** (`$ai_generation`) — model, tokens, cost, latency
+- **AI generation events** (`$ai_generation`) — model, tokens, latency (PostHog calculates cost)
 - **WhatsApp events** — message received, response sent, delivery status
 - **Credit consumption** — credits deducted, plan limits hit
 - **Error tracking** — failed generations, Twilio failures, webhook errors
@@ -114,7 +114,7 @@ Used in Convex actions (`"use node"`) and Next.js API routes:
 Uses `POSTHOG_PERSONAL_API_KEY` + `POSTHOG_PROJECT_ID` to query PostHog via HogQL:
 
 - Model escalation rates (Flash vs Pro vs Opus %)
-- Cost analysis per model/user
+- Cost analysis per model/user (calculated by PostHog from `$ai_generation` events)
 - DAU/WAU/MAU metrics
 - Revenue dashboards
 

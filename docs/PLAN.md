@@ -104,16 +104,7 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
   ```
   - Compound index on `(userId, filename)` for unique lookup
 
-- [x] **2.4 Define `usage` table**
-  ```
-  userId: Id<"users"> (indexed)
-  model: string
-  tokensIn: number
-  tokensOut: number
-  cost: number
-  timestamp: number
-  ```
-  - Index on `(userId, timestamp)` for billing queries
+- [x] ~~**2.4 Define `usage` table**~~ *(removed — usage/cost tracking deferred to PostHog)*
 
 - [x] **2.5 Define `scheduledJobs` table**
   ```
@@ -127,7 +118,7 @@ Define the Convex schema. All tables, indexes, and validators. This is the found
 - [x] **2.6 Run tests — all pass**
   - Verify: `pnpm test:convex` passes
 
-- [x] **2.7 Commit: "Add Convex schema — users, userFiles, usage, scheduledJobs"**
+- [x] **2.7 Commit: "Add Convex schema — users, userFiles, scheduledJobs"**
 
 ---
 
@@ -314,15 +305,13 @@ The heart of the system. Define the Ghali agent with Gemini 3 Flash, configure t
 - [x] **7.6 Test: full message flow (mutation → action → response)**
   - Save message → generateResponse runs → response is saved to thread
 
-- [x] **7.7 Implement `usageHandler`**
-  - On every LLM call: capture model, tokensIn, tokensOut, provider, agentName
-  - Write to `usage` table
+- [x] ~~**7.7 Implement `usageHandler`**~~ *(removed — usage tracking deferred to PostHog)*
 
-- [x] **7.8 Test: usage is tracked after generation**
+- [x] ~~**7.8 Test: usage is tracked after generation**~~ *(removed)*
 
 - [x] **7.9 Run all tests — pass**
 
-- [x] **7.10 Commit: "Add AI agent core — Flash agent, threads, async flow, usage tracking"**
+- [x] **7.10 Commit: "Add AI agent core — Flash agent, threads, async flow"**
 
 ---
 
@@ -341,8 +330,8 @@ Add deepReasoning tool, Google Search grounding, current date/time awareness, an
 
 - [x] **8.3 Create `convex/models.ts` — Single Source of Truth for model constants**
   - `MODELS` object: `FLASH`, `DEEP_REASONING`, `IMAGE_GENERATION`, `EMBEDDING`
-  - `MODEL_COSTS` table with per-1M-token rates
   - All consumers import from here — no hardcoded model strings
+  - *(MODEL_COSTS removed — cost tracking deferred to PostHog)*
 
 - [x] **8.4 Fix message splitting limit**
   - Twilio sandbox limit is 1600 chars (not 4096)
@@ -992,10 +981,10 @@ Final polish and monitoring after the system is live.
   - Convex function error logs → alerts
   - Vercel deployment logs
 
-- [ ] **24.2 Set up usage monitoring**
+- [ ] **24.2 Set up usage monitoring (via PostHog)**
   - Daily credit consumption trends
   - Model usage breakdown (Flash vs Pro vs Opus)
-  - Cost tracking per user
+  - Cost tracking via PostHog `$ai_generation` events
 
 - [ ] **24.3 Review rate limits**
   - Adjust based on real usage patterns
@@ -1058,7 +1047,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
 - [ ] **25.6 Model Constants (from existing `convex/models.ts`)**
   ```
   MODELS = { FLASH, DEEP_REASONING, IMAGE_GENERATION, EMBEDDING }
-  MODEL_COSTS = { ... per 1M token rates ... }
+  // MODEL_COSTS removed — cost tracking handled by PostHog
   ```
 
 - [ ] **25.7 Blocked Country Codes**
@@ -1085,7 +1074,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
 
 - [ ] **25.11 Audit: replace all hardcoded values across codebase**
   - `convex/agent.ts` — imports from constants
-  - `convex/usageTracking.ts` — imports MODEL_COSTS from constants
+  - ~~`convex/usageTracking.ts`~~ *(removed — usage tracking deferred to PostHog)*
   - `convex/lib/utils.ts` — imports BLOCKED_COUNTRY_CODES, SYSTEM_COMMANDS, WHATSAPP_MAX_MESSAGE_LENGTH
   - `convex/credits.ts` — imports tier limits
   - `convex/schema.test.ts` — imports from constants

@@ -178,7 +178,7 @@ All set! Ask me anything 💬
 - **Pro ($19/month):** 600 credits/month
 - **1 credit per request** — regardless of model used (Flash, Pro, or Opus escalation)
 - **Free (0 credits):** system commands — "credits", "help", "privacy", "my memory", "clear memory", "upgrade", "account", admin commands
-- Track usage per message (model, tokens in/out, cost)
+- Usage tracking (model, tokens, cost) handled by PostHog, not stored in Convex
 - When credits run out → friendly message, upgrade CTA for Basic users, reset date for Pro
 - **Monthly reset:** Convex cron job runs daily, resets credits for users whose `creditsResetAt` has passed
 - **Billing:** Clerk Billing for Pro subscriptions. Webhook at `POST /api/clerk/webhook`:
@@ -186,7 +186,7 @@ All set! Ask me anything 💬
   - `subscription.cancelled` → downgrade to Basic at period end
   - `subscription.updated` → handle plan changes
   - Verify webhook signature with Clerk signing secret
-- Convex `usage` table: userId, model, tokensIn, tokensOut, cost, timestamp
+- ~~Convex `usage` table~~ *(removed — usage/cost tracking deferred to PostHog)*
 
 ### 10. Document Processing + RAG
 When a user sends any file, two things happen simultaneously:
@@ -549,7 +549,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 **Admin commands (via WhatsApp):**
 - `admin stats` → total users, active today/week/month, new signups today
 - `admin revenue` → Pro subscribers count, MRR, upgrades/cancellations this month
-- `admin credits` → credits consumed today, breakdown by model, total cost
+- `admin credits` → credits consumed today, breakdown by model (via PostHog)
 - `admin top users` → 10 most active users this week (anonymized or by name)
 - `admin search +971...` → specific user: credits, tier, storage, last active, signup date
 - `admin grant +971... pro` → manually upgrade a user
@@ -560,7 +560,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - `/admin` route on ghali.ae, Clerk auth + admin role check
 - PostHog embeds for visual analytics
 - User management table with search
-- Revenue and usage charts
+- Revenue and usage charts (powered by PostHog)
 
 **Personality: Two-Layer Architecture**
 
@@ -701,15 +701,7 @@ who actually knows you — not starting from scratch.
 //   "remind me every Monday to call mom" → agent updates heartbeat file
 // Web UI: direct markdown editor for each file.
 
-// usage table
-{
-  userId: Id<"users">,
-  model: string,
-  tokensIn: number,
-  tokensOut: number,
-  cost: number,
-  timestamp: number,
-}
+// usage table — removed (tracking deferred to PostHog)
 
 // scheduledJobs table (for heartbeat + reminders)
 {
@@ -736,7 +728,7 @@ Read these before building:
 - **Tools:** https://docs.convex.dev/agents/tools
 - **Context & RAG:** https://docs.convex.dev/agents/context
 - **Streaming:** https://docs.convex.dev/agents/streaming
-- **Usage tracking:** https://docs.convex.dev/agents/usage-tracking
+- **Usage tracking:** https://docs.convex.dev/agents/usage-tracking *(not used — deferred to PostHog)*
 - **Rate limiting:** https://docs.convex.dev/agents/rate-limiting
 - **RAG component:** https://www.convex.dev/components/rag
 - **Agent GitHub:** https://github.com/get-convex/agent
