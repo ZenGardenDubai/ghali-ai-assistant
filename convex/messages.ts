@@ -3,9 +3,10 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
-import { getCurrentDateTime, fillTemplate } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate, isSystemCommand } from "./lib/utils";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand } from "./lib/systemCommands";
+import { handleOnboarding } from "./lib/onboarding";
 
 /**
  * Save an incoming WhatsApp message and schedule async processing.
@@ -51,6 +52,57 @@ export const generateResponse = internalAction({
     if (!user) {
       console.error(`User not found: ${userId}`);
       return;
+    }
+
+    // Onboarding intercept — before credit check (onboarding is free)
+    if (user.onboardingStep != null && !isSystemCommand(body)) {
+      const result = await handleOnboarding(user.onboardingStep, body, user);
+
+      // Apply user field updates (name, timezone, language, onboardingStep)
+      const userUpdates: Record<string, unknown> = {
+        onboardingStep: result.nextStep,
+      };
+      if (result.updates?.name) userUpdates.name = result.updates.name;
+      if (result.updates?.timezone)
+        userUpdates.timezone = result.updates.timezone;
+      if (result.updates?.language)
+        userUpdates.language = result.updates.language;
+
+      await ctx.runMutation(internal.users.internalUpdateUser, {
+        userId: typedUserId,
+        fields: userUpdates as {
+          name?: string;
+          language?: string;
+          timezone?: string;
+          onboardingStep?: number | null;
+        },
+      });
+
+      // Apply file updates (memory, personality)
+      if (result.fileUpdates?.memory) {
+        await ctx.runMutation(internal.users.internalUpdateUserFile, {
+          userId: typedUserId,
+          filename: "memory",
+          content: result.fileUpdates.memory,
+        });
+      }
+      if (result.fileUpdates?.personality) {
+        await ctx.runMutation(internal.users.internalUpdateUserFile, {
+          userId: typedUserId,
+          filename: "personality",
+          content: result.fileUpdates.personality,
+        });
+      }
+
+      // If skipToAI, fall through to normal AI flow
+      if (!result.skipToAI) {
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: result.response,
+        });
+        return;
+      }
+      // Fall through to AI with onboarding already marked done (nextStep: null)
     }
 
     // Check credit availability (no deduction yet — only deduct after successful response)

@@ -4,6 +4,45 @@
  */
 
 export const TEMPLATES = {
+  // === Onboarding ===
+  onboarding_welcome: {
+    template: `*Hey!* 👋 I'm Ghali, your AI assistant.
+
+I see your name is *{{name}}* — should I call you that, or something else?
+
+🕐 I've set your timezone to *{{timezone}}* based on your number. If you're elsewhere, just tell me your city.
+
+_(Skip: just start chatting anytime)_`,
+    variables: ["name", "timezone"],
+  },
+
+  onboarding_language: {
+    template: `What language do you prefer?
+🇬🇧 English
+🇦🇪 العربية
+🇫🇷 Français
+
+Or just reply in your language and I'll match you automatically ✨`,
+    variables: [],
+  },
+
+  onboarding_personality: {
+    template: `Last thing — how would you like me to be?
+
+😊 Cheerful & friendly
+📋 Professional & serious
+⚡ Brief & to-the-point
+📚 Detailed & thorough
+
+Pick one, or say "skip" — you can change this anytime.`,
+    variables: [],
+  },
+
+  onboarding_complete: {
+    template: `All set! Ask me anything 💬`,
+    variables: [],
+  },
+
   // === Credits ===
   check_credits: {
     template: `*Your Credits* 🪙

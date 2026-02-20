@@ -142,6 +142,22 @@ export const updateUserFile = mutation({
   },
 });
 
+// Internal mutation for use by actions (e.g., onboarding)
+export const internalUpdateUser = internalMutation({
+  args: {
+    userId: v.id("users"),
+    fields: v.object({
+      name: v.optional(v.string()),
+      language: v.optional(v.string()),
+      timezone: v.optional(v.string()),
+      onboardingStep: v.optional(v.union(v.number(), v.null())),
+    }),
+  },
+  handler: async (ctx, { userId, fields }) => {
+    await ctx.db.patch(userId, fields as Record<string, unknown>);
+  },
+});
+
 // Internal queries for use by actions
 export const internalGetUser = internalQuery({
   args: { userId: v.id("users") },
