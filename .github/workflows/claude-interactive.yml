@@ -1,0 +1,97 @@
+name: Claude Interactive Assistant
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    # Trigger when @claude is mentioned in comments, issues, or PR reviews
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Claude Interactive Assistant
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        timeout-minutes: 25
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          max_turns: "25"
+          allowed_tools: |
+            Bash(pnpm test)
+            Bash(pnpm build)
+            Bash(npx vitest *)
+            Bash(npx convex *)
+            Read
+            Write
+            Edit
+            MultiEdit
+            Grep
+            Glob
+          custom_instructions: |
+            You are helping with Ghali, a WhatsApp-first AI assistant built with:
+            - Next.js 15 (App Router, TypeScript, Tailwind)
+            - Convex (real-time serverless DB + backend)
+            - Clerk for auth
+            - @convex-dev/agent for AI agent (threads, messages, tools)
+            - Vercel AI SDK + @ai-sdk/google, @ai-sdk/anthropic, @ai-sdk/openai
+            - Twilio for WhatsApp
+            - Vitest for testing
+            - pnpm (never npm/yarn)
+
+            Key principles:
+            1. AI SDK providers must be v2 (@ai-sdk/google@2, etc.)
+            2. zod must be v3 (not v4) — AI SDK v2 requirement
+            3. Credits: 1 per request, deduct after successful response only
+            4. System commands use templates, never LLM generation
+            5. Web Crypto API for Twilio signature validation (no Node.js crypto)
+            6. TDD: write test first, see fail, implement, see pass
+            7. Convex test files run from convex/ directory with edge-runtime
+
+          settings: |
+            {
+              "env": {
+                "NODE_ENV": "development",
+                "CI": "true"
+              }
+            }
