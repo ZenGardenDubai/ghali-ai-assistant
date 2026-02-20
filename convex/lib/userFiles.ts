@@ -1,4 +1,6 @@
-export const MAX_USER_FILE_SIZE = 10240; // 10KB
+import { MAX_USER_FILE_SIZE } from "../constants";
+
+export { MAX_USER_FILE_SIZE };
 
 export function isFileTooLarge(content: string): boolean {
   return new TextEncoder().encode(content).byteLength > MAX_USER_FILE_SIZE;

@@ -8,6 +8,12 @@ import { z } from "zod";
 import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
+import {
+  AGENT_MAX_STEPS,
+  AGENT_RECENT_MESSAGES,
+  DEFAULT_IMAGE_ASPECT_RATIO,
+  IMAGE_PROMPT_MAX_LENGTH,
+} from "./constants";
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -40,6 +46,12 @@ MEMORY RULES (critical):
 - Use what you know: greet by name, reference past conversations, anticipate needs based on their interests and schedule.
 
 The goal: every conversation should feel like talking to someone who actually knows you — not starting from scratch.
+
+IMAGE GENERATION:
+- Use generateImage when users ask to create, draw, generate, design, or make images
+- Pass the user's EXACT words as the prompt — do NOT rewrite, embellish, or add details. Gemini handles prompt interpretation.
+- ALWAYS use 9:16 (portrait) aspect ratio unless the user explicitly asks for landscape or square — WhatsApp users are on phones
+- If the model declines, tell the user politely and suggest rephrasing
 
 WEB SEARCH:
 - You have access to Google Search for real-time information
@@ -170,6 +182,51 @@ const webSearch = createTool({
   },
 });
 
+const generateImage = createTool({
+  description:
+    "Generate an image from a text prompt. Use when users ask to create, draw, generate, design, or make images. Returns the image URL and a description.",
+  args: z.object({
+    prompt: z
+      .string()
+      .describe(
+        "The user's EXACT image request as they wrote it. Do NOT rewrite, embellish, or add details — pass the user's words verbatim."
+      ),
+    aspectRatio: z
+      .enum(["9:16", "16:9", "1:1"])
+      .default(DEFAULT_IMAGE_ASPECT_RATIO)
+      .describe(
+        "Image aspect ratio. ALWAYS use 9:16 (portrait) unless the user explicitly asks for landscape (16:9) or square (1:1). WhatsApp users are on phones so portrait is best."
+      ),
+  }),
+  handler: async (ctx, { prompt, aspectRatio }): Promise<string> => {
+    if (prompt.length > IMAGE_PROMPT_MAX_LENGTH) {
+      return `Your image prompt is too long (${prompt.length} chars). Please keep it under ${IMAGE_PROMPT_MAX_LENGTH} characters.`;
+    }
+    try {
+      const result: {
+        success: boolean;
+        imageUrl?: string;
+        description?: string;
+        error?: string;
+      } = await ctx.runAction(internal.images.generateAndStoreImage, {
+        userId: ctx.userId as Id<"users">,
+        prompt,
+        aspectRatio,
+      });
+      if (result.success && result.imageUrl) {
+        const caption = result.description || "Here's your generated image.";
+        // Return JSON so messages.ts can extract imageUrl from tool results,
+        // while the stored thread message stays clean (no raw URLs in history)
+        return JSON.stringify({ imageUrl: result.imageUrl, caption });
+      }
+      return `Image generation failed: ${result.error || "Unknown error"}. Please try rephrasing your request.`;
+    } catch (error) {
+      console.error("generateImage tool failed:", error);
+      return "I encountered an error generating the image. Please try again.";
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -181,11 +238,12 @@ export const ghaliAgent = new Agent(components.agent, {
     updateHeartbeat,
     deepReasoning,
     webSearch,
-    // TODO: premiumReasoning, generateImage, searchDocuments
+    generateImage,
+    // TODO: searchDocuments
   },
-  maxSteps: 5,
+  maxSteps: AGENT_MAX_STEPS,
   contextOptions: {
-    recentMessages: 50,
+    recentMessages: AGENT_RECENT_MESSAGES,
   },
   usageHandler: async (ctx, args) => {
     if (!args.userId) return;

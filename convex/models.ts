@@ -14,9 +14,7 @@ export const MODELS = {
   FLASH: "gemini-3-flash-preview",
   /** Deep reasoning escalation — complex math, logic, analysis, coding */
   DEEP_REASONING: "claude-opus-4-6",
-  /** Premium reasoning — premium writing, deep research (future) */
-  PREMIUM_REASONING: "gemini-3-pro-preview",
-  /** Image generation model (future) */
+  /** Image generation model — ~$0.039/image (1,290 output tokens) */
   IMAGE_GENERATION: "gemini-3-pro-image-preview",
   /** Text embedding model for RAG */
   EMBEDDING: "text-embedding-3-small",
@@ -29,6 +27,6 @@ export const MODELS = {
 export const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   [MODELS.FLASH]: { input: 0.1, output: 0.4 },
   [MODELS.DEEP_REASONING]: { input: 15.0, output: 75.0 },
-  [MODELS.PREMIUM_REASONING]: { input: 1.25, output: 10.0 },
+  [MODELS.IMAGE_GENERATION]: { input: 1.25, output: 30.0 },
   [MODELS.EMBEDDING]: { input: 0.02, output: 0 },
 };

@@ -9,6 +9,51 @@ import { TEMPLATES } from "./templates";
 import { handleSystemCommand } from "./lib/systemCommands";
 import { handleOnboarding } from "./lib/onboarding";
 import { isAudioType } from "./lib/voice";
+import { CREDITS_BASIC, CREDITS_PRO } from "./constants";
+
+/**
+ * Try to parse a generateImage tool result (JSON with imageUrl + caption).
+ * Returns the URL and caption, or null if not an image result.
+ */
+export function parseImageToolResult(
+  text: string
+): { imageUrl: string; caption: string } | null {
+  try {
+    const parsed = JSON.parse(text);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      typeof parsed.imageUrl === "string" &&
+      typeof parsed.caption === "string"
+    ) {
+      return { imageUrl: parsed.imageUrl, caption: parsed.caption };
+    }
+  } catch {
+    // Not JSON — not an image tool result
+  }
+  return null;
+}
+
+/**
+ * Scan all tool results from generateText steps for an image generation result.
+ * The generateImage tool returns JSON: { imageUrl, caption }.
+ * We check tool results directly since Flash may not relay the URL in its text.
+ */
+export function extractImageFromSteps(
+  steps: Array<{ toolResults: Array<Record<string, unknown>> }>
+): { imageUrl: string; caption: string } | null {
+  for (const step of steps) {
+    for (const toolResult of step.toolResults) {
+      // @convex-dev/agent uses "output" instead of "result"
+      const text = toolResult.output ?? toolResult.result;
+      if (typeof text === "string") {
+        const match = parseImageToolResult(text);
+        if (match) return match;
+      }
+    }
+  }
+  return null;
+}
 
 /**
  * Save an incoming WhatsApp message and schedule async processing.
@@ -141,7 +186,7 @@ export const generateResponse = internalAction({
 
     // Handle exhausted credits
     if (creditCheck.status === "exhausted") {
-      const maxCredits = user.tier === "pro" ? 600 : 60;
+      const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
       const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
         "en-US",
         { month: "long", day: "numeric", year: "numeric" }
@@ -199,6 +244,7 @@ export const generateResponse = internalAction({
 
     // Generate response
     let responseText: string | undefined;
+    let imageResult: { imageUrl: string; caption: string } | null = null;
     let aiSucceeded = false;
     try {
       const result = await ghaliAgent.generateText(
@@ -212,6 +258,9 @@ export const generateResponse = internalAction({
       );
       responseText = result.text;
       aiSucceeded = true;
+
+      // Check tool results directly for image generation output
+      imageResult = extractImageFromSteps(result.steps);
     } catch (error) {
       console.error("Agent generateText failed:", error);
       responseText = "Sorry, I ran into an issue processing your message. Please try again.";
@@ -224,8 +273,22 @@ export const generateResponse = internalAction({
       });
     }
 
-    if (responseText) {
-      // Send reply via Twilio
+    if (imageResult) {
+      // Send generated image as WhatsApp media, fall back to text if media fails
+      try {
+        await ctx.runAction(internal.twilio.sendMedia, {
+          to: user.phone,
+          caption: imageResult.caption,
+          mediaUrl: imageResult.imageUrl,
+        });
+      } catch (error) {
+        console.error("sendMedia failed, falling back to text:", error);
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: imageResult.caption,
+        });
+      }
+    } else if (responseText) {
       await ctx.runAction(internal.twilio.sendMessage, {
         to: user.phone,
         body: responseText,

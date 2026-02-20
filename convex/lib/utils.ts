@@ -2,6 +2,8 @@
  * Pure utility functions — zero dependencies, trivially testable.
  */
 
+import { WHATSAPP_MAX_LENGTH } from "../constants";
+
 // Country code → IANA timezone mapping
 const COUNTRY_CODE_TIMEZONES: Record<string, string> = {
   "+971": "Asia/Dubai",
@@ -90,10 +92,6 @@ export function fillTemplate(
   });
 }
 
-// Twilio sandbox limit is 1600 chars per message segment.
-// Production WhatsApp Business API supports 4096, but we use the lower
-// limit so it works in both environments.
-const WHATSAPP_MAX_LENGTH = 1500;
 
 const DEFAULT_TIMEZONE = "Asia/Dubai";
 

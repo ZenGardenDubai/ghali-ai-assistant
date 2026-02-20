@@ -3,6 +3,7 @@
  * Used as a Convex action since it needs HTTP access.
  */
 import { splitLongMessage } from "./utils";
+import { TWILIO_MESSAGE_DELAY_MS } from "../constants";
 import { formatForWhatsApp } from "./formatter";
 
 interface TwilioSendOptions {
@@ -54,7 +55,7 @@ export async function sendWhatsAppMessage(
 
   for (let i = 0; i < chunks.length; i++) {
     if (i > 0) {
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, TWILIO_MESSAGE_DELAY_MS));
     }
     await twilioApiCall(options, chunks[i]);
   }

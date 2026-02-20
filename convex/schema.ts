@@ -42,6 +42,14 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_timestamp", ["userId", "timestamp"]),
 
+  generatedImages: defineTable({
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+    expiresAt: v.number(),
+  })
+    .index("by_expiresAt", ["expiresAt"])
+    .index("by_userId", ["userId"]),
+
   scheduledJobs: defineTable({
     userId: v.id("users"),
     kind: v.union(

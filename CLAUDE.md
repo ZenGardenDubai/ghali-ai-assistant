@@ -39,8 +39,7 @@ npx convex deploy         # Deploy Convex functions
 No multi-agent system or external classifier. One agent (Gemini 3 Flash) handles all messages and self-escalates via tool calls:
 
 - **Flash (85%)** — handles directly (fast, cheap)
-- **`deepReasoning` tool → Gemini 3 Pro (10%)** — complex tasks, coding, analysis
-- **`premiumReasoning` tool → Claude Opus 4.6 (5%)** — premium writing, deep research
+- **`deepReasoning` tool → Claude Opus 4.6 (15%)** — complex tasks, coding, analysis, premium writing
 - **`generateImage` tool → Gemini 3 Pro** — image generation
 
 Flash decides when to escalate. No separate classifier call needed.

@@ -8,6 +8,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import OpenAI from "openai";
+import { VOICE_MIN_SIZE_BYTES, VOICE_MAX_SIZE_BYTES } from "./constants";
 import { getAudioExtension } from "./lib/voice";
 
 /**
@@ -61,14 +62,14 @@ export const transcribeVoiceMessage = internalAction({
       const audioBytes = new Uint8Array(audioBuffer);
 
       // Size validation
-      if (audioBytes.length < 1024) {
+      if (audioBytes.length < VOICE_MIN_SIZE_BYTES) {
         console.log(
           `[Voice] Audio too short: ${audioBytes.length} bytes (< 1KB)`
         );
         return null;
       }
 
-      if (audioBytes.length > 25 * 1024 * 1024) {
+      if (audioBytes.length > VOICE_MAX_SIZE_BYTES) {
         console.log(
           `[Voice] Audio too large: ${audioBytes.length} bytes (> 25MB)`
         );

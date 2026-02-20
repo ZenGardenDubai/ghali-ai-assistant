@@ -340,7 +340,7 @@ Add deepReasoning tool, Google Search grounding, current date/time awareness, an
 - [x] **8.2 Register tool on the Ghali agent**
 
 - [x] **8.3 Create `convex/models.ts` — Single Source of Truth for model constants**
-  - `MODELS` object: `FLASH`, `DEEP_REASONING`, `PREMIUM_REASONING`, `IMAGE_GENERATION`, `EMBEDDING`
+  - `MODELS` object: `FLASH`, `DEEP_REASONING`, `IMAGE_GENERATION`, `EMBEDDING`
   - `MODEL_COSTS` table with per-1M-token rates
   - All consumers import from here — no hardcoded model strings
 
@@ -574,7 +574,7 @@ Agent tools to read and update the 3 per-user files. These are loaded into conte
 
 - [x] **12.10 Run all tests — pass**
 
-- [ ] **12.11 Commit: "Add per-user files — memory, personality, heartbeat with agent tools"**
+- [x] **12.11 Commit: "Add per-user files — memory, personality, heartbeat with agent tools"**
 
 ---
 
@@ -582,30 +582,30 @@ Agent tools to read and update the 3 per-user files. These are loaded into conte
 
 Receive WhatsApp voice notes, transcribe with Whisper, process as text.
 
-- [ ] **13.1 Test: voice media URL is detected**
+- [x] **13.1 Test: voice media URL is detected**
   - Twilio payload with `MediaContentType0: audio/ogg` is identified as voice
 
-- [ ] **13.2 Test: audio is transcribed to text**
+- [x] **13.2 Test: audio is transcribed to text**
   - Given an audio URL → Whisper returns a transcription string
 
-- [ ] **13.3 Test: transcribed text is processed as normal message**
+- [x] **13.3 Test: transcribed text is processed as normal message**
   - After transcription, the text enters the standard message flow
 
-- [ ] **13.4 Implement voice note detection in webhook**
+- [x] **13.4 Implement voice note detection in webhook**
   - Check `MediaContentType0` for audio types
 
-- [ ] **13.5 Implement `transcribeAudio` action**
+- [x] **13.5 Implement `transcribeAudio` action**
   - Download audio from Twilio media URL
   - Send to OpenAI Whisper API
   - Return transcription text
 
-- [ ] **13.6 Wire into message flow**
+- [x] **13.6 Wire into message flow**
   - If voice note → transcribe first → then process as text message
   - Store both the original audio reference and the transcription
 
-- [ ] **13.7 Run all tests — pass**
+- [x] **13.7 Run all tests — pass**
 
-- [ ] **13.8 Commit: "Add voice note support — Whisper transcription"**
+- [x] **13.8 Commit: "Add voice note support — Whisper transcription"**
 
 ---
 
@@ -1056,7 +1056,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
 
 - [ ] **25.6 Model Constants (from existing `convex/models.ts`)**
   ```
-  MODELS = { FLASH, DEEP_REASONING, PREMIUM_REASONING, IMAGE_GENERATION, EMBEDDING }
+  MODELS = { FLASH, DEEP_REASONING, IMAGE_GENERATION, EMBEDDING }
   MODEL_COSTS = { ... per 1M token rates ... }
   ```
 

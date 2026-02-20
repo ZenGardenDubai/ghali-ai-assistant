@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { isSystemCommand } from "./lib/utils";
+import {
+  CREDITS_BASIC,
+  CREDITS_PRO,
+  CREDIT_RESET_PERIOD_MS,
+} from "./constants";
 
 /**
  * Check credit availability without deducting.
@@ -64,10 +69,10 @@ export const resetCredits = internalMutation({
     let resetCount = 0;
     for (const user of users) {
       if (user.creditsResetAt <= now) {
-        const tierCredits = user.tier === "pro" ? 600 : 60;
+        const tierCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
         await ctx.db.patch(user._id, {
           credits: tierCredits,
-          creditsResetAt: now + 30 * 24 * 60 * 60 * 1000,
+          creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
         });
         resetCount++;
       }

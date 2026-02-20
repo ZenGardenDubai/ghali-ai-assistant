@@ -3,6 +3,11 @@
  * Same pattern as systemCommands.ts: returns data, caller applies side effects.
  */
 
+import {
+  ONBOARDING_SHORT_MESSAGE_WORDS,
+  ONBOARDING_LONG_MESSAGE_WORDS,
+} from "../constants";
+
 import { TEMPLATES } from "../templates";
 import { fillTemplate } from "./utils";
 import { detectLanguage } from "./systemCommands";
@@ -42,10 +47,10 @@ const LANGUAGE_WORDS = /^(english|arabic|french|العربية|عربي|françai
 export function isRealQuestion(message: string): boolean {
   const trimmed = message.trim();
 
-  // Short messages (≤ 4 words) are likely onboarding replies unless they contain "?"
+  // Short messages are likely onboarding replies unless they contain "?"
   const wordCount = trimmed.split(/\s+/).length;
   if (trimmed.includes("?")) return true;
-  if (wordCount <= 4) {
+  if (wordCount <= ONBOARDING_SHORT_MESSAGE_WORDS) {
     if (SHORT_REPLIES.test(trimmed)) return false;
     if (PERSONALITY_WORDS.test(trimmed)) return false;
     if (LANGUAGE_WORDS.test(trimmed)) return false;
@@ -57,8 +62,8 @@ export function isRealQuestion(message: string): boolean {
   // Longer messages: check for question patterns or imperative requests
   if (QUESTION_STARTERS.test(trimmed)) return true;
 
-  // Long messages (8+ words) are likely real questions
-  if (wordCount >= 8) return true;
+  // Long messages are likely real questions
+  if (wordCount >= ONBOARDING_LONG_MESSAGE_WORDS) return true;
 
   return false;
 }

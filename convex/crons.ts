@@ -10,4 +10,11 @@ crons.daily(
   internal.credits.resetCredits
 );
 
+// Daily cleanup of expired generated images from storage
+crons.daily(
+  "image-cleanup",
+  { hourUTC: 1, minuteUTC: 0 },
+  internal.imageStorage.cleanupExpiredImages
+);
+
 export default crons;

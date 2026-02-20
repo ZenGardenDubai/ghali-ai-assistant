@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { detectTimezone } from "./lib/utils";
+import { CREDITS_BASIC, CREDIT_RESET_PERIOD_MS } from "./constants";
 
 export const findOrCreateUser = mutation({
   args: {
@@ -25,8 +26,8 @@ export const findOrCreateUser = mutation({
       timezone: detectTimezone(phone),
       tier: "basic",
       isAdmin: false,
-      credits: 60,
-      creditsResetAt: now + 30 * 24 * 60 * 60 * 1000,
+      credits: CREDITS_BASIC,
+      creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
       onboardingStep: 1,
       createdAt: now,
     });

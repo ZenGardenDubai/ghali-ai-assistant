@@ -9,9 +9,12 @@
  */
 
 import type * as agent from "../agent.js";
+import type * as constants from "../constants.js";
 import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
+import type * as imageStorage from "../imageStorage.js";
+import type * as images from "../images.js";
 import type * as lib_formatter from "../lib/formatter.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as lib_systemCommands from "../lib/systemCommands.js";
@@ -36,9 +39,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agent: typeof agent;
+  constants: typeof constants;
   credits: typeof credits;
   crons: typeof crons;
   http: typeof http;
+  imageStorage: typeof imageStorage;
+  images: typeof images;
   "lib/formatter": typeof lib_formatter;
   "lib/onboarding": typeof lib_onboarding;
   "lib/systemCommands": typeof lib_systemCommands;
