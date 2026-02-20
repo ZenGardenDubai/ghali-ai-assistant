@@ -17,4 +17,11 @@ crons.daily(
   internal.imageStorage.cleanupExpiredImages
 );
 
+// Daily cleanup of expired incoming media files from storage
+crons.daily(
+  "media-file-cleanup",
+  { hourUTC: 1, minuteUTC: 30 },
+  internal.mediaStorage.cleanupExpiredMediaFiles
+);
+
 export default crons;

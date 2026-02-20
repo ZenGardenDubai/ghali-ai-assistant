@@ -37,6 +37,9 @@ export const PRO_PLAN_PRICE_USD = 19;
 /** Generated images expire after 90 days */
 export const IMAGE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
+/** Incoming media files (images, PDFs, docs) expire after 90 days */
+export const MEDIA_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+
 /** Max per-user file size in bytes (10KB) — memory, personality, heartbeat */
 export const MAX_USER_FILE_SIZE = 10_240;
 
@@ -94,3 +97,19 @@ export const ONBOARDING_SHORT_MESSAGE_WORDS = 4;
 
 /** Messages with this many words or more bypass onboarding (real questions) */
 export const ONBOARDING_LONG_MESSAGE_WORDS = 8;
+
+// ============================================================================
+// Document Processing & RAG
+// ============================================================================
+
+/** Minimum media file size (1KB) — smaller files are rejected as empty */
+export const MEDIA_MIN_SIZE_BYTES = 1024;
+
+/** Maximum media file size (20MB) — WhatsApp caps at 16MB, buffer for overhead */
+export const MEDIA_MAX_SIZE_BYTES = 20 * 1024 * 1024;
+
+/** Maximum extracted text length (50K chars) — truncated beyond this */
+export const MAX_EXTRACTION_LENGTH = 50_000;
+
+/** CloudConvert API timeout (30s) */
+export const CLOUDCONVERT_TIMEOUT_MS = 30_000;

@@ -10,6 +10,8 @@ export interface TwilioMessage {
   mediaUrl?: string;
   mediaContentType?: string;
   numMedia: number;
+  messageSid?: string;
+  originalRepliedMessageSid?: string;
 }
 
 /**
@@ -63,5 +65,8 @@ export function parseTwilioMessage(
     mediaUrl: params["MediaUrl0"] || undefined,
     mediaContentType: params["MediaContentType0"] || undefined,
     numMedia: parseInt(params["NumMedia"] ?? "0", 10),
+    messageSid: params["MessageSid"] || undefined,
+    originalRepliedMessageSid:
+      params["OriginalRepliedMessageSid"] || undefined,
   };
 }

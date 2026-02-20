@@ -8,8 +8,12 @@ import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand } from "./lib/systemCommands";
 import { handleOnboarding } from "./lib/onboarding";
-import { isAudioType } from "./lib/voice";
-import { CREDITS_BASIC, CREDITS_PRO } from "./constants";
+import {
+  isSupportedMediaType,
+  isRagIndexable,
+  isVoiceNote,
+} from "./lib/media";
+import { CREDITS_BASIC, CREDITS_PRO, MEDIA_RETENTION_MS } from "./constants";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -65,14 +69,21 @@ export const saveIncoming = internalMutation({
     body: v.string(),
     mediaUrl: v.optional(v.string()),
     mediaContentType: v.optional(v.string()),
+    messageSid: v.optional(v.string()),
+    originalRepliedMessageSid: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, body, mediaUrl, mediaContentType }) => {
+  handler: async (
+    ctx,
+    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid }
+  ) => {
     // Schedule async response generation
     await ctx.scheduler.runAfter(0, internal.messages.generateResponse, {
       userId: userId as string,
       body,
       mediaUrl,
       mediaContentType,
+      messageSid,
+      originalRepliedMessageSid,
     });
   },
 });
@@ -87,9 +98,11 @@ export const generateResponse = internalAction({
     body: v.string(),
     mediaUrl: v.optional(v.string()),
     mediaContentType: v.optional(v.string()),
+    messageSid: v.optional(v.string()),
+    originalRepliedMessageSid: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { userId } = args;
+    const { userId, messageSid, originalRepliedMessageSid } = args;
     let { body, mediaUrl, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
 
@@ -210,8 +223,10 @@ export const generateResponse = internalAction({
     const { date, time, tz } = getCurrentDateTime(user.timezone);
     const userContext = buildUserContext(userFiles, { date, time, tz });
 
-    // Voice note intercept — transcribe audio before AI processing
-    if (mediaUrl && mediaContentType && isAudioType(mediaContentType)) {
+    // Voice note intercept — transcribe and use as text prompt
+    // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.
+    // Other audio formats (mp3, m4a, etc.) are treated as files for Gemini analysis.
+    if (mediaUrl && mediaContentType && isVoiceNote(mediaContentType)) {
       const transcript = await ctx.runAction(
         internal.voice.transcribeVoiceMessage,
         { mediaUrl, mediaType: mediaContentType }
@@ -231,10 +246,70 @@ export const generateResponse = internalAction({
       mediaContentType = undefined;
     }
 
-    // Build prompt
+    // Reply-to-media: if replying to a previous message with stored media, fetch it
+    let isReprocessing = false;
+    if (originalRepliedMessageSid && !mediaUrl) {
+      const stored = await ctx.runQuery(
+        internal.mediaStorage.getMediaBySid,
+        { messageSid: originalRepliedMessageSid }
+      );
+      if (stored) {
+        mediaUrl = stored.storageUrl;
+        mediaContentType = stored.mediaType;
+        isReprocessing = true;
+      }
+    }
+
+    // Build prompt — process media attachments if present
+    // Images, non-voice audio, video, and documents go through Gemini Flash
     let prompt = body;
-    if (mediaUrl && mediaContentType) {
-      prompt = `[Media attached: ${mediaContentType}${body ? ` — "${body}"` : ""}]\nMedia URL: ${mediaUrl}`;
+    if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
+      const result = await ctx.runAction(
+        internal.documents.processMedia,
+        {
+          mediaUrl,
+          mediaType: mediaContentType,
+          userPrompt: body || undefined,
+          isReprocessing,
+        }
+      );
+
+      if (!result) {
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: TEMPLATES.document_extraction_failed.template,
+        });
+        return;
+      }
+
+      const { extracted, storageId } = result;
+
+      // Store media file for future reply-to-media (first-time only, not voice notes)
+      if (messageSid && storageId) {
+        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+          userId: typedUserId,
+          storageId,
+          messageSid,
+          mediaType: mediaContentType,
+          expiresAt: Date.now() + MEDIA_RETENTION_MS,
+        });
+      }
+
+      prompt = body
+        ? `[User sent a file (${mediaContentType})]\nUser's question: "${body}"\n\nExtracted content:\n${extracted}`
+        : `[User sent a file (${mediaContentType})]\n\nExtracted content:\n${extracted}`;
+
+      // Only index documents in RAG (not images, audio, or video)
+      if (isRagIndexable(mediaContentType) && !isReprocessing) {
+        await ctx.scheduler.runAfter(0, internal.rag.indexDocument, {
+          userId: userId,
+          text: extracted,
+          title: `${mediaContentType} — ${new Date().toISOString()}`,
+        });
+      }
+    } else if (mediaUrl && mediaContentType) {
+      // Unsupported media type
+      prompt = `[User sent an unsupported file type: ${mediaContentType}]`;
     }
 
     // Get or create thread for this user

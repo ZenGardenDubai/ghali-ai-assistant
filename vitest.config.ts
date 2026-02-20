@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     environment: "edge-runtime",
     include: ["**/*.test.ts", "**/*.test.tsx"],
-    exclude: ["convex/**", "node_modules/**"],
+    exclude: ["node_modules/**"],
   },
   resolve: {
     alias: {

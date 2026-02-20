@@ -61,6 +61,8 @@ http.route({
       body: message.body,
       mediaUrl: message.mediaUrl,
       mediaContentType: message.mediaContentType,
+      messageSid: message.messageSid,
+      originalRepliedMessageSid: message.originalRepliedMessageSid,
     });
 
     // Return 200 immediately

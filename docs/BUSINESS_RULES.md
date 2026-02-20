@@ -71,6 +71,43 @@ Fallback cost rates for unknown models: `{ input: 0.5, output: 1.5 }` in `convex
 | Minimum audio size | 1KB | `VOICE_MIN_SIZE_BYTES` |
 | Maximum audio size | 25MB | `VOICE_MAX_SIZE_BYTES` |
 
+## Document Processing & RAG
+
+| Rule | Value | Constant |
+|------|-------|----------|
+| Minimum media file size | 1KB | `MEDIA_MIN_SIZE_BYTES` |
+| Maximum media file size | 20MB | `MEDIA_MAX_SIZE_BYTES` |
+| Max extracted text length | 50K chars | `MAX_EXTRACTION_LENGTH` |
+| CloudConvert timeout | 30s | `CLOUDCONVERT_TIMEOUT_MS` |
+| Embedding model | text-embedding-3-small | `MODELS.EMBEDDING` |
+| Embedding dimension | 1536 | — |
+| RAG search limit | 5 results | default in `searchDocuments` |
+
+Supported file types:
+- **Images**: jpeg, png, webp, heic, heif → Gemini Flash analysis (no RAG)
+- **Audio**: wav, mp3, mpeg, aiff, aac, ogg, flac, mp4, webm, amr → Gemini Flash transcription (no RAG)
+- **Video**: mp4, mpeg, webm, 3gpp, mov, avi, flv, mpg, wmv → Gemini Flash analysis (no RAG)
+- **PDF**: application/pdf → Gemini Flash extraction → RAG indexed
+- **Text**: txt, md, csv, html, xml, json → UTF-8 decode → RAG indexed
+- **Office**: docx, pptx, xlsx → CloudConvert → PDF → Gemini Flash → RAG indexed
+
+Env vars: `CLOUDCONVERT_API_KEY` (for Office file conversion)
+
+## Media Storage & Reply-to-Media
+
+| Rule | Value | Constant |
+|------|-------|----------|
+| Media file retention | 90 days | `MEDIA_RETENTION_MS` |
+| Media cleanup cron | Daily at 01:30 UTC | `convex/crons.ts` |
+| Stored media scope | All supported types except voice notes (audio/ogg) | — |
+| Reply-to-media window | 7 days (Twilio `OriginalRepliedMessageSid` limit) | Twilio constraint |
+
+Incoming media files (images, PDFs, documents, audio, video) are stored in Convex file storage keyed by Twilio `MessageSid`. When a user replies to a previous message containing media, the original file is fetched from storage and re-processed with the new question via Gemini Flash.
+
+Voice notes (audio/ogg) are excluded — they are transcribed and used as text input, not stored for re-analysis.
+
+Twilio provides `OriginalRepliedMessageSid` only for replies made within 7 days. Files remain in storage for 90 days (matching generated image retention) but can only be triggered by reply within the Twilio window.
+
 ## Country Code Blocking
 
 Defined in `convex/lib/utils.ts` as `BLOCKED_COUNTRY_CODES`:

@@ -83,11 +83,14 @@ Thanks for being Pro! 💎`,
   help: {
     template: `*Ghali Quick Guide* 💡
 
-💬 *Chat* — Ask anything
-📄 *Documents* — Send PDFs, Word, PowerPoint
-🖼️ *Images* — Send photos or say "generate an image of..."
-🎤 *Voice* — Send voice notes
-🧠 *Memory* — I remember our conversations
+💬 *Chat* — Ask me anything, in any language
+💡 *Deep thinking* — I escalate tough questions (math, coding, analysis) to a more powerful AI automatically
+🔍 *Web search* — I search the web for real-time info (weather, news, prices)
+📄 *Documents* — Send PDFs, Word, PowerPoint, Excel, or text files — I read them and remember them for later
+🖼️ *Images* — Send photos and I'll analyze them, or say "generate an image of..." to create one
+🎤 *Voice & Audio* — Send voice notes or audio files, I understand and respond
+🎬 *Video* — Send videos and I'll describe what's happening
+🧠 *Memory* — I learn your name, preferences, and interests over time — no need to repeat yourself
 
 *Commands:*
 • "credits" — check your balance
@@ -106,19 +109,21 @@ Thanks for being Pro! 💎`,
     template: `*Your Privacy* 🔒
 
 *What I store:*
-• Our conversations (so I remember context)
-• Documents you send (for future reference)
-• What I learn about you (preferences, interests)
+• Conversations — kept as chat history so I have context
+• Documents — extracted text only (the original file is not kept), searchable for future questions
+• Memory — facts I learn about you (name, preferences, interests)
+• Generated images — stored for 90 days, then automatically deleted
 
 *What I never do:*
-• Share your data with anyone
-• Use it for ads
-• Sell it
+• Share your data with other users
+• Use your data for ads or training
+• Sell your data
 
 *You control everything:*
-• "clear memory" — forget conversations
-• "clear documents" — delete files
-• "clear everything" — total reset
+• "my memory" — see what I know about you
+• "clear memory" — erase what I've learned
+• "clear documents" — delete all stored documents
+• "clear everything" — total reset, like we never met
 
 Your data. Your rules.`,
     variables: [],
@@ -200,6 +205,11 @@ Say "yes" to confirm.`,
   // === Voice ===
   voice_transcription_failed: {
     template: `Sorry, I couldn't process that voice message. Please try again or send a text message instead.`,
+    variables: [],
+  },
+  // === Documents ===
+  document_extraction_failed: {
+    template: `Sorry, I couldn't process that file. Please try a different format (PDF, image, or text file) or send it again.`,
     variables: [],
   },
 } as const;

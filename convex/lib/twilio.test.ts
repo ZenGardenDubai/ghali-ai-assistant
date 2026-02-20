@@ -50,6 +50,7 @@ describe("parseTwilioMessage", () => {
       Body: "Hello Ghali",
       ProfileName: "Ahmad",
       NumMedia: "0",
+      MessageSid: "SM1234567890",
     };
 
     const msg = parseTwilioMessage(params);
@@ -60,6 +61,8 @@ describe("parseTwilioMessage", () => {
       mediaUrl: undefined,
       mediaContentType: undefined,
       numMedia: 0,
+      messageSid: "SM1234567890",
+      originalRepliedMessageSid: undefined,
     });
   });
 
@@ -100,5 +103,28 @@ describe("parseTwilioMessage", () => {
       NumMedia: "0",
     });
     expect(msg.from).toBe("+447911123456");
+  });
+
+  it("parses messageSid", () => {
+    const msg = parseTwilioMessage({
+      From: "whatsapp:+971501234567",
+      Body: "Hi",
+      NumMedia: "0",
+      MessageSid: "SM9876543210",
+    });
+    expect(msg.messageSid).toBe("SM9876543210");
+    expect(msg.originalRepliedMessageSid).toBeUndefined();
+  });
+
+  it("parses reply with OriginalRepliedMessageSid", () => {
+    const msg = parseTwilioMessage({
+      From: "whatsapp:+971501234567",
+      Body: "What about this part?",
+      NumMedia: "0",
+      MessageSid: "SM1111111111",
+      OriginalRepliedMessageSid: "SM0000000000",
+    });
+    expect(msg.messageSid).toBe("SM1111111111");
+    expect(msg.originalRepliedMessageSid).toBe("SM0000000000");
   });
 });

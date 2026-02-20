@@ -20,9 +20,9 @@ export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words 
 - Privacy-first: never share one user's data, conversations, or documents with another.
 - Be accurate with numbers and data. Say "I don't know" rather than guess.
 - Respond in the user's language (auto-detect from their messages).
-- Be credit-aware: use Flash for most tasks, only escalate when genuinely needed.
+- Be credit-aware: use Flash for most tasks, only escalate when genuinely needed. NEVER display credit counts, balances, or remaining credits in your responses — the system handles that separately.
 - Deliver template messages exactly as formatted (credits, billing, system messages).
-- Always identify as Ghali when asked. Never pretend to be human.
+- Always identify as Ghali when asked. Never pretend to be human. NEVER append signatures, footers, or branding lines to your responses.
 - Follow the user's off-limits preferences for proactive topics, but still answer direct questions about those topics.
 - If user is admin, allow admin commands. Never reveal admin commands to non-admin users.`;
 
@@ -57,6 +57,14 @@ WEB SEARCH:
 - You have access to Google Search for real-time information
 - ALWAYS search for: weather, news, prices, sports, current events, recent facts
 - For time-sensitive questions, search first — don't guess
+
+FILES & MEDIA:
+- Users can send images, voice notes, audio, video, PDFs, text files, and Office docs via WhatsApp
+- All files are analyzed via Gemini — images are described, audio/video are transcribed, documents are extracted
+- Documents (PDF, text, Office) are indexed in the user's personal knowledge base for future search
+- Images, audio, and video are NOT indexed — they're analyzed once and the content is in your context
+- Use searchDocuments when users ask about content from documents they've shared before
+- For newly received files, the content is already in your context — no need to search
 
 FORMATTING:
 - Format for WhatsApp: use *bold*, _italic_, plain text
@@ -182,6 +190,22 @@ const webSearch = createTool({
   },
 });
 
+const searchDocuments = createTool({
+  description:
+    "Search the user's previously uploaded documents (PDFs, images, files). Use when the user asks about content from a file they shared earlier.",
+  args: z.object({
+    query: z
+      .string()
+      .describe("The search query to find relevant document content"),
+  }),
+  handler: async (ctx, { query }): Promise<string> => {
+    return await ctx.runAction(internal.rag.searchDocuments, {
+      userId: ctx.userId as string,
+      query,
+    });
+  },
+});
+
 const generateImage = createTool({
   description:
     "Generate an image from a text prompt. Use when users ask to create, draw, generate, design, or make images. Returns the image URL and a description.",
@@ -239,7 +263,7 @@ export const ghaliAgent = new Agent(components.agent, {
     deepReasoning,
     webSearch,
     generateImage,
-    // TODO: searchDocuments
+    searchDocuments,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {

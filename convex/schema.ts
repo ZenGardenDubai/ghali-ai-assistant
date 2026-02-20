@@ -50,6 +50,17 @@ export default defineSchema({
     .index("by_expiresAt", ["expiresAt"])
     .index("by_userId", ["userId"]),
 
+  mediaFiles: defineTable({
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+    messageSid: v.string(),
+    mediaType: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_messageSid", ["messageSid"])
+    .index("by_expiresAt", ["expiresAt"])
+    .index("by_userId", ["userId"]),
+
   scheduledJobs: defineTable({
     userId: v.id("users"),
     kind: v.union(
