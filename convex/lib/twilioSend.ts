@@ -3,6 +3,7 @@
  * Used as a Convex action since it needs HTTP access.
  */
 import { splitLongMessage } from "./utils";
+import { formatForWhatsApp } from "./formatter";
 
 interface TwilioSendOptions {
   accountSid: string;
@@ -48,10 +49,14 @@ export async function sendWhatsAppMessage(
   options: TwilioSendOptions,
   body: string
 ): Promise<void> {
-  const chunks = splitLongMessage(body);
+  const formatted = formatForWhatsApp(body);
+  const chunks = splitLongMessage(formatted);
 
-  for (const chunk of chunks) {
-    await twilioApiCall(options, chunk);
+  for (let i = 0; i < chunks.length; i++) {
+    if (i > 0) {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    await twilioApiCall(options, chunks[i]);
   }
 }
 

@@ -95,6 +95,42 @@ export function fillTemplate(
 // limit so it works in both environments.
 const WHATSAPP_MAX_LENGTH = 1500;
 
+const DEFAULT_TIMEZONE = "Asia/Dubai";
+
+export function getCurrentDateTime(timezone?: string): {
+  date: string;
+  time: string;
+  tz: string;
+} {
+  let tz = timezone || DEFAULT_TIMEZONE;
+
+  // Validate timezone by attempting to use it
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz }).format();
+  } catch {
+    tz = DEFAULT_TIMEZONE;
+  }
+
+  const now = new Date();
+
+  const date = new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: tz,
+  }).format(now);
+
+  const time = new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: tz,
+  }).format(now);
+
+  return { date, time, tz };
+}
+
 export function splitLongMessage(
   text: string,
   maxLength: number = WHATSAPP_MAX_LENGTH

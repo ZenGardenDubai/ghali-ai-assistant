@@ -38,7 +38,17 @@ MEMORY RULES (critical):
 - NEVER ask "should I remember this?" — just remember it silently.
 - Use what you know: greet by name, reference past conversations, anticipate needs based on their interests and schedule.
 
-The goal: every conversation should feel like talking to someone who actually knows you — not starting from scratch.`;
+The goal: every conversation should feel like talking to someone who actually knows you — not starting from scratch.
+
+WEB SEARCH:
+- You have access to Google Search for real-time information
+- ALWAYS search for: weather, news, prices, sports, current events, recent facts
+- For time-sensitive questions, search first — don't guess
+
+FORMATTING:
+- Format for WhatsApp: use *bold*, _italic_, plain text
+- No markdown headers (##), tables, or code blocks (\`\`\`)
+- Keep responses concise and mobile-friendly`;
 
 // Tools that let the agent update per-user files
 const updateMemory = createTool({
@@ -125,7 +135,7 @@ const deepReasoning = createTool({
 Rules:
 - Think step-by-step for complex problems
 - Be precise with math, logic, and code
-- Format for WhatsApp: use *bold*, _italic_, and plain text — no markdown headers or tables
+- Format for WhatsApp: use *bold*, _italic_, and plain text — no markdown headers (##), tables, or code blocks (\`\`\`)
 - Keep response concise but complete — aim for clarity over length
 - If the task involves code, provide working code with brief explanation`,
         prompt: task,
@@ -134,6 +144,27 @@ Rules:
     } catch (error) {
       console.error("deepReasoning tool failed:", error);
       return `I attempted deep analysis but encountered an error. Let me answer directly instead.\n\nTask: ${task}`;
+    }
+  },
+});
+
+const webSearch = createTool({
+  description:
+    "Search the web for real-time information: weather, news, prices, sports scores, current events, recent facts. Use this for any time-sensitive question instead of guessing.",
+  args: z.object({
+    query: z.string().describe("The search query"),
+  }),
+  handler: async (_ctx, { query }) => {
+    try {
+      const result = await generateText({
+        model: google(MODELS.FLASH),
+        tools: { google_search: google.tools.googleSearch({}) },
+        prompt: query,
+      });
+      return result.text;
+    } catch (error) {
+      console.error("webSearch tool failed:", error);
+      return `Search failed. I'll answer based on what I know.\n\nQuery: ${query}`;
     }
   },
 });
@@ -148,6 +179,7 @@ export const ghaliAgent = new Agent(components.agent, {
     updatePersonality,
     updateHeartbeat,
     deepReasoning,
+    webSearch,
     // TODO: premiumReasoning, generateImage, searchDocuments
   },
   maxSteps: 5,

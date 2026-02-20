@@ -6,6 +6,7 @@ import {
   isBlockedCountryCode,
   fillTemplate,
   splitLongMessage,
+  getCurrentDateTime,
 } from "./utils";
 
 describe("detectTimezone", () => {
@@ -117,6 +118,42 @@ describe("fillTemplate", () => {
     expect(() => fillTemplate("{{missing}}", {})).toThrow(
       "Missing template variable: missing"
     );
+  });
+});
+
+describe("getCurrentDateTime", () => {
+  it("returns object with date, time, tz properties", () => {
+    const result = getCurrentDateTime();
+    expect(result).toHaveProperty("date");
+    expect(result).toHaveProperty("time");
+    expect(result).toHaveProperty("tz");
+  });
+
+  it("formats date as weekday, month day, year", () => {
+    const result = getCurrentDateTime("Asia/Dubai");
+    // e.g. "Thursday, February 20, 2026"
+    expect(result.date).toMatch(/^\w+, \w+ \d{1,2}, \d{4}$/);
+  });
+
+  it("formats time with AM/PM", () => {
+    const result = getCurrentDateTime("Asia/Dubai");
+    // e.g. "02:30 PM"
+    expect(result.time).toMatch(/\d{1,2}:\d{2}\s[AP]M/);
+  });
+
+  it("defaults to Asia/Dubai", () => {
+    const result = getCurrentDateTime();
+    expect(result.tz).toBe("Asia/Dubai");
+  });
+
+  it("falls back to Asia/Dubai for invalid timezone", () => {
+    const result = getCurrentDateTime("Invalid/Timezone");
+    expect(result.tz).toBe("Asia/Dubai");
+  });
+
+  it("uses provided timezone when valid", () => {
+    const result = getCurrentDateTime("America/New_York");
+    expect(result.tz).toBe("America/New_York");
   });
 });
 

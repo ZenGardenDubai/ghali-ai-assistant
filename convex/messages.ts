@@ -3,6 +3,7 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
+import { getCurrentDateTime } from "./lib/utils";
 
 /**
  * Save an incoming WhatsApp message and schedule async processing.
@@ -60,8 +61,11 @@ export const generateResponse = internalAction({
     const personalityFile = userFiles.find((f) => f.filename === "personality");
     const heartbeatFile = userFiles.find((f) => f.filename === "heartbeat");
 
-    // Build additional context from user files
-    const contextParts: string[] = [];
+    // Inject current date/time context
+    const { date, time, tz } = getCurrentDateTime(user.timezone);
+    const contextParts: string[] = [
+      `CURRENT CONTEXT:\nToday is ${date}\nCurrent time: ${time} (${tz})`,
+    ];
     if (personalityFile?.content) {
       contextParts.push(`## User Personality Preferences\n${personalityFile.content}`);
     }
