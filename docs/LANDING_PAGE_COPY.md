@@ -27,7 +27,19 @@ Ghali learns your preferences, remembers your conversations, and gets better ove
 Your data stays yours. We never sell or share your information. You have full control — view, export, or delete your data anytime.
 
 ### 4. The Smartest AI, Automatically
-Ghali uses the best AI models in the world and picks the right one for each task — whether it's a quick answer, deep analysis, or image creation. You never have to choose.
+Ghali uses the best AI models in the world and picks the right one for each task. You never have to choose.
+
+**Visual showcase — highlight these use cases prominently:**
+
+🔍 **Deep Analysis** — Send a report, get insights. Ask complex questions, get researched answers.
+
+📋 **Strategic Planning** — Build plans, break down goals, structure your thinking.
+
+✍️ **Creative Writing** — Emails, proposals, stories, social posts — in any tone, any language.
+
+🎨 **Image Generation** — Describe what you want, get a stunning image in seconds. Logos, art, visuals — all from a text message.
+
+> *Design note: These 4 use cases should be visually prominent — cards, icons, or mockup screenshots showing real WhatsApp conversations for each. Image generation especially is a wow moment.*
 
 ### 5. Open Source
 Our code is open for anyone to inspect. Because trust shouldn't require blind faith.
