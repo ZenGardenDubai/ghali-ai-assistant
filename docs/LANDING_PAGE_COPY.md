@@ -101,6 +101,33 @@ A: Send "upgrade" to Ghali on WhatsApp and follow the link.
 
 ---
 
+---
+
+## Conversion Strategy & SEO
+
+### Primary Conversion Goal
+Every element on the page drives toward one action: **tap the WhatsApp CTA**. Minimize distractions. The visitor should feel "this is easy, this is safe, let me try it."
+
+### Strength Ranking (by conversion impact)
+1. **Zero Friction** — #1 seller. "No app, no signup" removes the biggest barrier. Lead with this everywhere.
+2. **Privacy First** — High trust signal, especially for Gulf/MENA audience. People are cautious about AI + personal data.
+3. **The Smartest AI** — The use case showcase (analysis, writing, images) shows *value*. This is what makes people curious enough to try.
+4. **Learns & Remembers You** — Differentiator from ChatGPT. Becomes compelling after they understand the basics.
+5. **Open Source** — Trust signal for tech-savvy users. Less impact on general audience but great for credibility and press.
+
+### Separate Marketing Pages (SEO)
+Create dedicated pages for each strength. These serve as SEO landing pages and can be linked from ads, social, and blog posts.
+
+- `/features/no-installation` — Zero friction story. Compare with app-based assistants.
+- `/features/privacy` — Deep dive on data handling, user control, deletion policy. Trust-building.
+- `/features/smart-ai` — Use case showcase with examples. Analysis, planning, writing, image generation.
+- `/features/personal-memory` — How Ghali learns and remembers. What makes it different from generic chatbots.
+- `/features/open-source` — GitHub link, transparency philosophy, community.
+
+Each page should have its own WhatsApp CTA and be independently useful for someone landing from search.
+
+---
+
 ## Footer
 
 © 2026 SAHEM DATA TECHNOLOGY. All rights reserved.
