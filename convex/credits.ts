@@ -1,19 +1,18 @@
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { isSystemCommand } from "./lib/utils";
 
 /**
- * Check and deduct a credit for a message.
+ * Check credit availability without deducting.
  * System commands are free (0 credits).
- * Returns: { status: "ok" | "exhausted" | "free", credits: number }
+ * Returns: { status: "available" | "exhausted" | "free", credits: number }
  */
-export const deductCredit = internalMutation({
+export const checkCredit = internalQuery({
   args: {
     userId: v.id("users"),
     message: v.string(),
   },
   handler: async (ctx, { userId, message }) => {
-    // System commands are free
     if (isSystemCommand(message)) {
       const user = await ctx.db.get(userId);
       return { status: "free" as const, credits: user?.credits ?? 0 };
@@ -28,8 +27,27 @@ export const deductCredit = internalMutation({
       return { status: "exhausted" as const, credits: 0 };
     }
 
-    await ctx.db.patch(userId, { credits: user.credits - 1 });
-    return { status: "ok" as const, credits: user.credits - 1 };
+    return { status: "available" as const, credits: user.credits };
+  },
+});
+
+/**
+ * Deduct 1 credit from a user. Call only after a successful AI response.
+ * Returns the new credit balance.
+ */
+export const deductCredit = internalMutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const newCredits = Math.max(0, user.credits - 1);
+    await ctx.db.patch(userId, { credits: newCredits });
+    return { credits: newCredits };
   },
 });
 

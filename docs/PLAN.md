@@ -352,40 +352,40 @@ Add deepReasoning tool, Google Search grounding, current date/time awareness, an
   - `deepReasoning` handler: try/catch returns graceful fallback on failure
   - `generateResponse` action: try/catch sends "Sorry" message instead of silent failure
 
-- [ ] **8.6 Inject current date/time into every agent turn**
+- [x] **8.6 Inject current date/time into every agent turn**
   - Build `getCurrentDateTime(timezone)` helper — formats date/time in user's timezone
   - Inject into prompt context: `CURRENT CONTEXT: Today is Thursday, February 20, 2026 / Current time: 02:30 AM (Asia/Dubai)`
   - Uses user's timezone from their profile (detected from phone country code)
   - Always included — agent should never be unaware of current date/time
   - Pattern from hub-ai-v2: `convex/ghali/prompts.ts` → `buildGhaliContext()`
 
-- [ ] **8.7 Add Google Search grounding to Flash agent**
+- [x] **8.7 Add Google Search grounding to Flash agent**
   - Import `google.tools.googleSearch` from `@ai-sdk/google`
   - Register as a tool on the agent: `googleSearch: google.tools.googleSearch({})`
   - Gemini's native search grounding — real-time web data (weather, news, prices, sports, current events)
   - System prompt instruction: "For ANY current/real-time information, use google_search. ALWAYS search for time-sensitive questions."
   - Pattern from hub-ai-v2: `convex/toolAgent.ts` line 1221, `convex/ghali/handler.ts` line 1532
 
-- [ ] **8.8 Implement `formatForWhatsApp` utility** *(from hub-ai-v2 pattern)*
+- [x] **8.8 Implement `formatForWhatsApp` utility** *(from hub-ai-v2 pattern)*
   - Port `convex/ghali/formatter.ts` from hub-ai-v2
   - Pipeline: strip code block markers → convert `**bold**` to `*bold*` → strip headers → strip markdown links (keep text) → convert `* item` to `- item` → strip blockquotes → remove horizontal rules → collapse whitespace
   - Apply to ALL outbound messages before splitting
   - Add 500ms delay between multi-part messages to preserve ordering
 
-- [ ] **8.9 Test: formatForWhatsApp converts markdown correctly**
+- [x] **8.9 Test: formatForWhatsApp converts markdown correctly**
   - `**bold**` → `*bold*`
   - `## Header` → `Header`
   - `[link](url)` → `link`
   - Code blocks → plain code text
   - Combined markdown → clean WhatsApp text
 
-- [ ] **8.10 Add formatting instructions to agent system prompt and escalation prompts**
+- [x] **8.10 Add formatting instructions to agent system prompt and escalation prompts**
   - System prompt: "Format for WhatsApp — use *bold*, _italic_, plain text. No markdown headers, tables, or code blocks."
   - Deep reasoning prompt: same rules
 
-- [ ] **8.11 Run all tests — pass**
+- [x] **8.11 Run all tests — pass**
 
-- [ ] **8.12 Commit: "Add escalation, search grounding, date/time, WhatsApp formatter"**
+- [x] **8.12 Commit: "Add escalation, search grounding, date/time, WhatsApp formatter"**
 
 ---
 
@@ -418,11 +418,11 @@ Gate all requests behind credits. Free commands bypass. Monthly resets via cron.
   - Queries all users where `creditsResetAt < now()`
   - Resets credits to tier limit, sets new `creditsResetAt`
 
-- [ ] **9.7 Wire credits into the message flow** *(partially done — deductCredit exists but not yet wired into generateResponse)*
+- [x] **9.7 Wire credits into the message flow**
   - Before `generateResponse`: check/deduct credits
   - If exhausted: send template `credits_exhausted_basic` or `credits_exhausted_pro` instead of generating
 
-- [ ] **9.8 Implement "credits" command handler**
+- [x] **9.8 Implement "credits" command handler**
   - Detects "credits" message → returns `check_credits` template with real data
 
 - [x] **9.9 Run all tests — pass**

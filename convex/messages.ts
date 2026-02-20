@@ -3,7 +3,8 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
-import { getCurrentDateTime } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate } from "./lib/utils";
+import { TEMPLATES } from "./templates";
 
 /**
  * Save an incoming WhatsApp message and schedule async processing.
@@ -51,6 +52,56 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Check credit availability (no deduction yet — only deduct after successful response)
+    const creditCheck = await ctx.runQuery(internal.credits.checkCredit, {
+      userId: typedUserId,
+      message: body,
+    });
+
+    // Handle system command: "credits"
+    if (creditCheck.status === "free") {
+      const command = body.toLowerCase().trim();
+      if (command === "credits") {
+        const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
+          "en-US",
+          { month: "long", day: "numeric", year: "numeric" }
+        );
+        const message = fillTemplate(TEMPLATES.check_credits.template, {
+          credits: creditCheck.credits,
+          tier: user.tier === "pro" ? "Pro" : "Basic",
+          resetDate,
+        });
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: message,
+        });
+        return;
+      }
+      // Other system commands — pass through to AI for now (Section 10)
+    }
+
+    // Handle exhausted credits
+    if (creditCheck.status === "exhausted") {
+      const maxCredits = user.tier === "pro" ? 600 : 60;
+      const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric" }
+      );
+      const templateKey =
+        user.tier === "pro"
+          ? "credits_exhausted_pro"
+          : "credits_exhausted_basic";
+      const message = fillTemplate(TEMPLATES[templateKey].template, {
+        maxCredits,
+        resetDate,
+      });
+      await ctx.runAction(internal.twilio.sendMessage, {
+        to: user.phone,
+        body: message,
+      });
+      return;
+    }
+
     // Load user files for context injection
     const userFiles = await ctx.runQuery(
       internal.users.internalGetUserFiles,
@@ -93,6 +144,7 @@ export const generateResponse = internalAction({
 
     // Generate response
     let responseText: string | undefined;
+    let aiSucceeded = false;
     try {
       const result = await ghaliAgent.generateText(
         ctx,
@@ -104,9 +156,17 @@ export const generateResponse = internalAction({
         }
       );
       responseText = result.text;
+      aiSucceeded = true;
     } catch (error) {
       console.error("Agent generateText failed:", error);
       responseText = "Sorry, I ran into an issue processing your message. Please try again.";
+    }
+
+    // Only deduct credit after successful AI response
+    if (aiSucceeded && creditCheck.status === "available") {
+      await ctx.runMutation(internal.credits.deductCredit, {
+        userId: typedUserId,
+      });
     }
 
     if (responseText) {
