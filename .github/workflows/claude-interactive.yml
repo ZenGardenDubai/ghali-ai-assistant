@@ -57,7 +57,10 @@ jobs:
           max_turns: "25"
           allowed_tools: |
             Bash(pnpm test)
+            Bash(pnpm test:*)
             Bash(pnpm build)
+            Bash(pnpm lint)
+            Bash(pnpm type-check)
             Bash(npx vitest *)
             Bash(npx convex *)
             Read
