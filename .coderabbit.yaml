@@ -1,7 +1,0 @@
-reviews:
-  auto_review:
-    enabled: true
-    base_branches:
-      - main
-  commits:
-    enabled: true
