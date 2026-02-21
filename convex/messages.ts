@@ -3,10 +3,10 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
-import { getCurrentDateTime, fillTemplate, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
-import { handleSystemCommand, renderSystemMessage } from "./lib/systemCommands";
+import { handleSystemCommand, renderSystemMessage, detectLanguage, translateMessage } from "./lib/systemCommands";
 import { PENDING_ACTION_EXPIRY_MS } from "./constants";
 import { handleAdminCommand } from "./lib/adminCommands";
 import { handleOnboarding } from "./lib/onboarding";
@@ -121,8 +121,17 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Classify command — resolves translated commands (e.g. "مساعدة" → "help")
+    // During onboarding, use cheap English-only check to avoid unnecessary Flash calls.
+    // Full Flash classification only runs outside onboarding.
+    const canonicalCommand = user.onboardingStep != null
+      ? (isSystemCommand(body) ? body.toLowerCase().trim() : null)
+      : await classifyCommand(body);
+    const messageForCredits = canonicalCommand ?? body;
+
     // Onboarding intercept — before credit check (onboarding is free)
-    if (user.onboardingStep != null && !isSystemCommand(body)) {
+    // Skip onboarding only if the message is an actual system command.
+    if (user.onboardingStep != null && !canonicalCommand) {
       const result = await handleOnboarding(user.onboardingStep, body, user);
 
       // Apply user field updates (name, timezone, language, onboardingStep)
@@ -163,9 +172,12 @@ export const generateResponse = internalAction({
 
       // If skipToAI, fall through to normal AI flow
       if (!result.skipToAI) {
+        // Translate onboarding response to the user's language
+        const lang = result.updates?.language ?? user.language ?? "en";
+        const translatedResponse = await translateMessage(result.response, lang);
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
-          body: result.response,
+          body: translatedResponse,
         });
         return;
       }
@@ -175,7 +187,7 @@ export const generateResponse = internalAction({
     // Check credit availability (no deduction yet — only deduct after successful response)
     const creditCheck = await ctx.runQuery(internal.credits.checkCredit, {
       userId: typedUserId,
-      message: body,
+      message: messageForCredits,
     });
 
     // Load user files early — needed for both system commands and AI context
@@ -273,7 +285,7 @@ export const generateResponse = internalAction({
 
       // For "upgrade" command, generate a token-based URL
       let upgradeUrl: string | undefined;
-      if (body.toLowerCase().trim() === "upgrade" && user.tier !== "pro") {
+      if (canonicalCommand === "upgrade" && user.tier !== "pro") {
         const { token } = await ctx.runMutation(
           internal.billing.generateUpgradeToken,
           { userId: typedUserId }
@@ -283,10 +295,10 @@ export const generateResponse = internalAction({
       }
 
       const systemResult = await handleSystemCommand(
-        body,
+        messageForCredits,
         user,
         userFiles,
-        body,
+        body, // original message for language detection
         docCount,
         upgradeUrl
       );
@@ -304,7 +316,7 @@ export const generateResponse = internalAction({
         });
         return;
       }
-      // "account" or unrecognized → fall through to AI
+      // Unrecognized command → fall through to AI
     }
 
     // Admin command intercept — free for admins, non-admins fall through to AI

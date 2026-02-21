@@ -3,6 +3,7 @@ import {
   detectTimezone,
   canAfford,
   isSystemCommand,
+  classifyCommand,
   isAdminCommand,
   isBlockedCountryCode,
   fillTemplate,
@@ -70,6 +71,20 @@ describe("isSystemCommand", () => {
   it("rejects non-system messages", () => {
     expect(isSystemCommand("what's the weather")).toBe(false);
     expect(isSystemCommand("hello")).toBe(false);
+    expect(isSystemCommand("مساعدة")).toBe(false); // non-English → needs classifyCommand
+  });
+});
+
+describe("classifyCommand", () => {
+  it("returns exact English command instantly", async () => {
+    expect(await classifyCommand("help")).toBe("help");
+    expect(await classifyCommand("UPGRADE")).toBe("upgrade");
+    expect(await classifyCommand("clear everything")).toBe("clear everything");
+  });
+
+  it("returns null for long messages without API call", async () => {
+    expect(await classifyCommand("what is the weather in dubai today")).toBe(null);
+    expect(await classifyCommand("can you help me with my homework")).toBe(null);
   });
 });
 

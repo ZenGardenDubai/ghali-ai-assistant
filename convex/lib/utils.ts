@@ -51,7 +51,7 @@ export function canAfford(credits: number, cost: number): boolean {
   return credits >= cost;
 }
 
-const SYSTEM_COMMANDS = new Set([
+export const SYSTEM_COMMANDS: ReadonlySet<string> = new Set([
   "credits",
   "help",
   "privacy",
@@ -63,8 +63,67 @@ const SYSTEM_COMMANDS = new Set([
   "clear everything",
 ]);
 
+/** Max words for a message to be considered a potential command. */
+const COMMAND_MAX_WORDS = 4;
+
+/**
+ * Quick check: is this message an exact English system command?
+ * For non-English detection, use classifyCommand() which calls Flash.
+ */
 export function isSystemCommand(message: string): boolean {
   return SYSTEM_COMMANDS.has(message.toLowerCase().trim());
+}
+
+/**
+ * Classify a message as a system command using Flash.
+ * For English exact matches, returns immediately (no API call).
+ * For short non-English messages, asks Flash to identify the command.
+ * Returns the canonical English command or null if not a command.
+ */
+export async function classifyCommand(message: string): Promise<string | null> {
+  const normalized = message.toLowerCase().trim();
+  if (!normalized) return null;
+
+  // Fast path: exact English match
+  if (SYSTEM_COMMANDS.has(normalized)) return normalized;
+
+  // Skip long messages — not commands
+  const wordCount = normalized.split(/\s+/).length;
+  if (wordCount > COMMAND_MAX_WORDS) return null;
+
+  // Use Flash to classify
+  try {
+    const { generateText } = await import("ai");
+    const { google } = await import("@ai-sdk/google");
+    const { MODELS } = await import("../models");
+
+    const commandList = Array.from(SYSTEM_COMMANDS).join(", ");
+    const result = await generateText({
+      model: google(MODELS.FLASH),
+      temperature: 0,
+      system: `You classify user messages as system commands. The available commands are: ${commandList}.
+
+If the message means the same as one of these commands (in any language — Arabic, French, Spanish, Hindi, Urdu, etc.), return ONLY the exact English command. Examples:
+- "مساعدة" or "المساعدة" or "ساعدني" → help
+- "aide" or "ayuda" → help
+- "رصيد" or "رصيدي" → credits
+- "ترقية" or "الترقية" → upgrade
+- "حسابي" or "compte" → account
+- "خصوصية" → privacy
+- "ذاكرتي" or "ma mémoire" → my memory
+- "مسح الكل" or "effacer tout" → clear everything
+
+If the message is NOT a command (it's a question, greeting, or conversation), return ONLY the word "none".
+Return ONLY the command or "none", nothing else.`,
+      prompt: normalized,
+    });
+
+    const classification = result.text.toLowerCase().trim();
+    return SYSTEM_COMMANDS.has(classification) ? classification : null;
+  } catch (error) {
+    console.error("classifyCommand failed:", error);
+    return null;
+  }
 }
 
 export function isAdminCommand(message: string): boolean {

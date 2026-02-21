@@ -106,44 +106,51 @@ describe("isRealQuestion", () => {
 // ============================================================================
 
 describe("parsePersonalityReply", () => {
-  it("parses cheerful variants", () => {
-    expect(parsePersonalityReply("cheerful")).toBe("cheerful");
-    expect(parsePersonalityReply("friendly")).toBe("cheerful");
-    expect(parsePersonalityReply("😊")).toBe("cheerful");
-    expect(parsePersonalityReply("1")).toBe("cheerful");
-    expect(parsePersonalityReply("Cheerful & friendly")).toBe("cheerful");
+  it("parses cheerful variants", async () => {
+    expect(await parsePersonalityReply("cheerful")).toBe("cheerful");
+    expect(await parsePersonalityReply("friendly")).toBe("cheerful");
+    expect(await parsePersonalityReply("😊")).toBe("cheerful");
+    expect(await parsePersonalityReply("1")).toBe("cheerful");
+    expect(await parsePersonalityReply("Cheerful & friendly")).toBe("cheerful");
   });
 
-  it("parses professional variants", () => {
-    expect(parsePersonalityReply("professional")).toBe("professional");
-    expect(parsePersonalityReply("serious")).toBe("professional");
-    expect(parsePersonalityReply("📋")).toBe("professional");
-    expect(parsePersonalityReply("2")).toBe("professional");
+  it("parses professional variants", async () => {
+    expect(await parsePersonalityReply("professional")).toBe("professional");
+    expect(await parsePersonalityReply("serious")).toBe("professional");
+    expect(await parsePersonalityReply("📋")).toBe("professional");
+    expect(await parsePersonalityReply("2")).toBe("professional");
   });
 
-  it("parses brief variants", () => {
-    expect(parsePersonalityReply("brief")).toBe("brief");
-    expect(parsePersonalityReply("concise")).toBe("brief");
-    expect(parsePersonalityReply("⚡")).toBe("brief");
-    expect(parsePersonalityReply("3")).toBe("brief");
-    expect(parsePersonalityReply("to the point")).toBe("brief");
+  it("parses brief variants", async () => {
+    expect(await parsePersonalityReply("brief")).toBe("brief");
+    expect(await parsePersonalityReply("concise")).toBe("brief");
+    expect(await parsePersonalityReply("⚡")).toBe("brief");
+    expect(await parsePersonalityReply("3")).toBe("brief");
+    expect(await parsePersonalityReply("to the point")).toBe("brief");
   });
 
-  it("parses detailed variants", () => {
-    expect(parsePersonalityReply("detailed")).toBe("detailed");
-    expect(parsePersonalityReply("thorough")).toBe("detailed");
-    expect(parsePersonalityReply("📚")).toBe("detailed");
-    expect(parsePersonalityReply("4")).toBe("detailed");
+  it("parses detailed variants", async () => {
+    expect(await parsePersonalityReply("detailed")).toBe("detailed");
+    expect(await parsePersonalityReply("thorough")).toBe("detailed");
+    expect(await parsePersonalityReply("📚")).toBe("detailed");
+    expect(await parsePersonalityReply("4")).toBe("detailed");
   });
 
-  it("returns null for unrecognized input", () => {
-    expect(parsePersonalityReply("banana")).toBeNull();
-    expect(parsePersonalityReply("")).toBeNull();
-    expect(parsePersonalityReply("5")).toBeNull();
+  it("returns null for unrecognized input", async () => {
+    // Mock Flash returning "none" for unrecognized input
+    mockedGenerateText.mockResolvedValue({ text: "none" } as never);
+    expect(await parsePersonalityReply("banana")).toBeNull();
+    expect(await parsePersonalityReply("")).toBeNull();
+    expect(await parsePersonalityReply("5")).toBeNull();
   });
 
-  it("handles skip", () => {
-    expect(parsePersonalityReply("skip")).toBe("skip");
+  it("handles skip", async () => {
+    expect(await parsePersonalityReply("skip")).toBe("skip");
+  });
+
+  it("classifies non-English personality via Flash", async () => {
+    mockedGenerateText.mockResolvedValue({ text: "brief" } as never);
+    expect(await parsePersonalityReply("مختصر")).toBe("brief");
   });
 });
 
@@ -367,7 +374,7 @@ describe("handleOnboarding", () => {
       expect(result.nextStep).toBeNull(); // done
       expect(result.fileUpdates?.personality).toContain("Tone: playful");
       expect(result.fileUpdates?.memory).toContain("Ahmad");
-      expect(result.response).toContain("All set!");
+      expect(result.response).toContain("*You're all set!*");
     });
 
     it("parses professional style by number", async () => {
@@ -381,7 +388,7 @@ describe("handleOnboarding", () => {
       expect(result.nextStep).toBeNull();
       expect(result.fileUpdates?.personality).toBeUndefined();
       expect(result.fileUpdates?.memory).toContain("Ahmad");
-      expect(result.response).toContain("All set!");
+      expect(result.response).toContain("*You're all set!*");
     });
 
     it("skips to AI if message is a real question", async () => {
@@ -395,9 +402,10 @@ describe("handleOnboarding", () => {
     });
 
     it("handles unrecognized input as skip", async () => {
+      mockedGenerateText.mockResolvedValueOnce({ text: "none" } as never);
       const result = await handleOnboarding(4, "banana", makeUser());
       expect(result.nextStep).toBeNull();
-      expect(result.response).toContain("All set!");
+      expect(result.response).toContain("*You're all set!*");
     });
   });
 });

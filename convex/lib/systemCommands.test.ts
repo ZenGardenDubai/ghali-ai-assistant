@@ -21,6 +21,8 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
   tier: "basic" as const,
   credits: 45,
   creditsResetAt: new Date("2026-03-20").getTime(),
+  language: "en",
+  timezone: "Asia/Dubai",
   ...overrides,
 });
 
@@ -162,7 +164,7 @@ describe("handleSystemCommand", () => {
       "upgrade"
     );
     expect(result).not.toBeNull();
-    expect(result!.response).toContain("*You're Pro!*");
+    expect(result!.response).toContain("*You're already Pro!*");
     expect(result!.response).toContain("580");
   });
 
@@ -231,14 +233,41 @@ describe("handleSystemCommand", () => {
     expect(result!.pendingAction).toBe("clear_everything");
   });
 
-  it("returns null for 'account'", async () => {
+  it("routes 'account' to account template for basic user", async () => {
     const result = await handleSystemCommand(
       "account",
       makeUser(),
       [],
       "account"
     );
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Your Account*");
+    expect(result!.response).toContain("Basic (Free)");
+    expect(result!.response).toContain("45");
+    expect(result!.response).toContain("Asia/Dubai");
+  });
+
+  it("routes 'account' to account template for pro user", async () => {
+    const result = await handleSystemCommand(
+      "account",
+      makeUser({ tier: "pro" as const, credits: 580 }),
+      [],
+      "account"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Pro");
+    expect(result!.response).toContain("580");
+  });
+
+  it("shows canceling note for pro user with subscriptionCanceling", async () => {
+    const result = await handleSystemCommand(
+      "account",
+      makeUser({ tier: "pro" as const, credits: 580, subscriptionCanceling: true }),
+      [],
+      "account"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("cancel");
   });
 
   it("returns null for unknown commands", async () => {

@@ -11,9 +11,14 @@ import { isFileTooLarge } from "./lib/userFiles";
 import {
   AGENT_MAX_STEPS,
   AGENT_RECENT_MESSAGES,
+  CREDITS_BASIC,
+  CREDITS_PRO,
   DEFAULT_IMAGE_ASPECT_RATIO,
   IMAGE_PROMPT_MAX_LENGTH,
   MAX_REMINDERS_PER_USER,
+  PRO_FEATURES,
+  PRO_PLAN_PRICE_MONTHLY_USD,
+  PRO_PLAN_PRICE_ANNUAL_USD,
 } from "./constants";
 import { parseDatetimeInTimezone, getNextCronRun } from "./lib/cronParser";
 
@@ -72,6 +77,13 @@ FORMATTING:
 - Format for WhatsApp: use *bold*, _italic_, plain text
 - No markdown headers (##), tables, or code blocks (\`\`\`)
 - Keep responses concise and mobile-friendly
+
+TIERS & UPGRADE:
+All users get: chat, deep reasoning (Opus), image generation, web search, documents, voice/audio/video, memory.
+Basic tier: ${CREDITS_BASIC} credits/month (free).
+Pro tier: $${PRO_PLAN_PRICE_MONTHLY_USD}/month (or $${PRO_PLAN_PRICE_ANNUAL_USD}/year). Pro-exclusive features:
+${PRO_FEATURES.map((f) => `- ${f}`).join("\n")}
+When users ask about upgrading, ONLY mention the Pro-exclusive features above. Never list features that Basic users already have (like deep reasoning, image generation, or web search) as Pro perks. Tell them to send "upgrade" to get the link.
 
 ABILITIES & LIMITATIONS:
 Keep this section in mind so you set accurate expectations with users.

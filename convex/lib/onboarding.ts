@@ -72,21 +72,45 @@ export function isRealQuestion(message: string): boolean {
 // parsePersonalityReply
 // ============================================================================
 
-export function parsePersonalityReply(reply: string): string | null {
+const PERSONALITY_OPTIONS = new Set(["cheerful", "professional", "brief", "detailed", "skip"]);
+
+export async function parsePersonalityReply(reply: string): Promise<string | null> {
   const lower = reply.toLowerCase().trim();
+  if (!lower) return null;
 
-  if (lower === "skip") return "skip";
-
-  // Cheerful
+  // Fast path: exact English match or number/emoji
+  if (lower === "skip" || /تخطي|passer|saltar/.test(lower)) return "skip";
   if (/cheerful|friendly|😊/.test(lower) || lower === "1") return "cheerful";
-  // Professional
   if (/professional|serious|📋/.test(lower) || lower === "2") return "professional";
-  // Brief
   if (/brief|concise|to the point|⚡/.test(lower) || lower === "3") return "brief";
-  // Detailed
   if (/detailed|thorough|📚/.test(lower) || lower === "4") return "detailed";
 
-  return null;
+  // Non-English: use Flash to classify
+  try {
+    const { generateText } = await import("ai");
+    const { google } = await import("@ai-sdk/google");
+    const { MODELS } = await import("../models");
+
+    const result = await generateText({
+      model: google(MODELS.FLASH),
+      temperature: 0,
+      system: `Classify the user's personality preference. Options: cheerful, professional, brief, detailed, skip.
+Return ONLY one of those words. If the message means:
+- Happy/friendly/warm → cheerful
+- Formal/serious/professional → professional
+- Short/concise/brief/to-the-point → brief
+- Detailed/thorough/comprehensive → detailed
+- Skip/pass/later → skip
+If it doesn't match any, return "none".`,
+      prompt: lower,
+    });
+
+    const classification = result.text.toLowerCase().trim();
+    return PERSONALITY_OPTIONS.has(classification) ? classification : null;
+  } catch (error) {
+    console.error("parsePersonalityReply classification failed:", error);
+    return null;
+  }
 }
 
 // ============================================================================
@@ -326,7 +350,7 @@ export async function handleOnboarding(
 
     // Step 4: Parse personality style
     case 4: {
-      const style = parsePersonalityReply(trimmed);
+      const style = await parsePersonalityReply(trimmed);
       const fileUpdates: OnboardingResult["fileUpdates"] = {};
 
       if (style && style !== "skip") {

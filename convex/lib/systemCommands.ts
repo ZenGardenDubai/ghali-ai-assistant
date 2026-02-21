@@ -7,6 +7,7 @@
 
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { CREDITS_BASIC, CREDITS_PRO } from "../constants";
 import { MODELS } from "../models";
 import { TEMPLATES } from "../templates";
 import { fillTemplate } from "./utils";
@@ -106,6 +107,9 @@ interface SystemCommandUser {
   tier: "basic" | "pro";
   credits: number;
   creditsResetAt: number;
+  language: string;
+  timezone: string;
+  subscriptionCanceling?: boolean;
 }
 
 // UserFile type expected by handleSystemCommand
@@ -164,6 +168,7 @@ export async function handleSystemCommand(
             "already_pro",
             {
               credits: user.credits,
+              maxCredits: CREDITS_PRO,
               renewDate,
             },
             userMessage
@@ -215,9 +220,31 @@ export async function handleSystemCommand(
         pendingAction: "clear_everything",
       };
 
-    case "account":
-      // No SPEC template — let AI handle conversationally
-      return null;
+    case "account": {
+      const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
+      const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
+        "en-US",
+        { month: "long", day: "numeric", year: "numeric" }
+      );
+      const cancelingNote = user.subscriptionCanceling
+        ? "\n\n⚠️ Your Pro plan is set to cancel at the end of this billing period."
+        : "";
+      return {
+        response: await renderSystemMessage(
+          "account",
+          {
+            tier: user.tier === "pro" ? "Pro ⭐" : "Basic (Free)",
+            credits: user.credits,
+            maxCredits,
+            resetDate,
+            language: user.language,
+            timezone: user.timezone,
+            cancelingNote,
+          },
+          userMessage
+        ),
+      };
+    }
 
     default:
       return null;

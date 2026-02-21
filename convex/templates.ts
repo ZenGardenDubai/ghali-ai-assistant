@@ -3,6 +3,10 @@
  * Pattern: fill template → detect language → translate if not English.
  */
 
+import { PRO_FEATURES } from "./constants";
+
+const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
+
 export const TEMPLATES = {
   // === Onboarding ===
   onboarding_welcome: {
@@ -12,6 +16,7 @@ I see your name is *{{name}}* — should I call you that, or something else?
 
 🕐 I've set your timezone to *{{timezone}}* based on your number. If you're elsewhere, just tell me your city.
 
+Type *help* anytime to see what I can do.
 _(Skip: just start chatting anytime)_`,
     variables: ["name", "timezone"],
   },
@@ -34,12 +39,26 @@ Or just reply in your language and I'll match you automatically ✨`,
 ⚡ Brief & to-the-point
 📚 Detailed & thorough
 
-Pick one, or say "skip" — you can change this anytime.`,
+Pick one, or say *skip* — you can change this anytime.`,
     variables: [],
   },
 
   onboarding_complete: {
-    template: `All set! Ask me anything 💬`,
+    template: `*You're all set!* Here's what I can do 💬
+
+💬 Chat in any language
+💡 Deep thinking for tough questions
+🔍 Web search for real-time info
+📄 Read and remember your documents
+🖼️ Analyze photos or generate images
+🎤 Understand voice notes and video
+🧠 Remember your preferences over time
+
+*Pro perks:*
+⏰ Precise reminders — down to the minute
+💓 Heartbeat — proactive check-ins
+
+Say *help* anytime for commands. Let's go!`,
     variables: [],
   },
 
@@ -64,7 +83,7 @@ You've used all {{maxCredits}} credits this month.
 
 Want 10x more? *Ghali Pro* — 600 credits/month for just $9.99/mo.
 
-Say "upgrade" to get started ⭐`,
+Say *upgrade* to get started ⭐`,
     variables: ["maxCredits", "resetDate"],
   },
 
@@ -84,23 +103,24 @@ Thanks for being Pro! 💎`,
     template: `*Ghali Quick Guide* 💡
 
 💬 *Chat* — Ask me anything, in any language
-💡 *Deep thinking* — I escalate tough questions (math, coding, analysis) to a more powerful AI automatically
-🔍 *Web search* — I search the web for real-time info (weather, news, prices)
-📄 *Documents* — Send PDFs, Word, PowerPoint, Excel, or text files — I read them and remember them for later
-🖼️ *Images* — Send photos and I'll analyze them, or say "generate an image of..." to create one
-🎤 *Voice & Audio* — Send voice notes or audio files, I understand and respond
-🎬 *Video* — Send videos and I'll describe what's happening
-🧠 *Memory* — I learn your name, preferences, and interests over time — no need to repeat yourself
+💡 *Deep thinking* — Tough questions get escalated to a more powerful AI automatically
+🔍 *Web search* — Real-time info (weather, news, prices, sports)
+📄 *Documents* — Send PDFs, Word, Excel, or text files — I read and remember them
+🖼️ *Images* — Send photos for analysis, or say *generate an image of...*
+🎤 *Voice & Video* — Send voice notes, audio, or video — I understand them
+🧠 *Memory* — I learn your preferences over time — no need to repeat yourself
+⏰ *Reminders* — Set one-time or recurring reminders (Pro: precise to the minute)
+💓 *Heartbeat* — Proactive check-ins based on your schedule (Pro)
 
 *Commands:*
-• "credits" — check your balance
-• "my memory" — what I know about you
-• "clear memory" — forget our conversations
-• "clear documents" — delete stored files
-• "clear everything" — full reset
-• "upgrade" — get Pro
-• "privacy" — how your data is handled
-• "help" — this guide`,
+• *account* — your plan, credits, and settings
+• *my memory* — what I know about you
+• *clear memory* — forget our conversations
+• *clear documents* — delete stored files
+• *clear everything* — full reset
+• *upgrade* — get Pro
+• *privacy* — how your data is handled
+• *help* — this guide`,
     variables: [],
   },
 
@@ -120,10 +140,10 @@ Thanks for being Pro! 💎`,
 • Sell your data
 
 *You control everything:*
-• "my memory" — see what I know about you
-• "clear memory" — erase what I've learned
-• "clear documents" — delete all stored documents
-• "clear everything" — total reset, like we never met
+• *my memory* — see what I know about you
+• *clear memory* — erase what I've learned
+• *clear documents* — delete all stored documents
+• *clear everything* — total reset, like we never met
 
 Your data. Your rules.`,
     variables: [],
@@ -134,9 +154,7 @@ Your data. Your rules.`,
     template: `*Ghali Pro* ⭐
 
 *What you get:*
-✅ 600 credits/month (10x Basic)
-✅ Priority responses
-✅ Heartbeat — proactive check-ins
+${proFeaturesList}
 
 *$9.99/month* (or $99.48/year — save 17%)
 
@@ -145,13 +163,25 @@ Your data. Your rules.`,
   },
   // === Upgrade (already Pro) ===
   already_pro: {
-    template: `*You're Pro!* ⭐
+    template: `*You're already Pro!* 💎
 
-*Credits:* {{credits}}/600
-*Renews:* {{renewDate}}
+*Credits left:* {{credits}}/{{maxCredits}}
+*Resets:* {{renewDate}}
 
-Thanks for being a Pro member 💎`,
-    variables: ["credits", "renewDate"],
+You've got the full package — enjoy! ⭐`,
+    variables: ["credits", "maxCredits", "renewDate"],
+  },
+
+  // === Account ===
+  account: {
+    template: `*Your Account* 👤
+
+*Plan:* {{tier}}
+*Credits:* {{credits}}/{{maxCredits}}
+*Resets:* {{resetDate}}
+*Language:* {{language}}
+*Timezone:* {{timezone}}{{cancelingNote}}`,
+    variables: ["tier", "credits", "maxCredits", "resetDate", "language", "timezone", "cancelingNote"],
   },
 
   // === Memory ===
@@ -160,7 +190,7 @@ Thanks for being a Pro member 💎`,
 
 {{memoryContent}}
 
-Want me to forget something? Just say "forget that I..." or "clear memory" for a full reset.`,
+Want me to forget something? Just say *forget that I...* or *clear memory* for a full reset.`,
     variables: ["memoryContent"],
   },
 
@@ -172,7 +202,7 @@ I'll forget everything I've learned about you — preferences, past conversation
 
 Your documents stay safe.
 
-Say "yes" to confirm.`,
+Say *yes* to confirm.`,
     variables: [],
   },
 
@@ -183,7 +213,7 @@ I'll delete all {{docCount}} stored documents.
 
 Your memory and conversations stay safe.
 
-Say "yes" to confirm.`,
+Say *yes* to confirm.`,
     variables: ["docCount"],
   },
 
@@ -197,7 +227,7 @@ This deletes:
 
 Only your account and credits remain.
 
-Say "yes" to confirm.`,
+Say *yes* to confirm.`,
     variables: [],
   },
   // === Clear Data Done ===
@@ -297,7 +327,7 @@ No user with phone {{phone}}.`,
 *Message:* {{message}}
 *Recipients:* {{activeCount}} active users (last 24h)
 
-Say "yes" to send.`,
+Say *yes* to send.`,
     variables: ["message", "activeCount"],
   },
 
