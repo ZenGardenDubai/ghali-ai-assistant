@@ -934,7 +934,7 @@ Pro subscriptions via Clerk Billing. Webhook handles subscription lifecycle.
 
 - [x] **21.9 Run all tests — pass (352 tests)**
 
-- [ ] **21.10 Commit: "Add Clerk billing — subscription webhooks, upgrade flow"**
+- [x] **21.10 Commit: "Add Clerk billing — subscription webhooks, upgrade flow"**
 
 ---
 
