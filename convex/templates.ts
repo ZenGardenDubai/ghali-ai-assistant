@@ -135,7 +135,6 @@ Your data. Your rules.`,
 
 *What you get:*
 ✅ 600 credits/month (10x Basic)
-✅ 500MB document storage (5x Basic)
 ✅ Priority responses
 ✅ Heartbeat — proactive check-ins
 
@@ -149,11 +148,10 @@ Your data. Your rules.`,
     template: `*You're Pro!* ⭐
 
 *Credits:* {{credits}}/600
-*Storage:* {{storageUsed}} of 500MB
 *Renews:* {{renewDate}}
 
 Thanks for being a Pro member 💎`,
-    variables: ["credits", "storageUsed", "renewDate"],
+    variables: ["credits", "renewDate"],
   },
 
   // === Memory ===

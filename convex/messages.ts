@@ -270,12 +270,25 @@ export const generateResponse = internalAction({
       const docCount = await ctx.runQuery(internal.rag.getDocumentCount, {
         userId: userId,
       });
+
+      // For "upgrade" command, generate a token-based URL
+      let upgradeUrl: string | undefined;
+      if (body.toLowerCase().trim() === "upgrade" && user.tier !== "pro") {
+        const { token } = await ctx.runMutation(
+          internal.billing.generateUpgradeToken,
+          { userId: typedUserId }
+        );
+        const baseUrl = process.env.UPGRADE_URL ?? "https://ghali.ae/upgrade";
+        upgradeUrl = `${baseUrl}?token=${token}`;
+      }
+
       const systemResult = await handleSystemCommand(
         body,
         user,
         userFiles,
         body,
-        docCount
+        docCount,
+        upgradeUrl
       );
       if (systemResult) {
         // Set pending action if this is a clear command

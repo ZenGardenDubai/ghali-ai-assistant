@@ -16,12 +16,12 @@ Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog
 
 ## Tiers & Pricing
 
-| Tier | Price | Credits | Storage |
-|------|-------|---------|---------|
-| Basic | Free | 60/month | 100MB |
-| Pro | $9.99/month (or $99.48/year) | 600/month | 500MB |
+| Tier | Price | Credits |
+|------|-------|---------|
+| Basic | Free | 60/month |
+| Pro | $9.99/month (or $99.48/year) | 600/month |
 
-Constants: `PRO_PLAN_PRICE_USD`, `STORAGE_LIMIT_BASIC_MB`, `STORAGE_LIMIT_PRO_MB`
+Constants: `PRO_PLAN_PRICE_USD`
 
 ## Subscription Lifecycle
 
@@ -37,7 +37,7 @@ Managed via Clerk Billing webhooks → `convex/billing.ts` (all `internalMutatio
 
 Key behaviors:
 
-- **Cancel = grace period, not immediate downgrade.** When a user cancels, they keep Pro benefits (tier, credits, storage) until their paid period expires. The `subscriptionCanceling` flag is set so the UI can show "Your plan will end on [date]".
+- **Cancel = grace period, not immediate downgrade.** When a user cancels, they keep Pro benefits (tier, credits) until their paid period expires. The `subscriptionCanceling` flag is set so the UI can show "Your plan will end on [date]".
 - **Credits are not reset on downgrade.** When `subscriptionItem.ended` fires, tier changes to basic but remaining credits stay as-is. The next monthly credit reset cron will give them 60 (basic) instead of 600 (pro).
 - **Reactivation resets credits to 600.** If a user reactivates (new `subscriptionItem.active`), credits are set to `CREDITS_PRO` and the canceling flag is cleared.
 - **Duplicate link guard.** If a `clerkUserId` is already linked to a user, subsequent `linkClerkUser` calls for the same `clerkUserId` are silently skipped.
@@ -79,8 +79,6 @@ Usage and cost tracking is handled by PostHog analytics, not stored in Convex.
 | Generated image retention | 90 days | `IMAGE_RETENTION_MS` |
 | Image cleanup cron | Daily at 01:00 UTC | `convex/crons.ts` |
 | Per-user file max size | 10KB | `MAX_USER_FILE_SIZE` |
-| Document storage (basic) | 100MB | `STORAGE_LIMIT_BASIC_MB` |
-| Document storage (pro) | 500MB | `STORAGE_LIMIT_PRO_MB` |
 
 ## WhatsApp & Messaging
 

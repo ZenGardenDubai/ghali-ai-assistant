@@ -218,7 +218,7 @@ When a user sends any file, two things happen simultaneously:
 
 **Limits:**
 - Max file size: 20MB per file (Twilio limit)
-- Total storage: 100MB Basic / 500MB Pro
+- Files auto-expire after 90 days (TTL policy)
 - Supported via WhatsApp media messages only (no web upload in MVP)
 
 **User experience:**
@@ -340,7 +340,6 @@ Your data. Your rules.`,
 
 *What you get:*
 ✅ 600 credits/month (10x Basic)
-✅ 500MB document storage (5x Basic)
 ✅ Priority responses
 ✅ Heartbeat — proactive check-ins
 
@@ -354,11 +353,10 @@ Your data. Your rules.`,
     template: `*You're Pro!* ⭐
 
 *Credits:* {{credits}}/600
-*Storage:* {{storageUsed}} of 500MB
 *Renews:* {{renewDate}}
 
 Thanks for being a Pro member 💎`,
-    variables: ["credits", "storageUsed", "renewDate"],
+    variables: ["credits", "renewDate"],
   },
 
   // === Memory ===
@@ -380,22 +378,8 @@ Want me to forget something? Just say "forget that I..." or "clear memory" for a
   document_stored: {
     template: `*Saved* 📄
 
-"{{docName}}" is in your knowledge base. Ask me about it anytime.
-
-*Storage:* {{storageUsed}} of {{storageLimit}} used`,
-    variables: ["docName", "storageUsed", "storageLimit"],
-  },
-
-  document_limit_reached: {
-    template: `*Storage Full* 📦
-
-You've used {{storageLimit}} of storage.
-
-• "clear documents" — delete all files
-• "upgrade" — get 500MB with Pro
-
-Or tell me which document to remove.`,
-    variables: ["storageLimit"],
+"{{docName}}" is in your knowledge base. Ask me about it anytime.`,
+    variables: ["docName"],
   },
 
   // === Clear Data ===
@@ -551,7 +535,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - `admin revenue` → Pro subscribers count, MRR, upgrades/cancellations this month
 - `admin credits` → credits consumed today, breakdown by model (via PostHog)
 - `admin top users` → 10 most active users this week (anonymized or by name)
-- `admin search +971...` → specific user: credits, tier, storage, last active, signup date
+- `admin search +971...` → specific user: credits, tier, last active, signup date
 - `admin grant +971... pro` → manually upgrade a user
 - `admin grant +971... credits 100` → add bonus credits
 - `admin broadcast "message"` → send message to all users (with confirmation)

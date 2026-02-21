@@ -84,16 +84,6 @@ http.route({
     }
 
     switch (event.type) {
-      case "user.created": {
-        const phoneObj = event.data.phone_numbers?.[0];
-        if (phoneObj?.phone_number) {
-          await ctx.runMutation(internal.billing.linkClerkUser, {
-            clerkUserId: event.data.id,
-            phone: phoneObj.phone_number,
-          });
-        }
-        break;
-      }
       case "subscriptionItem.active": {
         const activePayerId = event.data.payer?.user_id;
         if (activePayerId) {

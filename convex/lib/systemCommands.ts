@@ -123,7 +123,8 @@ export async function handleSystemCommand(
   user: SystemCommandUser,
   userFiles: UserFile[],
   userMessage: string,
-  docCount?: number
+  docCount?: number,
+  upgradeUrl?: string
 ): Promise<SystemCommandResult | null> {
   const normalized = command.toLowerCase().trim();
 
@@ -163,17 +164,15 @@ export async function handleSystemCommand(
             "already_pro",
             {
               credits: user.credits,
-              storageUsed: "0 KB",
               renewDate,
             },
             userMessage
           ),
         };
       }
-      const upgradeUrl =
-        process.env.UPGRADE_URL ?? "https://ghali.ae/upgrade";
+      const url = upgradeUrl ?? process.env.UPGRADE_URL ?? "https://ghali.ae/upgrade";
       return {
-        response: await renderSystemMessage("upgrade", { upgradeUrl }, userMessage),
+        response: await renderSystemMessage("upgrade", { upgradeUrl: url }, userMessage),
       };
     }
 

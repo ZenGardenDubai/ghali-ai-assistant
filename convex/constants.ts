@@ -46,12 +46,6 @@ export const MEDIA_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 /** Max per-user file size in bytes (10KB) — memory, personality, heartbeat */
 export const MAX_USER_FILE_SIZE = 10_240;
 
-/** Document storage limit for basic tier (100MB) */
-export const STORAGE_LIMIT_BASIC_MB = 100;
-
-/** Document storage limit for pro tier (500MB) */
-export const STORAGE_LIMIT_PRO_MB = 500;
-
 // ============================================================================
 // WhatsApp & Messaging
 // ============================================================================
@@ -119,6 +113,13 @@ export const MAX_EXTRACTION_LENGTH = 50_000;
 
 /** CloudConvert API timeout (30s) */
 export const CLOUDCONVERT_TIMEOUT_MS = 30_000;
+
+// ============================================================================
+// Upgrade Tokens
+// ============================================================================
+
+/** Upgrade token expiry time (1 hour) */
+export const UPGRADE_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
 
 // ============================================================================
 // Rate Limiting

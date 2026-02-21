@@ -8,7 +8,7 @@ Issues, improvements, and tech debt to revisit after MVP completion.
 
 ## Account Command
 
-- **Revamp "account" command** — Currently falls through to AI with no template. Should return a structured account summary: tier (Basic/Pro), credits remaining/total, next credit reset date, document storage used/limit, admin status. Consider also adding sub-commands like "account delete" (full account deletion) and "account export" (data export).
+- **Revamp "account" command** — Currently falls through to AI with no template. Should return a structured account summary: tier (Basic/Pro), credits remaining/total, next credit reset date, admin status. Consider also adding sub-commands like "account delete" (full account deletion) and "account export" (data export).
 
 ## File Conversion Service
 
