@@ -78,6 +78,9 @@ export const saveIncoming = internalMutation({
     ctx,
     { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid }
   ) => {
+    // Track last message time for WhatsApp 24h session window
+    await ctx.db.patch(userId, { lastMessageAt: Date.now() });
+
     // Schedule async response generation
     await ctx.scheduler.runAfter(0, internal.messages.generateResponse, {
       userId: userId as string,

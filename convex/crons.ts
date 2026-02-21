@@ -24,4 +24,11 @@ crons.daily(
   internal.mediaStorage.cleanupExpiredMediaFiles
 );
 
+// Hourly heartbeat check — evaluate pro users' reminders and send proactive messages
+crons.interval(
+  "heartbeat-check",
+  { hours: 1 },
+  internal.heartbeat.processHeartbeats
+);
+
 export default crons;

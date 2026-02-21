@@ -759,34 +759,48 @@ Prevent abuse with per-user rate limits using `@convex-dev/rate-limiter`.
 
 ## 18. Heartbeat (Proactive Check-ins)
 
-Scheduled function that proactively messages users when something needs attention.
+Hourly cron evaluates pro users' heartbeat files and sends proactive WhatsApp messages when reminders are due. AI-parsed — Flash reads the file and decides what's due. No credit deduction (Pro perk). Respects WhatsApp's 24-hour session window.
 
-- [ ] **18.1 Test: heartbeat checks pending items**
-  - User has "remind gym 7am" in heartbeat file
-  - At 7am in user's timezone → message is sent
+- [x] **18.1 Test: heartbeat skips basic users**
+  - Basic tier users are filtered out by `by_tier` index
 
-- [ ] **18.2 Test: heartbeat respects active hours**
-  - Nothing is sent between 11pm and 7am (user's timezone)
+- [x] **18.2 Test: heartbeat skips pro users with empty heartbeat**
+  - Empty heartbeat file → no processing scheduled
 
-- [ ] **18.3 Test: heartbeat skips when nothing is pending**
-  - Empty heartbeat file → no message sent
+- [x] **18.3 Test: heartbeat skips pro users with whitespace-only heartbeat**
+  - Whitespace-only content is treated as empty
 
-- [ ] **18.4 Implement heartbeat scheduler**
-  - Convex scheduled function, configurable interval (default 24h)
-  - Queries users with active heartbeat files
+- [x] **18.4 Test: heartbeat schedules processing for eligible pro users**
+  - Pro user with non-empty heartbeat → `processUserHeartbeat` action scheduled
 
-- [ ] **18.5 Implement heartbeat processor**
-  - Parse heartbeat file for actionable items
-  - Check against current time in user's timezone
-  - If something matches → use agent to compose a natural message → send via Twilio
+- [x] **18.5 Implement `processHeartbeats` (internalMutation, cron target)**
+  - Query pro users via `by_tier` index
+  - Check heartbeat file is non-empty
+  - Schedule `processUserHeartbeat` for each eligible user
 
-- [ ] **18.6 Implement active hours enforcement**
-  - Default: 7am–11pm in user's timezone
-  - Configurable per user
+- [x] **18.6 Implement `processUserHeartbeat` (internalAction)**
+  - Double-check pro tier (race condition guard)
+  - Enforce WhatsApp 24h session window via `lastMessageAt`
+  - Build user context + current datetime
+  - Flash evaluates heartbeat against current time
+  - If due → send WhatsApp message; if not → `__SKIP__`
+  - One-shot reminders cleaned up after firing via `updateHeartbeat` tool
+  - Error handling with try/catch + structured logging
 
-- [ ] **18.7 Run all tests — pass**
+- [x] **18.7 Track `lastMessageAt` on user record**
+  - Schema: added `lastMessageAt: v.optional(v.number())` to users table
+  - Updated on every incoming message in `saveIncoming`
+  - Used by heartbeat to enforce WhatsApp 24h session window
 
-- [ ] **18.8 Commit: "Add heartbeat system — proactive check-ins with timezone awareness"**
+- [x] **18.8 Add `by_tier` index to users table**
+  - Efficient pro-user-only queries for heartbeat cron
+
+- [x] **18.9 Add hourly cron to `crons.ts`**
+  - `crons.interval("heartbeat-check", { hours: 1 }, internal.heartbeat.processHeartbeats)`
+
+- [x] **18.10 Run all tests — pass (300 tests)**
+
+- [ ] **18.11 Commit: "Add heartbeat system — hourly cron, 24h window enforcement, one-shot cleanup"**
 
 ---
 

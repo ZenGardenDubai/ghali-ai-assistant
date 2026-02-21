@@ -19,10 +19,12 @@ export default defineSchema({
       v.literal("clear_everything")
     )),
     pendingActionAt: v.optional(v.number()),
+    lastMessageAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])
-    .index("by_clerkUserId", ["clerkUserId"]),
+    .index("by_clerkUserId", ["clerkUserId"])
+    .index("by_tier", ["tier"]),
 
   userFiles: defineTable({
     userId: v.id("users"),

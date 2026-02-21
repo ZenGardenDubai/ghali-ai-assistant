@@ -14,6 +14,7 @@ import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
 import type * as dataManagement from "../dataManagement.js";
 import type * as documents from "../documents.js";
+import type * as heartbeat from "../heartbeat.js";
 import type * as http from "../http.js";
 import type * as imageStorage from "../imageStorage.js";
 import type * as images from "../images.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   dataManagement: typeof dataManagement;
   documents: typeof documents;
+  heartbeat: typeof heartbeat;
   http: typeof http;
   imageStorage: typeof imageStorage;
   images: typeof images;
