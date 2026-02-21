@@ -73,7 +73,7 @@ Agent updates these via tools: `updateMemory`, `updatePersonality`, `updateHeart
 
 - 1 credit per request regardless of model used
 - System commands (credits, help, privacy, etc.) are free (0 credits)
-- Basic: 60/month free, Pro: 600/month ($19/mo via Clerk Billing)
+- Basic: 60/month free, Pro: 600/month ($9.99/mo or $99.48/year via Clerk Billing)
 - Monthly reset via Convex cron job
 
 ### Template Messages

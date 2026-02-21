@@ -940,7 +940,7 @@ Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO opti
   - Key Strengths — 5 blocks (zero friction, learns you, privacy, smartest AI, open source)
   - "How It Works" — 3 steps
   - "What Ghali Can Do" — 6 capability bullets
-  - Pricing — Basic (free) vs Pro ($19/mo)
+  - Pricing — Basic (free) vs Pro ($9.99/mo or $99.48/year)
   - FAQ section (collapsible)
   - Footer with legal links
 

@@ -62,7 +62,7 @@ You've used all {{maxCredits}} credits this month.
 
 *Resets:* {{resetDate}}
 
-Want 10x more? *Ghali Pro* — 600 credits/month for just $19.
+Want 10x more? *Ghali Pro* — 600 credits/month for just $9.99/mo.
 
 Say "upgrade" to get started ⭐`,
     variables: ["maxCredits", "resetDate"],
@@ -139,7 +139,7 @@ Your data. Your rules.`,
 ✅ Priority responses
 ✅ Heartbeat — proactive check-ins
 
-*$19/month*
+*$9.99/month* (or $99.48/year — save 17%)
 
 👉 {{upgradeUrl}}`,
     variables: ["upgradeUrl"],

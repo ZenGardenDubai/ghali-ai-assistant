@@ -30,7 +30,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
 
 ### System
-- **Credit system** — 60/month free, 600/month Pro ($19/mo). 1 credit per request.
+- **Credit system** — 60/month free, 600/month Pro ($9.99/mo or $99.48/year). 1 credit per request.
 - **System commands** — `credits`, `help`, `privacy`, `upgrade` — template-based, no LLM cost
 - **Country code blocking** — configurable blocklist
 

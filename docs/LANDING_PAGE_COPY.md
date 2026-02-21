@@ -72,7 +72,7 @@ Our code is public. You don't have to take our word for it.
 - All features included
 - No credit card required
 
-### Pro — $19/month
+### Pro — $9.99/month (or $99.48/year)
 - 600 messages per month
 - Priority responses
 - Everything in Basic

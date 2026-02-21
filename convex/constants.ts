@@ -28,7 +28,10 @@ export const CREDIT_RESET_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
 // ============================================================================
 
 /** Pro plan monthly price in USD */
-export const PRO_PLAN_PRICE_USD = 19;
+export const PRO_PLAN_PRICE_MONTHLY_USD = 9.99;
+
+/** Pro plan annual price in USD ($8.29/month equivalent) */
+export const PRO_PLAN_PRICE_ANNUAL_USD = 99.48;
 
 // ============================================================================
 // Storage & Retention

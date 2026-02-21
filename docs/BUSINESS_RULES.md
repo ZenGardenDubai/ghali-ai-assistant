@@ -19,7 +19,7 @@ Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog
 | Tier | Price | Credits | Storage |
 |------|-------|---------|---------|
 | Basic | Free | 60/month | 100MB |
-| Pro | $19/month | 600/month | 500MB |
+| Pro | $9.99/month (or $99.48/year) | 600/month | 500MB |
 
 Constants: `PRO_PLAN_PRICE_USD`, `STORAGE_LIMIT_BASIC_MB`, `STORAGE_LIMIT_PRO_MB`
 

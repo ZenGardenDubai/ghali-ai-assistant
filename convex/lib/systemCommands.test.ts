@@ -151,7 +151,7 @@ describe("handleSystemCommand", () => {
     );
     expect(result).not.toBeNull();
     expect(result!.response).toContain("*Ghali Pro*");
-    expect(result!.response).toContain("$19/month");
+    expect(result!.response).toContain("$9.99/month");
   });
 
   it("routes 'upgrade' for pro user to already_pro template", async () => {
