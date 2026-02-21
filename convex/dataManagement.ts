@@ -83,6 +83,11 @@ export const clearEverything = internalAction({
       userId,
     });
 
+    // Cancel all pending reminders
+    await ctx.runMutation(internal.reminders.cancelAllUserReminders, {
+      userId,
+    });
+
     // Clear pending action
     await ctx.runMutation(internal.users.clearPendingAction, { userId });
 

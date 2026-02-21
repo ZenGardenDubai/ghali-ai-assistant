@@ -13,7 +13,9 @@ import {
   AGENT_RECENT_MESSAGES,
   DEFAULT_IMAGE_ASPECT_RATIO,
   IMAGE_PROMPT_MAX_LENGTH,
+  MAX_REMINDERS_PER_USER,
 } from "./constants";
+import { parseDatetimeInTimezone, getNextCronRun } from "./lib/cronParser";
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -74,7 +76,10 @@ FORMATTING:
 ABILITIES & LIMITATIONS:
 Keep this section in mind so you set accurate expectations with users.
 
-1. *Reminders & Heartbeat* — You can set reminders via updateHeartbeat. An hourly cron checks what's due. This means reminders have ~1 hour precision, NOT minute-exact. When a user asks for "7:24 PM", round to the nearest hour and tell them: "I'll remind you around 7 PM — my reminders run hourly so it won't be exact to the minute." Never promise exact-minute delivery.
+1. *Reminders* — Two systems:
+   a) *Precise reminders* via scheduleReminder — fires at the exact time. Supports one-shot ("4:18 PM today") and recurring ("every weekday at 9am" via cron). Use listReminders/cancelReminder to manage. Max ${MAX_REMINDERS_PER_USER} pending reminders per user.
+   b) *Heartbeat* via updateHeartbeat — hourly awareness checks for general recurring notes. ~1 hour precision.
+   Use precise reminders for time-critical items. Use heartbeat for loose recurring check-ins.
 
 2. *Deep Reasoning* — You can escalate to Claude Opus via deepReasoning for complex tasks (math, coding, analysis, strategy). Use it selectively — it's powerful but expensive. Don't escalate simple questions.
 
@@ -270,6 +275,150 @@ const generateImage = createTool({
   },
 });
 
+const scheduleReminder = createTool({
+  description:
+    "Schedule a precise reminder for the user. Fires at the exact time via WhatsApp. Supports one-shot (specific datetime) or recurring (cron expression). Use for time-critical reminders like 'remind me at 4:18 PM' or 'every weekday at 9am'.",
+  args: z.object({
+    message: z.string().describe("The reminder message to send to the user"),
+    datetime: z
+      .string()
+      .optional()
+      .describe(
+        "ISO datetime for one-shot reminders (e.g. '2026-02-21T16:18:00'). Omit if using cronExpr."
+      ),
+    cronExpr: z
+      .string()
+      .optional()
+      .describe(
+        "5-field cron expression for recurring reminders (e.g. '0 9 * * 1-5' for weekdays at 9am). Omit if using datetime."
+      ),
+    timezone: z
+      .string()
+      .optional()
+      .describe(
+        "IANA timezone (e.g. 'Asia/Dubai'). Defaults to user's timezone."
+      ),
+  }),
+  handler: async (ctx, { message, datetime, cronExpr, timezone }): Promise<string> => {
+    if (!datetime && !cronExpr) {
+      return "Error: Provide either datetime (for one-shot) or cronExpr (for recurring).";
+    }
+
+    const userId = ctx.userId as Id<"users">;
+
+    // Get user timezone if not provided
+    let tz: string = timezone ?? "";
+    if (!tz) {
+      const user = await ctx.runQuery(internal.users.internalGetUser, {
+        userId,
+      }) as { timezone: string } | null;
+      tz = user?.timezone ?? "UTC";
+    }
+
+    try {
+      let runAt: number;
+      if (datetime) {
+        runAt = parseDatetimeInTimezone(datetime, tz);
+        if (runAt <= Date.now()) {
+          return "Error: The specified time is in the past. Please provide a future datetime.";
+        }
+      } else {
+        runAt = getNextCronRun(cronExpr!, tz, new Date());
+      }
+
+      await ctx.runMutation(internal.reminders.createReminder, {
+        userId,
+        payload: message,
+        runAt,
+        cronExpr,
+        timezone: tz,
+      });
+
+      const runDate = new Date(runAt);
+      const formatted: string = runDate.toLocaleString("en-US", {
+        timeZone: tz,
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+      if (cronExpr) {
+        return `Recurring reminder set! Next: ${formatted} (${tz}). Message: "${message}"`;
+      }
+      return `Reminder set for ${formatted} (${tz}): "${message}"`;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return `Failed to set reminder: ${msg}`;
+    }
+  },
+});
+
+const listReminders = createTool({
+  description:
+    "List the user's pending reminders. Shows all scheduled reminders with their times and whether they're recurring.",
+  args: z.object({}),
+  handler: async (ctx): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    const reminders: Array<{
+      _id: string;
+      payload: string;
+      runAt: number;
+      cronExpr?: string;
+      timezone?: string;
+    }> = await ctx.runQuery(internal.reminders.listUserReminders, { userId });
+
+    if (reminders.length === 0) {
+      return "No pending reminders.";
+    }
+
+    const lines = reminders.map((r, i) => {
+      const tz = r.timezone ?? "UTC";
+      const date = new Date(r.runAt).toLocaleString("en-US", {
+        timeZone: tz,
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+      const recurring = r.cronExpr ? " (recurring)" : "";
+      return `${i + 1}. [${r._id}] "${r.payload}" — ${date}${recurring}`;
+    });
+
+    return `Pending reminders:\n${lines.join("\n")}`;
+  },
+});
+
+const cancelReminder = createTool({
+  description:
+    "Cancel a pending reminder by its ID. Use listReminders first to get the reminder ID.",
+  args: z.object({
+    reminderId: z
+      .string()
+      .describe("The reminder ID to cancel (from listReminders)"),
+  }),
+  handler: async (ctx, { reminderId }): Promise<string> => {
+    try {
+      const userId = ctx.userId as Id<"users">;
+      const result = await ctx.runMutation(
+        internal.reminders.cancelReminder,
+        { jobId: reminderId as Id<"scheduledJobs">, userId }
+      ) as { success: boolean; error?: string };
+      if (result.success) {
+        return "Reminder cancelled successfully.";
+      }
+      return `Could not cancel reminder: ${result.error}`;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return `Failed to cancel reminder: ${msg}`;
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -283,6 +432,9 @@ export const ghaliAgent = new Agent(components.agent, {
     webSearch,
     generateImage,
     searchDocuments,
+    scheduleReminder,
+    listReminders,
+    cancelReminder,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {

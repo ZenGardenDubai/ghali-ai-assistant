@@ -72,8 +72,12 @@ export default defineSchema({
       v.literal("done"),
       v.literal("cancelled")
     ),
+    cronExpr: v.optional(v.string()),
+    timezone: v.optional(v.string()),
+    schedulerJobId: v.optional(v.id("_scheduled_functions")),
   })
     .index("by_userId", ["userId"])
     .index("by_runAt", ["runAt"])
-    .index("by_status_runAt", ["status", "runAt"]),
+    .index("by_status_runAt", ["status", "runAt"])
+    .index("by_userId_status", ["userId", "status"]),
 });

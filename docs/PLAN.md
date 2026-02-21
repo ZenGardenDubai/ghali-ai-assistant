@@ -808,7 +808,55 @@ Hourly cron evaluates pro users' heartbeat files and sends proactive WhatsApp me
 
 ---
 
-## 19. Billing (Clerk)
+## 19. Precise Reminders
+
+Structured scheduling system for exact-time and recurring reminders using `ctx.scheduler.runAt()` + `scheduledJobs` table.
+
+- [x] **19.1 Schema: add cronExpr, timezone, schedulerJobId fields to scheduledJobs**
+  - New index: `by_userId_status` for listing user's pending reminders
+
+- [x] **19.2 Create cron parser (`convex/lib/cronParser.ts`)**
+  - Pure functions: `parseCronField`, `getNextCronRun`, `parseDatetimeInTimezone`
+  - Web-standard only (Intl.DateTimeFormat for timezone), no Node deps
+
+- [x] **19.3 Test: cron parser — 17 tests**
+  - `parseCronField`: wildcard, step, range, list, specific value, range+step, out-of-range
+  - `getNextCronRun`: daily, weekday, weekly, every 15 min, timezone, current-time edge
+  - `parseDatetimeInTimezone`: Dubai, UTC, London
+
+- [x] **19.4 Create reminder functions (`convex/reminders.ts`)**
+  - `createReminder` (internalMutation): insert + schedule via `ctx.scheduler.runAt`
+  - `fireReminder` (internalAction): send WhatsApp, handle 24h window, reschedule recurring
+  - `cancelReminder` (internalMutation): mark cancelled + `ctx.scheduler.cancel`
+  - `listUserReminders` (internalQuery): pending reminders for user
+  - `cancelAllUserReminders` (internalMutation): for data management integration
+
+- [x] **19.5 Test: reminder CRUD — 7 tests**
+  - Create inserts pending job, recurring with cronExpr, max cap enforcement
+  - List returns only pending for specific user
+  - Cancel marks as cancelled, error on non-pending
+  - Cancel all clears all pending
+
+- [x] **19.6 Add 3 agent tools**
+  - `scheduleReminder`: one-shot (datetime) or recurring (cronExpr)
+  - `listReminders`: shows pending with IDs, times, recurring status
+  - `cancelReminder`: cancel by ID
+
+- [x] **19.7 Update ABILITIES & LIMITATIONS in agent instructions**
+
+- [x] **19.8 Add `MAX_REMINDERS_PER_USER = 25` to constants**
+
+- [x] **19.9 Update `clearEverything` to cancel pending reminders**
+
+- [x] **19.10 Remove precise reminders from POST_MVP.md**
+
+- [ ] **19.11 Run all tests — pass**
+
+- [ ] **19.12 Commit: "Add precise reminders — exact-time and recurring via scheduler"**
+
+---
+
+## 20. Billing (Clerk)
 
 Pro subscriptions via Clerk Billing. Webhook handles subscription lifecycle.
 
@@ -841,7 +889,7 @@ Pro subscriptions via Clerk Billing. Webhook handles subscription lifecycle.
 
 ---
 
-## 20. Landing Page (ghali.ae)
+## 21. Landing Page (ghali.ae)
 
 Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO optimized.
 
@@ -881,7 +929,7 @@ Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO opti
 
 ---
 
-## 21. PostHog Analytics & Usage Tracking
+## 22. PostHog Analytics & Usage Tracking
 
 Set up and configure PostHog for usage tracking, analytics, and observability across the platform.
 
@@ -918,7 +966,7 @@ Set up and configure PostHog for usage tracking, analytics, and observability ac
 
 ---
 
-## 22. End-to-End Integration Testing
+## 23. End-to-End Integration Testing
 
 Verify the full flow works end-to-end before deployment.
 
@@ -946,7 +994,7 @@ Verify the full flow works end-to-end before deployment.
 
 ---
 
-## 23. Deployment & Configuration
+## 24. Deployment & Configuration
 
 Get everything running in production.
 
@@ -993,7 +1041,7 @@ Get everything running in production.
 
 ---
 
-## 24. Post-Launch Hardening
+## 25. Post-Launch Hardening
 
 Final polish and monitoring after the system is live.
 
@@ -1023,7 +1071,7 @@ Final polish and monitoring after the system is live.
 
 ---
 
-## 25. Constants Single Source of Truth
+## 26. Constants Single Source of Truth
 
 Consolidate ALL business rule constants into a single file (`convex/constants.ts`). Nothing hardcoded anywhere else. Every constant imported from one place.
 
@@ -1106,7 +1154,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
 
 ---
 
-## 26. Documentation
+## 27. Documentation
 
 Update README and ensure docs are complete. SPEC.md is the single source of truth for architecture and business rules — no separate architecture or business rules docs.
 

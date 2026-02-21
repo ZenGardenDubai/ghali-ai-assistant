@@ -133,3 +133,10 @@ export const RATE_LIMIT_BURST_CAPACITY = 40;
 
 /** WhatsApp session window (24 hours) — can only send free-form messages within this window */
 export const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// ============================================================================
+// Reminders
+// ============================================================================
+
+/** Maximum pending reminders per user */
+export const MAX_REMINDERS_PER_USER = 25;
