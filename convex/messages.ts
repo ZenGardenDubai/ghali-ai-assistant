@@ -6,7 +6,7 @@ import { ghaliAgent } from "./agent";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
-import { handleSystemCommand, renderSystemMessage, detectLanguage, translateMessage } from "./lib/systemCommands";
+import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
 import { PENDING_ACTION_EXPIRY_MS } from "./constants";
 import { handleAdminCommand } from "./lib/adminCommands";
 import { handleOnboarding } from "./lib/onboarding";
