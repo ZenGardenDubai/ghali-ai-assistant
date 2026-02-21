@@ -13,6 +13,7 @@ export default defineSchema({
     creditsResetAt: v.number(),
     onboardingStep: v.union(v.number(), v.null()),
     clerkUserId: v.optional(v.string()),
+    subscriptionCanceling: v.optional(v.boolean()),
     pendingAction: v.optional(v.union(
       v.literal("clear_memory"),
       v.literal("clear_documents"),

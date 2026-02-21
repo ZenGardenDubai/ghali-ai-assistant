@@ -20,6 +20,7 @@
     "@ai-sdk/anthropic": "^2.0.65",
     "@ai-sdk/google": "^2.0.54",
     "@ai-sdk/openai": "^2.0.91",
+    "@clerk/backend": "^2.32.0",
     "@clerk/nextjs": "^6.38.0",
     "@convex-dev/agent": "^0.3.2",
     "@convex-dev/rag": "^0.7.1",
@@ -36,6 +37,7 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "svix": "^1.85.0",
     "tailwind-merge": "^3.5.0",
     "twilio": "^5.12.2",
     "zod": "^3.25.76"

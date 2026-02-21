@@ -23,6 +23,31 @@ Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog
 
 Constants: `PRO_PLAN_PRICE_USD`, `STORAGE_LIMIT_BASIC_MB`, `STORAGE_LIMIT_PRO_MB`
 
+## Subscription Lifecycle
+
+Managed via Clerk Billing webhooks → `convex/billing.ts` (all `internalMutation`).
+
+| Event | Clerk Webhook | Action |
+|-------|---------------|--------|
+| User signs up on `/upgrade` | `user.created` | Link `clerkUserId` to Ghali user by phone (`linkClerkUser`) |
+| Subscription activated | `subscriptionItem.active` | Set tier → `"pro"`, credits → 600 |
+| User cancels mid-cycle | `subscriptionItem.canceled` | Set `subscriptionCanceling: true`, keep tier `"pro"` and credits unchanged |
+| Billing period ends after cancel | `subscriptionItem.ended` | Set tier → `"basic"`, clear `subscriptionCanceling` |
+| User reactivates after cancel | `subscriptionItem.active` | Set tier → `"pro"`, credits → 600, clear `subscriptionCanceling` |
+
+Key behaviors:
+
+- **Cancel = grace period, not immediate downgrade.** When a user cancels, they keep Pro benefits (tier, credits, storage) until their paid period expires. The `subscriptionCanceling` flag is set so the UI can show "Your plan will end on [date]".
+- **Credits are not reset on downgrade.** When `subscriptionItem.ended` fires, tier changes to basic but remaining credits stay as-is. The next monthly credit reset cron will give them 60 (basic) instead of 600 (pro).
+- **Reactivation resets credits to 600.** If a user reactivates (new `subscriptionItem.active`), credits are set to `CREDITS_PRO` and the canceling flag is cleared.
+- **Duplicate link guard.** If a `clerkUserId` is already linked to a user, subsequent `linkClerkUser` calls for the same `clerkUserId` are silently skipped.
+
+Schema field: `subscriptionCanceling: v.optional(v.boolean())` on users table.
+
+Webhook endpoint: `POST /clerk-webhook` in `convex/http.ts`, verified with `svix`.
+
+Env var: `CLERK_WEBHOOK_SECRET` (Convex dashboard).
+
 ## Models
 
 Defined in `convex/models.ts`:

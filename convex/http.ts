@@ -3,6 +3,7 @@ import { httpAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { validateTwilioSignature, parseTwilioMessage } from "./lib/twilio";
 import { isBlockedCountryCode } from "./lib/utils";
+import { validateClerkWebhook } from "./lib/clerk";
 
 const http = httpRouter();
 
@@ -70,6 +71,59 @@ http.route({
       status: 200,
       headers: { "Content-Type": "text/xml" },
     });
+  }),
+});
+
+http.route({
+  path: "/clerk-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const event = await validateClerkWebhook(request);
+    if (!event) {
+      return new Response("Verification failed", { status: 400 });
+    }
+
+    switch (event.type) {
+      case "user.created": {
+        const phoneObj = event.data.phone_numbers?.[0];
+        if (phoneObj?.phone_number) {
+          await ctx.runMutation(internal.billing.linkClerkUser, {
+            clerkUserId: event.data.id,
+            phone: phoneObj.phone_number,
+          });
+        }
+        break;
+      }
+      case "subscriptionItem.active": {
+        const activePayerId = event.data.payer?.user_id;
+        if (activePayerId) {
+          await ctx.runMutation(internal.billing.handleSubscriptionActive, {
+            clerkUserId: activePayerId,
+          });
+        }
+        break;
+      }
+      case "subscriptionItem.canceled": {
+        const cancelPayerId = event.data.payer?.user_id;
+        if (cancelPayerId) {
+          await ctx.runMutation(internal.billing.handleSubscriptionCanceled, {
+            clerkUserId: cancelPayerId,
+          });
+        }
+        break;
+      }
+      case "subscriptionItem.ended": {
+        const endPayerId = event.data.payer?.user_id;
+        if (endPayerId) {
+          await ctx.runMutation(internal.billing.handleSubscriptionEnded, {
+            clerkUserId: endPayerId,
+          });
+        }
+        break;
+      }
+    }
+
+    return new Response("OK", { status: 200 });
   }),
 });
 

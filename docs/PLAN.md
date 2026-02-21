@@ -800,7 +800,7 @@ Hourly cron evaluates pro users' heartbeat files and sends proactive WhatsApp me
 
 - [x] **18.10 Run all tests — pass (300 tests)**
 
-- [ ] **18.11 Commit: "Add heartbeat system — hourly cron, 24h window enforcement, one-shot cleanup"**
+- [x] **18.11 Commit: "Add heartbeat system — hourly cron, 24h window enforcement, one-shot cleanup"**
 
 ---
 
@@ -893,7 +893,7 @@ Admin users can run management commands directly from WhatsApp. Non-admins fall 
 
 - [x] **20.9 Run all tests — pass (339 tests)**
 
-- [ ] **20.10 Commit: "Add WhatsApp admin commands — stats, search, grant, broadcast"**
+- [x] **20.10 Commit: "Add WhatsApp admin commands — stats, search, grant, broadcast"**
 
 ---
 
@@ -901,32 +901,40 @@ Admin users can run management commands directly from WhatsApp. Non-admins fall 
 
 Pro subscriptions via Clerk Billing. Webhook handles subscription lifecycle.
 
-- [ ] **21.1 Test: subscription.created upgrades user to Pro**
-  - Clerk webhook → user tier=pro, credits=600
+- [x] **21.1 Install dependencies** — `svix`, `@clerk/backend`
 
-- [ ] **21.2 Test: subscription.cancelled downgrades at period end**
-  - Clerk webhook → mark for downgrade, keep pro until end date
+- [x] **21.2 Schema: add `subscriptionCanceling` to users table**
 
-- [ ] **21.3 Test: webhook signature validation**
-  - Invalid signature → 403
-  - Valid signature → processed
+- [x] **21.3 Webhook validation (`convex/lib/clerk.ts`)**
+  - `validateClerkWebhook()` using svix Webhook class
+  - 3 tests: missing secret, bad signature, missing headers
 
-- [ ] **21.4 Implement `POST /api/clerk/webhook`**
-  - Validate Clerk webhook signature
-  - Handle: `subscription.created`, `subscription.cancelled`, `subscription.updated`
+- [x] **21.4 Billing mutations (`convex/billing.ts`)**
+  - `linkClerkUser` — match Clerk user to Ghali user by phone, duplicate guard
+  - `handleSubscriptionActive` — set tier=pro, credits=600, clear canceling flag
+  - `handleSubscriptionCanceled` — set `subscriptionCanceling: true`, keep pro
+  - `handleSubscriptionEnded` — downgrade to basic, clear canceling flag
+  - All `internalMutation` (not client-callable)
 
-- [ ] **21.5 Implement subscription handlers**
-  - `handleSubscriptionCreated` — upgrade tier, set credits
-  - `handleSubscriptionCancelled` — schedule downgrade
-  - `handleSubscriptionUpdated` — handle plan changes
+- [x] **21.5 Webhook route (`convex/http.ts`)**
+  - `POST /clerk-webhook` — handles `user.created`, `subscriptionItem.active/canceled/ended`
+  - Payer ID extracted from `event.data.payer.user_id`
 
-- [ ] **21.6 Implement "upgrade" command**
-  - Returns `upgrade` template with Clerk checkout URL
-  - If already pro → returns `already_pro` template
+- [x] **21.6 Upgrade page (`app/upgrade/page.tsx`)**
+  - SignedOut → Clerk `<SignIn>` with phone auth
+  - SignedIn → Clerk `<PricingTable>`
 
-- [ ] **21.7 Run all tests — pass**
+- [x] **21.7 ClerkProvider + Middleware**
+  - `app/layout.tsx` wrapped in `<ClerkProvider>`
+  - `middleware.ts` with Clerk auth middleware
 
-- [ ] **21.8 Commit: "Add Clerk billing — subscription webhooks, upgrade flow"**
+- [x] **21.8 Tests — 13 tests pass**
+  - 10 billing tests (link, duplicate guard, activate, cancel, end, no-ops, reactivation)
+  - 3 clerk webhook validation tests
+
+- [x] **21.9 Run all tests — pass (352 tests)**
+
+- [ ] **21.10 Commit: "Add Clerk billing — subscription webhooks, upgrade flow"**
 
 ---
 
