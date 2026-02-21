@@ -965,14 +965,14 @@ Get everything running in production.
   - SSL certificate active
 
 - [ ] **23.4 Configure Twilio webhook**
-  - Set webhook URL: `https://ghali.ae/api/whatsapp/webhook`
+  - Set webhook URL to Convex prod HTTP endpoint: `https://<convex-prod-url>/whatsapp-webhook`
   - Method: POST
   - Verify: test message from WhatsApp reaches the webhook
 
 - [ ] **23.5 Configure Clerk**
   - Set up Clerk application
   - Configure billing/subscription products (Basic, Pro)
-  - Set webhook URL: `https://ghali.ae/api/clerk/webhook`
+  - Set webhook URL to Convex prod HTTP endpoint: `https://<convex-prod-url>/clerk-webhook`
   - Verify: Clerk dashboard shows correct config
 
 - [ ] **23.6 Configure PostHog**
