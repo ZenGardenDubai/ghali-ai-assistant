@@ -116,3 +116,13 @@ export const MAX_EXTRACTION_LENGTH = 50_000;
 
 /** CloudConvert API timeout (30s) */
 export const CLOUDCONVERT_TIMEOUT_MS = 30_000;
+
+// ============================================================================
+// Rate Limiting
+// ============================================================================
+
+/** Max messages per minute per user */
+export const RATE_LIMIT_MESSAGES_PER_MINUTE = 30;
+
+/** Burst capacity — allows short bursts above the steady rate */
+export const RATE_LIMIT_BURST_CAPACITY = 40;

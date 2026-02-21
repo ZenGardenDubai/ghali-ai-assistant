@@ -736,24 +736,24 @@ Users can clear their memory, documents, or everything. Confirmation required.
 
 Prevent abuse with per-user rate limits using `@convex-dev/rate-limiter`.
 
-- [ ] **17.1 Test: rate limit allows normal usage**
+- [x] **17.1 Test: rate limit allows normal usage**
   - User sends 10 messages in a minute → all processed
 
-- [ ] **17.2 Test: rate limit blocks excessive usage**
-  - User sends 60+ messages in a minute → rate limited
-  - Returns a friendly "slow down" message
+- [x] **17.2 Test: rate limit blocks excessive usage**
+  - User sends 40+ messages in a minute → rate limited
+  - Returns a friendly "slow down" message with retry time
 
-- [ ] **17.3 Configure rate limiter**
+- [x] **17.3 Configure rate limiter**
   - Token bucket: 30 messages per minute per user
-  - Burst allowance for reasonable usage
+  - Burst capacity: 40 (10 extra for short bursts)
 
-- [ ] **17.4 Wire into message flow**
-  - Check rate limit before processing
-  - If limited → send rate limit message, skip processing
+- [x] **17.4 Wire into message flow**
+  - Check rate limit before AI generation (after onboarding, credits, system commands)
+  - If limited → send rate limit template, skip processing
 
-- [ ] **17.5 Run all tests — pass**
+- [x] **17.5 Run all tests — pass (296 tests)**
 
-- [ ] **17.6 Commit: "Add rate limiting — per-user token bucket"**
+- [x] **17.6 Commit: "Add rate limiting — per-user token bucket"**
 
 ---
 

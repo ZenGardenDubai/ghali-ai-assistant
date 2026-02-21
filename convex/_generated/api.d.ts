@@ -30,6 +30,7 @@ import type * as mediaStorage from "../mediaStorage.js";
 import type * as messages from "../messages.js";
 import type * as models from "../models.js";
 import type * as rag from "../rag.js";
+import type * as rateLimiting from "../rateLimiting.js";
 import type * as templates from "../templates.js";
 import type * as twilio from "../twilio.js";
 import type * as users from "../users.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   messages: typeof messages;
   models: typeof models;
   rag: typeof rag;
+  rateLimiting: typeof rateLimiting;
   templates: typeof templates;
   twilio: typeof twilio;
   users: typeof users;

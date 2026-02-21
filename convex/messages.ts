@@ -285,6 +285,22 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Rate limit check — only for AI generation requests
+    const rateCheck = await ctx.runMutation(
+      internal.rateLimiting.checkMessageRateLimit,
+      { userId: typedUserId }
+    );
+    if (!rateCheck.ok) {
+      const message = fillTemplate(TEMPLATES.rate_limited.template, {
+        retryAfterSeconds: rateCheck.retryAfterSeconds,
+      });
+      await ctx.runAction(internal.twilio.sendMessage, {
+        to: user.phone,
+        body: message,
+      });
+      return;
+    }
+
     // Build user context from per-user files + datetime
     const { date, time, tz } = getCurrentDateTime(user.timezone);
     const userContext = buildUserContext(userFiles, { date, time, tz });

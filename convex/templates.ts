@@ -243,4 +243,10 @@ Your account and credits remain. Say hi to start fresh 👋`,
     template: `Sorry, I couldn't process that file. Please try a different format (PDF, image, or text file) or send it again.`,
     variables: [],
   },
+
+  // === Rate Limiting ===
+  rate_limited: {
+    template: `You're sending messages too fast. Please wait {{retryAfterSeconds}} seconds and try again.`,
+    variables: ["retryAfterSeconds"],
+  },
 } as const;
