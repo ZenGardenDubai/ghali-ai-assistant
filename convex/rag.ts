@@ -10,7 +10,7 @@
  */
 
 import { v } from "convex/values";
-import { internalAction } from "./_generated/server";
+import { internalAction, internalQuery } from "./_generated/server";
 import { components } from "./_generated/api";
 import { openai } from "@ai-sdk/openai";
 import { RAG, defaultChunker } from "@convex-dev/rag";
@@ -132,5 +132,104 @@ export const searchDocuments = internalAction({
       console.error("[RAG] searchDocuments failed:", error);
       return "Document search failed. Please try again.";
     }
+  },
+});
+
+/**
+ * Get the count of RAG documents in a user's namespace.
+ * Returns 0 if no namespace exists.
+ *
+ * NOTE: Uses internal @convex-dev/rag component APIs (namespaces.get, entries.list)
+ * since the library doesn't expose a public count method. May break on library updates.
+ */
+export const getDocumentCount = internalQuery({
+  args: { userId: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { userId }) => {
+    try {
+      // Look up namespace for this user
+      const ns = await ctx.runQuery(components.rag.namespaces.get, {
+        namespace: userId,
+        dimension: 1536,
+        filterNames: [],
+        modelId: MODELS.EMBEDDING,
+      });
+      if (!ns) return 0;
+
+      // Count entries in this namespace by paginating
+      let count = 0;
+      let cursor: string | null = null;
+      let isDone = false;
+      while (!isDone) {
+        const page: { page: Array<{ status: string }>; isDone: boolean; continueCursor: string } =
+          await ctx.runQuery(components.rag.entries.list, {
+            namespaceId: ns.namespaceId,
+            status: "ready",
+            paginationOpts: { cursor, numItems: 1000 },
+          });
+        count += page.page.length;
+        isDone = page.isDone;
+        cursor = page.continueCursor;
+      }
+      return count;
+    } catch {
+      return 0;
+    }
+  },
+});
+
+/**
+ * Delete all RAG documents in a user's namespace.
+ * No-op if namespace doesn't exist. Errors propagate to caller.
+ *
+ * NOTE: Uses internal @convex-dev/rag component APIs. May break on library updates.
+ * We manually delete entries before namespace because the library's deleteNamespaceSync
+ * has a pagination bug that skips entries on the last page.
+ */
+export const deleteUserNamespace = internalAction({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    // Look up namespace
+    const ns = await ctx.runQuery(components.rag.namespaces.get, {
+      namespace: userId,
+      dimension: 1536,
+      filterNames: [],
+      modelId: MODELS.EMBEDDING,
+    });
+    if (!ns) {
+      console.log(`[RAG] no namespace for user ${userId} — nothing to delete`);
+      return;
+    }
+
+    // Delete all entries in the namespace across all statuses
+    const statuses = ["pending", "ready", "replaced"] as const;
+    for (const status of statuses) {
+      let cursor: string | null = null;
+      let isDone = false;
+      while (!isDone) {
+        const page: { page: Array<{ entryId: string }>; isDone: boolean; continueCursor: string } =
+          await ctx.runQuery(components.rag.entries.list, {
+            namespaceId: ns.namespaceId,
+            status,
+            paginationOpts: { cursor, numItems: 100 },
+          });
+
+        // Delete each entry (deleteSync removes entry + its chunks)
+        for (const entry of page.page) {
+          await ctx.runAction(components.rag.entries.deleteSync, {
+            entryId: entry.entryId,
+          });
+        }
+
+        isDone = page.isDone;
+        cursor = page.continueCursor;
+      }
+    }
+
+    // Now safe to delete the empty namespace
+    await ctx.runMutation(components.rag.namespaces.deleteNamespace, {
+      namespaceId: ns.namespaceId,
+    });
+    console.log(`[RAG] deleted namespace for user ${userId}`);
   },
 });

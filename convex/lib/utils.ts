@@ -67,6 +67,15 @@ export function isSystemCommand(message: string): boolean {
   return SYSTEM_COMMANDS.has(message.toLowerCase().trim());
 }
 
+const AFFIRMATIVE_RESPONSES = new Set([
+  "yes", "y", "نعم", "oui", "si", "confirm", "ok", "sure", "yep", "yeah",
+  "haan", "ہاں", "jee", "جی", // Hindi/Urdu
+]);
+
+export function isAffirmative(message: string): boolean {
+  return AFFIRMATIVE_RESPONSES.has(message.toLowerCase().trim());
+}
+
 const BLOCKED_COUNTRY_CODES = [
   "+91", // India
   "+92", // Pakistan

@@ -117,15 +117,18 @@ describe("handleSystemCommand", () => {
       [],
       "credits"
     );
-    expect(result).toContain("*Your Credits*");
-    expect(result).toContain("45");
-    expect(result).toContain("Basic");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Your Credits*");
+    expect(result!.response).toContain("45");
+    expect(result!.response).toContain("Basic");
+    expect(result!.pendingAction).toBeUndefined();
   });
 
   it("routes 'help' to help template", async () => {
     const result = await handleSystemCommand("help", makeUser(), [], "help");
-    expect(result).toContain("*Ghali Quick Guide*");
-    expect(result).toContain("credits");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Ghali Quick Guide*");
+    expect(result!.response).toContain("credits");
   });
 
   it("routes 'privacy' to privacy template", async () => {
@@ -135,7 +138,8 @@ describe("handleSystemCommand", () => {
       [],
       "privacy"
     );
-    expect(result).toContain("*Your Privacy*");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Your Privacy*");
   });
 
   it("routes 'upgrade' for basic user to upgrade template", async () => {
@@ -145,8 +149,9 @@ describe("handleSystemCommand", () => {
       [],
       "upgrade"
     );
-    expect(result).toContain("*Ghali Pro*");
-    expect(result).toContain("$19/month");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Ghali Pro*");
+    expect(result!.response).toContain("$19/month");
   });
 
   it("routes 'upgrade' for pro user to already_pro template", async () => {
@@ -156,8 +161,9 @@ describe("handleSystemCommand", () => {
       [],
       "upgrade"
     );
-    expect(result).toContain("*You're Pro!*");
-    expect(result).toContain("580");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*You're Pro!*");
+    expect(result!.response).toContain("580");
   });
 
   it("routes 'my memory' with content", async () => {
@@ -167,9 +173,10 @@ describe("handleSystemCommand", () => {
       makeUserFiles("- Likes coffee\n- Lives in Dubai"),
       "my memory"
     );
-    expect(result).toContain("*What I Know About You*");
-    expect(result).toContain("Likes coffee");
-    expect(result).toContain("Lives in Dubai");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*What I Know About You*");
+    expect(result!.response).toContain("Likes coffee");
+    expect(result!.response).toContain("Lives in Dubai");
   });
 
   it("routes 'my memory' with empty memory", async () => {
@@ -179,40 +186,49 @@ describe("handleSystemCommand", () => {
       makeUserFiles(),
       "my memory"
     );
-    expect(result).toContain("*What I Know About You*");
-    expect(result).toContain("haven't learned anything");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*What I Know About You*");
+    expect(result!.response).toContain("haven't learned anything");
   });
 
-  it("routes 'clear memory' to confirmation template", async () => {
+  it("routes 'clear memory' to confirmation template with pendingAction", async () => {
     const result = await handleSystemCommand(
       "clear memory",
       makeUser(),
       [],
       "clear memory"
     );
-    expect(result).toContain("*Clear Memory?*");
-    expect(result).toContain("yes");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Clear Memory?*");
+    expect(result!.response).toContain("yes");
+    expect(result!.pendingAction).toBe("clear_memory");
   });
 
-  it("routes 'clear documents' to confirmation template", async () => {
+  it("routes 'clear documents' to confirmation template with pendingAction", async () => {
     const result = await handleSystemCommand(
       "clear documents",
       makeUser(),
       [],
-      "clear documents"
+      "clear documents",
+      5
     );
-    expect(result).toContain("*Clear Documents?*");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Clear Documents?*");
+    expect(result!.response).toContain("5");
+    expect(result!.pendingAction).toBe("clear_documents");
   });
 
-  it("routes 'clear everything' to confirmation template", async () => {
+  it("routes 'clear everything' to confirmation template with pendingAction", async () => {
     const result = await handleSystemCommand(
       "clear everything",
       makeUser(),
       [],
       "clear everything"
     );
-    expect(result).toContain("*Clear Everything?*");
-    expect(result).toContain("yes");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Clear Everything?*");
+    expect(result!.response).toContain("yes");
+    expect(result!.pendingAction).toBe("clear_everything");
   });
 
   it("returns null for 'account'", async () => {
@@ -242,7 +258,8 @@ describe("handleSystemCommand", () => {
       [],
       "CREDITS"
     );
-    expect(result).toContain("*Your Credits*");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Your Credits*");
   });
 
   it("trims whitespace", async () => {
@@ -252,6 +269,7 @@ describe("handleSystemCommand", () => {
       [],
       "  help  "
     );
-    expect(result).toContain("*Ghali Quick Guide*");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Ghali Quick Guide*");
   });
 });

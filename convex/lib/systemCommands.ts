@@ -88,6 +88,18 @@ export async function renderSystemMessage(
   return translateMessage(filled, lang);
 }
 
+// Pending action types that can be set from a system command
+export type PendingActionType =
+  | "clear_memory"
+  | "clear_documents"
+  | "clear_everything";
+
+// Result from handleSystemCommand — includes optional pendingAction to set
+export interface SystemCommandResult {
+  response: string;
+  pendingAction?: PendingActionType;
+}
+
 // User type expected by handleSystemCommand
 interface SystemCommandUser {
   tier: "basic" | "pro";
@@ -103,14 +115,15 @@ interface UserFile {
 
 /**
  * Route a system command to its template response.
- * Returns the rendered message string, or null to fall through to AI.
+ * Returns { response, pendingAction? } or null to fall through to AI.
  */
 export async function handleSystemCommand(
   command: string,
   user: SystemCommandUser,
   userFiles: UserFile[],
-  userMessage: string
-): Promise<string | null> {
+  userMessage: string,
+  docCount?: number
+): Promise<SystemCommandResult | null> {
   const normalized = command.toLowerCase().trim();
 
   switch (normalized) {
@@ -119,22 +132,24 @@ export async function handleSystemCommand(
         "en-US",
         { month: "long", day: "numeric", year: "numeric" }
       );
-      return renderSystemMessage(
-        "check_credits",
-        {
-          credits: user.credits,
-          tier: user.tier === "pro" ? "Pro" : "Basic",
-          resetDate,
-        },
-        userMessage
-      );
+      return {
+        response: await renderSystemMessage(
+          "check_credits",
+          {
+            credits: user.credits,
+            tier: user.tier === "pro" ? "Pro" : "Basic",
+            resetDate,
+          },
+          userMessage
+        ),
+      };
     }
 
     case "help":
-      return renderSystemMessage("help", {}, userMessage);
+      return { response: await renderSystemMessage("help", {}, userMessage) };
 
     case "privacy":
-      return renderSystemMessage("privacy", {}, userMessage);
+      return { response: await renderSystemMessage("privacy", {}, userMessage) };
 
     case "upgrade": {
       if (user.tier === "pro") {
@@ -142,48 +157,63 @@ export async function handleSystemCommand(
           "en-US",
           { month: "long", day: "numeric", year: "numeric" }
         );
-        return renderSystemMessage(
-          "already_pro",
-          {
-            credits: user.credits,
-            storageUsed: "0 KB", // Placeholder until Section 15
-            renewDate,
-          },
-          userMessage
-        );
+        return {
+          response: await renderSystemMessage(
+            "already_pro",
+            {
+              credits: user.credits,
+              storageUsed: "0 KB",
+              renewDate,
+            },
+            userMessage
+          ),
+        };
       }
       const upgradeUrl =
         process.env.UPGRADE_URL ?? "https://ghali.ae/upgrade";
-      return renderSystemMessage("upgrade", { upgradeUrl }, userMessage);
+      return {
+        response: await renderSystemMessage("upgrade", { upgradeUrl }, userMessage),
+      };
     }
 
     case "my memory": {
       const memoryFile = userFiles.find((f) => f.filename === "memory");
       const memoryContent =
         memoryFile?.content || "I haven't learned anything about you yet. Let's chat!";
-      return renderSystemMessage(
-        "memory_summary",
-        { memoryContent },
-        userMessage
-      );
+      return {
+        response: await renderSystemMessage(
+          "memory_summary",
+          { memoryContent },
+          userMessage
+        ),
+      };
     }
 
     case "clear memory":
-      return renderSystemMessage("clear_memory_confirm", {}, userMessage);
+      return {
+        response: await renderSystemMessage("clear_memory_confirm", {}, userMessage),
+        pendingAction: "clear_memory",
+      };
 
     case "clear documents":
-      return renderSystemMessage(
-        "clear_documents_confirm",
-        { docCount: 0 }, // Placeholder until Section 16
-        userMessage
-      );
+      return {
+        response: await renderSystemMessage(
+          "clear_documents_confirm",
+          { docCount: docCount ?? 0 },
+          userMessage
+        ),
+        pendingAction: "clear_documents",
+      };
 
     case "clear everything":
-      return renderSystemMessage(
-        "clear_everything_confirm",
-        {},
-        userMessage
-      );
+      return {
+        response: await renderSystemMessage(
+          "clear_everything_confirm",
+          {},
+          userMessage
+        ),
+        pendingAction: "clear_everything",
+      };
 
     case "account":
       // No SPEC template — let AI handle conversationally

@@ -43,6 +43,30 @@ export const getMediaBySid = internalQuery({
   },
 });
 
+/** Delete all media files for a user (used by "clear documents" / "clear everything") */
+export const deleteUserMediaFiles = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const files = await ctx.db
+      .query("mediaFiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const file of files) {
+      try {
+        await ctx.storage.delete(file.storageId);
+      } catch {
+        // Storage file may already be deleted — continue cleanup
+      }
+      await ctx.db.delete(file._id);
+    }
+
+    if (files.length > 0) {
+      console.log(`[deleteUserMediaFiles] Deleted ${files.length} files for user ${userId}`);
+    }
+  },
+});
+
 /** Delete expired media files from storage */
 export const cleanupExpiredMediaFiles = internalMutation({
   handler: async (ctx) => {

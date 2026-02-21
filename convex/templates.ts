@@ -202,6 +202,37 @@ Only your account and credits remain.
 Say "yes" to confirm.`,
     variables: [],
   },
+  // === Clear Data Done ===
+  clear_memory_done: {
+    template: `*Memory Cleared* ✅
+
+I've forgotten everything I learned about you. We're starting fresh.
+
+Your documents and account are untouched.`,
+    variables: [],
+  },
+
+  clear_documents_done: {
+    template: `*Documents Cleared* ✅
+
+All {{docCount}} stored documents have been deleted.
+
+Your memory and conversations are untouched.`,
+    variables: ["docCount"],
+  },
+
+  clear_everything_done: {
+    template: `*Complete Reset* ✅
+
+Everything has been cleared:
+• Memory and preferences
+• All stored documents
+• Conversation history
+
+Your account and credits remain. Say hi to start fresh 👋`,
+    variables: [],
+  },
+
   // === Voice ===
   voice_transcription_failed: {
     template: `Sorry, I couldn't process that voice message. Please try again or send a text message instead.`,

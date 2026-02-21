@@ -3,10 +3,12 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
-import { getCurrentDateTime, fillTemplate, isSystemCommand } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate, isSystemCommand, isAffirmative } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
-import { handleSystemCommand } from "./lib/systemCommands";
+import { handleSystemCommand, renderSystemMessage } from "./lib/systemCommands";
+import type { PendingActionType } from "./lib/systemCommands";
+import { PENDING_ACTION_EXPIRY_MS } from "./constants";
 import { handleOnboarding } from "./lib/onboarding";
 import {
   isSupportedMediaType,
@@ -179,18 +181,82 @@ export const generateResponse = internalAction({
       { userId: typedUserId }
     );
 
+    // Confirmation intercept — check for pending "clear" action before anything else
+    if (user.pendingAction && user.pendingActionAt) {
+      const isExpired = Date.now() - user.pendingActionAt > PENDING_ACTION_EXPIRY_MS;
+
+      if (!isExpired && isAffirmative(body)) {
+        // User confirmed — execute the pending clear action
+        const pendingAction = user.pendingAction;
+
+        // Get doc count for the "done" template (before deletion)
+        let docCount = 0;
+        if (pendingAction === "clear_documents" || pendingAction === "clear_everything") {
+          docCount = await ctx.runQuery(internal.rag.getDocumentCount, {
+            userId: userId,
+          });
+        }
+
+        // Execute the appropriate clear action
+        const actionMap: Record<PendingActionType, typeof internal.dataManagement.clearMemory> = {
+          clear_memory: internal.dataManagement.clearMemory,
+          clear_documents: internal.dataManagement.clearDocuments,
+          clear_everything: internal.dataManagement.clearEverything,
+        };
+        await ctx.runAction(actionMap[pendingAction], { userId: typedUserId });
+
+        // Send the "done" template
+        const doneTemplateMap: Record<PendingActionType, "clear_memory_done" | "clear_documents_done" | "clear_everything_done"> = {
+          clear_memory: "clear_memory_done",
+          clear_documents: "clear_documents_done",
+          clear_everything: "clear_everything_done",
+        };
+        const doneVars: Record<string, string | number> =
+          pendingAction === "clear_documents"
+            ? { docCount }
+            : {};
+        const doneMessage = await renderSystemMessage(
+          doneTemplateMap[pendingAction],
+          doneVars,
+          body
+        );
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: doneMessage,
+        });
+        return;
+      }
+
+      // Not affirmative or expired — clear pending action and fall through
+      await ctx.runMutation(internal.users.clearPendingAction, {
+        userId: typedUserId,
+      });
+      // Fall through to normal processing
+    }
+
     // Handle system commands via templates (no AI generation)
     if (creditCheck.status === "free") {
-      const systemResponse = await handleSystemCommand(
+      const docCount = await ctx.runQuery(internal.rag.getDocumentCount, {
+        userId: userId,
+      });
+      const systemResult = await handleSystemCommand(
         body,
         user,
         userFiles,
-        body
+        body,
+        docCount
       );
-      if (systemResponse) {
+      if (systemResult) {
+        // Set pending action if this is a clear command
+        if (systemResult.pendingAction) {
+          await ctx.runMutation(internal.users.setPendingAction, {
+            userId: typedUserId,
+            action: systemResult.pendingAction,
+          });
+        }
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
-          body: systemResponse,
+          body: systemResult.response,
         });
         return;
       }

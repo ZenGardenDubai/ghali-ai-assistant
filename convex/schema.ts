@@ -13,6 +13,12 @@ export default defineSchema({
     creditsResetAt: v.number(),
     onboardingStep: v.union(v.number(), v.null()),
     clerkUserId: v.optional(v.string()),
+    pendingAction: v.optional(v.union(
+      v.literal("clear_memory"),
+      v.literal("clear_documents"),
+      v.literal("clear_everything")
+    )),
+    pendingActionAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])

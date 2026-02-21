@@ -143,6 +143,34 @@ export const updateUserFile = mutation({
   },
 });
 
+// Pending action management for clear data confirmation flow
+export const setPendingAction = internalMutation({
+  args: {
+    userId: v.id("users"),
+    action: v.union(
+      v.literal("clear_memory"),
+      v.literal("clear_documents"),
+      v.literal("clear_everything")
+    ),
+  },
+  handler: async (ctx, { userId, action }) => {
+    await ctx.db.patch(userId, {
+      pendingAction: action,
+      pendingActionAt: Date.now(),
+    });
+  },
+});
+
+export const clearPendingAction = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId, {
+      pendingAction: undefined,
+      pendingActionAt: undefined,
+    });
+  },
+});
+
 // Internal mutation for use by actions (e.g., onboarding)
 export const internalUpdateUser = internalMutation({
   args: {

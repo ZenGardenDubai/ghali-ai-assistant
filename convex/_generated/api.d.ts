@@ -12,6 +12,7 @@ import type * as agent from "../agent.js";
 import type * as constants from "../constants.js";
 import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
+import type * as dataManagement from "../dataManagement.js";
 import type * as documents from "../documents.js";
 import type * as http from "../http.js";
 import type * as imageStorage from "../imageStorage.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   constants: typeof constants;
   credits: typeof credits;
   crons: typeof crons;
+  dataManagement: typeof dataManagement;
   documents: typeof documents;
   http: typeof http;
   imageStorage: typeof imageStorage;
