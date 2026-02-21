@@ -93,6 +93,10 @@ System messages (credits, help, billing) use pre-defined templates with `{{varia
 
 Files received via WhatsApp: PDF/images → Gemini 3 Flash directly. DOCX/PPTX/XLSX → CloudConvert → PDF → Gemini 3 Flash. Content stored in per-user RAG namespace for future retrieval via `searchDocuments` tool.
 
+## Agent Abilities Document
+
+The `ABILITIES & LIMITATIONS` section in `AGENT_INSTRUCTIONS` (`convex/agent.ts`) tells the agent what it can and cannot do. **When adding, removing, or changing any agent tool or capability, update this section to keep the agent's self-awareness accurate.** The agent uses this to set correct expectations with users (e.g., heartbeat has hourly precision, not minute-exact).
+
 ## Development Rules
 
 - **Strict TDD** — write test first, see it fail, implement, see it pass, commit
