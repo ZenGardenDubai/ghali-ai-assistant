@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  
+  <!-- Layer 1: Orange Outline (Solid orange silhouette drawn in the background) -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Left Antenna Base -->
+    <line x1="130" y1="142" x2="85" y2="97" stroke-width="25" />
+    <circle cx="80" cy="92" r="18" stroke-width="10" />
+    
+    <!-- Right Antenna Base -->
+    <line x1="370" y1="142" x2="415" y2="97" stroke-width="25" />
+    <circle cx="420" cy="92" r="18" stroke-width="10" />
+
+    <!-- Left Ear Base -->
+    <path d="M 52 227 C 5 232, 5 322, 52 327 Q 35 277 52 227 Z" stroke-width="10" />
+    
+    <!-- Right Ear Base -->
+    <path d="M 448 227 C 495 232, 495 322, 448 327 Q 465 277 448 227 Z" stroke-width="10" />
+
+    <!-- Main Head Base -->
+    <path d="M 250 92 
+             C 380 92, 440 162, 440 267 
+             C 440 372, 380 427, 250 427 
+             C 120 427, 60 372, 60 267 
+             C 60 162, 120 92, 250 92 Z" 
+          stroke-width="10" />
+  </g>
+
+  <!-- Layer 2: White Shape (Drawn over the orange base to create the outline effect) -->
+  <g fill="#FFFFFF">
+    <!-- Left Antenna -->
+    <line x1="130" y1="142" x2="85" y2="97" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" />
+    <circle cx="80" cy="92" r="18" />
+    
+    <!-- Right Antenna -->
+    <line x1="370" y1="142" x2="415" y2="97" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" />
+    <circle cx="420" cy="92" r="18" />
+
+    <!-- Left Ear -->
+    <path d="M 52 227 C 5 232, 5 322, 52 327 Q 35 277 52 227 Z" />
+    
+    <!-- Right Ear -->
+    <path d="M 448 227 C 495 232, 495 322, 448 327 Q 465 277 448 227 Z" />
+
+    <!-- Main Head -->
+    <path d="M 250 92 
+             C 380 92, 440 162, 440 267 
+             C 440 372, 380 427, 250 427 
+             C 120 427, 60 372, 60 267 
+             C 60 162, 120 92, 250 92 Z" />
+  </g>
+
+  <!-- Layer 3: Inner Face Details -->
+  <!-- Inner Face Outline (Orange Visor Line) -->
+  <path d="M 250 172 
+           C 340 172, 400 202, 400 277 
+           C 400 352, 340 402, 250 402 
+           C 160 402, 100 352, 100 277 
+           C 100 202, 160 172, 250 172 Z" 
+        fill="none" stroke="#ED6B23" stroke-width="14" />
+
+  <!-- Eyes -->
+  <!-- Left Eye -->
+  <circle cx="175" cy="267" r="29" fill="#ED6B23" />
+  <circle cx="165" cy="257" r="8" fill="#FFFFFF" />
+  
+  <!-- Right Eye -->
+  <circle cx="325" cy="267" r="29" fill="#ED6B23" />
+  <circle cx="315" cy="257" r="8" fill="#FFFFFF" />
+
+  <!-- Mouth -->
+  <path d="M 223 317 Q 250 350 277 317" 
+        fill="none" stroke="#ED6B23" stroke-width="13" stroke-linecap="round" />
+</svg>

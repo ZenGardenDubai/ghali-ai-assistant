@@ -696,39 +696,39 @@ Users send files via WhatsApp → extract content → answer immediately → sto
 
 Users can clear their memory, documents, or everything. Confirmation required.
 
-- [ ] **16.1 Test: "clear memory" triggers confirmation**
+- [x] **16.1 Test: "clear memory" triggers confirmation**
   - Returns `clear_memory_confirm` template
   - Waits for "yes" to proceed
 
-- [ ] **16.2 Test: "yes" after "clear memory" wipes memory file**
+- [x] **16.2 Test: "yes" after "clear memory" wipes memory file**
   - Memory userFile content is emptied
   - Thread history is cleared
   - Returns `clear_memory_done` template
 
-- [ ] **16.3 Test: "clear documents" deletes RAG entries**
+- [x] **16.3 Test: "clear documents" deletes RAG entries**
   - All documents in user's namespace are deleted
   - Storage is freed
 
-- [ ] **16.4 Test: "clear everything" does full reset**
+- [x] **16.4 Test: "clear everything" does full reset**
   - Memory, personality, heartbeat files cleared
   - RAG entries deleted
   - Thread history cleared
   - Credits and account remain
 
-- [ ] **16.5 Implement confirmation state tracking**
+- [x] **16.5 Implement confirmation state tracking**
   - Track pending confirmations (what action is awaiting "yes")
   - Timeout after 5 minutes
 
-- [ ] **16.6 Implement clear handlers**
+- [x] **16.6 Implement clear handlers**
   - `clearMemory` — wipe memory file + thread
   - `clearDocuments` — delete RAG namespace
   - `clearEverything` — all of the above + personality + heartbeat
 
-- [ ] **16.7 Wire into system command router**
+- [x] **16.7 Wire into system command router**
 
-- [ ] **16.8 Run all tests — pass**
+- [x] **16.8 Run all tests — pass**
 
-- [ ] **16.9 Commit: "Add data management commands — clear memory, documents, everything"**
+- [x] **16.9 Commit: "Add data management commands — clear memory, documents, everything"**
 
 ---
 
@@ -900,125 +900,162 @@ Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO opti
 
 ---
 
-## 22. End-to-End Integration Testing
+## 22. PostHog Analytics & Usage Tracking
 
-Verify the full flow works end-to-end before deployment.
+Set up and configure PostHog for usage tracking, analytics, and observability across the platform.
 
-- [ ] **22.1 Test: new user WhatsApp → onboarding → first AI response**
-  - Full flow from Twilio webhook to WhatsApp reply
+- [ ] **22.1 Configure PostHog provider**
+  - Set up PostHog client in Next.js (server + client components)
+  - Environment variables for project API key and host
 
-- [ ] **22.2 Test: credit deduction → exhaustion → upgrade prompt**
-  - Use credits down to 0 → verify exhaustion template is sent
+- [ ] **22.2 Track WhatsApp message events**
+  - Message received, response sent, escalation triggered, image generated
+  - Include metadata: model used, response time, credit cost
 
-- [ ] **22.3 Test: document upload → immediate answer → future RAG retrieval**
-  - Send a PDF → get answer → ask about it days later
+- [ ] **22.3 Track system command usage**
+  - Which commands are used most, clear data frequency, upgrade funnel
 
-- [ ] **22.4 Test: voice note → transcription → AI response**
+- [ ] **22.4 Track credit events**
+  - Credit deduction, exhaustion, reset, tier upgrade/downgrade
 
-- [ ] **22.5 Test: escalation flow**
-  - Message that triggers deepReasoning → verify Pro model is used
-  - Message that triggers premiumReasoning → verify Opus is used
+- [ ] **22.5 Track document & media events**
+  - Document uploaded, RAG indexed, media stored, clear data executed
 
-- [ ] **22.6 Test: system commands in multiple languages**
-  - "credits" in English, Arabic, French → correct template, correct translation
+- [ ] **22.6 Track onboarding funnel**
+  - Step completion rates, skip rates, drop-off points
 
-- [ ] **22.7 Test: admin commands**
-  - Admin user runs "admin stats" → gets correct data
-  - Non-admin runs "admin stats" → treated as normal message
+- [ ] **22.7 Landing page analytics**
+  - Page views, CTA clicks, UTM tracking, conversion funnel
 
-- [ ] **22.8 Fix any issues found**
+- [ ] **22.8 Set up PostHog dashboards**
+  - Daily active users, messages per day, model usage breakdown
+  - Credit utilization, upgrade conversion, error rates
 
-- [ ] **22.9 Commit: "Add end-to-end integration tests"**
+- [ ] **22.9 Run all tests — pass**
+
+- [ ] **22.10 Commit: "Add PostHog analytics — usage tracking, event capture, dashboards"**
 
 ---
 
-## 23. Deployment & Configuration
+## 23. End-to-End Integration Testing
+
+Verify the full flow works end-to-end before deployment.
+
+- [ ] **23.1 Test: new user WhatsApp → onboarding → first AI response**
+  - Full flow from Twilio webhook to WhatsApp reply
+
+- [ ] **23.2 Test: credit deduction → exhaustion → upgrade prompt**
+  - Use credits down to 0 → verify exhaustion template is sent
+
+- [ ] **23.3 Test: document upload → immediate answer → future RAG retrieval**
+  - Send a PDF → get answer → ask about it days later
+
+- [ ] **23.4 Test: voice note → transcription → AI response**
+
+- [ ] **23.5 Test: escalation flow**
+  - Message that triggers deepReasoning → verify Pro model is used
+  - Message that triggers premiumReasoning → verify Opus is used
+
+- [ ] **23.6 Test: system commands in multiple languages**
+  - "credits" in English, Arabic, French → correct template, correct translation
+
+- [ ] **23.7 Test: admin commands**
+  - Admin user runs "admin stats" → gets correct data
+  - Non-admin runs "admin stats" → treated as normal message
+
+- [ ] **23.8 Fix any issues found**
+
+- [ ] **23.9 Commit: "Add end-to-end integration tests"**
+
+---
+
+## 24. Deployment & Configuration
 
 Get everything running in production.
 
-- [ ] **23.1 Deploy Convex to production**
+- [ ] **24.1 Deploy Convex to production**
   - `npx convex deploy`
   - Set all environment variables in Convex Cloud dashboard
   - Verify: functions deploy without errors
 
-- [ ] **23.2 Deploy Next.js to Vercel**
+- [ ] **24.2 Deploy Next.js to Vercel**
   - Connect GitHub repo to Vercel
   - Set all environment variables in Vercel dashboard
   - Verify: landing page loads at ghali.ae
 
-- [ ] **23.3 Configure DNS for ghali.ae**
+- [ ] **24.3 Configure DNS for ghali.ae**
   - Point domain to Vercel
   - SSL certificate active
 
-- [ ] **23.4 Configure Twilio webhook**
+- [ ] **24.4 Configure Twilio webhook**
   - Set webhook URL: `https://ghali.ae/api/whatsapp/webhook`
   - Method: POST
   - Verify: test message from WhatsApp reaches the webhook
 
-- [ ] **23.5 Configure Clerk**
+- [ ] **24.5 Configure Clerk**
   - Set up Clerk application
   - Configure billing/subscription products (Basic, Pro)
   - Set webhook URL: `https://ghali.ae/api/clerk/webhook`
   - Verify: Clerk dashboard shows correct config
 
-- [ ] **23.6 Configure PostHog**
+- [ ] **24.6 Configure PostHog**
   - Verify events are flowing from landing page
   - Set up conversion funnel dashboard
 
-- [ ] **23.7 Set up admin user**
+- [ ] **24.7 Set up admin user**
   - Mark admin phone number(s) in Convex dashboard
   - Test admin commands from WhatsApp
 
-- [ ] **23.8 Smoke test in production**
+- [ ] **24.8 Smoke test in production**
   - Send a WhatsApp message → get a response
   - Check credits → correct template
   - Send a document → RAG storage works
   - Send a voice note → transcription works
   - Generate an image → received in WhatsApp
 
-- [ ] **23.9 Commit: "Production deployment configuration"**
+- [ ] **24.9 Commit: "Production deployment configuration"**
 
 ---
 
-## 24. Post-Launch Hardening
+## 25. Post-Launch Hardening
 
 Final polish and monitoring after the system is live.
 
-- [ ] **24.1 Set up error monitoring**
+- [ ] **25.1 Set up error monitoring**
   - Convex function error logs → alerts
   - Vercel deployment logs
 
-- [ ] **24.2 Set up usage monitoring (via PostHog)**
+- [ ] **25.2 Set up usage monitoring (via PostHog)**
   - Daily credit consumption trends
   - Model usage breakdown (Flash vs Pro vs Opus)
   - Cost tracking via PostHog `$ai_generation` events
 
-- [ ] **24.3 Review rate limits**
+- [ ] **25.3 Review rate limits**
   - Adjust based on real usage patterns
   - Ensure blocked country codes list is up to date
 
-- [ ] **24.4 Performance check**
+- [ ] **25.4 Performance check**
   - Webhook response time < 500ms (just the 200 OK)
   - AI response delivery time tracking
   - Landing page Lighthouse score > 90
 
-- [ ] **24.5 Backup and recovery plan**
+- [ ] **25.5 Backup and recovery plan**
   - Convex data export strategy
   - Document recovery procedure
 
-- [ ] **24.6 Commit: "Add monitoring and post-launch hardening"**
+- [ ] **25.6 Commit: "Add monitoring and post-launch hardening"**
 
 ---
 
-## 25. Constants Single Source of Truth
+## 26. Constants Single Source of Truth
 
 Consolidate ALL business rule constants into a single file (`convex/constants.ts`). Nothing hardcoded anywhere else. Every constant imported from one place.
 
-- [ ] **25.1 Create `convex/constants.ts` — the SSOT file**
+- [ ] **26.1 Create `convex/constants.ts` — the SSOT file**
   - Merge existing `convex/models.ts` into this file (models become a section)
   - All business rules, limits, and configuration in one place
 
-- [ ] **25.2 Tier & Credit Constants**
+- [ ] **26.2 Tier & Credit Constants**
   ```
   USER_TIERS = ["basic", "pro"]
   BASIC_TIER_CREDITS = 60
@@ -1027,7 +1064,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   CREDITS_RESET_DAYS = 30
   ```
 
-- [ ] **25.3 Storage & File Limits**
+- [ ] **26.3 Storage & File Limits**
   ```
   MAX_USER_FILE_SIZE = 10 * 1024          // 10 KB per user file
   MAX_MEDIA_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
@@ -1037,37 +1074,37 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   RAG_CHUNK_OVERLAP = 200
   ```
 
-- [ ] **25.4 WhatsApp & Messaging Constants**
+- [ ] **26.4 WhatsApp & Messaging Constants**
   ```
   WHATSAPP_MAX_MESSAGE_LENGTH = 1500
   WHATSAPP_MULTI_PART_DELAY_MS = 500
   WHATSAPP_NUMBER = "+971582896090"
   ```
 
-- [ ] **25.5 Agent Configuration**
+- [ ] **26.5 Agent Configuration**
   ```
   AGENT_MAX_STEPS = 5
   AGENT_CONTEXT_MESSAGES = 50
   DEFAULT_TEMPERATURE = 0.7
   ```
 
-- [ ] **25.6 Model Constants (from existing `convex/models.ts`)**
+- [ ] **26.6 Model Constants (from existing `convex/models.ts`)**
   ```
   MODELS = { FLASH, DEEP_REASONING, IMAGE_GENERATION, EMBEDDING }
   // MODEL_COSTS removed — cost tracking handled by PostHog
   ```
 
-- [ ] **25.7 Blocked Country Codes**
+- [ ] **26.7 Blocked Country Codes**
   ```
   BLOCKED_COUNTRY_CODES = ["+91", "+92", "+880", "+234", "+62", "+263"]
   ```
 
-- [ ] **25.8 System Commands**
+- [ ] **26.8 System Commands**
   ```
   SYSTEM_COMMANDS = ["credits", "help", "privacy", "upgrade", "account", "my memory", "clear memory", "clear documents", "clear everything"]
   ```
 
-- [ ] **25.9 Brand & Company**
+- [ ] **26.9 Brand & Company**
   ```
   DOMAIN = "ghali.ae"
   SITE_URL = "https://ghali.ae"
@@ -1075,11 +1112,11 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   COMPANY_NAME = "SAHEM DATA TECHNOLOGY"
   ```
 
-- [ ] **25.10 Helper Functions**
+- [ ] **26.10 Helper Functions**
   - `getCreditsForTier(tier)` — returns credit limit for tier
   - `getModelApiName(modelId)` — if any internal→API name mapping needed
 
-- [ ] **25.11 Audit: replace all hardcoded values across codebase**
+- [ ] **26.11 Audit: replace all hardcoded values across codebase**
   - `convex/agent.ts` — imports from constants
   - ~~`convex/usageTracking.ts`~~ *(removed — usage tracking deferred to PostHog)*
   - `convex/lib/utils.ts` — imports BLOCKED_COUNTRY_CODES, SYSTEM_COMMANDS, WHATSAPP_MAX_MESSAGE_LENGTH
@@ -1087,17 +1124,17 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   - `convex/schema.test.ts` — imports from constants
   - Grep entire codebase for remaining hardcoded strings
 
-- [ ] **25.12 Run all tests — pass**
+- [ ] **26.12 Run all tests — pass**
 
-- [ ] **25.13 Commit: "Consolidate all constants into single source of truth"**
+- [ ] **26.13 Commit: "Consolidate all constants into single source of truth"**
 
 ---
 
-## 26. Documentation
+## 27. Documentation
 
 Update README and ensure docs are complete. SPEC.md is the single source of truth for architecture and business rules — no separate architecture or business rules docs.
 
-- [ ] **26.1 Update `README.md`**
+- [ ] **27.1 Update `README.md`**
   - Project overview: what Ghali is, who it's for
   - Tech stack summary (with versions)
   - Getting started: prerequisites, env vars, `pnpm install`, `pnpm dev`
@@ -1107,15 +1144,15 @@ Update README and ensure docs are complete. SPEC.md is the single source of trut
   - Link to SPEC.md (architecture + business rules) and PLAN.md (execution plan)
   - License: Apache 2.0
 
-- [ ] **26.2 Review SPEC.md for accuracy**
+- [ ] **27.2 Review SPEC.md for accuracy**
   - Verify all business rules match the implemented code
   - Verify model assignments match code (Flash, Pro, Opus)
   - Verify credit system matches implementation
   - Update any sections that drifted during development
 
-- [ ] **26.3 Review PLAN.md for accuracy**
+- [ ] **27.3 Review PLAN.md for accuracy**
   - Mark all completed sections accurately
   - Remove any tasks that were skipped with reasons
   - Ensure remaining tasks are still relevant
 
-- [ ] **26.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**
+- [ ] **27.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**
