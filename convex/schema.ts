@@ -16,9 +16,11 @@ export default defineSchema({
     pendingAction: v.optional(v.union(
       v.literal("clear_memory"),
       v.literal("clear_documents"),
-      v.literal("clear_everything")
+      v.literal("clear_everything"),
+      v.literal("admin_broadcast")
     )),
     pendingActionAt: v.optional(v.number()),
+    pendingPayload: v.optional(v.string()),
     lastMessageAt: v.optional(v.number()),
     createdAt: v.number(),
   })

@@ -3,6 +3,7 @@ import {
   detectTimezone,
   canAfford,
   isSystemCommand,
+  isAdminCommand,
   isBlockedCountryCode,
   fillTemplate,
   splitLongMessage,
@@ -69,6 +70,36 @@ describe("isSystemCommand", () => {
   it("rejects non-system messages", () => {
     expect(isSystemCommand("what's the weather")).toBe(false);
     expect(isSystemCommand("hello")).toBe(false);
+  });
+});
+
+describe("isAdminCommand", () => {
+  it("recognizes admin commands", () => {
+    expect(isAdminCommand("admin stats")).toBe(true);
+    expect(isAdminCommand("admin search +971501234567")).toBe(true);
+    expect(isAdminCommand("admin grant +971501234567 pro")).toBe(true);
+    expect(isAdminCommand("admin broadcast Hello!")).toBe(true);
+    expect(isAdminCommand("admin help")).toBe(true);
+  });
+
+  it("is case-insensitive", () => {
+    expect(isAdminCommand("Admin Stats")).toBe(true);
+    expect(isAdminCommand("ADMIN HELP")).toBe(true);
+  });
+
+  it("trims whitespace", () => {
+    expect(isAdminCommand("  admin stats  ")).toBe(true);
+  });
+
+  it("rejects bare 'admin' with no subcommand", () => {
+    expect(isAdminCommand("admin")).toBe(false);
+    expect(isAdminCommand("admin ")).toBe(false);
+  });
+
+  it("rejects non-admin messages", () => {
+    expect(isAdminCommand("hello")).toBe(false);
+    expect(isAdminCommand("credits")).toBe(false);
+    expect(isAdminCommand("administrator")).toBe(false);
   });
 });
 

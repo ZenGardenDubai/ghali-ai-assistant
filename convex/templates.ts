@@ -249,4 +249,81 @@ Your account and credits remain. Say hi to start fresh 👋`,
     template: `You're sending messages too fast. Please wait {{retryAfterSeconds}} seconds and try again.`,
     variables: ["retryAfterSeconds"],
   },
+  // === Admin ===
+  admin_stats: {
+    template: `*Platform Stats* 📊
+
+*Total Users:* {{totalUsers}}
+*Active Today:* {{activeToday}}
+*Active This Week:* {{activeWeek}}
+*Active This Month:* {{activeMonth}}
+*New Today:* {{newToday}}
+*Pro Users:* {{proUsers}}`,
+    variables: ["totalUsers", "activeToday", "activeWeek", "activeMonth", "newToday", "proUsers"],
+  },
+
+  admin_search_result: {
+    template: `*User Found* 🔍
+
+*Phone:* {{phone}}
+*Name:* {{name}}
+*Tier:* {{tier}}
+*Credits:* {{credits}}
+*Language:* {{language}}
+*Timezone:* {{timezone}}
+*Admin:* {{isAdmin}}
+*Created:* {{createdAt}}
+*Last Active:* {{lastActive}}`,
+    variables: ["phone", "name", "tier", "credits", "language", "timezone", "isAdmin", "createdAt", "lastActive"],
+  },
+
+  admin_search_not_found: {
+    template: `*User Not Found* ❌
+
+No user with phone {{phone}}.`,
+    variables: ["phone"],
+  },
+
+  admin_grant_done: {
+    template: `*Grant Applied* ✅
+
+*User:* {{phone}}
+*Action:* {{action}}
+*Details:* {{details}}`,
+    variables: ["phone", "action", "details"],
+  },
+
+  admin_broadcast_confirm: {
+    template: `*Broadcast Preview* 📢
+
+*Message:* {{message}}
+*Recipients:* {{activeCount}} active users (last 24h)
+
+Say "yes" to send.`,
+    variables: ["message", "activeCount"],
+  },
+
+  admin_broadcast_done: {
+    template: `*Broadcast Sent* ✅
+
+Delivered to {{sentCount}} users.`,
+    variables: ["sentCount"],
+  },
+
+  admin_help: {
+    template: `*Admin Commands* 🛠️
+
+• *admin stats* — platform stats
+• *admin search +971...* — look up user
+• *admin grant +971... pro* — upgrade to Pro
+• *admin grant +971... credits 100* — add credits
+• *admin broadcast Hello!* — message active users
+• *admin help* — this guide`,
+    variables: [],
+  },
+
+  admin_not_authorized: {
+    template: `You don't have admin access.`,
+    variables: [],
+  },
 } as const;

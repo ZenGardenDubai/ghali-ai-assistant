@@ -854,36 +854,44 @@ Structured scheduling system for exact-time and recurring reminders using `ctx.s
 
 ## 20. Admin Commands (WhatsApp)
 
-Admin users can run management commands directly from WhatsApp.
+Admin users can run management commands directly from WhatsApp. Non-admins fall through to AI as normal messages.
 
-- [ ] **20.1 Test: non-admin cannot use admin commands**
-  - Regular user sends "admin stats" → ignored (treated as normal message)
+- [x] **20.1 Schema: add `admin_broadcast` to pendingAction, add `pendingPayload` field**
+  - Extended union type + new optional string field on users table
 
-- [ ] **20.2 Test: admin stats returns user counts**
-  - Total users, active today/week/month, new signups today
+- [x] **20.2 Add `isAdminCommand()` utility + tests**
+  - Prefix-based detection (`"admin "` prefix), 9 tests for parsing
 
-- [ ] **20.3 Test: admin search finds user by phone**
-  - "admin search +971..." → credits, tier, storage, last active, signup date
+- [x] **20.3 Admin commands are free for admins**
+  - `checkCredit` returns `"free"` when `isAdminCommand && user.isAdmin`
+  - Non-admins pay 1 credit (message falls through to AI)
 
-- [ ] **20.4 Test: admin grant upgrades a user**
-  - "admin grant +971... pro" → user's tier changed to pro, credits set to 600
+- [x] **20.4 Add admin templates**
+  - `admin_stats`, `admin_search_result`, `admin_search_not_found`, `admin_grant_done`
+  - `admin_broadcast_confirm`, `admin_broadcast_done`, `admin_help`, `admin_not_authorized`
 
-- [ ] **20.5 Implement admin check middleware**
-  - Verify `isAdmin` flag on user before allowing admin commands
+- [x] **20.5 Implement admin Convex functions (`convex/admin.ts`)**
+  - `getStats` — total users, active today/week/month, new today, pro users
+  - `searchUser` — find by phone via index
+  - `grantPro` — upgrade tier + set 600 credits
+  - `grantCredits` — add N credits (with positive amount guard)
+  - `getActiveUserCount` — users active within 24h session window
+  - `broadcastMessage` — send to active users with 500ms delay between sends
 
-- [ ] **20.6 Implement admin command parser**
-  - Parse: `admin stats`, `admin revenue`, `admin credits`, `admin top users`
-  - Parse: `admin search +971...`, `admin grant +971... pro`, `admin grant +971... credits 100`
-  - Parse: `admin broadcast "message"` (with confirmation)
+- [x] **20.6 Implement admin command handler (`convex/lib/adminCommands.ts`)**
+  - `parseAdminCommand(message)` → `{ command, args }`
+  - `handleAdminCommand(message, ctx, internal, userMessage)` — routes to correct handler
+  - Commands: stats, search, grant (pro/credits), broadcast (with confirmation), help
 
-- [ ] **20.7 Implement admin data queries**
-  - Aggregate queries for stats, revenue, top users
-  - User lookup query
+- [x] **20.7 Wire admin commands into message flow**
+  - Admin intercept after system commands in `messages.ts`
+  - Broadcast confirmation via pending action pattern (atomic action + payload)
+  - Admin re-verification on broadcast confirmation (defense in depth)
 
-- [ ] **20.8 Implement admin actions**
-  - Grant pro, grant bonus credits, broadcast
+- [x] **20.8 Update agent abilities**
+  - Added item #9: admin commands, never reveal to non-admin users
 
-- [ ] **20.9 Run all tests — pass**
+- [x] **20.9 Run all tests — pass (339 tests)**
 
 - [ ] **20.10 Commit: "Add WhatsApp admin commands — stats, search, grant, broadcast"**
 

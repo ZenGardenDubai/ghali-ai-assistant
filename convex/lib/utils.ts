@@ -67,6 +67,11 @@ export function isSystemCommand(message: string): boolean {
   return SYSTEM_COMMANDS.has(message.toLowerCase().trim());
 }
 
+export function isAdminCommand(message: string): boolean {
+  const normalized = message.toLowerCase().trim();
+  return normalized.startsWith("admin ") && normalized.length > 6;
+}
+
 const AFFIRMATIVE_RESPONSES = new Set([
   "yes", "y", "نعم", "oui", "si", "confirm", "ok", "sure", "yep", "yeah",
   "haan", "ہاں", "jee", "جی", // Hindi/Urdu

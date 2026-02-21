@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as agent from "../agent.js";
 import type * as constants from "../constants.js";
 import type * as credits from "../credits.js";
@@ -18,6 +19,7 @@ import type * as heartbeat from "../heartbeat.js";
 import type * as http from "../http.js";
 import type * as imageStorage from "../imageStorage.js";
 import type * as images from "../images.js";
+import type * as lib_adminCommands from "../lib/adminCommands.js";
 import type * as lib_cronParser from "../lib/cronParser.js";
 import type * as lib_formatter from "../lib/formatter.js";
 import type * as lib_media from "../lib/media.js";
@@ -46,6 +48,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   agent: typeof agent;
   constants: typeof constants;
   credits: typeof credits;
@@ -56,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   imageStorage: typeof imageStorage;
   images: typeof images;
+  "lib/adminCommands": typeof lib_adminCommands;
   "lib/cronParser": typeof lib_cronParser;
   "lib/formatter": typeof lib_formatter;
   "lib/media": typeof lib_media;

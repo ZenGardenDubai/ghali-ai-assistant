@@ -3,12 +3,12 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
-import { getCurrentDateTime, fillTemplate, isSystemCommand, isAffirmative } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage } from "./lib/systemCommands";
-import type { PendingActionType } from "./lib/systemCommands";
 import { PENDING_ACTION_EXPIRY_MS } from "./constants";
+import { handleAdminCommand } from "./lib/adminCommands";
 import { handleOnboarding } from "./lib/onboarding";
 import {
   isSupportedMediaType,
@@ -184,50 +184,78 @@ export const generateResponse = internalAction({
       { userId: typedUserId }
     );
 
-    // Confirmation intercept — check for pending "clear" action before anything else
+    // Confirmation intercept — check for pending action before anything else
     if (user.pendingAction && user.pendingActionAt) {
       const isExpired = Date.now() - user.pendingActionAt > PENDING_ACTION_EXPIRY_MS;
 
       if (!isExpired && isAffirmative(body)) {
-        // User confirmed — execute the pending clear action
         const pendingAction = user.pendingAction;
 
-        // Get doc count for the "done" template (before deletion)
-        let docCount = 0;
-        if (pendingAction === "clear_documents" || pendingAction === "clear_everything") {
-          docCount = await ctx.runQuery(internal.rag.getDocumentCount, {
-            userId: userId,
+        // Admin broadcast confirmation — re-verify admin status
+        if (pendingAction === "admin_broadcast" && user.pendingPayload && user.isAdmin) {
+          const result = await ctx.runAction(internal.admin.broadcastMessage, {
+            message: user.pendingPayload,
+          }) as { sentCount: number };
+
+          await ctx.runMutation(internal.users.clearPendingAction, {
+            userId: typedUserId,
           });
+
+          const doneMessage = await renderSystemMessage(
+            "admin_broadcast_done",
+            { sentCount: result.sentCount },
+            body
+          );
+          await ctx.runAction(internal.twilio.sendMessage, {
+            to: user.phone,
+            body: doneMessage,
+          });
+          return;
         }
 
-        // Execute the appropriate clear action
-        const actionMap: Record<PendingActionType, typeof internal.dataManagement.clearMemory> = {
-          clear_memory: internal.dataManagement.clearMemory,
-          clear_documents: internal.dataManagement.clearDocuments,
-          clear_everything: internal.dataManagement.clearEverything,
-        };
-        await ctx.runAction(actionMap[pendingAction], { userId: typedUserId });
+        // Clear data confirmations
+        if (
+          pendingAction === "clear_memory" ||
+          pendingAction === "clear_documents" ||
+          pendingAction === "clear_everything"
+        ) {
+          // Get doc count for the "done" template (before deletion)
+          let docCount = 0;
+          if (pendingAction === "clear_documents" || pendingAction === "clear_everything") {
+            docCount = await ctx.runQuery(internal.rag.getDocumentCount, {
+              userId: userId,
+            });
+          }
 
-        // Send the "done" template
-        const doneTemplateMap: Record<PendingActionType, "clear_memory_done" | "clear_documents_done" | "clear_everything_done"> = {
-          clear_memory: "clear_memory_done",
-          clear_documents: "clear_documents_done",
-          clear_everything: "clear_everything_done",
-        };
-        const doneVars: Record<string, string | number> =
-          pendingAction === "clear_documents"
-            ? { docCount }
-            : {};
-        const doneMessage = await renderSystemMessage(
-          doneTemplateMap[pendingAction],
-          doneVars,
-          body
-        );
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: doneMessage,
-        });
-        return;
+          // Execute the appropriate clear action
+          const clearActionMap = {
+            clear_memory: internal.dataManagement.clearMemory,
+            clear_documents: internal.dataManagement.clearDocuments,
+            clear_everything: internal.dataManagement.clearEverything,
+          } as const;
+          await ctx.runAction(clearActionMap[pendingAction], { userId: typedUserId });
+
+          // Send the "done" template
+          const doneTemplateMap = {
+            clear_memory: "clear_memory_done",
+            clear_documents: "clear_documents_done",
+            clear_everything: "clear_everything_done",
+          } as const;
+          const doneVars: Record<string, string | number> =
+            pendingAction === "clear_documents"
+              ? { docCount }
+              : {};
+          const doneMessage = await renderSystemMessage(
+            doneTemplateMap[pendingAction],
+            doneVars,
+            body
+          );
+          await ctx.runAction(internal.twilio.sendMessage, {
+            to: user.phone,
+            body: doneMessage,
+          });
+          return;
+        }
       }
 
       // Not affirmative or expired — clear pending action and fall through
@@ -264,6 +292,30 @@ export const generateResponse = internalAction({
         return;
       }
       // "account" or unrecognized → fall through to AI
+    }
+
+    // Admin command intercept — free for admins, non-admins fall through to AI
+    if (creditCheck.status === "free" && isAdminCommand(body) && user.isAdmin) {
+      const adminResult = await handleAdminCommand(
+        body,
+        ctx,
+        internal,
+        body
+      );
+      if (adminResult) {
+        if (adminResult.pendingAction) {
+          await ctx.runMutation(internal.users.setPendingAction, {
+            userId: typedUserId,
+            action: adminResult.pendingAction,
+            payload: adminResult.pendingPayload,
+          });
+        }
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: adminResult.response,
+        });
+        return;
+      }
     }
 
     // Handle exhausted credits

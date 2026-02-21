@@ -88,11 +88,12 @@ export async function renderSystemMessage(
   return translateMessage(filled, lang);
 }
 
-// Pending action types that can be set from a system command
+// Pending action types that can be set from a system command or admin command
 export type PendingActionType =
   | "clear_memory"
   | "clear_documents"
-  | "clear_everything";
+  | "clear_everything"
+  | "admin_broadcast";
 
 // Result from handleSystemCommand — includes optional pendingAction to set
 export interface SystemCommandResult {

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { isSystemCommand } from "./lib/utils";
+import { isSystemCommand, isAdminCommand } from "./lib/utils";
 import {
   CREDITS_BASIC,
   CREDITS_PRO,
@@ -18,14 +18,18 @@ export const checkCredit = internalQuery({
     message: v.string(),
   },
   handler: async (ctx, { userId, message }) => {
-    if (isSystemCommand(message)) {
-      const user = await ctx.db.get(userId);
-      return { status: "free" as const, credits: user?.credits ?? 0 };
-    }
-
     const user = await ctx.db.get(userId);
     if (!user) {
       throw new Error("User not found");
+    }
+
+    if (isSystemCommand(message)) {
+      return { status: "free" as const, credits: user.credits };
+    }
+
+    // Admin commands are free for admin users
+    if (isAdminCommand(message) && user.isAdmin) {
+      return { status: "free" as const, credits: user.credits };
     }
 
     if (user.credits <= 0) {
