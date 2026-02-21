@@ -942,6 +942,8 @@ Pro subscriptions via Clerk Billing. Webhook handles subscription lifecycle.
 
 Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO optimized.
 
+> **Implementation note:** Use the `frontend-design` agent for building the landing page, privacy, and terms pages. It produces distinctive, production-grade UI with high design quality.
+
 - [ ] **22.1 Build landing page layout**
   - **Copy & content:** See `docs/LANDING_PAGE_COPY.md` for all text, structure, and messaging
   - Hero section: tagline + WhatsApp CTA button
