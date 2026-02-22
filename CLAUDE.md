@@ -110,3 +110,4 @@ The `ABILITIES & LIMITATIONS` section in `AGENT_INSTRUCTIONS` (`convex/agent.ts`
 - `docs/ARCHITECTURE.md` — System architecture, code patterns, component details
 - `docs/STACK.md` — Tech stack details and project structure
 - `docs/TEMPLATES.md` — Template message system design
+- `docs/POSTHOG.md` — PostHog analytics: all server/client events, properties, dashboard, and architecture
