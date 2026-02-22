@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Understand Anything — Ghali",
-  description: "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
+  title: "Understand Anything",
+  description:
+    "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
+  alternates: { canonical: "https://ghali.ae/features/understand-anything" },
+  openGraph: {
+    title: "Understand Anything — Ghali",
+    description:
+      "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
+    url: "https://ghali.ae/features/understand-anything",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Understand Anything", item: "https://ghali.ae/features/understand-anything" },
+  ],
 };
 
 export default function UnderstandAnythingPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Multimodal"
       title={<>Send Anything. <span className="text-[#ED6B23]">Ghali Gets It.</span></>}
       subtitle="Photos, voice notes, videos, audio files — just send them in WhatsApp and Ghali understands what you're sharing."

@@ -3,8 +3,57 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "Features — Ghali",
-  description: "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
+  title: "Features",
+  description:
+    "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
+  alternates: { canonical: "https://ghali.ae/features" },
+  openGraph: {
+    title: "Features — Ghali",
+    description:
+      "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
+    url: "https://ghali.ae/features",
+    images: [
+      {
+        url: "/ghali-logo-with-bg.png",
+        width: 640,
+        height: 640,
+        alt: "Ghali — AI Assistant on WhatsApp",
+      },
+    ],
+  },
+};
+
+const featuresJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "https://ghali.ae/features",
+      url: "https://ghali.ae/features",
+      name: "Features — Ghali",
+      description:
+        "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
+      isPartOf: { "@id": "https://ghali.ae/#website" },
+      hasPart: [
+        { "@type": "WebPage", url: "https://ghali.ae/features/zero-friction", name: "Zero Friction" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/personal-memory", name: "Personal Memory" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/privacy", name: "Privacy & Your Data" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/smart-ai", name: "Powered by the Best AI" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/understand-anything", name: "Understand Anything" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/image-generation", name: "Image Generation" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/documents", name: "Documents & Knowledge Base" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/reminders", name: "Reminders & Scheduling" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/open-source", name: "Open Source" },
+      ],
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+        { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+      ],
+    },
+  ],
 };
 
 const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
@@ -69,6 +118,12 @@ const FEATURES = [
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(featuresJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1e]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">

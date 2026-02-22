@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Personal Memory — Ghali",
-  description: "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
+  title: "Personal Memory",
+  description:
+    "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
+  alternates: { canonical: "https://ghali.ae/features/personal-memory" },
+  openGraph: {
+    title: "Personal Memory — Ghali",
+    description:
+      "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
+    url: "https://ghali.ae/features/personal-memory",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Personal Memory", item: "https://ghali.ae/features/personal-memory" },
+  ],
 };
 
 export default function PersonalMemoryPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Personal Memory"
       title={<>Gets Smarter <span className="text-[#ED6B23]">the More You Use It</span></>}
       subtitle="Most AI assistants forget everything between conversations. Ghali doesn't. It learns who you are, how you work, and what you care about."

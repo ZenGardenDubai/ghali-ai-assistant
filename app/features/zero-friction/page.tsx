@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Zero Friction — Ghali",
-  description: "No app to install. No account to create. Just open WhatsApp and start chatting with Ghali.",
+  title: "Zero Friction",
+  description:
+    "No app to install. No account to create. Just open WhatsApp and start chatting with Ghali.",
+  alternates: { canonical: "https://ghali.ae/features/zero-friction" },
+  openGraph: {
+    title: "Zero Friction — Ghali",
+    description:
+      "No app to install. No account to create. Just open WhatsApp and start chatting with Ghali.",
+    url: "https://ghali.ae/features/zero-friction",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Zero Friction", item: "https://ghali.ae/features/zero-friction" },
+  ],
 };
 
 export default function ZeroFrictionPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Zero Friction"
       title={<>No App. No Account. <span className="text-[#ED6B23]">Just WhatsApp.</span></>}
       subtitle="Other AI assistants want you to download an app, create an account, pick a plan, and figure out a new interface. Ghali just works."

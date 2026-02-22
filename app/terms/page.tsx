@@ -3,13 +3,46 @@ import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Ghali",
-  description: "Terms of Service for ghali.ae — your rights and usage guidelines.",
+  title: "Terms of Service",
+  description:
+    "Terms of Service for ghali.ae — your rights, usage guidelines, credit system, and acceptable use policy.",
+  alternates: {
+    canonical: "https://ghali.ae/terms",
+  },
+  openGraph: {
+    title: "Terms of Service — Ghali",
+    description:
+      "Terms of Service for ghali.ae — your rights, usage guidelines, credit system, and acceptable use policy.",
+    url: "https://ghali.ae/terms",
+    images: [
+      {
+        url: "/ghali-logo-with-bg.png",
+        width: 640,
+        height: 640,
+        alt: "Ghali — AI Assistant on WhatsApp",
+      },
+    ],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Terms of Service", item: "https://ghali.ae/terms" },
+  ],
 };
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       {/* Header */}
       <header className="border-b border-white/5">
         <div className="max-w-3xl mx-auto px-6 py-6">

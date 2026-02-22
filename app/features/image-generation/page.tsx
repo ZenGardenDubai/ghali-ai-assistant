@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Image Generation — Ghali",
-  description: "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
+  title: "Image Generation",
+  description:
+    "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
+  alternates: { canonical: "https://ghali.ae/features/image-generation" },
+  openGraph: {
+    title: "Image Generation — Ghali",
+    description:
+      "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
+    url: "https://ghali.ae/features/image-generation",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Image Generation", item: "https://ghali.ae/features/image-generation" },
+  ],
 };
 
 export default function ImageGenerationPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Image Generation"
       title={<>Describe It. <span className="text-[#ED6B23]">Get It.</span></>}
       subtitle="Tell Ghali what you want to see and get a stunning image delivered right in your WhatsApp chat. No design skills needed."

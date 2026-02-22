@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Open Source — Ghali",
-  description: "Ghali's code is public. See exactly how your data is handled. No black boxes.",
+  title: "Open Source",
+  description:
+    "Ghali's code is public. See exactly how your data is handled. No black boxes.",
+  alternates: { canonical: "https://ghali.ae/features/open-source" },
+  openGraph: {
+    title: "Open Source — Ghali",
+    description:
+      "Ghali's code is public. See exactly how your data is handled. No black boxes.",
+    url: "https://ghali.ae/features/open-source",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Open Source", item: "https://ghali.ae/features/open-source" },
+  ],
 };
 
 export default function OpenSourcePage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Open Source"
       title={<>Built in <span className="text-[#ED6B23]">the Open</span></>}
       subtitle="Ghali's code is public on GitHub. You don't have to trust us — you can verify us."

@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Privacy & Your Data — Ghali",
-  description: "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
+  title: "Privacy & Your Data",
+  description:
+    "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
+  alternates: { canonical: "https://ghali.ae/features/privacy" },
+  openGraph: {
+    title: "Privacy & Your Data — Ghali",
+    description:
+      "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
+    url: "https://ghali.ae/features/privacy",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Privacy & Your Data", item: "https://ghali.ae/features/privacy" },
+  ],
 };
 
 export default function PrivacyFeaturePage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Privacy First"
       title={<>Your Stuff <span className="text-[#ED6B23]">Stays Yours</span></>}
       subtitle="We don't sell your data. We don't use it for training. You can see everything we know about you, and delete it all in one message."

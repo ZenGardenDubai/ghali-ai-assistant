@@ -8,14 +8,24 @@ export function FeaturePage({
   title,
   subtitle,
   children,
+  jsonLd,
 }: {
   badge: string;
   title: React.ReactNode;
   subtitle: string;
   children: React.ReactNode;
+  jsonLd?: Record<string, unknown>;
 }) {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+          }}
+        />
+      )}
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1e]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">

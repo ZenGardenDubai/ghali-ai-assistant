@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Reminders & Scheduling — Ghali",
-  description: "Set precise reminders, recurring schedules, and get proactive check-ins — all through WhatsApp.",
+  title: "Reminders & Scheduling",
+  description:
+    "Set precise reminders, recurring schedules, and get proactive check-ins — all through WhatsApp.",
+  alternates: { canonical: "https://ghali.ae/features/reminders" },
+  openGraph: {
+    title: "Reminders & Scheduling — Ghali",
+    description:
+      "Set precise reminders, recurring schedules, and get proactive check-ins — all through WhatsApp.",
+    url: "https://ghali.ae/features/reminders",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Reminders & Scheduling", item: "https://ghali.ae/features/reminders" },
+  ],
 };
 
 export default function RemindersPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Reminders & Scheduling"
       title={<>Never Forget <span className="text-[#ED6B23]">Anything Again</span></>}
       subtitle="Tell Ghali to remind you, and it will. Exact times, recurring schedules, and proactive check-ins — your WhatsApp becomes your personal scheduler."

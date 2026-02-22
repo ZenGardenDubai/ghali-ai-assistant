@@ -3,13 +3,46 @@ import Image from "next/image";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Ghali",
-  description: "How Ghali handles your data. Your privacy matters to us.",
+  title: "Privacy Policy",
+  description:
+    "How Ghali handles your data. Your privacy matters to us. Learn about data collection, AI processing, and your rights.",
+  alternates: {
+    canonical: "https://ghali.ae/privacy",
+  },
+  openGraph: {
+    title: "Privacy Policy — Ghali",
+    description:
+      "How Ghali handles your data. Your privacy matters to us. Learn about data collection, AI processing, and your rights.",
+    url: "https://ghali.ae/privacy",
+    images: [
+      {
+        url: "/ghali-logo-with-bg.png",
+        width: 640,
+        height: 640,
+        alt: "Ghali — AI Assistant on WhatsApp",
+      },
+    ],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Privacy Policy", item: "https://ghali.ae/privacy" },
+  ],
 };
 
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       {/* Header */}
       <header className="border-b border-white/5">
         <div className="max-w-3xl mx-auto px-6 py-6">

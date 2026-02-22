@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Powered by the Best AI — Ghali",
-  description: "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
+  title: "Powered by the Best AI",
+  description:
+    "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
+  alternates: { canonical: "https://ghali.ae/features/smart-ai" },
+  openGraph: {
+    title: "Powered by the Best AI — Ghali",
+    description:
+      "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
+    url: "https://ghali.ae/features/smart-ai",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Powered by the Best AI", item: "https://ghali.ae/features/smart-ai" },
+  ],
 };
 
 export default function SmartAiPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Smart AI"
       title={<>Powered by <span className="text-[#ED6B23]">the Best AI</span></>}
       subtitle="Ghali doesn't lock you into one model. It uses Google Gemini, Anthropic Claude, and OpenAI — and picks the right one for every task, automatically."

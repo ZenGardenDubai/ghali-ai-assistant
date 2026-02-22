@@ -1,6 +1,31 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { FaqAccordion } from "./components/landing/faq";
+import { CtaButton } from "./components/landing/cta-button";
+
+export const metadata: Metadata = {
+  title: "Ghali — Your AI Assistant on WhatsApp",
+  description:
+    "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
+  alternates: {
+    canonical: "https://ghali.ae",
+  },
+  openGraph: {
+    title: "Ghali — Your AI Assistant on WhatsApp",
+    description:
+      "No app to install. No account to create. Just message Ghali on WhatsApp and get things done.",
+    url: "https://ghali.ae",
+    images: [
+      {
+        url: "/ghali-logo-with-bg.png",
+        width: 640,
+        height: 640,
+        alt: "Ghali — AI Assistant on WhatsApp",
+      },
+    ],
+  },
+};
 
 const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
 
@@ -37,9 +62,101 @@ const FAQS = [
   },
 ];
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://ghali.ae/#organization",
+      name: "SAHEM DATA TECHNOLOGY",
+      url: "https://ghali.ae",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://ghali.ae/ghali-logo-with-bg.png",
+        width: 640,
+        height: 640,
+      },
+      contactPoint: {
+        "@type": "ContactPoint",
+        email: "support@ghali.ae",
+        contactType: "customer support",
+      },
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "Villa 49, Street 38B, Barsha 2",
+        addressLocality: "Dubai",
+        addressCountry: "AE",
+      },
+      sameAs: ["https://github.com/ZenGardenDubai/ghali-ai-assistant"],
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://ghali.ae/#website",
+      url: "https://ghali.ae",
+      name: "Ghali",
+      description:
+        "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more.",
+      publisher: { "@id": "https://ghali.ae/#organization" },
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://ghali.ae/#webpage",
+      url: "https://ghali.ae",
+      name: "Ghali — Your AI Assistant on WhatsApp",
+      description:
+        "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
+      isPartOf: { "@id": "https://ghali.ae/#website" },
+      about: { "@id": "https://ghali.ae/#organization" },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Ghali",
+      applicationCategory: "UtilitiesApplication",
+      operatingSystem: "WhatsApp",
+      offers: [
+        {
+          "@type": "Offer",
+          name: "Basic",
+          price: "0",
+          priceCurrency: "USD",
+          description: "60 messages per month, free forever",
+        },
+        {
+          "@type": "Offer",
+          name: "Pro",
+          price: "9.99",
+          priceCurrency: "USD",
+          description: "600 messages per month with premium features",
+        },
+      ],
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQS.map((f) => ({
+        "@type": "Question",
+        name: f.question,
+        acceptedAnswer: { "@type": "Answer", text: f.answer },
+      })),
+    },
+  ],
+};
+
+
 export default function Home() {
   return (
     <div className="relative min-h-screen bg-[#0a0f1e] text-white overflow-x-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       {/* Subtle grid background */}
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.03]"
@@ -92,15 +209,14 @@ function Nav() {
           >
             <GitHubIcon className="h-5 w-5" />
           </a>
-          <a
+          <CtaButton
             href={WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            location="nav"
             className="group flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
           >
             <WhatsAppIcon className="h-4 w-4" />
             Start Chatting
-          </a>
+          </CtaButton>
         </div>
       </div>
     </nav>
@@ -139,10 +255,9 @@ function Hero() {
         </p>
 
         <div className="animate-fade-up delay-300 mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <a
+          <CtaButton
             href={WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+            location="hero"
             className="group flex items-center gap-3 rounded-full bg-[#ED6B23] px-8 py-4 text-lg font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-xl hover:shadow-[#ED6B23]/25"
           >
             <WhatsAppIcon className="h-5 w-5" />
@@ -150,7 +265,7 @@ function Hero() {
             <span className="transition-transform group-hover:translate-x-1">
               &rarr;
             </span>
-          </a>
+          </CtaButton>
           <span className="text-sm text-white/30">Free &middot; No signup required</span>
         </div>
       </div>
@@ -450,14 +565,13 @@ function Pricing() {
               <PricingItem>Learns your style &amp; preferences</PricingItem>
               <PricingItem>No credit card required</PricingItem>
             </ul>
-            <a
+            <CtaButton
               href={WHATSAPP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              location="pricing_basic"
               className="mt-8 block rounded-full border border-white/10 py-3 text-center font-medium transition-all hover:border-white/20 hover:bg-white/5"
             >
               Get Started
-            </a>
+            </CtaButton>
           </div>
 
           {/* Pro */}
@@ -485,14 +599,13 @@ function Pricing() {
               <PricingItem highlight>Priority responses</PricingItem>
               <PricingItem highlight>Everything in Basic</PricingItem>
             </ul>
-            <a
+            <CtaButton
               href={WHATSAPP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              location="pricing_pro"
               className="mt-8 md:mt-auto block rounded-full bg-[#ED6B23] py-3 text-center font-medium transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
             >
               Get Started
-            </a>
+            </CtaButton>
           </div>
         </div>
       </div>
@@ -558,10 +671,9 @@ function FinalCta() {
         <p className="mt-4 text-lg text-white/50">
           Send a message. It&apos;s that simple.
         </p>
-        <a
+        <CtaButton
           href={WHATSAPP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          location="final_cta"
           className="group mt-8 inline-flex items-center gap-3 rounded-full bg-[#ED6B23] px-8 py-4 text-lg font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-xl hover:shadow-[#ED6B23]/25"
         >
           <WhatsAppIcon className="h-5 w-5" />
@@ -569,7 +681,7 @@ function FinalCta() {
           <span className="transition-transform group-hover:translate-x-1">
             &rarr;
           </span>
-        </a>
+        </CtaButton>
       </div>
     </section>
   );

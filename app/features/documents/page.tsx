@@ -2,13 +2,33 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Document Analysis & Knowledge Base — Ghali",
-  description: "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
+  title: "Document Analysis & Knowledge Base",
+  description:
+    "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
+  alternates: { canonical: "https://ghali.ae/features/documents" },
+  openGraph: {
+    title: "Document Analysis & Knowledge Base — Ghali",
+    description:
+      "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
+    url: "https://ghali.ae/features/documents",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Document Analysis & Knowledge Base", item: "https://ghali.ae/features/documents" },
+  ],
 };
 
 export default function DocumentsPage() {
   return (
     <FeaturePage
+      jsonLd={breadcrumbJsonLd}
       badge="Documents & Knowledge"
       title={<>Send a File. <span className="text-[#ED6B23]">Get Answers.</span></>}
       subtitle="Drop a PDF, Word doc, or spreadsheet into WhatsApp. Ghali reads it, answers your questions about it, and stores it in your personal knowledge base for later."
