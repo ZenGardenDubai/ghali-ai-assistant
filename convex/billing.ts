@@ -1,13 +1,13 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalMutation, mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { CREDITS_PRO } from "./constants";
 
 // ============================================================================
 // Phone-Based Account Linking
 // ============================================================================
 
-export const linkClerkUserByPhone = mutation({
+export const linkClerkUserByPhone = internalMutation({
   args: {
     phone: v.string(),
     clerkUserId: v.string(),

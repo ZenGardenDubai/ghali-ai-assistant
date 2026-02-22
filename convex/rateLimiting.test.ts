@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import schema from "./schema";
 import { register as registerRateLimiter } from "@convex-dev/rate-limiter/test";
 import { fillTemplate } from "./lib/utils";
@@ -48,7 +48,7 @@ describe("checkMessageRateLimit", () => {
   it("returns ok: true for normal usage", async () => {
     const t = createTestWithRateLimiter();
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -63,7 +63,7 @@ describe("checkMessageRateLimit", () => {
   it("returns ok: true for multiple messages within limit", async () => {
     const t = createTestWithRateLimiter();
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -80,7 +80,7 @@ describe("checkMessageRateLimit", () => {
   it("returns ok: false with retryAfterSeconds when limit exceeded", async () => {
     const t = createTestWithRateLimiter();
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -107,10 +107,10 @@ describe("checkMessageRateLimit", () => {
   it("rate limits are per-user", async () => {
     const t = createTestWithRateLimiter();
 
-    const userId1 = await t.mutation(api.users.findOrCreateUser, {
+    const userId1 = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
-    const userId2 = await t.mutation(api.users.findOrCreateUser, {
+    const userId2 = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971509876543",
     });
 

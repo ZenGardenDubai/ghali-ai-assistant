@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -9,7 +9,7 @@ describe("findOrCreateUser", () => {
   it("creates a new user with correct defaults", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
       name: "Ahmad",
     });
@@ -33,12 +33,12 @@ describe("findOrCreateUser", () => {
   it("returns existing user without creating duplicate", async () => {
     const t = convexTest(schema, modules);
 
-    const id1 = await t.mutation(api.users.findOrCreateUser, {
+    const id1 = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
       name: "Ahmad",
     });
 
-    const id2 = await t.mutation(api.users.findOrCreateUser, {
+    const id2 = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
       name: "Ahmad",
     });
@@ -55,16 +55,16 @@ describe("findOrCreateUser", () => {
   it("auto-detects timezone from country code", async () => {
     const t = convexTest(schema, modules);
 
-    const uaeId = await t.mutation(api.users.findOrCreateUser, {
+    const uaeId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
-    const ukId = await t.mutation(api.users.findOrCreateUser, {
+    const ukId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+447911123456",
     });
-    const usId = await t.mutation(api.users.findOrCreateUser, {
+    const usId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+12025551234",
     });
-    const frId = await t.mutation(api.users.findOrCreateUser, {
+    const frId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+33612345678",
     });
 
@@ -86,12 +86,12 @@ describe("findOrCreateUser", () => {
   it("initializes 3 user files on creation", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
       name: "Ahmad",
     });
 
-    const files = await t.query(api.users.getUserFiles, { userId });
+    const files = await t.query(internal.users.getUserFiles, { userId });
 
     expect(files).toHaveLength(3);
     expect(files.map((f) => f.filename).sort()).toEqual([
@@ -107,24 +107,24 @@ describe("getUser / getUserByPhone", () => {
   it("gets user by ID", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
       name: "Ahmad",
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user).toMatchObject({ phone: "+971501234567", name: "Ahmad" });
   });
 
   it("gets user by phone", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
       name: "Ahmad",
     });
 
-    const user = await t.query(api.users.getUserByPhone, {
+    const user = await t.query(internal.users.getUserByPhone, {
       phone: "+971501234567",
     });
     expect(user).toMatchObject({ name: "Ahmad" });
@@ -133,7 +133,7 @@ describe("getUser / getUserByPhone", () => {
   it("returns null for unknown phone", async () => {
     const t = convexTest(schema, modules);
 
-    const user = await t.query(api.users.getUserByPhone, {
+    const user = await t.query(internal.users.getUserByPhone, {
       phone: "+999999999",
     });
     expect(user).toBeNull();
@@ -144,16 +144,16 @@ describe("updateUser", () => {
   it("updates user fields", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: { name: "Ahmad", language: "ar", timezone: "Europe/London" },
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user).toMatchObject({
       name: "Ahmad",
       language: "ar",
@@ -164,16 +164,16 @@ describe("updateUser", () => {
   it("completes onboarding", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: { onboardingStep: null },
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.onboardingStep).toBeNull();
   });
 });
@@ -182,11 +182,11 @@ describe("userFile CRUD", () => {
   it("gets a specific user file", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    const file = await t.query(api.users.getUserFile, {
+    const file = await t.query(internal.users.getUserFile, {
       userId,
       filename: "memory",
     });
@@ -197,17 +197,17 @@ describe("userFile CRUD", () => {
   it("updates user file content", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUserFile, {
+    await t.mutation(internal.users.updateUserFile, {
       userId,
       filename: "memory",
       content: "Name: Ahmad\nWork: ADNOC",
     });
 
-    const file = await t.query(api.users.getUserFile, {
+    const file = await t.query(internal.users.getUserFile, {
       userId,
       filename: "memory",
     });

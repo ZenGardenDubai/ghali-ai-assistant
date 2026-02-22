@@ -31,4 +31,11 @@ crons.cron(
   internal.heartbeat.processHeartbeats
 );
 
+// Daily cleanup of expired webhook dedup entries
+crons.daily(
+  "webhook-dedup-cleanup",
+  { hourUTC: 2, minuteUTC: 0 },
+  internal.webhookDedup.cleanupExpired
+);
+
 export default crons;

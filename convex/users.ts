@@ -1,9 +1,9 @@
 import { v } from "convex/values";
-import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { detectTimezone } from "./lib/utils";
 import { CREDITS_BASIC, CREDIT_RESET_PERIOD_MS } from "./constants";
 
-export const findOrCreateUser = mutation({
+export const findOrCreateUser = internalMutation({
   args: {
     phone: v.string(),
     name: v.optional(v.string()),
@@ -47,14 +47,14 @@ export const findOrCreateUser = mutation({
   },
 });
 
-export const getUser = query({
+export const getUser = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
     return await ctx.db.get(userId);
   },
 });
 
-export const getUserByPhone = query({
+export const getUserByPhone = internalQuery({
   args: { phone: v.string() },
   handler: async (ctx, { phone }) => {
     return await ctx.db
@@ -64,7 +64,7 @@ export const getUserByPhone = query({
   },
 });
 
-export const updateUser = mutation({
+export const updateUser = internalMutation({
   args: {
     userId: v.id("users"),
     fields: v.object({
@@ -85,7 +85,7 @@ export const updateUser = mutation({
   },
 });
 
-export const getUserFile = query({
+export const getUserFile = internalQuery({
   args: {
     userId: v.id("users"),
     filename: v.union(
@@ -104,7 +104,7 @@ export const getUserFile = query({
   },
 });
 
-export const getUserFiles = query({
+export const getUserFiles = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
     return await ctx.db
@@ -114,7 +114,7 @@ export const getUserFiles = query({
   },
 });
 
-export const updateUserFile = mutation({
+export const updateUserFile = internalMutation({
   args: {
     userId: v.id("users"),
     filename: v.union(

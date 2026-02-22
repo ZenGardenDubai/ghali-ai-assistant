@@ -139,7 +139,7 @@ export const generateAndStoreImage = internalAction({
       }
       return {
         success: false,
-        error: `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        error: "Image generation failed. Please try again with a different prompt.",
       };
     }
   },

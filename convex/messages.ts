@@ -510,7 +510,7 @@ export const generateResponse = internalAction({
         { threadId },
         {
           prompt: userContext
-            ? `${userContext}\n\n---\nUser message: ${prompt}`
+            ? `${userContext}\n\n---\n<user_message>\n${prompt}\n</user_message>`
             : prompt,
         }
       );

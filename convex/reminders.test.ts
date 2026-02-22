@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import schema from "./schema";
 import { MAX_REMINDERS_PER_USER } from "./constants";
 
@@ -10,7 +10,7 @@ describe("createReminder", () => {
   it("inserts a pending reminder and returns its ID", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -35,7 +35,7 @@ describe("createReminder", () => {
   it("creates a recurring reminder with cronExpr", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -59,7 +59,7 @@ describe("createReminder", () => {
   it("enforces MAX_REMINDERS_PER_USER cap", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -89,10 +89,10 @@ describe("listUserReminders", () => {
   it("returns only pending reminders for the specific user", async () => {
     const t = convexTest(schema, modules);
 
-    const userId1 = await t.mutation(api.users.findOrCreateUser, {
+    const userId1 = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
-    const userId2 = await t.mutation(api.users.findOrCreateUser, {
+    const userId2 = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971509876543",
     });
 
@@ -128,7 +128,7 @@ describe("cancelReminder", () => {
   it("marks a pending job as cancelled", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -154,7 +154,7 @@ describe("cancelReminder", () => {
   it("returns error for non-pending jobs", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -181,7 +181,7 @@ describe("cancelAllUserReminders", () => {
   it("cancels all pending reminders for a user", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 

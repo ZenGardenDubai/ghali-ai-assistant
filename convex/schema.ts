@@ -62,6 +62,13 @@ export default defineSchema({
     .index("by_expiresAt", ["expiresAt"])
     .index("by_userId", ["userId"]),
 
+  processedWebhooks: defineTable({
+    messageSid: v.string(),
+    processedAt: v.number(),
+  })
+    .index("by_messageSid", ["messageSid"])
+    .index("by_processedAt", ["processedAt"]),
+
   scheduledJobs: defineTable({
     userId: v.id("users"),
     kind: v.union(

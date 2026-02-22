@@ -148,3 +148,13 @@ export const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** Maximum pending reminders per user */
 export const MAX_REMINDERS_PER_USER = 25;
+
+// ============================================================================
+// Security
+// ============================================================================
+
+/** Maximum WhatsApp message body length (truncate beyond this to prevent cost amplification) */
+export const MAX_MESSAGE_LENGTH = 10_000;
+
+/** TTL for processed webhook dedup entries (24 hours) */
+export const WEBHOOK_DEDUP_TTL_MS = 24 * 60 * 60 * 1000;

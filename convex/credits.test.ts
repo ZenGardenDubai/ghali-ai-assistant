@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -9,7 +9,7 @@ describe("checkCredit", () => {
   it("returns available when user has credits", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -22,18 +22,18 @@ describe("checkCredit", () => {
     expect(result.credits).toBe(60);
 
     // Credits are NOT deducted — still 60
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(60);
   });
 
   it("returns exhausted when credits = 0", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: { credits: 0 },
     });
@@ -50,7 +50,7 @@ describe("checkCredit", () => {
   it("system commands are free", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -64,14 +64,14 @@ describe("checkCredit", () => {
     }
 
     // Credits unchanged
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(60);
   });
 
   it("system commands are case-insensitive", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -88,7 +88,7 @@ describe("deductCredit", () => {
   it("deducts 1 credit from user", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -98,18 +98,18 @@ describe("deductCredit", () => {
 
     expect(result.credits).toBe(59);
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(59);
   });
 
   it("does not go below 0", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: { credits: 0 },
     });
@@ -126,11 +126,11 @@ describe("resetCredits", () => {
   it("resets credits for users past their reset date", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: {
         credits: 5,
@@ -140,18 +140,18 @@ describe("resetCredits", () => {
 
     await t.mutation(internal.credits.resetCredits, {});
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(60);
   });
 
   it("resets pro users to 600 credits", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: {
         tier: "pro",
@@ -162,25 +162,25 @@ describe("resetCredits", () => {
 
     await t.mutation(internal.credits.resetCredits, {});
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(600);
   });
 
   it("does not reset users whose date is in the future", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(api.users.updateUser, {
+    await t.mutation(internal.users.updateUser, {
       userId,
       fields: { credits: 30 },
     });
 
     await t.mutation(internal.credits.resetCredits, {});
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(30);
   });
 });

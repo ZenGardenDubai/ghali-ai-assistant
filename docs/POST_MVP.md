@@ -18,6 +18,14 @@ Issues, improvements, and tech debt to revisit after MVP completion.
 
 - **Revisit upgrade/payment UX** — Current flow (WhatsApp → phone sign-up → Clerk PricingTable → payment) works but is clunky on mobile. Consider: streamlining the Clerk sign-up fields (hide optional fields in dashboard), custom payment page instead of Clerk's PricingTable, better error states, and testing the full flow on various mobile browsers (WhatsApp in-app browser, Safari, Chrome).
 
+## Security Hardening
+
+- **Add security headers to `next.config.ts`** — CSP (Content-Security-Policy), X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Strict-Transport-Security (HSTS), Referrer-Policy: strict-origin-when-cross-origin, Permissions-Policy. Needs careful CSP tuning for PostHog, Clerk, and Convex domains.
+
+- **Remove phone number from upgrade URL** — Currently `?phone=+971...` is visible in browser history, referrer headers, and PostHog pageview captures. Replace with an opaque short-lived token or use sessionStorage to pass the phone number to the upgrade page.
+
+- **Sanitize PostHog pageview URLs** — `PostHogPageView` component captures the full URL including query params. Strip sensitive params (phone, tokens) before sending to PostHog, or configure PostHog property filtering to redact them server-side.
+
 ## Heartbeat
 
 - **WhatsApp template fallback for heartbeat** — Currently heartbeat messages are skipped if the user hasn't messaged within 24 hours (WhatsApp session window). Create a pre-approved Twilio Content Template (utility category) for heartbeat reminders so they can be delivered outside the 24h window. Template example: `"Hi {{1}}, here's your reminder: {{2}}"`. Requires Twilio Content Template approval. Then update `processUserHeartbeat` to fall back to the template when outside the session window instead of skipping.

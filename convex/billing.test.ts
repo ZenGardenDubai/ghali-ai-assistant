@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { api, internal } from "./_generated/api";
+import { internal } from "./_generated/api";
 import schema from "./schema";
 import { CREDITS_PRO } from "./constants";
 
@@ -14,7 +14,7 @@ async function linkByPhone(
   phone: string,
   clerkUserId: string
 ) {
-  const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+  const result = await t.mutation(internal.billing.linkClerkUserByPhone, {
     phone,
     clerkUserId,
   });
@@ -29,25 +29,25 @@ describe("linkClerkUserByPhone", () => {
   it("links clerkUserId to user by phone", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+    const result = await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971501234567",
       clerkUserId: "user_clerk123",
     });
 
     expect(result.success).toBe(true);
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.clerkUserId).toBe("user_clerk123");
   });
 
   it("returns error when phone not found", async () => {
     const t = convexTest(schema, modules);
 
-    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+    const result = await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971509999999",
       clerkUserId: "user_clerk123",
     });
@@ -59,18 +59,18 @@ describe("linkClerkUserByPhone", () => {
   it("is idempotent when same clerkUserId re-links", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
     // Link once
-    await t.mutation(api.billing.linkClerkUserByPhone, {
+    await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971501234567",
       clerkUserId: "user_clerk123",
     });
 
     // Link again — same clerkUserId
-    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+    const result = await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971501234567",
       clerkUserId: "user_clerk123",
     });
@@ -81,18 +81,18 @@ describe("linkClerkUserByPhone", () => {
   it("re-links phone to new clerkUserId (user verified via OTP)", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
     // Link to first clerkUserId
-    await t.mutation(api.billing.linkClerkUserByPhone, {
+    await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971501234567",
       clerkUserId: "user_clerk123",
     });
 
     // Re-link same phone to different clerkUserId (new Clerk account)
-    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+    const result = await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971501234567",
       clerkUserId: "user_clerk456",
     });
@@ -100,7 +100,7 @@ describe("linkClerkUserByPhone", () => {
     expect(result.success).toBe(true);
 
     // User should now be linked to the new clerkUserId
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.clerkUserId).toBe("user_clerk456");
   });
 
@@ -108,10 +108,10 @@ describe("linkClerkUserByPhone", () => {
     const t = convexTest(schema, modules);
 
     // Create two users
-    await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501111111",
     });
-    await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971502222222",
     });
 
@@ -119,7 +119,7 @@ describe("linkClerkUserByPhone", () => {
     await linkByPhone(t, "+971501111111", "user_clerk_shared");
 
     // Try to link same clerkUserId to user2
-    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+    const result = await t.mutation(internal.billing.linkClerkUserByPhone, {
       phone: "+971502222222",
       clerkUserId: "user_clerk_shared",
     });
@@ -137,7 +137,7 @@ describe("handleSubscriptionActive", () => {
   it("upgrades tier to pro and sets 600 credits", async () => {
     const t = convexTest(schema, modules);
 
-    await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -154,7 +154,7 @@ describe("handleSubscriptionActive", () => {
       clerkUserId: "user_clerk123",
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.tier).toBe("pro");
     expect(user!.credits).toBe(CREDITS_PRO);
   });
@@ -162,7 +162,7 @@ describe("handleSubscriptionActive", () => {
   it("clears subscriptionCanceling flag on reactivation", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -176,7 +176,7 @@ describe("handleSubscriptionActive", () => {
       clerkUserId: "user_clerk123",
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.tier).toBe("pro");
     expect(user!.subscriptionCanceling).toBeUndefined();
   });
@@ -195,7 +195,7 @@ describe("handleSubscriptionCanceled", () => {
   it("sets subscriptionCanceling true but keeps tier pro", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -209,7 +209,7 @@ describe("handleSubscriptionCanceled", () => {
       clerkUserId: "user_clerk123",
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.tier).toBe("pro");
     expect(user!.credits).toBe(CREDITS_PRO);
     expect(user!.subscriptionCanceling).toBe(true);
@@ -228,7 +228,7 @@ describe("handleSubscriptionEnded", () => {
   it("downgrades tier to basic and clears subscriptionCanceling", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -245,7 +245,7 @@ describe("handleSubscriptionEnded", () => {
       clerkUserId: "user_clerk123",
     });
 
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.tier).toBe("basic");
     expect(user!.subscriptionCanceling).toBeUndefined();
     // Credits remain as-is — next monthly reset will give basic amount
@@ -255,7 +255,7 @@ describe("handleSubscriptionEnded", () => {
   it("skips downgrade when user is not in canceling state (stale ended event)", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
@@ -270,7 +270,7 @@ describe("handleSubscriptionEnded", () => {
     });
 
     // Should still be pro — stale ended event was ignored
-    const user = await t.query(api.users.getUser, { userId });
+    const user = await t.query(internal.users.getUser, { userId });
     expect(user!.tier).toBe("pro");
     expect(user!.credits).toBe(CREDITS_PRO);
   });

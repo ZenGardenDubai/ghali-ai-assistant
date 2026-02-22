@@ -1,9 +1,8 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../convex/_generated/api";
 import { NextResponse } from "next/server";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
 
 export async function POST() {
   const { userId: clerkUserId } = await auth();
@@ -12,6 +11,14 @@ export async function POST() {
     return NextResponse.json(
       { success: false, error: "Not authenticated" },
       { status: 401 }
+    );
+  }
+
+  if (!CONVEX_SITE_URL || !INTERNAL_API_SECRET) {
+    console.error("CONVEX_SITE_URL or INTERNAL_API_SECRET not set");
+    return NextResponse.json(
+      { success: false, error: "Server configuration error" },
+      { status: 500 }
     );
   }
 
@@ -37,12 +44,28 @@ export async function POST() {
     : clerkUser.emailAddresses[0];
 
   try {
-    const result = await convex.mutation(api.billing.linkClerkUserByPhone, {
-      phone: primaryPhone.phoneNumber,
-      clerkUserId,
-      email: primaryEmail?.emailAddress,
+    const response = await fetch(`${CONVEX_SITE_URL}/link-phone`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${INTERNAL_API_SECRET}`,
+      },
+      body: JSON.stringify({
+        phone: primaryPhone.phoneNumber,
+        clerkUserId,
+        email: primaryEmail?.emailAddress,
+      }),
     });
 
+    if (!response.ok) {
+      console.error("link-phone HTTP endpoint failed:", response.status);
+      return NextResponse.json(
+        { success: false, error: "Failed to link account. Please try again." },
+        { status: 500 }
+      );
+    }
+
+    const result = await response.json();
     return NextResponse.json(result);
   } catch (err) {
     console.error("Failed to link phone:", err);
