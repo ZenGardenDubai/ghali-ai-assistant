@@ -1068,92 +1068,160 @@ Verify the full flow works end-to-end before deployment.
 
 ---
 
-## 25. Deployment & Configuration
+## 25. Web Admin Panel
+
+Web-based admin dashboard at `/admin`. Uses Clerk metadata (`isAdmin` flag) for access control. Provides user analytics and Twilio template message management.
+
+> **Implementation note:** Use the `frontend-design` agent for building the admin panel UI. Dark theme consistent with the existing app aesthetic.
+
+### Dashboard — User Analytics
+
+- [ ] **25.1 Set up admin route protection**
+  - `/admin` route group with Clerk middleware
+  - Check `user.publicMetadata.isAdmin === true` (set via Clerk dashboard)
+  - Redirect non-admins to `/` with 403
+  - Layout with sidebar navigation
+
+- [ ] **25.2 Build analytics dashboard page (`/admin`)**
+  - Summary cards with time period tabs: Today, Yesterday, Last 7 Days, Last 30 Days
+  - Metrics per period:
+    - **Total Users** — all registered users
+    - **New Users** — users created in the period
+    - **Pro Users** — users with tier=pro
+    - **Basic Users** — users with tier=basic
+  - Convex queries: `admin.getDashboardStats({ period })` returning counts per metric
+  - Real-time updates via Convex subscriptions
+
+- [ ] **25.3 Implement Convex admin queries**
+  - `getDashboardStats` — accepts period (today/yesterday/7d/30d), returns user counts
+  - `getRecentUsers` — paginated list of recent signups with phone, tier, credits, lastMessageAt
+  - All `internalQuery` exposed via authenticated HTTP endpoints or Convex client with admin guard
+
+### Twilio Template Messages
+
+- [ ] **25.4 Build template message page (`/admin/templates`)**
+  - Template selector dropdown (from `docs/TWILIO_TEMPLATES.md` list):
+    - `ghali_reminder` — Reminder
+    - `ghali_heartbeat` — Heartbeat Check-in
+    - `ghali_broadcast` — Admin Announcement
+    - `ghali_credits_reset` — Credit Refresh
+    - `ghali_credits_low` — Low Credit Warning
+    - `ghali_subscription_active` — Pro Plan Activated
+    - `ghali_subscription_ended` — Pro Plan Ended
+  - Variable input fields (dynamic based on selected template)
+  - Live preview of the rendered message
+  - Send mode toggle: **Test Send** (admin's own number) vs **Real Send** (target user)
+  - For Real Send: phone number input with user lookup
+
+- [ ] **25.5 Implement `sendWhatsAppTemplate` in `convex/lib/twilioSend.ts`**
+  - New function using `ContentSid` + `ContentVariables` (from TWILIO_TEMPLATES.md)
+  - New Convex action `twilio.sendTemplate` wrapping the function
+
+- [ ] **25.6 Implement admin template API endpoints**
+  - `admin.sendTestTemplate` — sends template to admin's own number
+  - `admin.sendTemplate` — sends template to specified phone number
+  - Both require admin verification
+  - Logs all template sends for audit trail
+
+- [ ] **25.7 Template Content SID management**
+  - Store Content SIDs as Convex env vars (`TWILIO_TPL_REMINDER`, etc.)
+  - Admin page shows which templates have SIDs configured vs missing
+  - Status indicator: green (configured) / red (not yet created in Twilio)
+
+### Testing & Polish
+
+- [ ] **25.8 Run all tests — pass**
+
+- [ ] **25.9 Commit: "Add web admin panel — dashboard analytics and template messaging"**
+
+---
+
+## 26. Deployment & Configuration
 
 Get everything running in production.
 
-- [ ] **25.1 Deploy Convex to production**
+- [ ] **26.1 Deploy Convex to production**
   - `npx convex deploy`
   - Set all environment variables in Convex Cloud dashboard
   - Verify: functions deploy without errors
 
-- [ ] **25.2 Deploy Next.js to Vercel**
+- [ ] **26.2 Deploy Next.js to Vercel**
   - Connect GitHub repo to Vercel
   - Set all environment variables in Vercel dashboard
   - Verify: landing page loads at ghali.ae
 
-- [ ] **25.3 Configure DNS for ghali.ae**
+- [ ] **26.3 Configure DNS for ghali.ae**
   - Point domain to Vercel
   - SSL certificate active
 
-- [ ] **25.4 Configure Twilio webhook**
+- [ ] **26.4 Configure Twilio webhook**
   - Set webhook URL to Convex prod HTTP endpoint: `https://<convex-prod-url>/whatsapp-webhook`
   - Method: POST
   - Verify: test message from WhatsApp reaches the webhook
 
-- [ ] **25.5 Configure Clerk**
+- [ ] **26.5 Configure Clerk**
   - Set up Clerk application
   - Configure billing/subscription products (Basic, Pro)
   - Set webhook URL to Convex prod HTTP endpoint: `https://<convex-prod-url>/clerk-webhook`
   - Verify: Clerk dashboard shows correct config
 
-- [ ] **25.6 Configure PostHog**
+- [ ] **26.6 Configure PostHog**
   - Verify events are flowing from landing page
   - Set up conversion funnel dashboard
 
-- [ ] **25.7 Set up admin user**
+- [ ] **26.7 Set up admin user**
   - Mark admin phone number(s) in Convex dashboard
 
-- [ ] **25.8 Smoke test in production**
+- [ ] **26.8 Smoke test in production**
   - Send a WhatsApp message → get a response
   - Check credits → correct template
   - Send a document → RAG storage works
   - Send a voice note → transcription works
   - Generate an image → received in WhatsApp
 
-- [ ] **25.9 Commit: "Production deployment configuration"**
+- [ ] **26.9 Commit: "Production deployment configuration"**
 
 ---
 
-## 26. Post-Launch Hardening
+## 27. Post-Launch Hardening
 
 Final polish and monitoring after the system is live.
 
-- [ ] **26.1 Set up error monitoring**
+- [ ] **27.1 Set up error monitoring**
   - Convex function error logs → alerts
   - Vercel deployment logs
 
-- [ ] **26.2 Set up usage monitoring (via PostHog)**
+- [ ] **27.2 Set up usage monitoring (via PostHog)**
   - Daily credit consumption trends
   - Model usage breakdown (Flash vs Pro vs Opus)
   - Cost tracking via PostHog `$ai_generation` events
 
-- [ ] **26.3 Review rate limits**
+- [ ] **27.3 Review rate limits**
   - Adjust based on real usage patterns
   - Ensure blocked country codes list is up to date
 
-- [ ] **26.4 Performance check**
+- [ ] **27.4 Performance check**
   - Webhook response time < 500ms (just the 200 OK)
   - AI response delivery time tracking
   - Landing page Lighthouse score > 90
 
-- [ ] **26.5 Backup and recovery plan**
+- [ ] **27.5 Backup and recovery plan**
   - Convex data export strategy
   - Document recovery procedure
 
-- [ ] **26.6 Commit: "Add monitoring and post-launch hardening"**
+- [ ] **27.6 Commit: "Add monitoring and post-launch hardening"**
 
 ---
 
-## 27. Constants Single Source of Truth
+## 28. Constants Single Source of Truth
 
 Consolidate ALL business rule constants into a single file (`convex/constants.ts`). Nothing hardcoded anywhere else. Every constant imported from one place.
 
-- [ ] **27.1 Create `convex/constants.ts` — the SSOT file**
+- [ ] **28.1 Create `convex/constants.ts` — the SSOT file**
   - Merge existing `convex/models.ts` into this file (models become a section)
   - All business rules, limits, and configuration in one place
 
-- [ ] **27.2 Tier & Credit Constants**
+- [ ] **28.2 Tier & Credit Constants**
   ```
   USER_TIERS = ["basic", "pro"]
   BASIC_TIER_CREDITS = 60
@@ -1162,7 +1230,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   CREDITS_RESET_DAYS = 30
   ```
 
-- [ ] **27.3 Storage & File Limits**
+- [ ] **28.3 Storage & File Limits**
   ```
   MAX_USER_FILE_SIZE = 10 * 1024          // 10 KB per user file
   MAX_MEDIA_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
@@ -1172,37 +1240,37 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   RAG_CHUNK_OVERLAP = 200
   ```
 
-- [ ] **27.4 WhatsApp & Messaging Constants**
+- [ ] **28.4 WhatsApp & Messaging Constants**
   ```
   WHATSAPP_MAX_MESSAGE_LENGTH = 1500
   WHATSAPP_MULTI_PART_DELAY_MS = 500
   WHATSAPP_NUMBER = "+971582896090"
   ```
 
-- [ ] **27.5 Agent Configuration**
+- [ ] **28.5 Agent Configuration**
   ```
   AGENT_MAX_STEPS = 5
   AGENT_CONTEXT_MESSAGES = 50
   DEFAULT_TEMPERATURE = 0.7
   ```
 
-- [ ] **27.6 Model Constants (from existing `convex/models.ts`)**
+- [ ] **28.6 Model Constants (from existing `convex/models.ts`)**
   ```
   MODELS = { FLASH, DEEP_REASONING, IMAGE_GENERATION, EMBEDDING }
   // MODEL_COSTS removed — cost tracking handled by PostHog
   ```
 
-- [ ] **27.7 Blocked Country Codes**
+- [ ] **28.7 Blocked Country Codes**
   ```
   BLOCKED_COUNTRY_CODES = ["+91", "+92", "+880", "+234", "+62", "+263"]
   ```
 
-- [ ] **27.8 System Commands**
+- [ ] **28.8 System Commands**
   ```
   SYSTEM_COMMANDS = ["credits", "help", "privacy", "upgrade", "account", "my memory", "clear memory", "clear documents", "clear everything"]
   ```
 
-- [ ] **27.9 Brand & Company**
+- [ ] **28.9 Brand & Company**
   ```
   DOMAIN = "ghali.ae"
   SITE_URL = "https://ghali.ae"
@@ -1210,11 +1278,11 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   COMPANY_NAME = "SAHEM DATA TECHNOLOGY"
   ```
 
-- [ ] **27.10 Helper Functions**
+- [ ] **28.10 Helper Functions**
   - `getCreditsForTier(tier)` — returns credit limit for tier
   - `getModelApiName(modelId)` — if any internal→API name mapping needed
 
-- [ ] **27.11 Audit: replace all hardcoded values across codebase**
+- [ ] **28.11 Audit: replace all hardcoded values across codebase**
   - `convex/agent.ts` — imports from constants
   - ~~`convex/usageTracking.ts`~~ *(removed — usage tracking deferred to PostHog)*
   - `convex/lib/utils.ts` — imports BLOCKED_COUNTRY_CODES, SYSTEM_COMMANDS, WHATSAPP_MAX_MESSAGE_LENGTH
@@ -1222,17 +1290,17 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
   - `convex/schema.test.ts` — imports from constants
   - Grep entire codebase for remaining hardcoded strings
 
-- [ ] **27.12 Run all tests — pass**
+- [ ] **28.12 Run all tests — pass**
 
-- [ ] **27.13 Commit: "Consolidate all constants into single source of truth"**
+- [ ] **28.13 Commit: "Consolidate all constants into single source of truth"**
 
 ---
 
-## 28. Documentation
+## 29. Documentation
 
 Update README and ensure docs are complete. SPEC.md is the single source of truth for architecture and business rules — no separate architecture or business rules docs.
 
-- [ ] **28.1 Update `README.md`**
+- [ ] **29.1 Update `README.md`**
   - Project overview: what Ghali is, who it's for
   - Tech stack summary (with versions)
   - Getting started: prerequisites, env vars, `pnpm install`, `pnpm dev`
@@ -1242,15 +1310,15 @@ Update README and ensure docs are complete. SPEC.md is the single source of trut
   - Link to SPEC.md (architecture + business rules) and PLAN.md (execution plan)
   - License: Apache 2.0
 
-- [ ] **28.2 Review SPEC.md for accuracy**
+- [ ] **29.2 Review SPEC.md for accuracy**
   - Verify all business rules match the implemented code
   - Verify model assignments match code (Flash, Pro, Opus)
   - Verify credit system matches implementation
   - Update any sections that drifted during development
 
-- [ ] **28.3 Review PLAN.md for accuracy**
+- [ ] **29.3 Review PLAN.md for accuracy**
   - Mark all completed sections accurately
   - Remove any tasks that were skipped with reasons
   - Ensure remaining tasks are still relevant
 
-- [ ] **28.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**
+- [ ] **29.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**
