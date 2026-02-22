@@ -22,6 +22,7 @@
     "@ai-sdk/openai": "^2.0.91",
     "@clerk/backend": "^2.32.0",
     "@clerk/nextjs": "^6.38.0",
+    "@clerk/themes": "^2.4.55",
     "@convex-dev/agent": "^0.3.2",
     "@convex-dev/rag": "^0.7.1",
     "@convex-dev/rate-limiter": "^0.3.2",

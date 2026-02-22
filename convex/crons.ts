@@ -31,11 +31,4 @@ crons.cron(
   internal.heartbeat.processHeartbeats
 );
 
-// Hourly cleanup of expired upgrade tokens
-crons.interval(
-  "cleanup-upgrade-tokens",
-  { hours: 1 },
-  internal.billing.cleanupExpiredTokens
-);
-
 export default crons;

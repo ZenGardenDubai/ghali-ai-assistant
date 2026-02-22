@@ -3,298 +3,124 @@ import { describe, it, expect } from "vitest";
 import { api, internal } from "./_generated/api";
 import schema from "./schema";
 import { CREDITS_PRO } from "./constants";
-import { Id } from "./_generated/dataModel";
 
 const modules = import.meta.glob("./**/*.ts");
 
 /**
- * Helper: generate a token for a user and redeem it to link a clerkUserId.
- * Replaces the old linkClerkUser flow.
+ * Helper: link a clerkUserId to a user via phone number.
  */
-async function linkViaToken(
+async function linkByPhone(
   t: ReturnType<typeof convexTest>,
-  userId: Id<"users">,
+  phone: string,
   clerkUserId: string
 ) {
-  const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-    userId,
-  });
-  await t.mutation(api.billing.redeemUpgradeToken, {
-    token,
+  const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+    phone,
     clerkUserId,
   });
+  expect(result.success).toBe(true);
 }
 
 // ============================================================================
-// generateUpgradeToken
+// linkClerkUserByPhone
 // ============================================================================
 
-describe("generateUpgradeToken", () => {
-  it("creates a pending token with 32-char value", async () => {
+describe("linkClerkUserByPhone", () => {
+  it("links clerkUserId to user by phone", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(api.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    expect(token).toHaveLength(32);
-    expect(token).toMatch(/^[0-9a-f]{32}$/);
-
-    // Validate it's pending
-    const result = await t.query(api.billing.validateUpgradeToken, { token });
-    expect(result.valid).toBe(true);
-  });
-
-  it("invalidates previous pending tokens for same user", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
       phone: "+971501234567",
-    });
-
-    const { token: token1 } = await t.mutation(
-      internal.billing.generateUpgradeToken,
-      { userId }
-    );
-    const { token: token2 } = await t.mutation(
-      internal.billing.generateUpgradeToken,
-      { userId }
-    );
-
-    // First token should be invalidated
-    const result1 = await t.query(api.billing.validateUpgradeToken, {
-      token: token1,
-    });
-    expect(result1.valid).toBe(false);
-
-    // Second token should be valid
-    const result2 = await t.query(api.billing.validateUpgradeToken, {
-      token: token2,
-    });
-    expect(result2.valid).toBe(true);
-  });
-});
-
-// ============================================================================
-// validateUpgradeToken
-// ============================================================================
-
-describe("validateUpgradeToken", () => {
-  it("returns valid for fresh token", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    const result = await t.query(api.billing.validateUpgradeToken, { token });
-    expect(result.valid).toBe(true);
-  });
-
-  it("returns invalid for expired token", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    // Fast-forward past expiry
-    await t.run(async (ctx) => {
-      const record = await ctx.db
-        .query("upgradeTokens")
-        .withIndex("by_token", (q) => q.eq("token", token))
-        .unique();
-      if (record) {
-        await ctx.db.patch(record._id, {
-          expiresAt: Date.now() - 1000,
-        });
-      }
-    });
-
-    const result = await t.query(api.billing.validateUpgradeToken, { token });
-    expect(result.valid).toBe(false);
-  });
-
-  it("returns invalid for used token", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    // Redeem it
-    await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
-      clerkUserId: "user_clerk123",
-    });
-
-    // Now it should be invalid
-    const result = await t.query(api.billing.validateUpgradeToken, { token });
-    expect(result.valid).toBe(false);
-  });
-
-  it("returns invalid for nonexistent token", async () => {
-    const t = convexTest(schema, modules);
-
-    const result = await t.query(api.billing.validateUpgradeToken, {
-      token: "nonexistent_token_abc123456789",
-    });
-    expect(result.valid).toBe(false);
-  });
-});
-
-// ============================================================================
-// redeemUpgradeToken
-// ============================================================================
-
-describe("redeemUpgradeToken", () => {
-  it("links clerkUserId and marks token used", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    const result = await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
       clerkUserId: "user_clerk123",
     });
 
     expect(result.success).toBe(true);
 
-    // User should have clerkUserId linked
     const user = await t.query(api.users.getUser, { userId });
     expect(user!.clerkUserId).toBe("user_clerk123");
-
-    // Token should be used
-    const validation = await t.query(api.billing.validateUpgradeToken, {
-      token,
-    });
-    expect(validation.valid).toBe(false);
   });
 
-  it("rejects expired token", async () => {
+  it("returns error when phone not found", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    // Expire it
-    await t.run(async (ctx) => {
-      const record = await ctx.db
-        .query("upgradeTokens")
-        .withIndex("by_token", (q) => q.eq("token", token))
-        .unique();
-      if (record) {
-        await ctx.db.patch(record._id, { expiresAt: Date.now() - 1000 });
-      }
-    });
-
-    const result = await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
+    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+      phone: "+971509999999",
       clerkUserId: "user_clerk123",
     });
 
     expect(result.success).toBe(false);
+    expect(result.error).toContain("No account found");
   });
 
-  it("rejects already-used token from different clerkUserId", async () => {
+  it("is idempotent when same clerkUserId re-links", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(api.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Link once
+    await t.mutation(api.billing.linkClerkUserByPhone, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+    });
+
+    // Link again — same clerkUserId
+    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("re-links phone to new clerkUserId (user verified via OTP)", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(api.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    // Redeem once
-    await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
+    // Link to first clerkUserId
+    await t.mutation(api.billing.linkClerkUserByPhone, {
+      phone: "+971501234567",
       clerkUserId: "user_clerk123",
     });
 
-    // Try again with different clerkUserId
-    const result = await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
+    // Re-link same phone to different clerkUserId (new Clerk account)
+    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+      phone: "+971501234567",
       clerkUserId: "user_clerk456",
     });
 
-    expect(result.success).toBe(false);
-  });
-
-  it("returns success idempotently when same clerkUserId re-redeems", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    // Redeem once
-    await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
-      clerkUserId: "user_clerk123",
-    });
-
-    // Same user re-redeems (e.g., React strict mode double-call)
-    const result = await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
-      clerkUserId: "user_clerk123",
-    });
-
     expect(result.success).toBe(true);
+
+    // User should now be linked to the new clerkUserId
+    const user = await t.query(api.users.getUser, { userId });
+    expect(user!.clerkUserId).toBe("user_clerk456");
   });
 
   it("rejects when clerkUserId is already linked to a different user", async () => {
     const t = convexTest(schema, modules);
 
     // Create two users
-    const userId1 = await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(api.users.findOrCreateUser, {
       phone: "+971501111111",
     });
-    const userId2 = await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(api.users.findOrCreateUser, {
       phone: "+971502222222",
     });
 
-    // Link clerkUserId to user1 via token
-    await linkViaToken(t, userId1, "user_clerk_shared");
+    // Link clerkUserId to user1
+    await linkByPhone(t, "+971501111111", "user_clerk_shared");
 
-    // Generate token for user2 and try to redeem with the same clerkUserId
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId: userId2,
-    });
-    const result = await t.mutation(api.billing.redeemUpgradeToken, {
-      token,
+    // Try to link same clerkUserId to user2
+    const result = await t.mutation(api.billing.linkClerkUserByPhone, {
+      phone: "+971502222222",
       clerkUserId: "user_clerk_shared",
     });
 
@@ -304,56 +130,25 @@ describe("redeemUpgradeToken", () => {
 });
 
 // ============================================================================
-// cleanupExpiredTokens
-// ============================================================================
-
-describe("cleanupExpiredTokens", () => {
-  it("marks stale tokens as expired", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(api.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    const { token } = await t.mutation(internal.billing.generateUpgradeToken, {
-      userId,
-    });
-
-    // Expire the token manually
-    await t.run(async (ctx) => {
-      const record = await ctx.db
-        .query("upgradeTokens")
-        .withIndex("by_token", (q) => q.eq("token", token))
-        .unique();
-      if (record) {
-        await ctx.db.patch(record._id, { expiresAt: Date.now() - 1000 });
-      }
-    });
-
-    const { cleaned } = await t.mutation(
-      internal.billing.cleanupExpiredTokens
-    );
-    expect(cleaned).toBe(1);
-
-    // Token should now be expired (not pending)
-    const result = await t.query(api.billing.validateUpgradeToken, { token });
-    expect(result.valid).toBe(false);
-  });
-});
-
-// ============================================================================
-// Subscription Handlers (using token-based linking)
+// Subscription Handlers
 // ============================================================================
 
 describe("handleSubscriptionActive", () => {
   it("upgrades tier to pro and sets 600 credits", async () => {
     const t = convexTest(schema, modules);
 
-    const userId = await t.mutation(api.users.findOrCreateUser, {
+    await t.mutation(api.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await linkViaToken(t, userId, "user_clerk123");
+    await linkByPhone(t, "+971501234567", "user_clerk123");
+
+    const userId = (await t.run(async (ctx) => {
+      return await ctx.db
+        .query("users")
+        .withIndex("by_phone", (q) => q.eq("phone", "+971501234567"))
+        .unique();
+    }))!._id;
 
     await t.mutation(internal.billing.handleSubscriptionActive, {
       clerkUserId: "user_clerk123",
@@ -371,7 +166,7 @@ describe("handleSubscriptionActive", () => {
       phone: "+971501234567",
     });
 
-    await linkViaToken(t, userId, "user_clerk123");
+    await linkByPhone(t, "+971501234567", "user_clerk123");
 
     // Simulate cancel then reactivate
     await t.mutation(internal.billing.handleSubscriptionCanceled, {
@@ -404,7 +199,7 @@ describe("handleSubscriptionCanceled", () => {
       phone: "+971501234567",
     });
 
-    await linkViaToken(t, userId, "user_clerk123");
+    await linkByPhone(t, "+971501234567", "user_clerk123");
 
     await t.mutation(internal.billing.handleSubscriptionActive, {
       clerkUserId: "user_clerk123",
@@ -437,7 +232,7 @@ describe("handleSubscriptionEnded", () => {
       phone: "+971501234567",
     });
 
-    await linkViaToken(t, userId, "user_clerk123");
+    await linkByPhone(t, "+971501234567", "user_clerk123");
 
     // Activate, cancel, then end
     await t.mutation(internal.billing.handleSubscriptionActive, {
@@ -454,6 +249,29 @@ describe("handleSubscriptionEnded", () => {
     expect(user!.tier).toBe("basic");
     expect(user!.subscriptionCanceling).toBeUndefined();
     // Credits remain as-is — next monthly reset will give basic amount
+    expect(user!.credits).toBe(CREDITS_PRO);
+  });
+
+  it("skips downgrade when user is not in canceling state (stale ended event)", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(api.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await linkByPhone(t, "+971501234567", "user_clerk123");
+
+    // Activate (no cancel step) then ended arrives (stale event from old subscription)
+    await t.mutation(internal.billing.handleSubscriptionActive, {
+      clerkUserId: "user_clerk123",
+    });
+    await t.mutation(internal.billing.handleSubscriptionEnded, {
+      clerkUserId: "user_clerk123",
+    });
+
+    // Should still be pro — stale ended event was ignored
+    const user = await t.query(api.users.getUser, { userId });
+    expect(user!.tier).toBe("pro");
     expect(user!.credits).toBe(CREDITS_PRO);
   });
 

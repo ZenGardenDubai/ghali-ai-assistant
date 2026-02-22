@@ -104,6 +104,7 @@ export interface SystemCommandResult {
 
 // User type expected by handleSystemCommand
 interface SystemCommandUser {
+  phone: string;
   tier: "basic" | "pro";
   credits: number;
   creditsResetAt: number;
@@ -127,8 +128,7 @@ export async function handleSystemCommand(
   user: SystemCommandUser,
   userFiles: UserFile[],
   userMessage: string,
-  docCount?: number,
-  upgradeUrl?: string
+  docCount?: number
 ): Promise<SystemCommandResult | null> {
   const normalized = command.toLowerCase().trim();
 
@@ -175,7 +175,8 @@ export async function handleSystemCommand(
           ),
         };
       }
-      const url = upgradeUrl ?? process.env.UPGRADE_URL ?? "https://ghali.ae/upgrade";
+      const baseUrl = process.env.UPGRADE_URL ?? "http://localhost:3000/upgrade";
+      const url = `${baseUrl}?phone=${encodeURIComponent(user.phone)}`;
       return {
         response: await renderSystemMessage("upgrade", { upgradeUrl: url }, userMessage),
       };

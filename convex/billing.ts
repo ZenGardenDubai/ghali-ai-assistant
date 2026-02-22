@@ -1,131 +1,55 @@
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
-import { CREDITS_PRO, UPGRADE_TOKEN_EXPIRY_MS } from "./constants";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation } from "./_generated/server";
+import { CREDITS_PRO } from "./constants";
 
 // ============================================================================
-// Upgrade Tokens
+// Phone-Based Account Linking
 // ============================================================================
 
-export const generateUpgradeToken = internalMutation({
+export const linkClerkUserByPhone = mutation({
   args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, { userId }) => {
-    // Invalidate any existing pending tokens for this user
-    const existing = await ctx.db
-      .query("upgradeTokens")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .collect();
-
-    for (const tok of existing) {
-      if (tok.status === "pending") {
-        await ctx.db.patch(tok._id, { status: "expired" });
-      }
-    }
-
-    // Generate 32-char hex token
-    const token = (crypto.randomUUID() + crypto.randomUUID())
-      .replace(/-/g, "")
-      .slice(0, 32);
-
-    const now = Date.now();
-    await ctx.db.insert("upgradeTokens", {
-      token,
-      userId,
-      status: "pending",
-      expiresAt: now + UPGRADE_TOKEN_EXPIRY_MS,
-      createdAt: now,
-    });
-
-    return { token };
-  },
-});
-
-export const validateUpgradeToken = query({
-  args: {
-    token: v.string(),
-  },
-  handler: async (ctx, { token }) => {
-    const record = await ctx.db
-      .query("upgradeTokens")
-      .withIndex("by_token", (q) => q.eq("token", token))
-      .unique();
-
-    if (!record) {
-      return { valid: false };
-    }
-
-    if (record.status === "pending" && record.expiresAt > Date.now()) {
-      return { valid: true };
-    }
-
-    return { valid: false };
-  },
-});
-
-export const redeemUpgradeToken = mutation({
-  args: {
-    token: v.string(),
+    phone: v.string(),
     clerkUserId: v.string(),
+    email: v.optional(v.string()),
   },
-  handler: async (ctx, { token, clerkUserId }) => {
-    const record = await ctx.db
-      .query("upgradeTokens")
-      .withIndex("by_token", (q) => q.eq("token", token))
+  handler: async (ctx, { phone, clerkUserId, email }) => {
+    // Look up Convex user by phone
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", phone))
       .unique();
 
-    if (!record) {
-      return { success: false, error: "Token is invalid or expired" };
+    if (!user) {
+      return { success: false, error: "No account found for this phone number" };
     }
 
-    // Idempotent: if token already used, check if user is correctly linked
-    if (record.status === "used") {
-      const user = await ctx.db.get(record.userId);
-      if (user?.clerkUserId === clerkUserId) {
-        return { success: true };
+    // Idempotent: already linked to this clerkUserId
+    if (user.clerkUserId === clerkUserId) {
+      // Still update email if provided and not yet stored
+      if (email && !user.email) {
+        await ctx.db.patch(user._id, { email });
       }
-      return { success: false, error: "Token is invalid or expired" };
+      return { success: true };
     }
 
-    if (record.status !== "pending" || record.expiresAt <= Date.now()) {
-      return { success: false, error: "Token is invalid or expired" };
-    }
-
-    // Guard: check if clerkUserId is already linked to another user
+    // Guard: check if clerkUserId is already linked to a *different* Convex user
     const existingLink = await ctx.db
       .query("users")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
       .unique();
 
-    if (existingLink && existingLink._id !== record.userId) {
+    if (existingLink && existingLink._id !== user._id) {
       return { success: false, error: "This account is already linked to another user" };
     }
 
-    // Link clerkUserId to the Ghali user
-    await ctx.db.patch(record.userId, { clerkUserId });
-
-    // Mark token as used
-    await ctx.db.patch(record._id, { status: "used" });
+    // Link (or re-link) clerkUserId to the Ghali user.
+    // Re-linking is safe because the phone was verified via OTP.
+    const updates: { clerkUserId: string; email?: string } = { clerkUserId };
+    if (email) updates.email = email;
+    await ctx.db.patch(user._id, updates);
 
     return { success: true };
-  },
-});
-
-export const cleanupExpiredTokens = internalMutation({
-  handler: async (ctx) => {
-    const now = Date.now();
-    const expired = await ctx.db
-      .query("upgradeTokens")
-      .withIndex("by_status_expiresAt", (q) =>
-        q.eq("status", "pending").lt("expiresAt", now)
-      )
-      .take(100);
-
-    for (const tok of expired) {
-      await ctx.db.patch(tok._id, { status: "expired" });
-    }
-
-    return { cleaned: expired.length };
   },
 });
 
@@ -136,18 +60,31 @@ export const cleanupExpiredTokens = internalMutation({
 export const handleSubscriptionActive = internalMutation({
   args: {
     clerkUserId: v.string(),
+    retryCount: v.optional(v.number()),
   },
-  handler: async (ctx, { clerkUserId }) => {
+  handler: async (ctx, { clerkUserId, retryCount = 0 }) => {
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
       .unique();
 
     if (!user) {
-      console.log(`No user found for clerkUserId ${clerkUserId}, skipping activation`);
+      // The webhook may fire before linkClerkUserByPhone completes.
+      // Retry up to 3 times with increasing delay to allow linking to complete.
+      if (retryCount < 3) {
+        const delayMs = (retryCount + 1) * 3000; // 3s, 6s, 9s
+        console.log(`No user found for clerkUserId ${clerkUserId}, retrying in ${delayMs}ms (attempt ${retryCount + 1}/3)`);
+        await ctx.scheduler.runAfter(delayMs, internal.billing.handleSubscriptionActive, {
+          clerkUserId,
+          retryCount: retryCount + 1,
+        });
+        return;
+      }
+      console.log(`No user found for clerkUserId ${clerkUserId} after 3 retries, skipping activation`);
       return;
     }
 
+    console.log(`Activating Pro for user ${user._id} (clerkUserId ${clerkUserId}, attempt ${retryCount + 1})`);
     await ctx.db.patch(user._id, {
       tier: "pro",
       credits: CREDITS_PRO,
@@ -187,6 +124,14 @@ export const handleSubscriptionEnded = internalMutation({
 
     if (!user) {
       console.log(`No user found for clerkUserId ${clerkUserId}, skipping end`);
+      return;
+    }
+
+    // Only downgrade if the user was in a canceling state.
+    // This prevents a stale "ended" event from a previous subscription
+    // from overriding a fresh "active" event for a new subscription.
+    if (!user.subscriptionCanceling) {
+      console.log(`User ${user._id} is not in canceling state, skipping downgrade (likely stale ended event)`);
       return;
     }
 

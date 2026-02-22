@@ -5,6 +5,7 @@ export default defineSchema({
   users: defineTable({
     phone: v.string(),
     name: v.optional(v.string()),
+    email: v.optional(v.string()),
     language: v.string(),
     timezone: v.string(),
     tier: v.union(v.literal("basic"), v.literal("pro")),
@@ -60,21 +61,6 @@ export default defineSchema({
     .index("by_messageSid", ["messageSid"])
     .index("by_expiresAt", ["expiresAt"])
     .index("by_userId", ["userId"]),
-
-  upgradeTokens: defineTable({
-    token: v.string(),
-    userId: v.id("users"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("used"),
-      v.literal("expired")
-    ),
-    expiresAt: v.number(),
-    createdAt: v.number(),
-  })
-    .index("by_token", ["token"])
-    .index("by_userId", ["userId"])
-    .index("by_status_expiresAt", ["status", "expiresAt"]),
 
   scheduledJobs: defineTable({
     userId: v.id("users"),

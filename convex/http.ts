@@ -83,9 +83,12 @@ http.route({
       return new Response("Verification failed", { status: 400 });
     }
 
+    console.log(`Clerk webhook received: ${event.type}`, { id: event.data.id });
+
     switch (event.type) {
       case "subscriptionItem.active": {
         const activePayerId = event.data.payer?.user_id;
+        console.log(`subscriptionItem.active — payer user_id: ${activePayerId}`);
         if (activePayerId) {
           await ctx.runMutation(internal.billing.handleSubscriptionActive, {
             clerkUserId: activePayerId,

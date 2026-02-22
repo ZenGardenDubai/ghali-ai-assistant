@@ -23,6 +23,7 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
   creditsResetAt: new Date("2026-03-20").getTime(),
   language: "en",
   timezone: "Asia/Dubai",
+  phone: "+971501234567",
   ...overrides,
 });
 
