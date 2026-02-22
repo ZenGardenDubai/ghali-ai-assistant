@@ -1025,13 +1025,16 @@ Server-side PostHog (`posthog-node`) for LLM usage, credits, users, and system c
 - [x] **23.7 Landing page analytics** *(done in Section 22)*
   - Page views, CTA clicks, UTM tracking, conversion funnel
 
-- [ ] **23.8 Set up PostHog dashboards**
-  - Daily active users, messages per day, model usage breakdown
-  - Credit utilization, upgrade conversion, error rates
+- [x] **23.8 Set up PostHog dashboards**
+  - "Ghali Server Analytics" dashboard (ID 1299426) with 7 insights:
+  - Daily Active Users (DAU line), New vs Returning Users (line)
+  - Messages per Day (bar: paid + system commands), Model Usage Breakdown (pie by model)
+  - Image & Document Processing (line), Token Usage Input vs Output (line)
+  - Credits Exhausted (line)
 
 - [x] **23.9 Run all tests — pass (360 tests)**
 
-- [ ] **23.10 Commit: "Add server-side PostHog analytics — LLM tracking, credits, users"**
+- [x] **23.10 Commit: "Add server-side PostHog analytics — LLM tracking, credits, users"**
 
 ---
 
