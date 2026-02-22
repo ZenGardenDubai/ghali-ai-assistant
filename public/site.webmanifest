@@ -1,0 +1,20 @@
+{
+  "name": "Ghali",
+  "short_name": "Ghali",
+  "description": "Your WhatsApp AI Assistant",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#ED6B23",
+  "background_color": "#0a0f1e",
+  "display": "standalone"
+}
