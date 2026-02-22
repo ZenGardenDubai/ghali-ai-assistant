@@ -3,6 +3,7 @@ import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
+import { MODELS } from "./models";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
@@ -119,6 +120,22 @@ export const generateResponse = internalAction({
     if (!user) {
       console.error(`User not found: ${userId}`);
       return;
+    }
+
+    // Track new vs returning user (fire-and-forget)
+    // onboardingStep === 1 means first message ever (set at creation, cleared after onboarding)
+    const isNewUser = user.onboardingStep === 1;
+    if (isNewUser) {
+      await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
+        phone: user.phone,
+        timezone: user.timezone,
+      });
+    } else {
+      await ctx.scheduler.runAfter(0, internal.analytics.trackUserReturning, {
+        phone: user.phone,
+        tier: user.tier,
+        credits_remaining: user.credits,
+      });
     }
 
     // Classify command — resolves translated commands (e.g. "مساعدة" → "help")
@@ -298,6 +315,10 @@ export const generateResponse = internalAction({
             action: systemResult.pendingAction,
           });
         }
+        await ctx.scheduler.runAfter(0, internal.analytics.trackSystemCommand, {
+          phone: user.phone,
+          command: messageForCredits,
+        });
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
           body: systemResult.response,
@@ -345,6 +366,11 @@ export const generateResponse = internalAction({
       const message = fillTemplate(TEMPLATES[templateKey].template, {
         maxCredits,
         resetDate,
+      });
+      await ctx.scheduler.runAfter(0, internal.analytics.trackCreditsExhausted, {
+        phone: user.phone,
+        tier: user.tier,
+        reset_at: user.creditsResetAt,
       });
       await ctx.runAction(internal.twilio.sendMessage, {
         to: user.phone,
@@ -434,6 +460,12 @@ export const generateResponse = internalAction({
 
       const { extracted, storageId } = result;
 
+      await ctx.scheduler.runAfter(0, internal.analytics.trackDocumentProcessed, {
+        phone: user.phone,
+        media_type: mediaContentType,
+        has_rag: isRagIndexable(mediaContentType),
+      });
+
       // Store media file for future reply-to-media (first-time only, not voice notes)
       if (messageSid && storageId) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
@@ -471,6 +503,7 @@ export const generateResponse = internalAction({
     let responseText: string | undefined;
     let imageResult: { imageUrl: string; caption: string } | null = null;
     let aiSucceeded = false;
+    let toolsUsed: string[] = [];
     try {
       const result = await ghaliAgent.generateText(
         ctx,
@@ -484,6 +517,15 @@ export const generateResponse = internalAction({
       responseText = result.text;
       aiSucceeded = true;
 
+      // Extract tools used across all steps
+      toolsUsed = [
+        ...new Set(
+          result.steps.flatMap((s: { toolCalls: Array<{ toolName: string }> }) =>
+            s.toolCalls.map((tc: { toolName: string }) => tc.toolName)
+          )
+        ),
+      ];
+
       // Check tool results directly for image generation output
       imageResult = extractImageFromSteps(result.steps);
     } catch (error) {
@@ -496,9 +538,21 @@ export const generateResponse = internalAction({
       await ctx.runMutation(internal.credits.deductCredit, {
         userId: typedUserId,
       });
+      await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
+        phone: user.phone,
+        credits_remaining: Math.max(0, user.credits - 1),
+        tier: user.tier,
+        model: toolsUsed.includes("deepReasoning")
+          ? MODELS.DEEP_REASONING
+          : toolsUsed.includes("generateImage")
+            ? MODELS.IMAGE_GENERATION
+            : MODELS.FLASH,
+        tools_used: toolsUsed.length > 0 ? toolsUsed : undefined,
+      });
     }
 
     if (imageResult) {
+      // Image analytics tracked in images.ts (with latency + model detail)
       // Send generated image as WhatsApp media, fall back to text if media fails
       try {
         await ctx.runAction(internal.twilio.sendMedia, {

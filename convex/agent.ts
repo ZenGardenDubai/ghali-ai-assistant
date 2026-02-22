@@ -453,4 +453,36 @@ export const ghaliAgent = new Agent(components.agent, {
   contextOptions: {
     recentMessages: AGENT_RECENT_MESSAGES,
   },
+  usageHandler: async (ctx, { userId, usage, providerMetadata, model, provider }) => {
+    if (!userId) return;
+    try {
+      const user = await ctx.runQuery(internal.users.internalGetUser, {
+        userId: userId as Id<"users">,
+      }) as { phone: string; tier: string } | null;
+      if (!user) return;
+
+      const reasoningTokens =
+        (providerMetadata?.anthropic?.reasoningTokens as number | undefined) ??
+        (providerMetadata?.google?.reasoningTokens as number | undefined) ??
+        0;
+      const cachedInputTokens =
+        (providerMetadata?.openai?.cachedPromptTokens as number | undefined) ??
+        (providerMetadata?.anthropic?.cacheReadInputTokens as number | undefined) ??
+        0;
+
+      // Use runMutation → scheduler (non-blocking) instead of runAction (blocking)
+      await ctx.runMutation(internal.analyticsHelper.scheduleTrackAIGeneration, {
+        phone: user.phone,
+        model,
+        provider,
+        promptTokens: usage.inputTokens ?? 0,
+        completionTokens: usage.outputTokens ?? 0,
+        reasoningTokens: reasoningTokens || undefined,
+        cachedInputTokens: cachedInputTokens || undefined,
+        tier: user.tier,
+      });
+    } catch (error) {
+      console.error("[Analytics] usageHandler failed:", error);
+    }
+  },
 });

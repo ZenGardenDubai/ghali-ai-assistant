@@ -944,7 +944,7 @@ Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO opti
 
 > **Implementation note:** Use the `frontend-design` agent for building the landing page, privacy, and terms pages. It produces distinctive, production-grade UI with high design quality.
 
-- [ ] **22.1 Build landing page layout**
+- [x] **22.1 Build landing page layout**
   - **Copy & content:** See `docs/LANDING_PAGE_COPY.md` for all text, structure, and messaging
   - Hero section: tagline + WhatsApp CTA button
   - Key Strengths — 5 blocks (zero friction, learns you, privacy, smartest AI, open source)
@@ -954,66 +954,84 @@ Static marketing page. WhatsApp CTA only — no web chat. Mobile-first, SEO opti
   - FAQ section (collapsible)
   - Footer with legal links
 
-- [ ] **22.2 Style with Tailwind**
+- [x] **22.2 Style with Tailwind**
   - Colors: Navy `hsl(222, 47%, 11%)` + Orange `#f97316`
   - Mobile-first responsive design
   - Load time target: < 2 seconds
 
-- [ ] **22.3 Add PostHog analytics**
+- [x] **22.3 Add PostHog analytics**
   - Page views, CTA clicks, UTM tracking
   - Conversion funnel: page view → CTA click → WhatsApp opened
 
-- [ ] **22.4 Build `/privacy` page**
+- [x] **22.4 Build `/privacy` page**
   - Privacy Policy for SAHEM DATA TECHNOLOGY
   - Covers: data collected, AI processing, user rights, analytics, retention
 
-- [ ] **22.5 Build `/terms` page**
+- [x] **22.5 Build `/terms` page**
   - Terms of Service for SAHEM DATA TECHNOLOGY
   - Covers: credit system, acceptable use, AI disclaimer, content ownership, liability
 
-- [ ] **22.6 SEO optimization**
+- [x] **22.6 SEO optimization**
   - Meta tags, Open Graph, structured data (JSON-LD)
   - Static generation (SSG)
   - Minimal client-side JS (PostHog + WhatsApp link only)
 
-- [ ] **22.7 Commit: "Add landing page — hero, features, FAQ, privacy, terms"**
+- [x] **22.7 Commit: "Add landing page — hero, features, FAQ, privacy, terms"**
 
 ---
 
 ## 23. PostHog Analytics & Usage Tracking
 
-Set up and configure PostHog for usage tracking, analytics, and observability across the platform.
+Server-side PostHog (`posthog-node`) for LLM usage, credits, users, and system commands. Client-side PostHog was already configured in Section 22 (pageviews, CTA clicks). All server events use phone number as `distinct_id` and include `phone_country` derived from phone prefix.
 
-- [ ] **23.1 Configure PostHog provider**
-  - Set up PostHog client in Next.js (server + client components)
-  - Environment variables for project API key and host
+- [x] **23.1 Install `posthog-node` + set Convex env var**
+  - `pnpm add posthog-node`
+  - `POSTHOG_API_KEY` set in Convex dev environment
+  - Client: `flushAt: 1`, `flushInterval: 0` (immediate flush for serverless)
 
-- [ ] **23.2 Track WhatsApp message events**
-  - Message received, response sent, escalation triggered, image generated
-  - Include metadata: model used, response time, credit cost
+- [x] **23.2 Create analytics helper (`convex/lib/analytics.ts`)**
+  - `detectCountryFromPhone(phone)` — phone prefix → ISO country code (AE, SA, GB, etc.)
+  - Reuses same prefixes as `COUNTRY_CODE_TIMEZONES` in utils.ts
 
-- [ ] **23.3 Track system command usage**
-  - Which commands are used most, clear data frequency, upgrade funnel
+- [x] **23.3 Create analytics actions (`convex/analytics.ts`)**
+  - `"use node"` file with PostHog client singleton + 7 internal actions:
+  - `trackUserNew` — first message from unknown number
+  - `trackUserReturning` — message from existing user (tier, credits_remaining)
+  - `trackAIGeneration` — `$ai_generation` event with full token breakdown
+  - `trackCreditUsed` — after successful AI response (model, tools_used)
+  - `trackCreditsExhausted` — user hits 0 credits
+  - `trackSystemCommand` — free system command processed
+  - `trackImageGenerated` — both business event + `$ai_generation` (latency, estimated tokens)
+  - `trackDocumentProcessed` — media type, has_rag flag
 
-- [ ] **23.4 Track credit events**
-  - Credit deduction, exhaustion, reset, tier upgrade/downgrade
+- [x] **23.4 Add `usageHandler` to ghaliAgent (`convex/agent.ts`)**
+  - Captures `$ai_generation` for every LLM call (Flash, embeddings, deep reasoning)
+  - Extracts reasoningTokens and cachedInputTokens from providerMetadata
+  - Non-blocking via `runMutation` → `scheduleTrackAIGeneration` → `scheduler.runAfter`
 
-- [ ] **23.5 Track document & media events**
-  - Document uploaded, RAG indexed, media stored, clear data executed
+- [x] **23.5 Add analytics calls to message flow (`convex/messages.ts`)**
+  - `user_new` / `user_returning` — after loading user (new = `onboardingStep === 1`)
+  - `system_command` — when system command handled
+  - `credits_exhausted` — when user hits 0 credits
+  - `credit_used` — after credit deduction (includes model + tools_used)
+  - `document_processed` — after media processing succeeds
+  - All fire-and-forget via `ctx.scheduler.runAfter(0, ...)`
 
-- [ ] **23.6 Track onboarding funnel**
-  - Step completion rates, skip rates, drop-off points
+- [x] **23.6 Add `$ai_generation` tracking to image generation (`convex/images.ts`)**
+  - Tracks both success and failure with latency
+  - Estimated output tokens (1290 for Gemini image gen)
+  - Shows in PostHog LLM Analytics dashboard alongside text generations
 
-- [ ] **23.7 Landing page analytics**
+- [x] **23.7 Landing page analytics** *(done in Section 22)*
   - Page views, CTA clicks, UTM tracking, conversion funnel
 
 - [ ] **23.8 Set up PostHog dashboards**
   - Daily active users, messages per day, model usage breakdown
   - Credit utilization, upgrade conversion, error rates
 
-- [ ] **23.9 Run all tests — pass**
+- [x] **23.9 Run all tests — pass (360 tests)**
 
-- [ ] **23.10 Commit: "Add PostHog analytics — usage tracking, event capture, dashboards"**
+- [ ] **23.10 Commit: "Add server-side PostHog analytics — LLM tracking, credits, users"**
 
 ---
 

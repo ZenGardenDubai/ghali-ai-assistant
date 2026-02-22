@@ -10,6 +10,8 @@
 
 import type * as admin from "../admin.js";
 import type * as agent from "../agent.js";
+import type * as analytics from "../analytics.js";
+import type * as analyticsHelper from "../analyticsHelper.js";
 import type * as billing from "../billing.js";
 import type * as constants from "../constants.js";
 import type * as credits from "../credits.js";
@@ -21,6 +23,7 @@ import type * as http from "../http.js";
 import type * as imageStorage from "../imageStorage.js";
 import type * as images from "../images.js";
 import type * as lib_adminCommands from "../lib/adminCommands.js";
+import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_clerk from "../lib/clerk.js";
 import type * as lib_cronParser from "../lib/cronParser.js";
 import type * as lib_formatter from "../lib/formatter.js";
@@ -52,6 +55,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   agent: typeof agent;
+  analytics: typeof analytics;
+  analyticsHelper: typeof analyticsHelper;
   billing: typeof billing;
   constants: typeof constants;
   credits: typeof credits;
@@ -63,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   imageStorage: typeof imageStorage;
   images: typeof images;
   "lib/adminCommands": typeof lib_adminCommands;
+  "lib/analytics": typeof lib_analytics;
   "lib/clerk": typeof lib_clerk;
   "lib/cronParser": typeof lib_cronParser;
   "lib/formatter": typeof lib_formatter;

@@ -39,6 +39,12 @@ export const generateAndStoreImage = internalAction({
       `[generateAndStoreImage] Prompt: "${truncatedPrompt}", Aspect: ${aspectRatio}`
     );
 
+    // Fetch user for analytics (phone + tier)
+    const user = await ctx.runQuery(internal.users.internalGetUser, {
+      userId,
+    }) as { phone: string; tier: string } | null;
+
+    const startMs = Date.now();
     try {
       const ai = new GoogleGenAI({ apiKey });
 
@@ -67,6 +73,15 @@ export const generateAndStoreImage = internalAction({
       }
 
       if (!imageBase64 || !mimeType) {
+        if (user) {
+          await ctx.scheduler.runAfter(0, internal.analytics.trackImageGenerated, {
+            phone: user.phone,
+            success: false,
+            latency_ms: Date.now() - startMs,
+            model: MODELS.IMAGE_GENERATION,
+            tier: user.tier,
+          });
+        }
         return {
           success: false,
           error:
@@ -100,9 +115,28 @@ export const generateAndStoreImage = internalAction({
         `[generateAndStoreImage] Stored image: ${storageId}, size: ${bytes.length}`
       );
 
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackImageGenerated, {
+          phone: user.phone,
+          success: true,
+          latency_ms: Date.now() - startMs,
+          model: MODELS.IMAGE_GENERATION,
+          tier: user.tier,
+        });
+      }
+
       return { success: true, imageUrl, description };
     } catch (error) {
       console.error("[generateAndStoreImage] Failed:", error);
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackImageGenerated, {
+          phone: user.phone,
+          success: false,
+          latency_ms: Date.now() - startMs,
+          model: MODELS.IMAGE_GENERATION,
+          tier: user.tier,
+        });
+      }
       return {
         success: false,
         error: `Image generation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
