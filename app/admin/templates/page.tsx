@@ -253,7 +253,7 @@ export default function TemplatesPage() {
                       <Input
                         value={adminPhone}
                         onChange={(e) => setAdminPhone(e.target.value)}
-                        placeholder="+971552500009"
+                        placeholder="+971500000000"
                         className="flex-1 border-white/[0.08] bg-white/[0.03] text-white/80 placeholder:text-white/20 focus-visible:ring-[#ED6B23]/30"
                       />
                       <Button
