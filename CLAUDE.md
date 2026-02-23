@@ -102,7 +102,7 @@ The `ABILITIES & LIMITATIONS` section in `AGENT_INSTRUCTIONS` (`convex/agent.ts`
 - **Conventional commits** — all commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) format (e.g., `feat:`, `fix:`, `chore:`, `docs:`)
 - **No direct pushes to main** — always create a branch and open a PR
 - **CI must pass before merge** — typecheck, lint, test, and build jobs must all succeed
-- **CodeRabbit review** — every PR gets an automated CodeRabbit code review
+- **CodeRabbit review before PR** — run `coderabbit:code-reviewer` agent locally, address issues, then push. CodeRabbit also reviews on the PR itself.
 - **release-please** — automated versioning and changelogs based on conventional commits
 
 ## Development Rules
