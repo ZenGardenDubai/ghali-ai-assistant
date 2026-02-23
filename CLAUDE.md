@@ -97,6 +97,14 @@ Files received via WhatsApp: PDF/images → Gemini 3 Flash directly. DOCX/PPTX/X
 
 The `ABILITIES & LIMITATIONS` section in `AGENT_INSTRUCTIONS` (`convex/agent.ts`) tells the agent what it can and cannot do. **When adding, removing, or changing any agent tool or capability, update this section to keep the agent's self-awareness accurate.** The agent uses this to set correct expectations with users (e.g., heartbeat has hourly precision, not minute-exact).
 
+## Workflow
+
+- **Conventional commits** — all commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) format (e.g., `feat:`, `fix:`, `chore:`, `docs:`)
+- **No direct pushes to main** — always create a branch and open a PR
+- **CI must pass before merge** — typecheck, lint, test, and build jobs must all succeed
+- **CodeRabbit review** — every PR gets an automated CodeRabbit code review
+- **release-please** — automated versioning and changelogs based on conventional commits
+
 ## Development Rules
 
 - **Strict TDD** — write test first, see it fail, implement, see it pass, commit
