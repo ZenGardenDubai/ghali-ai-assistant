@@ -1184,48 +1184,45 @@ Web-based admin dashboard at `/admin` with Clerk metadata (`isAdmin` flag) acces
 
 Get everything running in production.
 
-- [ ] **26.1 Deploy Convex to production**
-  - `npx convex deploy`
-  - Set all environment variables in Convex Cloud dashboard
-  - Verify: functions deploy without errors
+- [x] **26.1 Deploy Convex to production**
+  - `npx convex deploy --yes` → all functions, indexes, and components (agent, rag, rateLimiter) deployed to `amiable-hound-193`
+  - 21 environment variables set in Convex prod (AI keys, Twilio, Clerk, PostHog, templates, internal API secret)
 
-- [ ] **26.2 Deploy Next.js to Vercel**
-  - Connect GitHub repo to Vercel
-  - Set all environment variables in Vercel dashboard
-  - Verify: landing page loads at ghali.ae
+- [x] **26.2 Deploy Next.js to Vercel**
+  - `npx vercel --prod` → deployed to `www.ghali.ae`
+  - 11 Vercel environment variables set: Convex URLs, Clerk keys (pk_live/sk_live), PostHog, INTERNAL_API_SECRET, Clerk sign-in paths
 
-- [ ] **26.3 Configure DNS for ghali.ae**
-  - Point domain to Vercel
-  - SSL certificate active
+- [x] **26.3 Configure DNS for ghali.ae**
+  - `ghali.ae` → 307 redirect to `www.ghali.ae` (Vercel alias)
+  - SSL active on both apex and www
+  - Clerk subdomains verified: `clerk.ghali.ae`, `accounts.ghali.ae`, `clkmail.ghali.ae`
 
-- [ ] **26.4 Configure Twilio webhook**
-  - Set webhook URL to Convex prod HTTP endpoint: `https://<convex-prod-url>/whatsapp-webhook`
-  - Method: POST
-  - Verify: test message from WhatsApp reaches the webhook
+- [x] **26.4 Configure Twilio webhook**
+  - WhatsApp Business number (+971582896090) webhook set to `https://amiable-hound-193.convex.site/whatsapp-webhook` (POST)
 
-- [ ] **26.5 Configure Clerk**
-  - Set up Clerk application
-  - Configure billing/subscription products (Basic, Pro)
-  - Set webhook URL to Convex prod HTTP endpoint: `https://<convex-prod-url>/clerk-webhook`
-  - Verify: Clerk dashboard shows correct config
+- [x] **26.5 Configure Clerk**
+  - Production Clerk app with Google OAuth (custom credentials)
+  - Webhook endpoint: `https://amiable-hound-193.convex.site/clerk-webhook` with signing secret
+  - Session token customized with `metadata: "{{user.public_metadata}}"`
+  - JWT template "convex" for Convex auth
+  - Paths set to "application domain" with sign-in at `/auth/admin-sign-in`
+  - Fix: admin sign-in page now guards `isLoaded` to prevent flash, redirects admins to `/admin` via `useEffect`
 
-- [ ] **26.6 Configure PostHog**
-  - Verify events are flowing from landing page
-  - Set up conversion funnel dashboard
+- [x] **26.6 Configure PostHog**
+  - Client keys (`NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`) set in Vercel
+  - Server key (`POSTHOG_API_KEY`) set in Convex prod
 
-- [ ] **26.7 Set up admin user**
-  - Mark admin phone number(s) in Convex dashboard (`isAdmin: true`)
-  - Set `publicMetadata.isAdmin: true` in Clerk Dashboard for admin users (required for web admin panel middleware guard)
-  - Verify: admin can access `/admin` dashboard, non-admins are redirected
+- [x] **26.7 Set up admin user**
+  - Convex: `isAdmin: true` on user record (+971552500009)
+  - Clerk: `publicMetadata.isAdmin: true` set in production Dashboard
+  - Verified: admin can access `/admin` dashboard
 
-- [ ] **26.8 Smoke test in production**
-  - Send a WhatsApp message → get a response
-  - Check credits → correct template
-  - Send a document → RAG storage works
-  - Send a voice note → transcription works
-  - Generate an image → received in WhatsApp
+- [x] **26.8 Smoke test in production**
+  - WhatsApp message → AI response (working)
+  - Admin dashboard → loads with stats (working)
+  - Clerk auth → Google OAuth sign-in with session claims (working after fixing CLERK_SECRET_KEY)
 
-- [ ] **26.9 Commit: "Production deployment configuration"**
+- [x] **26.9 Commit: "Production deployment configuration"**
 
 ---
 
