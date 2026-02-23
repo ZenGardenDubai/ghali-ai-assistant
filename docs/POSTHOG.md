@@ -2,7 +2,7 @@
 
 Server-side analytics via `posthog-node` in Convex actions. Client-side via `posthog-js` on the landing page.
 
-**distinct_id**: User's phone number (e.g. `+971552500009`)
+**distinct_id**: User's phone number (e.g. `+971500000000`)
 
 All server events include `phone_country` derived from phone prefix (`convex/lib/analytics.ts`).
 

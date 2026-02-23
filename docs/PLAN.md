@@ -1213,7 +1213,7 @@ Get everything running in production.
   - Server key (`POSTHOG_API_KEY`) set in Convex prod
 
 - [x] **26.7 Set up admin user**
-  - Convex: `isAdmin: true` on user record (+971552500009)
+  - Convex: `isAdmin: true` on user record (admin phone)
   - Clerk: `publicMetadata.isAdmin: true` set in production Dashboard
   - Verified: admin can access `/admin` dashboard
 

@@ -33,7 +33,7 @@ curl -X POST "https://content.twilio.com/v1/Content" \
 curl -X POST "https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/Messages.json" \
   -u "$TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN" \
   -d "From=whatsapp:+14155238886" \
-  -d "To=whatsapp:+971552500009" \
+  -d "To=whatsapp:+971500000000" \
   -d "ContentSid=HXxxxxxxxxx" \
   -d 'ContentVariables={"1":"value1","2":"value2"}'
 ```
