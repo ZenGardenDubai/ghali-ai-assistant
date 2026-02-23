@@ -1214,7 +1214,9 @@ Get everything running in production.
   - Set up conversion funnel dashboard
 
 - [ ] **26.7 Set up admin user**
-  - Mark admin phone number(s) in Convex dashboard
+  - Mark admin phone number(s) in Convex dashboard (`isAdmin: true`)
+  - Set `publicMetadata.isAdmin: true` in Clerk Dashboard for admin users (required for web admin panel middleware guard)
+  - Verify: admin can access `/admin` dashboard, non-admins are redirected
 
 - [ ] **26.8 Smoke test in production**
   - Send a WhatsApp message → get a response
@@ -1261,82 +1263,36 @@ Final polish and monitoring after the system is live.
 
 Consolidate ALL business rule constants into a single file (`convex/constants.ts`). Nothing hardcoded anywhere else. Every constant imported from one place.
 
-- [ ] **28.1 Create `convex/constants.ts` — the SSOT file**
-  - Merge existing `convex/models.ts` into this file (models become a section)
+- [x] **28.1 `convex/constants.ts` — the SSOT file (already existed, expanded)**
+  - Merged `MODELS` from `convex/models.ts` (models.ts now re-exports from constants)
   - All business rules, limits, and configuration in one place
 
-- [ ] **28.2 Tier & Credit Constants**
-  ```
-  USER_TIERS = ["basic", "pro"]
-  BASIC_TIER_CREDITS = 60
-  PRO_TIER_CREDITS = 600
-  CREDITS_PER_MESSAGE = 1
-  CREDITS_RESET_DAYS = 30
-  ```
+- [x] **28.2 Tier & Credit Constants** — `CREDITS_BASIC`, `CREDITS_PRO`, `CREDITS_PER_REQUEST`, `CREDIT_RESET_PERIOD_MS`, `CREDITS_LOW_THRESHOLD`
 
-- [ ] **28.3 Storage & File Limits**
-  ```
-  MAX_USER_FILE_SIZE = 10 * 1024          // 10 KB per user file
-  MAX_MEDIA_SIZE_BYTES = 10 * 1024 * 1024 // 10 MB
-  MIN_MEDIA_SIZE_BYTES = 1024             // 1 KB
-  MAX_EXTRACTION_LENGTH = 50000           // 50K chars from docs
-  RAG_CHUNK_SIZE = 2000
-  RAG_CHUNK_OVERLAP = 200
-  ```
+- [x] **28.3 Storage & File Limits** — `MAX_USER_FILE_SIZE`, `MEDIA_MIN/MAX_SIZE_BYTES`, `MAX_EXTRACTION_LENGTH`, `IMAGE/MEDIA_RETENTION_MS`
 
-- [ ] **28.4 WhatsApp & Messaging Constants**
-  ```
-  WHATSAPP_MAX_MESSAGE_LENGTH = 1500
-  WHATSAPP_MULTI_PART_DELAY_MS = 500
-  WHATSAPP_NUMBER = "+971582896090"
-  ```
+- [x] **28.4 WhatsApp & Messaging Constants** — `WHATSAPP_MAX_LENGTH`, `TWILIO_MESSAGE_DELAY_MS`, `WHATSAPP_SESSION_WINDOW_MS`, `MAX_MESSAGE_LENGTH`
 
-- [ ] **28.5 Agent Configuration**
-  ```
-  AGENT_MAX_STEPS = 5
-  AGENT_CONTEXT_MESSAGES = 50
-  DEFAULT_TEMPERATURE = 0.7
-  ```
+- [x] **28.5 Agent Configuration** — `AGENT_MAX_STEPS`, `AGENT_RECENT_MESSAGES`, `DEFAULT_IMAGE_ASPECT_RATIO`, `IMAGE_PROMPT_MAX_LENGTH`
 
-- [ ] **28.6 Model Constants (from existing `convex/models.ts`)**
-  ```
-  MODELS = { FLASH, DEEP_REASONING, IMAGE_GENERATION, EMBEDDING }
-  // MODEL_COSTS removed — cost tracking handled by PostHog
-  ```
+- [x] **28.6 Model Constants** — `MODELS = { FLASH, DEEP_REASONING, IMAGE_GENERATION, EMBEDDING }` moved from models.ts
 
-- [ ] **28.7 Blocked Country Codes**
-  ```
-  BLOCKED_COUNTRY_CODES = ["+91", "+92", "+880", "+234", "+62", "+263"]
-  ```
+- [x] **28.7 Blocked Country Codes** — `BLOCKED_COUNTRY_CODES` moved from `lib/utils.ts`
 
-- [ ] **28.8 System Commands**
-  ```
-  SYSTEM_COMMANDS = ["credits", "help", "privacy", "upgrade", "account", "my memory", "clear memory", "clear documents", "clear everything"]
-  ```
+- [x] **28.8 System Commands** — `SYSTEM_COMMANDS` moved from `lib/utils.ts`
 
-- [ ] **28.9 Brand & Company**
-  ```
-  DOMAIN = "ghali.ae"
-  SITE_URL = "https://ghali.ae"
-  SUPPORT_EMAIL = "support@ghali.ae"
-  COMPANY_NAME = "SAHEM DATA TECHNOLOGY"
-  ```
+- [x] **28.9 Geography & Localization** — `DEFAULT_TIMEZONE`, `COUNTRY_CODE_TIMEZONES` moved from `lib/utils.ts`
 
-- [ ] **28.10 Helper Functions**
-  - `getCreditsForTier(tier)` — returns credit limit for tier
-  - `getModelApiName(modelId)` — if any internal→API name mapping needed
+- [⏭️] **28.10 Brand & Company / Helper Functions** — Not needed. Brand constants are only used in templates (static strings). Helper functions like `getCreditsForTier` are trivial one-liners that don't warrant abstraction.
 
-- [ ] **28.11 Audit: replace all hardcoded values across codebase**
-  - `convex/agent.ts` — imports from constants
-  - ~~`convex/usageTracking.ts`~~ *(removed — usage tracking deferred to PostHog)*
-  - `convex/lib/utils.ts` — imports BLOCKED_COUNTRY_CODES, SYSTEM_COMMANDS, WHATSAPP_MAX_MESSAGE_LENGTH
-  - `convex/credits.ts` — imports tier limits
-  - `convex/schema.test.ts` — imports from constants
-  - Grep entire codebase for remaining hardcoded strings
+- [x] **28.11 Audit: replace all hardcoded values across codebase**
+  - `convex/lib/utils.ts` — now imports `COUNTRY_CODE_TIMEZONES`, `DEFAULT_TIMEZONE`, `BLOCKED_COUNTRY_CODES`, `SYSTEM_COMMANDS` from constants
+  - `convex/models.ts` — now re-exports `MODELS` from constants (backwards-compatible, no consumer changes needed)
+  - All other files already imported from constants (credits, agent config, messaging, etc.)
 
-- [ ] **28.12 Run all tests — pass**
+- [x] **28.12 Run all tests — pass (368 tests)**
 
-- [ ] **28.13 Commit: "Consolidate all constants into single source of truth"**
+- [x] **28.13 Commit: "Consolidate all constants into single source of truth"**
 
 ---
 

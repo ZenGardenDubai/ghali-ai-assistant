@@ -1,37 +1,14 @@
 /**
- * Pure utility functions — zero dependencies, trivially testable.
+ * Pure utility functions — depends only on constants, trivially testable.
  */
 
-import { WHATSAPP_MAX_LENGTH } from "../constants";
-
-// Country code → IANA timezone mapping
-const COUNTRY_CODE_TIMEZONES: Record<string, string> = {
-  "+971": "Asia/Dubai",
-  "+966": "Asia/Riyadh",
-  "+973": "Asia/Bahrain",
-  "+974": "Asia/Qatar",
-  "+968": "Asia/Muscat",
-  "+965": "Asia/Kuwait",
-  "+44": "Europe/London",
-  "+1": "America/New_York",
-  "+33": "Europe/Paris",
-  "+49": "Europe/Berlin",
-  "+61": "Australia/Sydney",
-  "+81": "Asia/Tokyo",
-  "+86": "Asia/Shanghai",
-  "+91": "Asia/Kolkata",
-  "+92": "Asia/Karachi",
-  "+20": "Africa/Cairo",
-  "+27": "Africa/Johannesburg",
-  "+55": "America/Sao_Paulo",
-  "+7": "Europe/Moscow",
-  "+82": "Asia/Seoul",
-  "+90": "Europe/Istanbul",
-  "+234": "Africa/Lagos",
-  "+880": "Asia/Dhaka",
-  "+62": "Asia/Jakarta",
-  "+263": "Africa/Harare",
-};
+import {
+  WHATSAPP_MAX_LENGTH,
+  COUNTRY_CODE_TIMEZONES,
+  DEFAULT_TIMEZONE,
+  BLOCKED_COUNTRY_CODES,
+  SYSTEM_COMMANDS,
+} from "../constants";
 
 // Sorted by prefix length (longest first) so +971 matches before +97
 const SORTED_PREFIXES = Object.keys(COUNTRY_CODE_TIMEZONES).sort(
@@ -50,18 +27,6 @@ export function detectTimezone(phoneNumber: string): string {
 export function canAfford(credits: number, cost: number): boolean {
   return credits >= cost;
 }
-
-export const SYSTEM_COMMANDS: ReadonlySet<string> = new Set([
-  "credits",
-  "help",
-  "privacy",
-  "upgrade",
-  "account",
-  "my memory",
-  "clear memory",
-  "clear documents",
-  "clear everything",
-]);
 
 /** Max words for a message to be considered a potential command. */
 const COMMAND_MAX_WORDS = 4;
@@ -140,15 +105,6 @@ export function isAffirmative(message: string): boolean {
   return AFFIRMATIVE_RESPONSES.has(message.toLowerCase().trim());
 }
 
-const BLOCKED_COUNTRY_CODES = [
-  "+91", // India
-  "+92", // Pakistan
-  "+880", // Bangladesh
-  "+234", // Nigeria
-  "+62", // Indonesia
-  "+263", // Zimbabwe
-];
-
 export function isBlockedCountryCode(phone: string): boolean {
   return BLOCKED_COUNTRY_CODES.some((code) => phone.startsWith(code));
 }
@@ -164,9 +120,6 @@ export function fillTemplate(
     return String(variables[key]);
   });
 }
-
-
-const DEFAULT_TIMEZONE = "Asia/Dubai";
 
 export function getCurrentDateTime(timezone?: string): {
   date: string;

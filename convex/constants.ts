@@ -161,3 +161,82 @@ export const MAX_MESSAGE_LENGTH = 10_000;
 
 /** TTL for processed webhook dedup entries (24 hours) */
 export const WEBHOOK_DEDUP_TTL_MS = 24 * 60 * 60 * 1000;
+
+// ============================================================================
+// Geography & Localization
+// ============================================================================
+
+/** Default timezone for new users and fallback */
+export const DEFAULT_TIMEZONE = "Asia/Dubai";
+
+/** Phone country code → IANA timezone mapping */
+export const COUNTRY_CODE_TIMEZONES: Record<string, string> = {
+  "+971": "Asia/Dubai",
+  "+966": "Asia/Riyadh",
+  "+973": "Asia/Bahrain",
+  "+974": "Asia/Qatar",
+  "+968": "Asia/Muscat",
+  "+965": "Asia/Kuwait",
+  "+44": "Europe/London",
+  "+1": "America/New_York",
+  "+33": "Europe/Paris",
+  "+49": "Europe/Berlin",
+  "+61": "Australia/Sydney",
+  "+81": "Asia/Tokyo",
+  "+86": "Asia/Shanghai",
+  "+91": "Asia/Kolkata",
+  "+92": "Asia/Karachi",
+  "+20": "Africa/Cairo",
+  "+27": "Africa/Johannesburg",
+  "+55": "America/Sao_Paulo",
+  "+7": "Europe/Moscow",
+  "+82": "Asia/Seoul",
+  "+90": "Europe/Istanbul",
+  "+234": "Africa/Lagos",
+  "+880": "Asia/Dhaka",
+  "+62": "Asia/Jakarta",
+  "+263": "Africa/Harare",
+};
+
+/** Country codes blocked from using the service */
+export const BLOCKED_COUNTRY_CODES = [
+  "+91", // India
+  "+92", // Pakistan
+  "+880", // Bangladesh
+  "+234", // Nigeria
+  "+62", // Indonesia
+  "+263", // Zimbabwe
+];
+
+// ============================================================================
+// System Commands
+// ============================================================================
+
+/** Recognized system commands (free, no credit deduction) */
+export const SYSTEM_COMMANDS: ReadonlySet<string> = new Set([
+  "credits",
+  "help",
+  "privacy",
+  "upgrade",
+  "account",
+  "my memory",
+  "clear memory",
+  "clear documents",
+  "clear everything",
+]);
+
+// ============================================================================
+// AI Models
+// ============================================================================
+
+/** Model API identifiers — single source of truth for all AI model strings */
+export const MODELS = {
+  /** Primary agent model — fast, cheap, handles ~85% of requests */
+  FLASH: "gemini-3-flash-preview",
+  /** Deep reasoning escalation — complex math, logic, analysis, coding */
+  DEEP_REASONING: "claude-opus-4-6",
+  /** Image generation model */
+  IMAGE_GENERATION: "gemini-3-pro-image-preview",
+  /** Text embedding model for RAG */
+  EMBEDDING: "text-embedding-3-small",
+} as const;
