@@ -149,6 +149,9 @@ export const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Maximum pending reminders per user */
 export const MAX_REMINDERS_PER_USER = 25;
 
+/** Credit threshold for low-credit warning (fires once when balance crosses below) */
+export const CREDITS_LOW_THRESHOLD = 10;
+
 // ============================================================================
 // Security
 // ============================================================================

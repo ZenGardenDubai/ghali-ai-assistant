@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-import { CREDITS_PRO } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO } from "./constants";
 
 // ============================================================================
 // Phone-Based Account Linking
@@ -90,6 +90,13 @@ export const handleSubscriptionActive = internalMutation({
       credits: CREDITS_PRO,
       subscriptionCanceling: undefined,
     });
+
+    // Notify user via WhatsApp (template works outside 24h window)
+    await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+      to: user.phone,
+      templateEnvVar: "TWILIO_TPL_SUB_ACTIVE",
+      variables: { "1": String(CREDITS_PRO) },
+    });
   },
 });
 
@@ -138,6 +145,13 @@ export const handleSubscriptionEnded = internalMutation({
     await ctx.db.patch(user._id, {
       tier: "basic",
       subscriptionCanceling: undefined,
+    });
+
+    // Notify user via WhatsApp (template works outside 24h window)
+    await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+      to: user.phone,
+      templateEnvVar: "TWILIO_TPL_SUB_ENDED",
+      variables: { "1": String(CREDITS_BASIC) },
     });
   },
 });

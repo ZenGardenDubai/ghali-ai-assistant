@@ -1068,71 +1068,115 @@ Verify the full flow works end-to-end before deployment.
 
 ---
 
-## 25. Web Admin Panel
+## 25. Web Admin Panel & WhatsApp Content Templates
 
-Web-based admin dashboard at `/admin`. Uses Clerk metadata (`isAdmin` flag) for access control. Provides user analytics and Twilio template message management.
+Web-based admin dashboard at `/admin` with Clerk metadata (`isAdmin` flag) access control. Provides user analytics, Twilio template message management, and Content Template integration for sending WhatsApp messages outside the 24-hour session window.
 
-> **Implementation note:** Use the `frontend-design` agent for building the admin panel UI. Dark theme consistent with the existing app aesthetic.
+> **Implementation note:** Used the `frontend-design` agent for building the admin panel UI. Dark theme (#0a0f1e bg, #ED6B23 orange accent, glass-morphism cards) consistent with the existing app aesthetic.
 
-### Dashboard — User Analytics
+### Backend — Convex Functions & HTTP Endpoints
 
-- [ ] **25.1 Set up admin route protection**
-  - `/admin` route group with Clerk middleware
-  - Check `user.publicMetadata.isAdmin === true` (set via Clerk dashboard)
-  - Redirect non-admins to `/` with 403
-  - Layout with sidebar navigation
+- [x] **25.1 Implement Convex admin functions (`convex/admin.ts`)**
+  - `TEMPLATE_DEFINITIONS` constant — 7 templates with key, name, description, variables, preview
+  - `getDashboardStats({ period })` — period-aware stats (today/yesterday/7d/30d)
+  - `getRecentUsers({ limit })` — last N users with phone, name, tier, credits, lastActive, joined
+  - `verifyAdmin({ clerkUserId })` — check isAdmin by clerkUserId index
+  - `getTemplateStatus()` — returns templates with configured/missing status (checks env vars)
+  - `sendTestTemplate` — sends template to admin's own phone (internalAction)
+  - `sendTemplateToUser` — sends to a specific user by phone (internalAction)
+  - `sendTemplateBroadcast` — sends template to all active users within 24h window, 500ms stagger (internalAction)
 
-- [ ] **25.2 Build analytics dashboard page (`/admin`)**
-  - Summary cards with time period tabs: Today, Yesterday, Last 7 Days, Last 30 Days
-  - Metrics per period:
-    - **Total Users** — all registered users
-    - **New Users** — users created in the period
-    - **Pro Users** — users with tier=pro
-    - **Basic Users** — users with tier=basic
-  - Convex queries: `admin.getDashboardStats({ period })` returning counts per metric
-  - Real-time updates via Convex subscriptions
+- [x] **25.2 Implement WhatsApp Content Template sending**
+  - `sendWhatsAppTemplate()` in `convex/lib/twilioSend.ts` — uses `ContentSid` + `ContentVariables` params
+  - `sendTemplate` internalAction in `convex/twilio.ts` — wraps the above with env var lookup
+  - Whitelist validation: `templateEnvVar` must be in `TEMPLATE_DEFINITIONS` keys (prevents env var exfiltration)
 
-- [ ] **25.3 Implement Convex admin queries**
-  - `getDashboardStats` — accepts period (today/yesterday/7d/30d), returns user counts
-  - `getRecentUsers` — paginated list of recent signups with phone, tier, credits, lastMessageAt
-  - All `internalQuery` exposed via authenticated HTTP endpoints or Convex client with admin guard
+- [x] **25.3 Add admin HTTP endpoints (`convex/http.ts`)**
+  - `adminAuthHandler` helper — Bearer token auth via `INTERNAL_API_SECRET` with timing-safe comparison
+  - 7 routes: `/admin/verify`, `/admin/stats`, `/admin/recent-users`, `/admin/template-status`, `/admin/send-test-template`, `/admin/send-template`, `/admin/send-template-broadcast`
+  - Input validation: period whitelist, limit cap (max 100)
 
-### Twilio Template Messages
+### Auth & Middleware
 
-- [ ] **25.4 Build template message page (`/admin/templates`)**
-  - Template selector dropdown (from `docs/TWILIO_TEMPLATES.md` list):
-    - `ghali_reminder` — Reminder
-    - `ghali_heartbeat` — Heartbeat Check-in
-    - `ghali_broadcast` — Admin Announcement
-    - `ghali_credits_reset` — Credit Refresh
-    - `ghali_credits_low` — Low Credit Warning
-    - `ghali_subscription_active` — Pro Plan Activated
-    - `ghali_subscription_ended` — Pro Plan Ended
-  - Variable input fields (dynamic based on selected template)
-  - Live preview of the rendered message
-  - Send mode toggle: **Test Send** (admin's own number) vs **Real Send** (target user)
-  - For Real Send: phone number input with user lookup
+- [x] **25.4 Set up admin route protection**
+  - `middleware.ts` — `/admin(.*)` and `/api/admin(.*)` routes protected
+  - Uses `await auth()` (non-throwing) + `sessionClaims.metadata.isAdmin === true`
+  - Unauthenticated → redirect to `/auth/admin-sign-in`
+  - Authenticated non-admin → redirect to `/`
+  - Requires Clerk session token claim: `"metadata": "{{user.public_metadata}}"` in Clerk Dashboard > Sessions
 
-- [ ] **25.5 Implement `sendWhatsAppTemplate` in `convex/lib/twilioSend.ts`**
-  - New function using `ContentSid` + `ContentVariables` (from TWILIO_TEMPLATES.md)
-  - New Convex action `twilio.sendTemplate` wrapping the function
+- [x] **25.5 Create admin sign-in page (`app/auth/admin-sign-in/[[...sign-in]]/page.tsx`)**
+  - Clerk `<SignIn>` with dark theme, redirects to `/admin` on success
+  - If signed in but not admin → shows "Access Denied" with sign-out button (prevents redirect loop)
+  - Placed outside `/admin` directory to avoid inheriting admin layout
 
-- [ ] **25.6 Implement admin template API endpoints**
-  - `admin.sendTestTemplate` — sends template to admin's own number
-  - `admin.sendTemplate` — sends template to specified phone number
-  - Both require admin verification
-  - Logs all template sends for audit trail
+- [x] **25.6 Create Next.js API route layer**
+  - `app/api/admin/_lib/auth.ts` — shared `adminConvexFetch` helper (Clerk auth + isAdmin check + Convex HTTP call)
+  - 6 API routes: stats, recent-users, template-status, send-test-template, send-template, send-template-broadcast
 
-- [ ] **25.7 Template Content SID management**
-  - Store Content SIDs as Convex env vars (`TWILIO_TPL_REMINDER`, etc.)
-  - Admin page shows which templates have SIDs configured vs missing
-  - Status indicator: green (configured) / red (not yet created in Twilio)
+### Frontend — Admin UI
 
-### Testing & Polish
+- [x] **25.7 Build admin layout (`app/admin/layout.tsx`)**
+  - Dark glass sidebar with Ghali robot logo, "Admin" badge, nav links (Dashboard, Templates)
+  - Clerk UserButton at bottom, mobile responsive with collapsible sidebar
+  - Active nav link highlighted with orange accent
 
-- [ ] **25.8 Run all tests — pass**
+- [x] **25.8 Build dashboard page (`app/admin/page.tsx`)**
+  - Period selector tabs: Today | Yesterday | 7 Days | 30 Days
+  - 4 stat cards: Total Users, New Users, Pro Users, Basic Users
+  - Recent Users table: Phone, Name, Tier, Credits, Last Active, Joined
+  - Loading skeletons while fetching
 
-- [ ] **25.9 Commit: "Add web admin panel — dashboard analytics and template messaging"**
+- [x] **25.9 Build templates page (`app/admin/templates/page.tsx`)**
+  - Template selector dropdown with status indicator (green/red dot)
+  - Dynamic variable input fields based on selected template
+  - Live WhatsApp-style preview (replaces `{{1}}`, `{{2}}` with variable values)
+  - Three send modes: Test Send (admin phone), Send to User (phone input), Broadcast (AlertDialog confirmation with count)
+
+### WhatsApp Content Templates — Creation & Integration
+
+- [x] **25.10 Create all 7 Twilio Content Templates via API**
+  - Created, submitted for Meta/WhatsApp approval
+  - 3 initially rejected ("too many variables for length") — recreated with longer static text ("Hi from Ghali!" intro + "Reply to chat" footer)
+  - All 7 resubmitted and pending approval
+  - Content SIDs stored as Convex env vars (`TWILIO_TPL_REMINDER`, etc.)
+
+- [x] **25.11 Wire templates into codebase (dual-path: free-form within 24h, template outside)**
+  - `convex/reminders.ts` — `fireReminder`: sends `TWILIO_TPL_REMINDER` template outside 24h window
+  - `convex/heartbeat.ts` — `processUserHeartbeat`: sends `TWILIO_TPL_HEARTBEAT` template outside 24h window
+  - `convex/billing.ts` — `handleSubscriptionActive`: sends `TWILIO_TPL_SUB_ACTIVE` (always template, transactional)
+  - `convex/billing.ts` — `handleSubscriptionEnded`: sends `TWILIO_TPL_SUB_ENDED` (always template, transactional)
+  - `convex/credits.ts` — `resetCredits`: sends `TWILIO_TPL_CREDITS_RESET` with staggered delays (always template)
+  - `convex/messages.ts` — credit deduction: sends `TWILIO_TPL_CREDITS_LOW` when basic user's balance crosses below 10
+  - `TWILIO_TPL_BROADCAST` — handled by admin panel's template broadcast feature
+
+- [x] **25.12 Change credit reset cron from daily to hourly**
+  - `convex/crons.ts` — `"0 * * * *"` instead of daily at midnight UTC
+  - Credits refresh within ~1 hour of reset time, template notification goes out promptly
+
+### Security Hardening (from CodeRabbit review)
+
+- [x] **25.13 Fix timing-safe secret comparison**
+  - `timingSafeEqual()` using Web Crypto SHA-256 + XOR in `/link-phone` and `adminAuthHandler`
+
+- [x] **25.14 Fix `templateEnvVar` whitelist**
+  - `sendTemplate` validates against `TEMPLATE_DEFINITIONS` keys before accessing `process.env`
+
+- [x] **25.15 Input validation in HTTP endpoints**
+  - Period validation: rejects invalid values with 400
+  - Limit cap: `getRecentUsers` capped at 100 max
+
+### Testing
+
+- [x] **25.16 Tests — 368 tests pass**
+  - 3 tests for `sendWhatsAppTemplate` in `convex/lib/twilioSend.test.ts`
+  - 5 tests for `TEMPLATE_DEFINITIONS` in `convex/admin.test.ts`
+  - `convex/vitest.setup.ts` — suppresses convex-test "Write outside of transaction" unhandled rejections (scheduler limitation)
+  - `CREDITS_LOW_THRESHOLD = 10` constant added
+
+- [x] **25.17 Build passes — no TypeScript errors**
+
+- [ ] **25.18 Commit: "Add web admin panel, Content Templates, and template integration"**
 
 ---
 

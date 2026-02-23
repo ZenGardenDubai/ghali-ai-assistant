@@ -16,7 +16,7 @@ import {
   isRagIndexable,
   isVoiceNote,
 } from "./lib/media";
-import { CREDITS_BASIC, CREDITS_PRO, MEDIA_RETENTION_MS } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS } from "./constants";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -538,9 +538,10 @@ export const generateResponse = internalAction({
       await ctx.runMutation(internal.credits.deductCredit, {
         userId: typedUserId,
       });
+      const newCredits = Math.max(0, user.credits - 1);
       await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
         phone: user.phone,
-        credits_remaining: Math.max(0, user.credits - 1),
+        credits_remaining: newCredits,
         tier: user.tier,
         model: toolsUsed.includes("deepReasoning")
           ? MODELS.DEEP_REASONING
@@ -549,6 +550,19 @@ export const generateResponse = internalAction({
             : MODELS.FLASH,
         tools_used: toolsUsed.length > 0 ? toolsUsed : undefined,
       });
+
+      // Low-credit warning — fires once when balance crosses below the threshold
+      if (
+        newCredits <= CREDITS_LOW_THRESHOLD &&
+        user.credits > CREDITS_LOW_THRESHOLD &&
+        user.tier === "basic"
+      ) {
+        await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+          to: user.phone,
+          templateEnvVar: "TWILIO_TPL_CREDITS_LOW",
+          variables: { "1": String(newCredits) },
+        });
+      }
     }
 
     if (imageResult) {

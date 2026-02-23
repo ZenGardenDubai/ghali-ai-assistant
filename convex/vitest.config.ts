@@ -5,6 +5,7 @@ export default defineConfig({
   test: {
     environment: "edge-runtime",
     include: ["**/*.test.ts"],
+    setupFiles: ["./vitest.setup.ts"],
   },
   resolve: {
     alias: {

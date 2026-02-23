@@ -45,6 +45,7 @@ import type * as templates from "../templates.js";
 import type * as twilio from "../twilio.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
+import type * as webhookDedup from "../webhookDedup.js";
 
 import type {
   ApiFromModules,
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   twilio: typeof twilio;
   users: typeof users;
   voice: typeof voice;
+  webhookDedup: typeof webhookDedup;
 }>;
 
 /**

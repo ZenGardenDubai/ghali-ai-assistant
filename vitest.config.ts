@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "edge-runtime",
     include: ["**/*.test.ts", "**/*.test.tsx"],
     exclude: ["node_modules/**"],
+    setupFiles: ["./convex/vitest.setup.ts"],
   },
   resolve: {
     alias: {

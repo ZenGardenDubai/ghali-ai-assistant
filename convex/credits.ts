@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { isSystemCommand, isAdminCommand } from "./lib/utils";
 import {
   CREDITS_BASIC,
@@ -78,6 +79,21 @@ export const resetCredits = internalMutation({
           credits: tierCredits,
           creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
         });
+
+        // Notify user about credit refresh via WhatsApp template
+        await ctx.scheduler.runAfter(
+          resetCount * 500, // stagger sends to respect Twilio rate limits
+          internal.twilio.sendTemplate,
+          {
+            to: user.phone,
+            templateEnvVar: "TWILIO_TPL_CREDITS_RESET",
+            variables: {
+              "1": String(tierCredits),
+              "2": user.tier === "pro" ? "Pro" : "Basic",
+            },
+          }
+        );
+
         resetCount++;
       }
     }

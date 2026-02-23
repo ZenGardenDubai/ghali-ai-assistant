@@ -94,20 +94,22 @@ export const fireReminder = internalAction({
       user.lastMessageAt &&
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
-    if (withinWindow) {
-      // Send the reminder
-      try {
+    try {
+      if (withinWindow) {
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
           body: `⏰ ${job.payload}`,
         });
-      } catch (error) {
-        console.error(`Failed to send reminder ${jobId}:`, error);
+      } else {
+        // Outside 24h window — use Content Template
+        await ctx.runAction(internal.twilio.sendTemplate, {
+          to: user.phone,
+          templateEnvVar: "TWILIO_TPL_REMINDER",
+          variables: { "1": job.payload },
+        });
       }
-    } else {
-      console.warn(
-        `Reminder ${jobId} skipped — user ${job.userId} outside 24h WhatsApp window`
-      );
+    } catch (error) {
+      console.error(`Failed to send reminder ${jobId}:`, error);
     }
 
     // Mark as done

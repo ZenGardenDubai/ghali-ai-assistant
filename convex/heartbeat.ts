@@ -51,11 +51,10 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user || user.tier !== "pro") return;
 
-    // WhatsApp 24h session window: can only send free-form messages
-    // if the user messaged us within the last 24 hours
-    if (!user.lastMessageAt || Date.now() - user.lastMessageAt > WHATSAPP_SESSION_WINDOW_MS) {
-      return;
-    }
+    // Check WhatsApp 24h session window
+    const withinWindow =
+      user.lastMessageAt &&
+      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     // Load user files
     const userFiles = await ctx.runQuery(internal.users.internalGetUserFiles, {
@@ -104,10 +103,19 @@ ${SYSTEM_BLOCK}
 
       // Only send if the agent has something to say
       if (responseText && !responseText.includes("__SKIP__")) {
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: responseText,
-        });
+        if (withinWindow) {
+          await ctx.runAction(internal.twilio.sendMessage, {
+            to: user.phone,
+            body: responseText,
+          });
+        } else {
+          // Outside 24h window — use Content Template
+          await ctx.runAction(internal.twilio.sendTemplate, {
+            to: user.phone,
+            templateEnvVar: "TWILIO_TPL_HEARTBEAT",
+            variables: { "1": responseText },
+          });
+        }
       }
     } catch (error) {
       console.error(`Heartbeat failed for user ${userId}:`, error);

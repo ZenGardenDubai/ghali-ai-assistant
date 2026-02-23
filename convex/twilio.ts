@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
-import { sendWhatsAppMessage, sendWhatsAppMedia } from "./lib/twilioSend";
+import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate } from "./lib/twilioSend";
+import { TEMPLATE_DEFINITIONS } from "./admin";
+
+const ALLOWED_TEMPLATE_KEYS: Set<string> = new Set(TEMPLATE_DEFINITIONS.map((t) => t.key));
 
 function getTwilioOptions(to: string) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -32,5 +35,23 @@ export const sendMedia = internalAction({
   },
   handler: async (_ctx, { to, caption, mediaUrl }) => {
     await sendWhatsAppMedia(getTwilioOptions(to), caption, mediaUrl);
+  },
+});
+
+export const sendTemplate = internalAction({
+  args: {
+    to: v.string(),
+    templateEnvVar: v.string(),
+    variables: v.record(v.string(), v.string()),
+  },
+  handler: async (_ctx, { to, templateEnvVar, variables }) => {
+    if (!ALLOWED_TEMPLATE_KEYS.has(templateEnvVar)) {
+      throw new Error(`Invalid template key: ${templateEnvVar}`);
+    }
+    const contentSid = process.env[templateEnvVar];
+    if (!contentSid) {
+      throw new Error(`Template env var ${templateEnvVar} not set`);
+    }
+    await sendWhatsAppTemplate(getTwilioOptions(to), contentSid, variables);
   },
 });

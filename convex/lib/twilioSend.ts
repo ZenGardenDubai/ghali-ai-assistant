@@ -68,3 +68,37 @@ export async function sendWhatsAppMedia(
 ): Promise<void> {
   await twilioApiCall(options, caption, mediaUrl);
 }
+
+/**
+ * Send a WhatsApp Content Template message (works outside the 24h session window).
+ * Uses ContentSid + ContentVariables instead of Body.
+ */
+export async function sendWhatsAppTemplate(
+  options: TwilioSendOptions,
+  contentSid: string,
+  variables: Record<string, string>
+): Promise<void> {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${options.accountSid}/Messages.json`;
+
+  const params = new URLSearchParams({
+    From: `whatsapp:${options.from}`,
+    To: `whatsapp:${options.to}`,
+    ContentSid: contentSid,
+    ContentVariables: JSON.stringify(variables),
+  });
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization:
+        "Basic " + btoa(`${options.accountSid}:${options.authToken}`),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Twilio template API error (${response.status}): ${error}`);
+  }
+}
