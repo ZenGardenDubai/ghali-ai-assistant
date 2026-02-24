@@ -1176,7 +1176,7 @@ Web-based admin dashboard at `/admin` with Clerk metadata (`isAdmin` flag) acces
 
 - [x] **25.17 Build passes — no TypeScript errors**
 
-- [ ] **25.18 Commit: "Add web admin panel, Content Templates, and template integration"**
+- [x] **25.18 Commit: "Add web admin panel, Content Templates, and template integration"**
 
 ---
 

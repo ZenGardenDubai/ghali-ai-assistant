@@ -197,6 +197,42 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/account-data",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
+
+    if (!expectedSecret) {
+      return new Response("Server error", { status: 500 });
+    }
+    if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    let body: { clerkUserId: string };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    if (!body.clerkUserId) {
+      return new Response("Missing clerkUserId", { status: 400 });
+    }
+
+    const result = await ctx.runQuery(internal.users.getAccountData, {
+      clerkUserId: body.clerkUserId,
+    });
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
 // ============================================================================
 // Admin API endpoints (Bearer token auth via INTERNAL_API_SECRET)
 // ============================================================================

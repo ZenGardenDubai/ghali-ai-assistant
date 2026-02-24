@@ -210,6 +210,31 @@ export const internalGetUserFiles = internalQuery({
   },
 });
 
+/** Get account data for a Clerk-authenticated user (used by /account page) */
+export const getAccountData = internalQuery({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, { clerkUserId }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+
+    if (!user) return null;
+
+    const tierCredits = user.tier === "pro" ? 600 : 60;
+    return {
+      name: user.name,
+      phone: user.phone,
+      tier: user.tier,
+      credits: user.credits,
+      creditsTotal: tierCredits,
+      creditsResetAt: user.creditsResetAt,
+      subscriptionCanceling: user.subscriptionCanceling ?? false,
+      createdAt: user.createdAt,
+    };
+  },
+});
+
 // Internal version for agent tools (called via ctx.runMutation)
 export const internalUpdateUserFile = internalMutation({
   args: {
