@@ -143,7 +143,7 @@ Environment variables are split between two runtimes. `.env.example` lists all v
 
 ## Project Structure
 
-```
+```text
 ghali-ai-assistant/
 ├── app/                    # Next.js App Router
 │   ├── account/            # Account management page
