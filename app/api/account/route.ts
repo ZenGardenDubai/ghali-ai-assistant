@@ -16,6 +16,8 @@ export async function POST() {
   }
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     const response = await fetch(`${CONVEX_SITE_URL}/account-data`, {
       method: "POST",
       headers: {
@@ -23,7 +25,9 @@ export async function POST() {
         Authorization: `Bearer ${INTERNAL_API_SECRET}`,
       },
       body: JSON.stringify({ clerkUserId }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       return NextResponse.json({ error: "Failed to fetch account data" }, { status: response.status });
@@ -32,6 +36,9 @@ export async function POST() {
     const result = await response.json();
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return NextResponse.json({ error: "Request timed out" }, { status: 504 });
+    }
     console.error("Account data fetch error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

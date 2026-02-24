@@ -205,6 +205,7 @@ http.route({
     const expectedSecret = process.env.INTERNAL_API_SECRET;
 
     if (!expectedSecret) {
+      console.error("INTERNAL_API_SECRET not set");
       return new Response("Server error", { status: 500 });
     }
     if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {

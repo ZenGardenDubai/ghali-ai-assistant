@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { detectTimezone } from "./lib/utils";
-import { CREDITS_BASIC, CREDIT_RESET_PERIOD_MS } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS } from "./constants";
 
 export const findOrCreateUser = internalMutation({
   args: {
@@ -221,7 +221,7 @@ export const getAccountData = internalQuery({
 
     if (!user) return null;
 
-    const tierCredits = user.tier === "pro" ? 600 : 60;
+    const tierCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
     return {
       name: user.name,
       phone: user.phone,
