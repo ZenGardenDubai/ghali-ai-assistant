@@ -137,7 +137,10 @@ function UpgradeContent() {
   }
 
   // ─── Error during linking
-  if (error) {
+  // "No phone number" just means the user signed in via email/web — not fatal for billing.
+  // Show the pricing table anyway so they can still manage their subscription.
+  const isNoPhoneError = error === "No phone number found on your account";
+  if (error && !isNoPhoneError) {
     return (
       <UpgradeLayout>
         <StateCard
@@ -164,7 +167,7 @@ function UpgradeContent() {
         />
       </SignedOut>
       <SignedIn>
-        {!linked ? (
+        {!linked && !isNoPhoneError ? (
           <StateCard>
             <div className="flex items-center justify-center gap-3">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#ED6B23] border-t-transparent" />
@@ -172,7 +175,10 @@ function UpgradeContent() {
             </div>
           </StateCard>
         ) : (
-          <PricingTable newSubscriptionRedirectUrl="/upgrade?success=true" />
+          <PricingTable
+            newSubscriptionRedirectUrl="/upgrade?success=true"
+            appearance={{ baseTheme: dark }}
+          />
         )}
       </SignedIn>
     </UpgradeLayout>
