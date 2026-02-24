@@ -191,21 +191,28 @@ function UpgradeContent() {
   // Fetch account data once linked (for plan banner on pricing table view)
   useEffect(() => {
     if (!isSignedIn || !linked || isSuccess) return;
-    let cancelled = false;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     (async () => {
       try {
-        const res = await fetch("/api/account", { method: "POST" });
+        const res = await fetch("/api/account", {
+          method: "POST",
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
-          if (!cancelled && data) setAccount(data);
+          if (!controller.signal.aborted && data) setAccount(data);
         }
       } catch {
         // Silently fail — plan banner is optional context
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [isSignedIn, linked, isSuccess]);
 
   // ─── Success state
