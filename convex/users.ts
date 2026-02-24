@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { detectTimezone } from "./lib/utils";
-import { CREDITS_BASIC, CREDIT_RESET_PERIOD_MS } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS } from "./constants";
 
 export const findOrCreateUser = internalMutation({
   args: {
@@ -207,6 +207,31 @@ export const internalGetUserFiles = internalQuery({
       .query("userFiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .collect();
+  },
+});
+
+/** Get account data for a Clerk-authenticated user (used by /account page) */
+export const getAccountData = internalQuery({
+  args: { clerkUserId: v.string() },
+  handler: async (ctx, { clerkUserId }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+
+    if (!user) return null;
+
+    const tierCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
+    return {
+      name: user.name,
+      phone: user.phone,
+      tier: user.tier,
+      credits: user.credits,
+      creditsTotal: tierCredits,
+      creditsResetAt: user.creditsResetAt,
+      subscriptionCanceling: user.subscriptionCanceling ?? false,
+      createdAt: user.createdAt,
+    };
   },
 });
 
