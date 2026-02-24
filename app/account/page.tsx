@@ -119,6 +119,7 @@ export default function AccountPage() {
   const router = useRouter();
   const [account, setAccount] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const isAdmin =
     isLoaded &&
@@ -133,12 +134,17 @@ export default function AccountPage() {
   }, [isLoaded, isSignedIn, router]);
 
   const fetchAccount = useCallback(async () => {
+    setError(false);
     try {
       const res = await fetch("/api/account", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         if (data) setAccount(data);
+      } else {
+        setError(true);
       }
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -227,6 +233,18 @@ export default function AccountPage() {
                   Resets in {formatResetCountdown(account.creditsResetAt)}
                 </p>
               </>
+            ) : error ? (
+              <div className="flex h-[200px] flex-col items-center justify-center gap-3">
+                <p className="text-sm text-white/30">
+                  Could not load account data.
+                </p>
+                <button
+                  onClick={() => { setLoading(true); fetchAccount(); }}
+                  className="text-xs font-medium text-[#ED6B23] transition-colors hover:text-[#d45e1f]"
+                >
+                  Try again
+                </button>
+              </div>
             ) : (
               <div className="flex h-[200px] items-center justify-center">
                 <p className="text-sm text-white/30">
