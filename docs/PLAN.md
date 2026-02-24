@@ -1297,7 +1297,7 @@ Consolidate ALL business rule constants into a single file (`convex/constants.ts
 
 Update README and ensure docs are complete. SPEC.md is the single source of truth for architecture and business rules — no separate architecture or business rules docs.
 
-- [ ] **29.1 Update `README.md`**
+- [x] **29.1 Update `README.md`**
   - Project overview: what Ghali is, who it's for
   - Tech stack summary (with versions)
   - Getting started: prerequisites, env vars, `pnpm install`, `pnpm dev`
@@ -1307,15 +1307,15 @@ Update README and ensure docs are complete. SPEC.md is the single source of trut
   - Link to SPEC.md (architecture + business rules) and PLAN.md (execution plan)
   - License: Apache 2.0
 
-- [ ] **29.2 Review SPEC.md for accuracy**
+- [x] **29.2 Review SPEC.md for accuracy**
   - Verify all business rules match the implemented code
   - Verify model assignments match code (Flash, Pro, Opus)
   - Verify credit system matches implementation
   - Update any sections that drifted during development
 
-- [ ] **29.3 Review PLAN.md for accuracy**
+- [x] **29.3 Review PLAN.md for accuracy**
   - Mark all completed sections accurately
   - Remove any tasks that were skipped with reasons
   - Ensure remaining tasks are still relevant
 
-- [ ] **29.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**
+- [x] **29.4 Commit: "Update documentation — README, verify SPEC.md and PLAN.md accuracy"**
