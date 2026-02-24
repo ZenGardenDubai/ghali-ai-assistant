@@ -11,6 +11,7 @@ import {
 } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import Link from "next/link";
+import { CREDITS_PRO } from "@/convex/constants";
 
 const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
 
@@ -144,7 +145,7 @@ function PlanBanner({ account }: { account: AccountData }) {
       </div>
       {!isPro && (
         <p className="mt-3 border-t border-white/[0.04] pt-3 text-xs text-white/30">
-          Upgrade to Pro for 600 credits/month, precise reminders, and proactive check-ins.
+          Upgrade to Pro for {CREDITS_PRO} credits/month, precise reminders, and proactive check-ins.
         </p>
       )}
     </div>
