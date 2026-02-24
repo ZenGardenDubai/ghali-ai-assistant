@@ -117,7 +117,7 @@ const FEATURES = [
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0f1e] text-white">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

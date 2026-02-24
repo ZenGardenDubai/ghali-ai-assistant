@@ -17,7 +17,7 @@ export function FeaturePage({
   jsonLd?: Record<string, unknown>;
 }) {
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0f1e] text-white">
       {jsonLd && (
         <script
           type="application/ld+json"
