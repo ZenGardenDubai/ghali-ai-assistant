@@ -281,13 +281,30 @@ Your account and credits remain. Say hi to start fresh 👋`,
   admin_stats: {
     template: `*Platform Stats* 📊
 
-*Total Users:* {{totalUsers}}
-*Active Today:* {{activeToday}}
-*Active This Week:* {{activeWeek}}
-*Active This Month:* {{activeMonth}}
-*New Today:* {{newToday}}
-*Pro Users:* {{proUsers}}`,
-    variables: ["totalUsers", "activeToday", "activeWeek", "activeMonth", "newToday", "proUsers"],
+*Today (Dubai time, UTC+4)*
+New: {{newTodayDubai}} | Active: {{activeTodayDubai}}
+
+*Last 24 Hours (rolling)*
+New: {{newToday}} | Active: {{activeToday}}
+
+*This Week (Dubai, starts Sun)*
+Active: {{activeWeekDubai}}
+
+*This Month (Dubai)*
+Active: {{activeMonthDubai}}
+
+*All Time*
+Total: {{totalUsers}} | Pro: {{proUsers}}`,
+    variables: [
+      "newTodayDubai",
+      "activeTodayDubai",
+      "newToday",
+      "activeToday",
+      "activeWeekDubai",
+      "activeMonthDubai",
+      "totalUsers",
+      "proUsers",
+    ],
   },
 
   admin_search_result: {
