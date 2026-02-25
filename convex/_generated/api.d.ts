@@ -26,6 +26,7 @@ import type * as lib_adminCommands from "../lib/adminCommands.js";
 import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_clerk from "../lib/clerk.js";
 import type * as lib_cronParser from "../lib/cronParser.js";
+import type * as lib_dateUtils from "../lib/dateUtils.js";
 import type * as lib_formatter from "../lib/formatter.js";
 import type * as lib_media from "../lib/media.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   "lib/analytics": typeof lib_analytics;
   "lib/clerk": typeof lib_clerk;
   "lib/cronParser": typeof lib_cronParser;
+  "lib/dateUtils": typeof lib_dateUtils;
   "lib/formatter": typeof lib_formatter;
   "lib/media": typeof lib_media;
   "lib/onboarding": typeof lib_onboarding;
