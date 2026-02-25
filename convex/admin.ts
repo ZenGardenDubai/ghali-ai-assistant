@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
+import { getDubaiMidnightMs, getDubaiWeekStartMs, getDubaiMonthStartMs } from "./lib/dateUtils";
 
 /** Template definitions with env var names and variable schemas */
 export const TEMPLATE_DEFINITIONS = [
@@ -21,13 +22,22 @@ export const getStats = internalQuery({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+
+    // Rolling windows
     const oneDayAgo = now - 24 * 60 * 60 * 1000;
     const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
     const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
 
+    // Dubai-anchored boundaries (UTC+4, week starts Sunday, month starts 1st)
+    const dubaiDayStart = getDubaiMidnightMs(now);
+    const dubaiWeekStart = getDubaiWeekStartMs(now);
+    const dubaiMonthStart = getDubaiMonthStartMs(now);
+
     const allUsers = await ctx.db.query("users").collect();
 
     const totalUsers = allUsers.length;
+
+    // Rolling window stats
     const activeToday = allUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= oneDayAgo
     ).length;
@@ -40,9 +50,35 @@ export const getStats = internalQuery({
     const newToday = allUsers.filter(
       (u) => u.createdAt >= oneDayAgo
     ).length;
+
+    // Dubai calendar-day stats
+    const activeTodayDubai = allUsers.filter(
+      (u) => u.lastMessageAt && u.lastMessageAt >= dubaiDayStart
+    ).length;
+    const activeWeekDubai = allUsers.filter(
+      (u) => u.lastMessageAt && u.lastMessageAt >= dubaiWeekStart
+    ).length;
+    const activeMonthDubai = allUsers.filter(
+      (u) => u.lastMessageAt && u.lastMessageAt >= dubaiMonthStart
+    ).length;
+    const newTodayDubai = allUsers.filter(
+      (u) => u.createdAt >= dubaiDayStart
+    ).length;
+
     const proUsers = allUsers.filter((u) => u.tier === "pro").length;
 
-    return { totalUsers, activeToday, activeWeek, activeMonth, newToday, proUsers };
+    return {
+      totalUsers,
+      activeToday,
+      activeWeek,
+      activeMonth,
+      newToday,
+      activeTodayDubai,
+      activeWeekDubai,
+      activeMonthDubai,
+      newTodayDubai,
+      proUsers,
+    };
   },
 });
 

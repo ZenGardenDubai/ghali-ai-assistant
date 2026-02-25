@@ -65,6 +65,10 @@ export async function handleAdminCommand(
         activeWeek: number;
         activeMonth: number;
         newToday: number;
+        activeTodayDubai: number;
+        activeWeekDubai: number;
+        activeMonthDubai: number;
+        newTodayDubai: number;
         proUsers: number;
       };
       return {
@@ -76,6 +80,10 @@ export async function handleAdminCommand(
             activeWeek: stats.activeWeek,
             activeMonth: stats.activeMonth,
             newToday: stats.newToday,
+            activeTodayDubai: stats.activeTodayDubai,
+            activeWeekDubai: stats.activeWeekDubai,
+            activeMonthDubai: stats.activeMonthDubai,
+            newTodayDubai: stats.newTodayDubai,
             proUsers: stats.proUsers,
           },
           userMessage
