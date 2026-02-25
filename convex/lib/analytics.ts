@@ -19,6 +19,7 @@ const PHONE_PREFIX_TO_COUNTRY: Record<string, string> = {
   "+1664": "MS", "+1670": "MP", "+1671": "GU", "+1684": "AS", "+1721": "SX",
   "+1758": "LC", "+1767": "DM", "+1784": "VC", "+1787": "PR", "+1809": "DO",
   "+1829": "DO", "+1849": "DO", "+1868": "TT", "+1869": "KN", "+1876": "JM",
+  "+1939": "PR",
   // Africa
   "+20": "EG", "+211": "SS", "+212": "MA", "+213": "DZ", "+216": "TN",
   "+218": "LY", "+220": "GM", "+221": "SN", "+222": "MR", "+223": "ML",
@@ -46,7 +47,7 @@ const PHONE_PREFIX_TO_COUNTRY: Record<string, string> = {
   "+48": "PL", "+49": "DE",
   // Russia & CIS
   "+7": "RU",
-  // Kazakhstan mobile prefixes (+770x through +778x)
+  // Kazakhstan mobile prefixes (+7700 through +7729)
   "+7700": "KZ", "+7701": "KZ", "+7702": "KZ", "+7703": "KZ", "+7704": "KZ",
   "+7705": "KZ", "+7706": "KZ", "+7707": "KZ", "+7708": "KZ", "+7709": "KZ",
   "+7710": "KZ", "+7711": "KZ", "+7712": "KZ", "+7713": "KZ", "+7714": "KZ",
@@ -65,6 +66,9 @@ const PHONE_PREFIX_TO_COUNTRY: Record<string, string> = {
   "+965": "KW", "+966": "SA", "+967": "YE", "+968": "OM", "+970": "PS",
   "+971": "AE", "+972": "IL", "+973": "BH", "+974": "QA", "+975": "BT",
   "+976": "MN", "+977": "NP", "+98": "IR",
+  // Central Asia
+  "+992": "TJ", "+993": "TM", "+994": "AZ", "+995": "GE", "+996": "KG",
+  "+998": "UZ",
   // Central & South America
   "+501": "BZ", "+502": "GT", "+503": "SV", "+504": "HN", "+505": "NI",
   "+506": "CR", "+507": "PA", "+508": "PM", "+509": "HT", "+51": "PE",
