@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.11.0...v0.12.0) (2026-02-26)
+
+
+### Features
+
+* open all features to basic users — Pro = more credits only ([#30](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/30)) ([1645f5a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/1645f5ac235ac54edd3607c78cb7e753f9f95d39))
+
 ## [0.11.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.10.0...v0.11.0) (2026-02-26)
 
 
