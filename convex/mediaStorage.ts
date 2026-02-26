@@ -69,7 +69,25 @@ export const getRecentUserMedia = internalQuery({
       storageId: f.storageId,
       mediaType: f.mediaType,
       createdAt: f._creationTime,
+      transcript: f.transcript,
     }));
+  },
+});
+
+/** Get a Convex storage URL for a given storage ID, with user ownership verification. */
+export const getStorageUrl = internalQuery({
+  args: {
+    storageId: v.id("_storage"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { storageId, userId }) => {
+    const record = await ctx.db
+      .query("mediaFiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("storageId"), storageId))
+      .first();
+    if (!record) return null;
+    return await ctx.storage.getUrl(storageId);
   },
 });
 

@@ -238,6 +238,7 @@ export function getFormatFromMime(mimeType: string): string | null {
 export const MEDIA_CATEGORY_PREFIX_MAP = {
   image: "image/",
   audio: "audio/",
+  video: "video/",
   document: "application/",
   any: undefined,
 } as const;

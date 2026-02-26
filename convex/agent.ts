@@ -8,7 +8,7 @@ import { z } from "zod";
 import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
-import { MEDIA_CATEGORY_PREFIX_MAP } from "./lib/media";
+import { MEDIA_CATEGORY_PREFIX_MAP, isVoiceNote } from "./lib/media";
 import {
   AGENT_MAX_STEPS,
   AGENT_RECENT_MESSAGES,
@@ -73,7 +73,8 @@ FILES & MEDIA:
 - Use searchDocuments when users ask about content from documents they've shared before
 - For newly received files, the content is already in your context — no need to search
 - Users can request file conversion: send a file + "convert to PDF", reply to a file + "convert to webp", or "convert my last document to docx". Use convertFile tool for these requests.
-- When users reference "my last image/voice note/document" without replying to a specific message, use resolveMedia to find the file, then call the appropriate tool (e.g. convertFile).
+- When users reference a previous file ("transcribe my last voice note", "what's in my last doc", "describe my last pic", "summarize the PDF I sent"), first call resolveMedia to find the file. For voice notes, if resolveMedia returns a transcript field, use that directly. Otherwise, call reprocessMedia to extract the content (transcription, text extraction, or description).
+- For file conversion requests ("convert my last document to PDF"), use resolveMedia → convertFile.
 
 FORMATTING:
 - Format for WhatsApp: use *bold*, _italic_, plain text
@@ -113,7 +114,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 10. *File Conversion* — You can convert files between formats via convertFile. Supported: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). Users can: send a file + "convert to X", reply to a previous file + "convert to X", or say "convert my last document to X" (you'll look up their most recent file).
 
-11. *Media Referencing* — When users refer to "my last image", "my last voice note", "the document I sent", etc. without replying to a specific message, call resolveMedia to find the file by type. Then chain into the appropriate tool: use convertFile for format conversion, or inform the user of the found file's details. Supports position ("second most recent image") via the position param.`;
+11. *Media Referencing* — When users refer to "my last image", "my last voice note", "my last video", "the document I sent", etc. without replying to a specific message, call resolveMedia to find the file by type (supports image, audio, video, document, any). Then chain into the appropriate tool: use reprocessMedia for content extraction (voice transcription, document text extraction, image description, video description), or convertFile for format conversion. For voice notes, resolveMedia may return a cached transcript — use it directly. Supports position ("second most recent image") via the position param.`;
 
 // Tools that let the agent update per-user files
 const updateMemory = createTool({
@@ -444,9 +445,9 @@ const resolveMedia = createTool({
     "Find a user's recent media file by type. Use when the user refers to 'my last image', 'my last voice note', 'the document I sent', 'the PDF I shared', etc. Returns storageId and mediaType for chaining into other tools (e.g. convertFile).",
   args: z.object({
     mediaCategory: z
-      .enum(["image", "audio", "document", "any"])
+      .enum(["image", "audio", "video", "document", "any"])
       .describe(
-        "Category of media to find: 'image' for photos/images, 'audio' for voice notes/audio files, 'document' for PDFs and Office files, 'any' for the most recent file regardless of type."
+        "Category of media to find: 'image' for photos/images, 'audio' for voice notes/audio files, 'video' for video files, 'document' for PDFs and Office files, 'any' for the most recent file regardless of type."
       ),
     position: z
       .number()
@@ -460,7 +461,7 @@ const resolveMedia = createTool({
     const mediaTypePrefix = MEDIA_CATEGORY_PREFIX_MAP[mediaCategory];
     const userId = ctx.userId as Id<"users">;
 
-    const files: Array<{ storageId: string; mediaType: string; createdAt: number }> =
+    const files: Array<{ storageId: string; mediaType: string; createdAt: number; transcript?: string }> =
       await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
         userId,
         limit: pos,
@@ -473,7 +474,76 @@ const resolveMedia = createTool({
     }
 
     const file = files[pos - 1]!;
-    return JSON.stringify({ storageId: file.storageId, mediaType: file.mediaType });
+    const result: { storageId: string; mediaType: string; transcript?: string } = {
+      storageId: file.storageId,
+      mediaType: file.mediaType,
+    };
+    if (file.transcript) {
+      result.transcript = file.transcript;
+    }
+    return JSON.stringify(result);
+  },
+});
+
+const reprocessMedia = createTool({
+  description:
+    "Re-process a media file to extract its content (transcription, text extraction, image/video description). Use after resolveMedia when you need the actual content. For voice notes, if resolveMedia already returned a transcript field, use that directly instead of calling this tool.",
+  args: z.object({
+    storageId: z
+      .string()
+      .describe("The Convex storage ID from resolveMedia"),
+    mediaType: z
+      .string()
+      .describe("The MIME type from resolveMedia (e.g. 'audio/ogg', 'application/pdf', 'image/jpeg')"),
+    userPrompt: z
+      .string()
+      .optional()
+      .describe("Optional prompt to guide content extraction (e.g. 'describe this image in detail', 'summarize this document')"),
+  }),
+  handler: async (ctx, { storageId, mediaType, userPrompt }): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    try {
+      const storageUrl: string | null = await ctx.runQuery(
+        internal.mediaStorage.getStorageUrl,
+        { storageId: storageId as Id<"_storage">, userId }
+      );
+      if (!storageUrl) {
+        return "File not found or no longer available. It may have expired.";
+      }
+
+      if (isVoiceNote(mediaType)) {
+        const result = await ctx.runAction(
+          internal.voice.transcribeVoiceMessage,
+          {
+            mediaUrl: storageUrl,
+            mediaType,
+            existingStorageId: storageId as Id<"_storage">,
+          }
+        ) as { transcript: string; storageId: string } | null;
+        if (!result) {
+          return "Failed to transcribe the voice note. Please try again.";
+        }
+        return result.transcript;
+      }
+
+      // Documents, images, video — use processMedia
+      const result = await ctx.runAction(
+        internal.documents.processMedia,
+        {
+          mediaUrl: storageUrl,
+          mediaType,
+          userPrompt,
+          isReprocessing: true,
+        }
+      ) as { extracted: string; storageId: string | null } | null;
+      if (!result) {
+        return "Failed to extract content from the file. Please try again.";
+      }
+      return result.extracted;
+    } catch (error) {
+      console.error("reprocessMedia tool failed:", error);
+      return "I encountered an error processing the file. Please try again.";
+    }
   },
 });
 
@@ -571,6 +641,7 @@ export const ghaliAgent = new Agent(components.agent, {
     webSearch,
     generateImage,
     resolveMedia,
+    reprocessMedia,
     convertFile,
     searchDocuments,
     scheduleReminder,
