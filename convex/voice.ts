@@ -7,6 +7,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import OpenAI from "openai";
 import { VOICE_MIN_SIZE_BYTES, VOICE_MAX_SIZE_BYTES } from "./constants";
 import { getAudioExtension } from "./lib/voice";
@@ -136,7 +137,7 @@ export const transcribeVoiceMessage = internalAction({
         `[Voice] done | ${latencyMs}ms | ${transcript.length} chars`
       );
 
-      return { transcript, storageId: storageId as any };
+      return { transcript, storageId: storageId as Id<"_storage"> | null };
     } catch (error) {
       console.error("[Voice] Transcription failed:", error);
       return null;
