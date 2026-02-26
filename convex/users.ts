@@ -345,6 +345,10 @@ export const internalEditMemory = internalMutation({
       return { found: false };
     }
 
+    if (isFileTooLarge(updated)) {
+      throw new Error("Edit would exceed 50KB limit. Use a shorter replacement.");
+    }
+
     await ctx.db.patch(file._id, {
       content: updated,
       updatedAt: Date.now(),

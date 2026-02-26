@@ -98,6 +98,20 @@ describe("editMemoryContent", () => {
     expect(updated).toContain("- Name: Ahmad");
   });
 
+  it("returns found=false when search is empty string", () => {
+    const file = "## Personal\n- Name: Ahmad";
+    const { updated, found } = editMemoryContent(file, "", "injected");
+    expect(found).toBe(false);
+    expect(updated).toBe(file);
+  });
+
+  it("returns found=false when search is whitespace only", () => {
+    const file = "## Personal\n- Name: Ahmad";
+    const { updated, found } = editMemoryContent(file, "   ", "injected");
+    expect(found).toBe(false);
+    expect(updated).toBe(file);
+  });
+
   it("returns found=false when search text is not found", () => {
     const file = "## Personal\n- Name: Ahmad";
     const { updated, found } = editMemoryContent(file, "nonexistent text", "replacement");

@@ -72,6 +72,9 @@ export function editMemoryContent(
   search: string,
   replacement: string
 ): { updated: string; found: boolean } {
+  if (!search.trim()) {
+    return { updated: fileContent, found: false };
+  }
   if (!fileContent.includes(search)) {
     return { updated: fileContent, found: false };
   }

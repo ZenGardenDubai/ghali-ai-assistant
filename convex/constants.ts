@@ -46,11 +46,11 @@ export const MEDIA_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 /** Max per-user file size in bytes (50KB) — memory, personality, heartbeat */
 export const MAX_USER_FILE_SIZE = 51_200;
 
-/** Memory compaction triggers at 75% of max (≈38KB) */
-export const MEMORY_COMPACTION_THRESHOLD = 38_400;
+/** Memory compaction triggers at 75% of max */
+export const MEMORY_COMPACTION_THRESHOLD = Math.floor(MAX_USER_FILE_SIZE * 0.75);
 
-/** Target size after compaction (≈25KB) */
-export const MEMORY_COMPACTION_TARGET = 25_600;
+/** Target size after compaction (50% of max) */
+export const MEMORY_COMPACTION_TARGET = Math.floor(MAX_USER_FILE_SIZE * 0.5);
 
 // ============================================================================
 // WhatsApp & Messaging

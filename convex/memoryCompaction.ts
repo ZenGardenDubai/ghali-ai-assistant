@@ -12,11 +12,21 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
-import { MODELS, MEMORY_COMPACTION_TARGET } from "./constants";
+import { MODELS, MEMORY_COMPACTION_TARGET, MAX_USER_FILE_SIZE } from "./constants";
 import { MEMORY_CATEGORIES, CATEGORY_ORDER, categoryHeader } from "./lib/memory";
 import type { Id } from "./_generated/dataModel";
 
 const CATEGORY_HEADERS = CATEGORY_ORDER.map((c) => categoryHeader(c)).join(", ");
+
+/** Validate LLM output: non-empty, has at least one category header, within size limit */
+function isValidMemoryOutput(content: string): boolean {
+  if (!content) return false;
+  const hasCategory = CATEGORY_ORDER.some((c) => content.includes(categoryHeader(c)));
+  if (!hasCategory) return false;
+  const bytes = new TextEncoder().encode(content).byteLength;
+  if (bytes > MAX_USER_FILE_SIZE) return false;
+  return true;
+}
 
 export const compactMemory = internalAction({
   args: { userId: v.id("users") },
@@ -24,13 +34,14 @@ export const compactMemory = internalAction({
     const file = await ctx.runQuery(internal.users.getUserFile, {
       userId,
       filename: "memory",
-    }) as { content: string } | null;
+    }) as { content: string; updatedAt: number } | null;
 
     if (!file || !file.content) {
       console.log("[MemoryCompaction] Empty memory, skipping");
       return;
     }
 
+    const snapshotUpdatedAt = file.updatedAt;
     const beforeBytes = new TextEncoder().encode(file.content).byteLength;
     console.log(`[MemoryCompaction] Starting | userId: ${userId} | before: ${beforeBytes} bytes`);
 
@@ -58,6 +69,22 @@ Rules:
     });
 
     const compacted = result.text.trim();
+
+    if (!isValidMemoryOutput(compacted)) {
+      console.log(`[MemoryCompaction] Invalid model output, skipping update for ${userId}`);
+      return;
+    }
+
+    // Stale-write guard: skip if memory was updated during compaction
+    const latest = await ctx.runQuery(internal.users.getUserFile, {
+      userId,
+      filename: "memory",
+    }) as { updatedAt: number } | null;
+    if (!latest || latest.updatedAt !== snapshotUpdatedAt) {
+      console.log(`[MemoryCompaction] Skipped stale write for user ${userId}`);
+      return;
+    }
+
     const afterBytes = new TextEncoder().encode(compacted).byteLength;
     console.log(`[MemoryCompaction] Done | before: ${beforeBytes} → after: ${afterBytes} bytes`);
 
@@ -117,10 +144,12 @@ export const migrateUserMemory = internalAction({
     const file = await ctx.runQuery(internal.users.getUserFile, {
       userId,
       filename: "memory",
-    }) as { content: string } | null;
+    }) as { content: string; updatedAt: number } | null;
 
     if (!file || !file.content.trim()) return;
     if (file.content.includes("## Personal") || file.content.includes("## General")) return;
+
+    const snapshotUpdatedAt = file.updatedAt;
 
     // Snapshot old content
     await ctx.runMutation(internal.users.saveMemorySnapshot, {
@@ -143,10 +172,27 @@ Rules:
       prompt: file.content,
     });
 
+    const migrated = result.text.trim();
+
+    if (!migrated || !CATEGORY_ORDER.some((c) => migrated.includes(categoryHeader(c)))) {
+      console.log(`[MemoryMigration] Invalid model output, skipping user ${userId}`);
+      return;
+    }
+
+    // Stale-write guard
+    const latest = await ctx.runQuery(internal.users.getUserFile, {
+      userId,
+      filename: "memory",
+    }) as { updatedAt: number } | null;
+    if (!latest || latest.updatedAt !== snapshotUpdatedAt) {
+      console.log(`[MemoryMigration] Skipped stale write for user ${userId}`);
+      return;
+    }
+
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
       userId,
       filename: "memory",
-      content: result.text.trim(),
+      content: migrated,
     });
 
     console.log(`[MemoryMigration] Migrated user ${userId}`);
