@@ -85,7 +85,7 @@ export default function RemindersPage() {
       <FeatureSection>
         <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
           <p className="text-sm text-white/60">
-            Reminders and heartbeat check-ins are available to all users. Each reminder or check-in uses 1 credit.
+            Reminders and heartbeat check-ins are available to all users. Setting up a reminder costs 1 credit, but deliveries and check-ins are free.
           </p>
         </div>
       </FeatureSection>

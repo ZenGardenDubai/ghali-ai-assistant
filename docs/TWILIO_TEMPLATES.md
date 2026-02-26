@@ -193,7 +193,7 @@ async function twilioTemplateCall(
   "language": "en",
   "types": {
     "twilio/text": {
-      "body": "🎉 Your Pro plan is now active! You have {{1}} credits this month. Enjoy deep reasoning, reminders, heartbeat, and more."
+      "body": "🎉 Your Pro plan is now active! You have {{1}} credits this month — 10× more than Basic. Enjoy!"
     }
   }
 }

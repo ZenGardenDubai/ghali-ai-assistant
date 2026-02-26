@@ -164,7 +164,7 @@ ghali-ai-assistant/
 │   ├── twilio.ts           # Outbound WhatsApp messaging
 │   ├── credits.ts          # Credit system
 │   ├── billing.ts          # Subscription management (Clerk)
-│   ├── heartbeat.ts        # Proactive check-ins (Pro)
+│   ├── heartbeat.ts        # Proactive check-ins (all users)
 │   ├── rateLimiting.ts     # Per-user rate limiting
 │   ├── admin.ts            # Admin commands + broadcasting
 │   ├── dataManagement.ts   # User data export/deletion

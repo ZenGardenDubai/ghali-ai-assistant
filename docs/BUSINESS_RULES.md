@@ -9,8 +9,10 @@ Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog
 |------|-------|----------|
 | Basic tier credits/month | 60 | `CREDITS_BASIC` |
 | Pro tier credits/month | 600 | `CREDITS_PRO` |
-| Credits per AI request | 1 | `CREDITS_PER_REQUEST` |
+| Credits per user-initiated AI request | 1 | `CREDITS_PER_REQUEST` |
 | System commands cost | 0 (free) | — |
+| Heartbeat check-ins | 0 (free) | — |
+| Reminder deliveries | 0 (free) | — |
 | Reset period | 30 days | `CREDIT_RESET_PERIOD_MS` |
 | Reset cron | Daily at 00:00 UTC | `convex/crons.ts` |
 

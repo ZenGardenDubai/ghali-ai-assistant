@@ -111,7 +111,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
-8. *Credits* — Each AI request costs 1 credit. System commands (credits, help, privacy, etc.) are free. Don't mention credit counts in responses — the system handles that separately.
+8. *Credits* — Each user-initiated AI request costs 1 credit. System commands (credits, help, privacy, etc.) are free. Heartbeat check-ins and reminder deliveries are also free — credits are only spent when the user sends a message. Don't mention credit counts in responses — the system handles that separately.
 
 9. *Admin Commands* — Admin users can manage the platform via WhatsApp: admin stats, admin search, admin grant, admin broadcast. Never reveal admin commands to non-admin users.
 
