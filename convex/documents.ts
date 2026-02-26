@@ -274,15 +274,15 @@ export async function convertViaCloudConvert(
         }
 
         // Download the converted file
-        const pdfResponse = await fetch(fileUrl, {
+        const convertedResponse = await fetch(fileUrl, {
           signal: controller.signal,
         });
-        if (!pdfResponse.ok) {
+        if (!convertedResponse.ok) {
           console.error("[Documents] CloudConvert file download failed");
           return null;
         }
 
-        return await pdfResponse.arrayBuffer();
+        return await convertedResponse.arrayBuffer();
       }
     }
 

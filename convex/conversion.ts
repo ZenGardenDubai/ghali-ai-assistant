@@ -99,6 +99,9 @@ export const convertAndStore = internalAction({
       };
     }
 
+    // Fetch user once for analytics (used in both success and failure paths)
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as { phone: string } | null;
+
     console.log(
       `[Conversion] converting ${inputFormat} → ${outputFormat} | size: ${sourceBuffer.byteLength} bytes`
     );
@@ -110,8 +113,6 @@ export const convertAndStore = internalAction({
       outputFormat
     );
     if (!converted) {
-      // Fire analytics for failure
-      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as { phone: string } | null;
       if (user) {
         await ctx.scheduler.runAfter(0, internal.analytics.trackFileConverted, {
           phone: user.phone,
@@ -152,8 +153,6 @@ export const convertAndStore = internalAction({
       `[Conversion] done | ${inputFormat} → ${outputFormat} | ${latencyMs}ms | ${converted.byteLength} bytes`
     );
 
-    // Fire analytics for success
-    const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as { phone: string } | null;
     if (user) {
       await ctx.scheduler.runAfter(0, internal.analytics.trackFileConverted, {
         phone: user.phone,
