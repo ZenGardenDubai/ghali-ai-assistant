@@ -95,12 +95,13 @@ async function downloadFromTwilio(
 // ============================================================================
 
 /**
- * Convert an Office file (docx/pptx/xlsx) to PDF via CloudConvert API v2.
- * Returns the PDF as ArrayBuffer, or null on failure.
+ * Convert a file between formats via CloudConvert API v2.
+ * Returns the converted file as ArrayBuffer, or null on failure.
  */
-async function convertViaCloudConvert(
+export async function convertViaCloudConvert(
   buffer: ArrayBuffer,
-  inputFormat: string
+  inputFormat: string,
+  outputFormat: string = "pdf"
 ): Promise<ArrayBuffer | null> {
   const apiKey = process.env.CLOUDCONVERT_API_KEY;
   if (!apiKey) {
@@ -130,7 +131,7 @@ async function convertViaCloudConvert(
             operation: "convert",
             input: ["upload"],
             input_format: inputFormat,
-            output_format: "pdf",
+            output_format: outputFormat,
           },
           export: {
             operation: "export/url",
@@ -272,12 +273,12 @@ async function convertViaCloudConvert(
           return null;
         }
 
-        // Download the converted PDF
+        // Download the converted file
         const pdfResponse = await fetch(fileUrl, {
           signal: controller.signal,
         });
         if (!pdfResponse.ok) {
-          console.error("[Documents] CloudConvert PDF download failed");
+          console.error("[Documents] CloudConvert file download failed");
           return null;
         }
 

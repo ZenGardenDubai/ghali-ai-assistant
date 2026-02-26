@@ -180,6 +180,25 @@ export const trackImageGenerated = internalAction({
   },
 });
 
+export const trackFileConverted = internalAction({
+  args: {
+    phone: v.string(),
+    input_format: v.string(),
+    output_format: v.string(),
+    success: v.boolean(),
+    latency_ms: v.optional(v.number()),
+  },
+  handler: async (_ctx, { phone, input_format, output_format, success, latency_ms }) => {
+    await captureEvent(phone, "file_converted", {
+      input_format,
+      output_format,
+      success,
+      latency_ms,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
 export const trackDocumentProcessed = internalAction({
   args: {
     phone: v.string(),

@@ -12,6 +12,10 @@ import {
   isRagIndexable,
   getOfficeFormat,
   arrayBufferToBase64,
+  CONVERSION_MAP,
+  FORMAT_TO_MIME,
+  isConversionSupported,
+  getFormatFromMime,
 } from "./media";
 
 describe("normalizeMimeType", () => {
@@ -355,5 +359,99 @@ describe("arrayBufferToBase64", () => {
     expect(decoded.charCodeAt(2)).toBe(255);
     expect(decoded.charCodeAt(3)).toBe(128);
     expect(decoded.charCodeAt(4)).toBe(64);
+  });
+});
+
+describe("CONVERSION_MAP", () => {
+  it("has entries for all expected input formats", () => {
+    const expected = ["pdf", "docx", "pptx", "xlsx", "png", "jpg", "webp", "mp3", "wav", "ogg"];
+    for (const fmt of expected) {
+      expect(CONVERSION_MAP[fmt]).toBeDefined();
+      expect(CONVERSION_MAP[fmt]!.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("every output format has a MIME type in FORMAT_TO_MIME", () => {
+    for (const outputs of Object.values(CONVERSION_MAP)) {
+      for (const fmt of outputs) {
+        expect(FORMAT_TO_MIME[fmt]).toBeDefined();
+      }
+    }
+  });
+});
+
+describe("isConversionSupported", () => {
+  it("returns true for pdf → docx", () => {
+    expect(isConversionSupported("pdf", "docx")).toBe(true);
+  });
+
+  it("returns true for docx → pdf", () => {
+    expect(isConversionSupported("docx", "pdf")).toBe(true);
+  });
+
+  it("returns true for png → webp", () => {
+    expect(isConversionSupported("png", "webp")).toBe(true);
+  });
+
+  it("returns true for mp3 → wav", () => {
+    expect(isConversionSupported("mp3", "wav")).toBe(true);
+  });
+
+  it("returns true for xlsx → csv", () => {
+    expect(isConversionSupported("xlsx", "csv")).toBe(true);
+  });
+
+  it("returns false for unsupported conversion", () => {
+    expect(isConversionSupported("pdf", "mp3")).toBe(false);
+  });
+
+  it("returns false for unknown input format", () => {
+    expect(isConversionSupported("bmp", "png")).toBe(false);
+  });
+
+  it("returns false for same format", () => {
+    expect(isConversionSupported("pdf", "pdf")).toBe(false);
+  });
+});
+
+describe("getFormatFromMime", () => {
+  it("returns pdf for application/pdf", () => {
+    expect(getFormatFromMime("application/pdf")).toBe("pdf");
+  });
+
+  it("returns docx for Word MIME type", () => {
+    expect(
+      getFormatFromMime(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      )
+    ).toBe("docx");
+  });
+
+  it("returns jpg for image/jpeg", () => {
+    expect(getFormatFromMime("image/jpeg")).toBe("jpg");
+  });
+
+  it("returns mp3 for audio/mpeg", () => {
+    expect(getFormatFromMime("audio/mpeg")).toBe("mp3");
+  });
+
+  it("returns mp3 for audio/mp3", () => {
+    expect(getFormatFromMime("audio/mp3")).toBe("mp3");
+  });
+
+  it("normalizes MIME before lookup", () => {
+    expect(getFormatFromMime("Image/PNG")).toBe("png");
+  });
+
+  it("strips charset suffix", () => {
+    expect(getFormatFromMime("audio/wav; charset=utf-8")).toBe("wav");
+  });
+
+  it("returns null for unsupported MIME", () => {
+    expect(getFormatFromMime("video/mp4")).toBeNull();
+  });
+
+  it("returns null for empty string", () => {
+    expect(getFormatFromMime("")).toBeNull();
   });
 });

@@ -158,6 +158,76 @@ export function getOfficeFormat(mimeType: string): string | null {
 }
 
 // ============================================================================
+// Conversion Format Mapping (for CloudConvert file conversion tool)
+// ============================================================================
+
+/**
+ * Map of input formats to their supported output formats.
+ * Used by the convertFile agent tool to validate conversion requests.
+ */
+export const CONVERSION_MAP: Record<string, string[]> = {
+  // Documents
+  pdf: ["docx"],
+  docx: ["pdf"],
+  pptx: ["pdf"],
+  xlsx: ["pdf", "csv"],
+  // Images
+  png: ["jpg", "webp"],
+  jpg: ["png", "webp"],
+  webp: ["png", "jpg"],
+  // Audio
+  mp3: ["wav", "ogg"],
+  wav: ["mp3", "ogg"],
+  ogg: ["mp3", "wav"],
+};
+
+/** Map MIME types to CloudConvert format strings. */
+const MIME_TO_FORMAT: Record<string, string> = {
+  // Documents
+  "application/pdf": "pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  // Images
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  // Audio
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/wav": "wav",
+  "audio/ogg": "ogg",
+};
+
+/** Map CloudConvert format strings back to MIME types (for output files). */
+export const FORMAT_TO_MIME: Record<string, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  csv: "text/csv",
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+};
+
+/** Check if a conversion from inputFormat to outputFormat is supported. */
+export function isConversionSupported(
+  inputFormat: string,
+  outputFormat: string
+): boolean {
+  const supported = CONVERSION_MAP[inputFormat];
+  return supported !== undefined && supported.includes(outputFormat);
+}
+
+/** Get the CloudConvert format string for a MIME type. Returns null if not convertible. */
+export function getFormatFromMime(mimeType: string): string | null {
+  const normalized = normalizeMimeType(mimeType);
+  return MIME_TO_FORMAT[normalized] ?? null;
+}
+
+// ============================================================================
 // Utilities
 // ============================================================================
 

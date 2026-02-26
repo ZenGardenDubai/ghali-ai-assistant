@@ -30,6 +30,7 @@ export function parseImageToolResult(
     if (
       typeof parsed === "object" &&
       parsed !== null &&
+      parsed.type === "image" &&
       typeof parsed.imageUrl === "string" &&
       typeof parsed.caption === "string"
     ) {
@@ -37,6 +38,53 @@ export function parseImageToolResult(
     }
   } catch {
     // Not JSON — not an image tool result
+  }
+  return null;
+}
+
+/**
+ * Try to parse a convertFile tool result (JSON with fileUrl + caption + outputFormat).
+ * Returns the URL, caption, and format, or null if not a conversion result.
+ */
+export function parseConvertedFileResult(
+  text: string
+): { fileUrl: string; caption: string; outputFormat: string } | null {
+  try {
+    const parsed = JSON.parse(text);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      parsed.type === "conversion" &&
+      typeof parsed.fileUrl === "string" &&
+      typeof parsed.caption === "string" &&
+      typeof parsed.outputFormat === "string"
+    ) {
+      return {
+        fileUrl: parsed.fileUrl,
+        caption: parsed.caption,
+        outputFormat: parsed.outputFormat,
+      };
+    }
+  } catch {
+    // Not JSON — not a conversion tool result
+  }
+  return null;
+}
+
+/**
+ * Scan all tool results from generateText steps for a file conversion result.
+ */
+export function extractConvertedFileFromSteps(
+  steps: Array<{ toolResults: Array<Record<string, unknown>> }>
+): { fileUrl: string; caption: string; outputFormat: string } | null {
+  for (const step of steps) {
+    for (const toolResult of step.toolResults) {
+      const text = toolResult.output ?? toolResult.result;
+      if (typeof text === "string") {
+        const match = parseConvertedFileResult(text);
+        if (match) return match;
+      }
+    }
   }
   return null;
 }
@@ -439,12 +487,14 @@ export const generateResponse = internalAction({
 
     // Reply-to-media: if replying to a previous message with stored media, fetch it
     let isReprocessing = false;
+    let replyStorageId: string | null = null;
     if (originalRepliedMessageSid && !mediaUrl) {
       const stored = await ctx.runQuery(
         internal.mediaStorage.getMediaBySid,
         { messageSid: originalRepliedMessageSid }
       );
       if (stored) {
+        replyStorageId = stored.storageId;
         if (isVoiceNote(stored.mediaType)) {
           // Use cached transcript — avoids re-calling Whisper API
           if (stored.transcript) {
@@ -519,9 +569,11 @@ export const generateResponse = internalAction({
         });
       }
 
+      const effectiveStorageId = storageId ?? replyStorageId;
+      const storageIdNote = effectiveStorageId ? `\n[File storageId: ${effectiveStorageId} — pass this to convertFile if user wants conversion]` : "";
       prompt = body
-        ? `[User sent a file (${mediaContentType})]\nUser's question: "${body}"\n\nExtracted content:\n${extracted}`
-        : `[User sent a file (${mediaContentType})]\n\nExtracted content:\n${extracted}`;
+        ? `[User sent a file (${mediaContentType})]${storageIdNote}\nUser's question: "${body}"\n\nExtracted content:\n${extracted}`
+        : `[User sent a file (${mediaContentType})]${storageIdNote}\n\nExtracted content:\n${extracted}`;
 
       // Only index documents in RAG (not images, audio, or video)
       if (isRagIndexable(mediaContentType) && !isReprocessing) {
@@ -544,6 +596,7 @@ export const generateResponse = internalAction({
     // Generate response
     let responseText: string | undefined;
     let imageResult: { imageUrl: string; caption: string } | null = null;
+    let convertedResult: { fileUrl: string; caption: string; outputFormat: string } | null = null;
     let aiSucceeded = false;
     let toolsUsed: string[] = [];
     try {
@@ -568,8 +621,13 @@ export const generateResponse = internalAction({
         ),
       ];
 
+      // Check tool results for converted file output (before image — both are JSON with URLs)
+      convertedResult = extractConvertedFileFromSteps(result.steps);
+
       // Check tool results directly for image generation output
-      imageResult = extractImageFromSteps(result.steps);
+      if (!convertedResult) {
+        imageResult = extractImageFromSteps(result.steps);
+      }
     } catch (error) {
       console.error("Agent generateText failed:", error);
       responseText = "Sorry, I ran into an issue processing your message. Please try again.";
@@ -607,7 +665,22 @@ export const generateResponse = internalAction({
       }
     }
 
-    if (imageResult) {
+    if (convertedResult) {
+      // Send converted file as WhatsApp media
+      try {
+        await ctx.runAction(internal.twilio.sendMedia, {
+          to: user.phone,
+          caption: convertedResult.caption,
+          mediaUrl: convertedResult.fileUrl,
+        });
+      } catch (error) {
+        console.error("sendMedia (conversion) failed, falling back to text:", error);
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: convertedResult.caption,
+        });
+      }
+    } else if (imageResult) {
       // Image analytics tracked in images.ts (with latency + model detail)
       // Send generated image as WhatsApp media, fall back to text if media fails
       try {
