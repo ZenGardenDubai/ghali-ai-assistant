@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  # Allow manual retrigger (e.g. for release-please PRs)
+  workflow_dispatch:
 
 jobs:
   lint-and-typecheck:

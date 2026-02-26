@@ -14,7 +14,11 @@ jobs:
 
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use RELEASE_PLEASE_TOKEN (PAT) if set — PRs from PATs trigger
+          # CI automatically. Without it, GITHUB_TOKEN is used and you must
+          # manually retrigger CI (close/reopen PR or push to branch).
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
