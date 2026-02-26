@@ -416,7 +416,7 @@ export const generateResponse = internalAction({
         return;
       }
 
-      // Track voice note in mediaFiles for future reply-to-media support
+      // Track voice note in mediaFiles with transcript for future reply-to-voice
       if (messageSid) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
           userId: typedUserId,
@@ -424,6 +424,7 @@ export const generateResponse = internalAction({
           messageSid,
           mediaType: mediaContentType,
           expiresAt: Date.now() + MEDIA_RETENTION_MS,
+          transcript: voiceResult.transcript,
         });
       }
 
@@ -433,8 +434,7 @@ export const generateResponse = internalAction({
       mediaContentType = undefined;
     }
 
-    // Build prompt — process media attachments if present
-    // Images, non-voice audio, video, and documents go through Gemini Flash
+    // Initialize prompt — may be replaced below by media processing or voice transcript
     let prompt = body;
 
     // Reply-to-media: if replying to a previous message with stored media, fetch it
@@ -446,19 +446,32 @@ export const generateResponse = internalAction({
       );
       if (stored) {
         if (isVoiceNote(stored.mediaType)) {
-          // Re-transcribe voice note from Convex storage
-          const voiceResult = await ctx.runAction(
-            internal.voice.transcribeVoiceMessage,
-            {
-              mediaUrl: stored.storageUrl,
-              mediaType: stored.mediaType,
-              existingStorageId: stored.storageId,
-            }
-          );
-          if (voiceResult) {
+          // Use cached transcript — avoids re-calling Whisper API
+          if (stored.transcript) {
             prompt = body
-              ? `${body}\n\n[Voice note transcript: "${voiceResult.transcript}"]`
-              : `[Voice note transcript: "${voiceResult.transcript}"]`;
+              ? `${body}\n\n[Voice note transcript: "${stored.transcript}"]`
+              : `[Voice note transcript: "${stored.transcript}"]`;
+          } else {
+            // Fallback: transcript missing (pre-upgrade records), re-transcribe
+            const voiceResult = await ctx.runAction(
+              internal.voice.transcribeVoiceMessage,
+              {
+                mediaUrl: stored.storageUrl,
+                mediaType: stored.mediaType,
+                existingStorageId: stored.storageId,
+              }
+            );
+            if (voiceResult) {
+              prompt = body
+                ? `${body}\n\n[Voice note transcript: "${voiceResult.transcript}"]`
+                : `[Voice note transcript: "${voiceResult.transcript}"]`;
+            } else {
+              await ctx.runAction(internal.twilio.sendMessage, {
+                to: user.phone,
+                body: TEMPLATES.voice_transcription_failed.template,
+              });
+              return;
+            }
           }
           // Don't set mediaUrl/mediaContentType — treat as text prompt
         } else {
