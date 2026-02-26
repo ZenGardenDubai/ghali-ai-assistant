@@ -94,6 +94,7 @@ export const fireReminder = internalAction({
       user.lastMessageAt &&
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
+    let sendSucceeded = false;
     try {
       if (withinWindow) {
         await ctx.runAction(internal.twilio.sendMessage, {
@@ -108,12 +109,17 @@ export const fireReminder = internalAction({
           variables: { "1": job.payload },
         });
       }
+      sendSucceeded = true;
     } catch (error) {
       console.error(`Failed to send reminder ${jobId}:`, error);
     }
 
-    // Mark as done
-    await ctx.runMutation(internal.reminders.markJobDone, { jobId });
+    // Mark done on success, failed on delivery error
+    if (sendSucceeded) {
+      await ctx.runMutation(internal.reminders.markJobDone, { jobId });
+    } else {
+      await ctx.runMutation(internal.reminders.markJobFailed, { jobId });
+    }
 
     // If recurring, schedule next occurrence
     if (job.cronExpr && job.timezone) {
@@ -257,5 +263,17 @@ export const markJobDone = internalMutation({
   },
   handler: async (ctx, { jobId }) => {
     await ctx.db.patch(jobId, { status: "done" });
+  },
+});
+
+/**
+ * Mark a job as failed (internal mutation called from fireReminder when send fails).
+ */
+export const markJobFailed = internalMutation({
+  args: {
+    jobId: v.id("scheduledJobs"),
+  },
+  handler: async (ctx, { jobId }) => {
+    await ctx.db.patch(jobId, { status: "failed" });
   },
 });

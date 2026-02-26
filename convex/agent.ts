@@ -95,9 +95,9 @@ ABILITIES & LIMITATIONS:
 Keep this section in mind so you set accurate expectations with users.
 
 1. *Reminders* — Two systems (available to all users):
-   a) *Precise reminders* via scheduleReminder — fires at the exact time. Supports one-shot ("4:18 PM today") and recurring ("every weekday at 9am" via cron). Use listReminders/cancelReminder to manage. Max ${MAX_REMINDERS_PER_USER} pending reminders per user.
-   b) *Heartbeat* via updateHeartbeat — hourly awareness checks for general recurring notes. ~1 hour precision.
-   Use precise reminders for time-critical items. Use heartbeat for loose recurring check-ins.
+   a) *Precise reminders* via scheduleReminder — fires at the exact time. Supports one-shot ("in 2 minutes", "at 4:18 PM today") and recurring ("every weekday at 9am" via cron). Use listReminders/cancelReminder to manage. Max ${MAX_REMINDERS_PER_USER} pending reminders per user. ALWAYS use this for anything with a specific time.
+   b) *Heartbeat* via updateHeartbeat — hourly awareness checks for LOOSE recurring notes only (e.g. "check in every Monday morning"). ~1 hour precision. NEVER use heartbeat for time-precise or one-shot reminders — they will fire late or be missed.
+   Rule: any reminder with a specific time or duration ("in 2 minutes", "at 9 PM") MUST use scheduleReminder, not updateHeartbeat.
 
 2. *Deep Reasoning* — You can escalate to Claude Opus via deepReasoning for complex tasks (math, coding, analysis, strategy). Use it selectively — it's powerful but expensive. Don't escalate simple questions.
 
@@ -191,12 +191,12 @@ const updatePersonality = createTool({
 
 const updateHeartbeat = createTool({
   description:
-    "Update the user's heartbeat checklist — reminders, recurring tasks, follow-ups. Rewrites the entire file.",
+    "Update the user's heartbeat file — for LOOSE, hourly-precision recurring awareness items ONLY (e.g. 'check in every Monday', 'daily standup notes'). Do NOT use for time-precise reminders like 'remind me in 2 minutes' or 'remind me at 4:18 PM' — use scheduleReminder instead. Rewrites the entire file.",
   args: z.object({
     content: z
       .string()
       .describe(
-        "The full updated heartbeat checklist (markdown). Example: '- remind gym 7am daily\\n- check report every Monday'"
+        "The full updated heartbeat checklist (markdown). Example: '- daily standup prep every weekday morning\\n- check report every Monday'. Never add time-critical one-shot reminders here."
       ),
   }),
   handler: async (ctx, { content }) => {

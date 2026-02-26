@@ -209,3 +209,32 @@ describe("cancelAllUserReminders", () => {
     expect(reminders).toHaveLength(0);
   });
 });
+
+describe("markJobFailed", () => {
+  it("marks a pending job as failed", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const jobId = await t.mutation(internal.reminders.createReminder, {
+      userId,
+      payload: "Drink water",
+      runAt: Date.now() + 60_000,
+      timezone: "Asia/Dubai",
+    });
+
+    await t.mutation(internal.reminders.markJobFailed, { jobId });
+
+    // Verify job is marked failed (not done) and not visible in pending list
+    const reminders = await t.query(internal.reminders.listUserReminders, {
+      userId,
+    });
+    expect(reminders).toHaveLength(0);
+
+    // Verify raw job status is 'failed'
+    const job = await t.query(internal.reminders.getJob, { jobId });
+    expect(job?.status).toBe("failed");
+  });
+});
