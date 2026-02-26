@@ -171,6 +171,10 @@ export const CONVERSION_MAP: Record<string, string[]> = {
   docx: ["pdf"],
   pptx: ["pdf"],
   xlsx: ["pdf", "csv"],
+  // Text documents → PDF
+  txt: ["pdf"],
+  csv: ["pdf"],
+  md: ["pdf"],
   // Images
   png: ["jpg", "webp"],
   jpg: ["png", "webp"],
@@ -188,6 +192,10 @@ const MIME_TO_FORMAT: Record<string, string> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  // Text documents
+  "text/plain": "txt",
+  "text/csv": "csv",
+  "text/markdown": "md",
   // Images
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -232,14 +240,15 @@ export function getFormatFromMime(mimeType: string): string | null {
 // ============================================================================
 
 /**
- * Maps user-facing media category names to their MIME type prefix.
+ * Maps user-facing media category names to their MIME type prefixes.
  * Used by the resolveMedia agent tool to filter recent media files by type.
+ * Documents use two prefixes: "application/" (PDF, Office) and "text/" (txt, csv, md).
  */
 export const MEDIA_CATEGORY_PREFIX_MAP = {
-  image: "image/",
-  audio: "audio/",
-  video: "video/",
-  document: "application/",
+  image: ["image/"],
+  audio: ["audio/"],
+  video: ["video/"],
+  document: ["application/", "text/"],
   any: undefined,
 } as const;
 

@@ -51,18 +51,21 @@ export const getRecentUserMedia = internalQuery({
   args: {
     userId: v.id("users"),
     limit: v.optional(v.number()),
-    mediaTypePrefix: v.optional(v.string()),
+    mediaTypePrefixes: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { userId, limit, mediaTypePrefix }) => {
+  handler: async (ctx, { userId, limit, mediaTypePrefixes }) => {
     const maxResults = limit ?? 5;
     let files = await ctx.db
       .query("mediaFiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
-      .take(mediaTypePrefix ? maxResults * 3 : maxResults);
+      .take(mediaTypePrefixes && mediaTypePrefixes.length > 0 ? maxResults * 3 : maxResults);
 
-    if (mediaTypePrefix) {
-      files = files.filter((f) => f.mediaType.startsWith(mediaTypePrefix));
+    if (mediaTypePrefixes && mediaTypePrefixes.length > 0) {
+      const prefixes = mediaTypePrefixes;
+      files = files.filter((f) =>
+        prefixes.some((prefix) => f.mediaType.startsWith(prefix))
+      );
     }
 
     return files.slice(0, maxResults).map((f) => ({
