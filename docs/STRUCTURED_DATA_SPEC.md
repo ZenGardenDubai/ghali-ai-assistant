@@ -442,10 +442,13 @@ Everything is searchable. Try "find anything about GITEX" or "what did I track l
 
 | | Basic (free) | Pro |
 |--|-------------|-----|
-| Active items | 200 | Unlimited |
+| Total items (active + done) | 200 | Unlimited |
+| Archived items | Not counted | Not counted |
 | Collections | 10 | Unlimited |
 | Active reminders | 20 | 100 |
 | Embedding storage | Included | Included |
+
+> **Limit enforcement:** Only items with `status="active"` or `status="done"` count toward the item limit. Archived items are excluded — archiving is always available as a way to free up space without losing data.
 
 ---
 
