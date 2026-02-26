@@ -228,6 +228,23 @@ export function getFormatFromMime(mimeType: string): string | null {
 }
 
 // ============================================================================
+// Media Category → MIME Prefix Mapping (for resolveMedia agent tool)
+// ============================================================================
+
+/**
+ * Maps user-facing media category names to their MIME type prefix.
+ * Used by the resolveMedia agent tool to filter recent media files by type.
+ */
+export const MEDIA_CATEGORY_PREFIX_MAP = {
+  image: "image/",
+  audio: "audio/",
+  document: "application/",
+  any: undefined,
+} as const;
+
+export type MediaCategory = keyof typeof MEDIA_CATEGORY_PREFIX_MAP;
+
+// ============================================================================
 // Utilities
 // ============================================================================
 
