@@ -108,6 +108,7 @@ Thanks for being Pro! 💎`,
 📄 *Documents* — Send PDFs, Word, Excel, or text files — I read and remember them
 🖼️ *Images* — Send photos for analysis, or say *generate an image of...*
 🎤 *Voice & Video* — Send voice notes, audio, or video — I understand them
+🔄 *File conversion* — Convert between formats: PDF↔Word, images, audio (say "convert to PDF" or reply to a file)
 🧠 *Memory* — I learn your preferences over time — no need to repeat yourself
 ⏰ *Reminders* — Set one-time or recurring reminders (Pro: precise to the minute)
 💓 *Heartbeat* — Proactive check-ins based on your schedule (Pro)

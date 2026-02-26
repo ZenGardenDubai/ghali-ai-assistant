@@ -43,6 +43,12 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_filename", ["userId", "filename"]),
 
+  memorySnapshots: defineTable({
+    userId: v.id("users"),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
   generatedImages: defineTable({
     userId: v.id("users"),
     storageId: v.id("_storage"),

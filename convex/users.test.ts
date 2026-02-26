@@ -178,6 +178,180 @@ describe("updateUser", () => {
   });
 });
 
+describe("internalAppendMemory", () => {
+  it("appends to empty memory file creating section", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const result = await t.mutation(internal.users.internalAppendMemory, {
+      userId,
+      category: "personal",
+      content: "- Name: Ahmad",
+    });
+
+    expect(result.compactionScheduled).toBe(false);
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "memory",
+    });
+
+    expect(file!.content).toContain("## Personal");
+    expect(file!.content).toContain("- Name: Ahmad");
+  });
+
+  it("appends to existing section", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // First append
+    await t.mutation(internal.users.internalAppendMemory, {
+      userId,
+      category: "personal",
+      content: "- Name: Ahmad",
+    });
+
+    // Second append
+    await t.mutation(internal.users.internalAppendMemory, {
+      userId,
+      category: "personal",
+      content: "- Age: 30",
+    });
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "memory",
+    });
+
+    expect(file!.content).toContain("- Name: Ahmad");
+    expect(file!.content).toContain("- Age: 30");
+  });
+
+  it("rejects content over 50KB", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const hugeContent = "a".repeat(60_000);
+
+    await expect(
+      t.mutation(internal.users.internalAppendMemory, {
+        userId,
+        category: "general",
+        content: hugeContent,
+      })
+    ).rejects.toThrow("50KB");
+  });
+});
+
+describe("internalEditMemory", () => {
+  it("replaces existing text", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.internalAppendMemory, {
+      userId,
+      category: "personal",
+      content: "- Name: Ahmad",
+    });
+
+    const result = await t.mutation(internal.users.internalEditMemory, {
+      userId,
+      search: "- Name: Ahmad",
+      replacement: "- Name: Ahmed",
+    });
+
+    expect(result.found).toBe(true);
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "memory",
+    });
+    expect(file!.content).toContain("- Name: Ahmed");
+    expect(file!.content).not.toContain("- Name: Ahmad");
+  });
+
+  it("returns found=false for missing search text", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const result = await t.mutation(internal.users.internalEditMemory, {
+      userId,
+      search: "nonexistent",
+      replacement: "something",
+    });
+
+    expect(result.found).toBe(false);
+  });
+});
+
+describe("saveMemorySnapshot", () => {
+  it("creates a snapshot", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.saveMemorySnapshot, {
+      userId,
+      content: "## Personal\n- Name: Ahmad",
+    });
+
+    const snapshots = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("memorySnapshots")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect();
+    });
+
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]!.content).toBe("## Personal\n- Name: Ahmad");
+  });
+
+  it("overwrites previous snapshot (keeps only 1)", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.saveMemorySnapshot, {
+      userId,
+      content: "old content",
+    });
+
+    await t.mutation(internal.users.saveMemorySnapshot, {
+      userId,
+      content: "new content",
+    });
+
+    const snapshots = await t.run(async (ctx) => {
+      return await ctx.db
+        .query("memorySnapshots")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect();
+    });
+
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]!.content).toBe("new content");
+  });
+});
+
 describe("userFile CRUD", () => {
   it("gets a specific user file", async () => {
     const t = convexTest(schema, modules);

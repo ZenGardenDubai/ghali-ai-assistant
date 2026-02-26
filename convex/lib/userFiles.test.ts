@@ -7,16 +7,16 @@ import {
 import { SYSTEM_BLOCK, AGENT_INSTRUCTIONS } from "../agent";
 
 describe("isFileTooLarge", () => {
-  it("allows content under 10KB", () => {
+  it("allows content under 50KB", () => {
     expect(isFileTooLarge("short content")).toBe(false);
   });
 
-  it("allows content at exactly 10KB", () => {
+  it("allows content at exactly 50KB", () => {
     const content = "a".repeat(MAX_USER_FILE_SIZE);
     expect(isFileTooLarge(content)).toBe(false);
   });
 
-  it("rejects content over 10KB", () => {
+  it("rejects content over 50KB", () => {
     const content = "a".repeat(MAX_USER_FILE_SIZE + 1);
     expect(isFileTooLarge(content)).toBe(true);
   });
@@ -25,20 +25,20 @@ describe("isFileTooLarge", () => {
     expect(isFileTooLarge("")).toBe(false);
   });
 
-  it("exports MAX_USER_FILE_SIZE as 10240", () => {
-    expect(MAX_USER_FILE_SIZE).toBe(10240);
+  it("exports MAX_USER_FILE_SIZE as 51200", () => {
+    expect(MAX_USER_FILE_SIZE).toBe(51200);
   });
 
-  it("rejects multi-byte content that exceeds 10KB in UTF-8 bytes", () => {
-    // Arabic char "م" is 2 bytes in UTF-8, so 5121 chars = 10242 bytes > 10KB
-    const content = "م".repeat(5121);
-    expect(content.length).toBe(5121); // under 10240 chars
-    expect(isFileTooLarge(content)).toBe(true); // but over 10240 bytes
+  it("rejects multi-byte content that exceeds 50KB in UTF-8 bytes", () => {
+    // Arabic char "م" is 2 bytes in UTF-8, so 25601 chars = 51202 bytes > 50KB
+    const content = "م".repeat(25601);
+    expect(content.length).toBe(25601); // under 51200 chars
+    expect(isFileTooLarge(content)).toBe(true); // but over 51200 bytes
   });
 
-  it("allows multi-byte content that fits within 10KB in UTF-8 bytes", () => {
-    // 5120 Arabic chars = 10240 bytes = exactly 10KB
-    const content = "م".repeat(5120);
+  it("allows multi-byte content that fits within 50KB in UTF-8 bytes", () => {
+    // 25600 Arabic chars = 51200 bytes = exactly 50KB
+    const content = "م".repeat(25600);
     expect(isFileTooLarge(content)).toBe(false);
   });
 });
@@ -70,8 +70,8 @@ describe("AGENT_INSTRUCTIONS", () => {
     expect(AGENT_INSTRUCTIONS).toContain("MEMORY RULES");
   });
 
-  it("instructs to call updateMemory", () => {
-    expect(AGENT_INSTRUCTIONS).toContain("updateMemory");
+  it("instructs to call appendToMemory", () => {
+    expect(AGENT_INSTRUCTIONS).toContain("appendToMemory");
   });
 
   it("instructs to never ask about remembering", () => {

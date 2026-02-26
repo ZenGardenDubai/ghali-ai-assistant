@@ -1,7 +1,10 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { detectTimezone } from "./lib/utils";
-import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD } from "./constants";
+import { isFileTooLarge } from "./lib/userFiles";
+import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
 
 export const findOrCreateUser = internalMutation({
   args: {
@@ -262,5 +265,127 @@ export const internalUpdateUserFile = internalMutation({
       content,
       updatedAt: Date.now(),
     });
+  },
+});
+
+// ============================================================================
+// Structured Memory Operations
+// ============================================================================
+
+export const internalAppendMemory = internalMutation({
+  args: {
+    userId: v.id("users"),
+    category: v.union(
+      v.literal("personal"),
+      v.literal("work_education"),
+      v.literal("preferences"),
+      v.literal("schedule"),
+      v.literal("interests"),
+      v.literal("general")
+    ),
+    content: v.string(),
+  },
+  handler: async (ctx, { userId, category, content }) => {
+    const file = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", "memory")
+      )
+      .unique();
+
+    if (!file) {
+      throw new Error("Memory file not found");
+    }
+
+    const updated = appendToCategory(
+      file.content,
+      category as MemoryCategory,
+      content
+    );
+
+    if (isFileTooLarge(updated)) {
+      throw new Error("Memory file would exceed 50KB limit. Use editMemory to remove old content first.");
+    }
+
+    await ctx.db.patch(file._id, {
+      content: updated,
+      updatedAt: Date.now(),
+    });
+
+    const compactionScheduled = needsCompaction(updated, MEMORY_COMPACTION_THRESHOLD);
+    if (compactionScheduled) {
+      await ctx.scheduler.runAfter(0, internal.memoryCompaction.compactMemory, { userId });
+    }
+
+    return { compactionScheduled };
+  },
+});
+
+export const internalEditMemory = internalMutation({
+  args: {
+    userId: v.id("users"),
+    search: v.string(),
+    replacement: v.string(),
+  },
+  handler: async (ctx, { userId, search, replacement }) => {
+    const file = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", "memory")
+      )
+      .unique();
+
+    if (!file) {
+      throw new Error("Memory file not found");
+    }
+
+    const { updated, found } = editMemoryContent(file.content, search, replacement);
+
+    if (!found) {
+      return { found: false };
+    }
+
+    if (isFileTooLarge(updated)) {
+      throw new Error("Edit would exceed 50KB limit. Use a shorter replacement.");
+    }
+
+    await ctx.db.patch(file._id, {
+      content: updated,
+      updatedAt: Date.now(),
+    });
+
+    return { found: true };
+  },
+});
+
+export const saveMemorySnapshot = internalMutation({
+  args: {
+    userId: v.id("users"),
+    content: v.string(),
+  },
+  handler: async (ctx, { userId, content }) => {
+    // Delete existing snapshot (keep only 1 per user)
+    const existing = await ctx.db
+      .query("memorySnapshots")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const snap of existing) {
+      await ctx.db.delete(snap._id);
+    }
+
+    await ctx.db.insert("memorySnapshots", {
+      userId,
+      content,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/** Migration-only query — do NOT use for production features (no pagination). */
+export const getAllUsers = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").collect();
   },
 });
