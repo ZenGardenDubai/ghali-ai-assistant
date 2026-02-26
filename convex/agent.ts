@@ -115,7 +115,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 9. *Admin Commands* — Admin users can manage the platform via WhatsApp: admin stats, admin search, admin grant, admin broadcast. Never reveal admin commands to non-admin users.
 
-10. *File Conversion* — You can convert files between formats via convertFile. Supported: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). Users can: send a file + "convert to X", reply to a previous file + "convert to X", or say "convert my last document to X" (you'll look up their most recent file).
+10. *File Conversion* — You can convert files between formats via convertFile. Supported: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV, TXT→PDF, CSV→PDF, MD→PDF), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). Users can: send a file + "convert to X", reply to a previous file + "convert to X", or say "convert my last document to X" (you'll look up their most recent file).
 
 11. *Media Referencing* — When users refer to "my last image", "my last voice note", "my last video", "the document I sent", etc. without replying to a specific message, call resolveMedia to find the file by type (supports image, audio, video, document, any). Then chain into the appropriate tool: use reprocessMedia for content extraction (voice transcription, document text extraction, image description, video description), or convertFile for format conversion. For voice notes, resolveMedia may return a cached transcript — use it directly. Supports position ("second most recent image") via the position param.`;
 
@@ -472,12 +472,12 @@ const cancelReminder = createTool({
 
 const resolveMedia = createTool({
   description:
-    "Find a user's recent media file by type. Use when the user refers to 'my last image', 'my last voice note', 'the document I sent', 'the PDF I shared', etc. Returns storageId and mediaType for chaining into other tools (e.g. convertFile).",
+    "Find a user's recent media file by type. Use when the user refers to 'my last image', 'my last voice note', 'the document I sent', 'the PDF I shared', 'the text file I uploaded', etc. Returns storageId and mediaType for chaining into other tools (e.g. convertFile).",
   args: z.object({
     mediaCategory: z
       .enum(["image", "audio", "video", "document", "any"])
       .describe(
-        "Category of media to find: 'image' for photos/images, 'audio' for voice notes/audio files, 'video' for video files, 'document' for PDFs and Office files, 'any' for the most recent file regardless of type."
+        "Category of media to find: 'image' for photos/images, 'audio' for voice notes/audio files, 'video' for video files, 'document' for PDFs, Office files, and text documents (txt, csv, md), 'any' for the most recent file regardless of type."
       ),
     position: z
       .number()
@@ -488,14 +488,14 @@ const resolveMedia = createTool({
   }),
   handler: async (ctx, { mediaCategory, position }): Promise<string> => {
     const pos = position ?? 1;
-    const mediaTypePrefix = MEDIA_CATEGORY_PREFIX_MAP[mediaCategory];
+    const categoryPrefixes = MEDIA_CATEGORY_PREFIX_MAP[mediaCategory];
     const userId = ctx.userId as Id<"users">;
 
     const files: Array<{ storageId: string; mediaType: string; createdAt: number; transcript?: string }> =
       await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
         userId,
         limit: pos,
-        mediaTypePrefix,
+        mediaTypePrefixes: categoryPrefixes ? [...categoryPrefixes] : undefined,
       });
 
     if (files.length < pos) {

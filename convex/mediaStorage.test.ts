@@ -76,7 +76,7 @@ describe("getRecentUserMedia", () => {
     expect(files).toHaveLength(2);
   });
 
-  it("filters to only image files when mediaTypePrefix is 'image/'", async () => {
+  it("filters to only image files when mediaTypePrefixes is ['image/']", async () => {
     const t = convexTest(schema, modules);
     const userId = await createTestUser(t);
 
@@ -110,14 +110,14 @@ describe("getRecentUserMedia", () => {
 
     const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
       userId,
-      mediaTypePrefix: "image/",
+      mediaTypePrefixes: ["image/"],
     });
 
     expect(files).toHaveLength(1);
     expect(files[0]!.mediaType).toBe("image/jpeg");
   });
 
-  it("filters to only audio files when mediaTypePrefix is 'audio/'", async () => {
+  it("filters to only audio files when mediaTypePrefixes is ['audio/']", async () => {
     const t = convexTest(schema, modules);
     const userId = await createTestUser(t);
 
@@ -151,14 +151,14 @@ describe("getRecentUserMedia", () => {
 
     const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
       userId,
-      mediaTypePrefix: "audio/",
+      mediaTypePrefixes: ["audio/"],
     });
 
     expect(files).toHaveLength(2);
     expect(files.every((f) => f.mediaType.startsWith("audio/"))).toBe(true);
   });
 
-  it("filters to only documents when mediaTypePrefix is 'application/'", async () => {
+  it("filters to application/* documents when mediaTypePrefixes is ['application/']", async () => {
     const t = convexTest(schema, modules);
     const userId = await createTestUser(t);
 
@@ -184,11 +184,54 @@ describe("getRecentUserMedia", () => {
 
     const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
       userId,
-      mediaTypePrefix: "application/",
+      mediaTypePrefixes: ["application/"],
     });
 
     expect(files).toHaveLength(1);
     expect(files[0]!.mediaType).toBe("application/pdf");
+  });
+
+  it("finds text/plain documents when filtering with ['application/', 'text/']", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+
+    const imageStorageId = await storeBlob(t, "image/jpeg");
+    const pdfStorageId = await storeBlob(t, "application/pdf");
+    const txtStorageId = await storeBlob(t, "text/plain");
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("mediaFiles", {
+        userId,
+        storageId: imageStorageId,
+        messageSid: "SM001",
+        mediaType: "image/jpeg",
+        expiresAt: Date.now() + 86400000,
+      });
+      await ctx.db.insert("mediaFiles", {
+        userId,
+        storageId: pdfStorageId,
+        messageSid: "SM002",
+        mediaType: "application/pdf",
+        expiresAt: Date.now() + 86400000,
+      });
+      await ctx.db.insert("mediaFiles", {
+        userId,
+        storageId: txtStorageId,
+        messageSid: "SM003",
+        mediaType: "text/plain",
+        expiresAt: Date.now() + 86400000,
+      });
+    });
+
+    const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
+      userId,
+      mediaTypePrefixes: ["application/", "text/"],
+    });
+
+    expect(files).toHaveLength(2);
+    const types = files.map((f) => f.mediaType);
+    expect(types).toContain("application/pdf");
+    expect(types).toContain("text/plain");
   });
 
   it("returns empty array when filter matches no files", async () => {
@@ -209,7 +252,7 @@ describe("getRecentUserMedia", () => {
 
     const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
       userId,
-      mediaTypePrefix: "audio/",
+      mediaTypePrefixes: ["audio/"],
     });
 
     expect(files).toHaveLength(0);
@@ -250,7 +293,7 @@ describe("getRecentUserMedia", () => {
     const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
       userId,
       limit: 2,
-      mediaTypePrefix: "image/",
+      mediaTypePrefixes: ["image/"],
     });
 
     expect(files).toHaveLength(2);

@@ -372,6 +372,24 @@ describe("CONVERSION_MAP", () => {
     }
   });
 
+  it("has entries for text document formats", () => {
+    expect(CONVERSION_MAP["txt"]).toBeDefined();
+    expect(CONVERSION_MAP["csv"]).toBeDefined();
+    expect(CONVERSION_MAP["md"]).toBeDefined();
+  });
+
+  it("supports txt → pdf conversion", () => {
+    expect(isConversionSupported("txt", "pdf")).toBe(true);
+  });
+
+  it("supports csv → pdf conversion", () => {
+    expect(isConversionSupported("csv", "pdf")).toBe(true);
+  });
+
+  it("supports md → pdf conversion", () => {
+    expect(isConversionSupported("md", "pdf")).toBe(true);
+  });
+
   it("every output format has a MIME type in FORMAT_TO_MIME", () => {
     for (const outputs of Object.values(CONVERSION_MAP)) {
       for (const fmt of outputs) {
@@ -455,23 +473,56 @@ describe("getFormatFromMime", () => {
   it("returns null for empty string", () => {
     expect(getFormatFromMime("")).toBeNull();
   });
+
+  it("returns txt for text/plain", () => {
+    expect(getFormatFromMime("text/plain")).toBe("txt");
+  });
+
+  it("returns csv for text/csv", () => {
+    expect(getFormatFromMime("text/csv")).toBe("csv");
+  });
+
+  it("returns md for text/markdown", () => {
+    expect(getFormatFromMime("text/markdown")).toBe("md");
+  });
+
+  it("strips charset from text/plain; charset=utf-8", () => {
+    expect(getFormatFromMime("text/plain; charset=utf-8")).toBe("txt");
+  });
 });
 
 describe("MEDIA_CATEGORY_PREFIX_MAP", () => {
-  it("maps image category to image/ prefix", () => {
-    expect(MEDIA_CATEGORY_PREFIX_MAP.image).toBe("image/");
+  it("maps image category to ['image/'] prefix array", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.image).toEqual(["image/"]);
   });
 
-  it("maps audio category to audio/ prefix", () => {
-    expect(MEDIA_CATEGORY_PREFIX_MAP.audio).toBe("audio/");
+  it("maps audio category to ['audio/'] prefix array", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.audio).toEqual(["audio/"]);
   });
 
-  it("maps video category to video/ prefix", () => {
-    expect(MEDIA_CATEGORY_PREFIX_MAP.video).toBe("video/");
+  it("maps video category to ['video/'] prefix array", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.video).toEqual(["video/"]);
   });
 
-  it("maps document category to application/ prefix", () => {
-    expect(MEDIA_CATEGORY_PREFIX_MAP.document).toBe("application/");
+  it("maps document category to both application/ and text/ prefixes", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.document).toEqual(["application/", "text/"]);
+  });
+
+  it("document prefixes include application/ for PDFs and Office docs", () => {
+    const prefixes = MEDIA_CATEGORY_PREFIX_MAP.document!;
+    expect(prefixes.some((p) => "application/pdf".startsWith(p))).toBe(true);
+    expect(
+      prefixes.some((p) =>
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document".startsWith(p)
+      )
+    ).toBe(true);
+  });
+
+  it("document prefixes include text/ for plain text documents", () => {
+    const prefixes = MEDIA_CATEGORY_PREFIX_MAP.document!;
+    expect(prefixes.some((p) => "text/plain".startsWith(p))).toBe(true);
+    expect(prefixes.some((p) => "text/csv".startsWith(p))).toBe(true);
+    expect(prefixes.some((p) => "text/markdown".startsWith(p))).toBe(true);
   });
 
   it("maps any category to undefined (no filter)", () => {
