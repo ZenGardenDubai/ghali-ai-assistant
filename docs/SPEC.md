@@ -503,7 +503,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - **PostHog analytics:** page views, CTA clicks, UTM tracking, conversion funnel
 
 ### 13. Heartbeat (Proactive Check-ins)
-- Available to all users (Basic and Pro) — each heartbeat message costs 1 credit like any other
+- Available to all users (Basic and Pro) — heartbeat deliveries are free (no credit cost)
 - Convex scheduled function runs periodically per user (configurable interval, default 24h)
 - Checks: pending reminders, follow-ups, anything the agent noted to revisit
 - If something needs attention → send WhatsApp message
