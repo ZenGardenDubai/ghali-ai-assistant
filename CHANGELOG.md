@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.7.0...v0.7.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* store voice notes for reply-to-media support ([#20](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/20)) ([84aa705](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/84aa705441507ac33cd8dc3afecf8de4095343ca))
+* use RELEASE_PLEASE_TOKEN in CI workflows ([#17](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/17)) ([2f0c3da](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2f0c3da887354bc9140282f3cb3b8d7dcf0a5216)), closes [#16](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/16)
+
 ## [0.7.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.6.0...v0.7.0) (2026-02-25)
 
 
