@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.10.0...v0.11.0) (2026-02-26)
+
+
+### Features
+
+* structured memory system with auto-compaction ([#28](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/28)) ([1a33411](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/1a3341156b5d7f89ce43878f880f607886064ac3))
+
 ## [0.10.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.9.0...v0.10.0) (2026-02-26)
 
 
