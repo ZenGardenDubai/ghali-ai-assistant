@@ -53,8 +53,6 @@ Pick one, or say *skip* — you can change this anytime.`,
 🖼️ Analyze photos or generate images
 🎤 Understand voice notes and video
 🧠 Remember your preferences over time
-
-*Pro perks:*
 ⏰ Precise reminders — down to the minute
 💓 Heartbeat — proactive check-ins
 
@@ -110,8 +108,8 @@ Thanks for being Pro! 💎`,
 🎤 *Voice & Video* — Send voice notes, audio, or video — I understand them
 🔄 *File conversion* — Convert between formats: PDF↔Word, images, audio (say "convert to PDF" or reply to a file)
 🧠 *Memory* — I learn your preferences over time — no need to repeat yourself
-⏰ *Reminders* — Set one-time or recurring reminders (Pro: precise to the minute)
-💓 *Heartbeat* — Proactive check-ins based on your schedule (Pro)
+⏰ *Reminders* — Set one-time or recurring reminders, precise to the minute
+💓 *Heartbeat* — Proactive check-ins based on your schedule
 
 *Commands:*
 • *account* — your plan, credits, and settings

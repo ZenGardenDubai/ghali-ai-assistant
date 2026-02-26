@@ -145,7 +145,7 @@ function PlanBanner({ account }: { account: AccountData }) {
       </div>
       {!isPro && (
         <p className="mt-3 border-t border-white/[0.04] pt-3 text-xs text-white/30">
-          Upgrade to Pro for {CREDITS_PRO} credits/month, precise reminders, and proactive check-ins.
+          Upgrade to Pro for {CREDITS_PRO} credits/month — 10x more room to use all features.
         </p>
       )}
     </div>

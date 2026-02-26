@@ -124,11 +124,9 @@ export const CLOUDCONVERT_TIMEOUT_MS = 30_000;
 // Pro Features (used in upgrade template)
 // ============================================================================
 
-/** Pro-exclusive features — displayed in the upgrade message. Add new features here. */
+/** Pro benefits — displayed in the upgrade message. All features are available to all users; Pro = more credits. */
 export const PRO_FEATURES = [
   "600 credits/month (10x Basic)",
-  "Precise scheduling — set reminders down to the minute",
-  "Heartbeat — proactive check-ins",
 ] as const;
 
 // ============================================================================

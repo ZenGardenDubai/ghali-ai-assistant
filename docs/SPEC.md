@@ -176,10 +176,11 @@ All set! Ask me anything 💬
 ### 9. Credit System
 - **Basic (free):** 60 credits/month
 - **Pro ($9.99/month or $99.48/year):** 600 credits/month
-- **1 credit per request** — regardless of model used (Flash, Pro, or Opus escalation)
+- **1 credit per user-initiated request** — regardless of model used (Flash, Pro, or Opus escalation)
 - **Free (0 credits):** system commands — "credits", "help", "privacy", "my memory", "clear memory", "upgrade", "account", admin commands
+- **Free (0 credits):** heartbeat check-ins and reminder deliveries — credits only spent when user sends a message
 - Usage tracking (model, tokens, cost) handled by PostHog, not stored in Convex
-- When credits run out → friendly message, upgrade CTA for Basic users, reset date for Pro
+- When credits run out → friendly message with reset date, upgrade CTA for Basic users
 - **Monthly reset:** Convex cron job runs daily, resets credits for users whose `creditsResetAt` has passed
 - **Billing:** Clerk Billing for Pro subscriptions. Webhook at `POST /api/clerk/webhook`:
   - `subscription.created` → upgrade user to Pro (600 credits)
@@ -502,6 +503,7 @@ Changed your mind? Say "upgrade" anytime 💫`,
 - **PostHog analytics:** page views, CTA clicks, UTM tracking, conversion funnel
 
 ### 13. Heartbeat (Proactive Check-ins)
+- Available to all users (Basic and Pro) — heartbeat deliveries are free (no credit cost)
 - Convex scheduled function runs periodically per user (configurable interval, default 24h)
 - Checks: pending reminders, follow-ups, anything the agent noted to revisit
 - If something needs attention → send WhatsApp message

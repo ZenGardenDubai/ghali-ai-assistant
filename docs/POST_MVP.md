@@ -12,7 +12,7 @@ Issues, improvements, and tech debt to revisit after MVP completion.
 
 ## File Conversion Service
 
-- **Expose CloudConvert as a user-facing tool** — We already have CloudConvert API integrated for document processing (DOCX/PPTX/XLSX → PDF). Offer this as a standalone feature: users send a file and say "convert to PDF" (or other formats). CloudConvert supports 200+ formats — PDF, DOCX, PNG, JPG, MP3, MP4, etc. Could be a Pro perk or cost extra credits for heavy conversions.
+- **Expose CloudConvert as a user-facing tool** — We already have CloudConvert API integrated for document processing (DOCX/PPTX/XLSX → PDF). Offer this as a standalone feature: users send a file and say "convert to PDF" (or other formats). CloudConvert supports 200+ formats — PDF, DOCX, PNG, JPG, MP3, MP4, etc. Could cost extra credits for heavy conversions.
 
 ## Payment Flow
 
