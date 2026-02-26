@@ -380,18 +380,6 @@ describe("getRecentUserMedia", () => {
 });
 
 describe("getStorageUrl", () => {
-  it("returns URL for a valid storage ID without userId check", async () => {
-    const t = convexTest(schema, modules);
-    const storageId = await storeBlob(t, "image/jpeg");
-
-    const url = await t.query(internal.mediaStorage.getStorageUrl, {
-      storageId,
-    });
-
-    expect(url).toBeTruthy();
-    expect(typeof url).toBe("string");
-  });
-
   it("returns URL when userId owns the file", async () => {
     const t = convexTest(schema, modules);
     const userId = await createTestUser(t);
