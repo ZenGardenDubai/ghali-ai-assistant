@@ -106,7 +106,7 @@ const addItem = createTool({
     amount: z.number().optional(),
     currency: z.string().optional().describe("Derived from user profile if omitted (e.g., UAE→AED, US→USD). Ask user once if unknown."),
     tags: z.array(z.string()).optional(),
-    metadata: z.record(z.string()).optional().describe("Flexible key-value pairs: phone, email, company, url, rating, etc."),
+    metadata: z.record(z.any()).optional().describe("Flexible key-value pairs: phone, email, company, url, rating, etc."),
     reminderAt: z.string().optional().describe("When to remind: 'tomorrow 9am', 'Friday 3pm', 'in 2 hours'"),
   }),
 });
@@ -166,7 +166,7 @@ const updateItem = createTool({
       dueDate: z.string().optional(),
       amount: z.number().optional(),
       tags: z.array(z.string()).optional(),
-      metadata: z.record(z.string()).optional().describe("Merged with existing metadata"),
+      metadata: z.record(z.any()).optional().describe("Merged with existing metadata"),
       collectionName: z.string().optional().describe("Move to this collection"),
       reminderAt: z.string().optional().describe("Set/update reminder"),
       clearReminder: z.boolean().optional().describe("Remove existing reminder"),
@@ -239,7 +239,7 @@ Embeddings are generated asynchronously after item creation. This creates a race
 
 **Solution: Hybrid search — text match first, semantic second.**
 
-```
+```text
 queryItems / updateItem resolution order:
 1. Exact title match (case-insensitive) → instant, always available
 2. Fuzzy text match on title + body (substring, prefix) → instant, always available  
@@ -262,7 +262,7 @@ Blocking item creation until embedding completes adds 500ms-1s latency per write
 
 Add to the ABILITIES section in `convex/agent.ts`:
 
-```
+```text
 ## Structured Data (Items System)
 
 You manage the user's personal data through items and collections. Items can be anything: tasks, expenses, contacts, notes, bookmarks, habits — there's no fixed type. You interpret what the user means and use the right fields.
@@ -322,7 +322,7 @@ You manage the user's personal data through items and collections. Items can be 
 
 The agent must format results based on context. Add to instructions:
 
-```
+```text
 ### How to present query results:
 
 **Expenses** ("how much did I spend?"):
@@ -385,7 +385,7 @@ The agent must format results based on context. Add to instructions:
 
 When a new user completes onboarding OR when this feature launches for existing users, the agent mentions it naturally — not as a feature dump:
 
-```
+```text
 ### Introducing structured data to users:
 
 Don't announce features like a changelog. Introduce them when relevant:
@@ -409,7 +409,7 @@ If user has no collections yet after 3+ days: "Quick tip — I can be your perso
 
 When user asks what the items system can do:
 
-```
+```text
 I can track anything for you — just talk naturally:
 
 💰 **Expenses** — "Spent 200 at Carrefour" → I'll track it. Ask "how much did I spend this month?" anytime.
@@ -537,6 +537,7 @@ The agent receives the structured response and:
 4. Never exposes raw JSON to the user
 
 ### Error codes (standardized)
+
 | Code | Meaning |
 |------|---------|
 | `NO_RECENT_FILES` | No media files found for user |
