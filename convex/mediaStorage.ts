@@ -9,14 +9,16 @@ export const trackMediaFile = internalMutation({
     messageSid: v.string(),
     mediaType: v.string(),
     expiresAt: v.number(),
+    transcript: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, storageId, messageSid, mediaType, expiresAt }) => {
+  handler: async (ctx, { userId, storageId, messageSid, mediaType, expiresAt, transcript }) => {
     await ctx.db.insert("mediaFiles", {
       userId,
       storageId,
       messageSid,
       mediaType,
       expiresAt,
+      transcript,
     });
   },
 });
@@ -39,6 +41,7 @@ export const getMediaBySid = internalQuery({
       storageId: record.storageId,
       mediaType: record.mediaType,
       storageUrl,
+      transcript: record.transcript,
     };
   },
 });

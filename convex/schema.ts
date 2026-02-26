@@ -57,6 +57,8 @@ export default defineSchema({
     messageSid: v.string(),
     mediaType: v.string(),
     expiresAt: v.number(),
+    /** Voice note transcript — cached to avoid re-calling Whisper on reply. */
+    transcript: v.optional(v.string()),
   })
     .index("by_messageSid", ["messageSid"])
     .index("by_expiresAt", ["expiresAt"])

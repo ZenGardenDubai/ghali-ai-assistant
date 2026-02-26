@@ -403,12 +403,12 @@ export const generateResponse = internalAction({
     // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.
     // Other audio formats (mp3, m4a, etc.) are treated as files for Gemini analysis.
     if (mediaUrl && mediaContentType && isVoiceNote(mediaContentType)) {
-      const transcript = await ctx.runAction(
+      const voiceResult = await ctx.runAction(
         internal.voice.transcribeVoiceMessage,
         { mediaUrl, mediaType: mediaContentType }
       );
 
-      if (!transcript) {
+      if (!voiceResult) {
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
           body: TEMPLATES.voice_transcription_failed.template,
@@ -416,11 +416,26 @@ export const generateResponse = internalAction({
         return;
       }
 
+      // Track voice note in mediaFiles with transcript for future reply-to-voice
+      if (messageSid) {
+        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+          userId: typedUserId,
+          storageId: voiceResult.storageId,
+          messageSid,
+          mediaType: mediaContentType,
+          expiresAt: Date.now() + MEDIA_RETENTION_MS,
+          transcript: voiceResult.transcript,
+        });
+      }
+
       // Replace body with transcript, clear media fields
-      body = transcript;
+      body = voiceResult.transcript;
       mediaUrl = undefined;
       mediaContentType = undefined;
     }
+
+    // Initialize prompt — may be replaced below by media processing or voice transcript
+    let prompt = body;
 
     // Reply-to-media: if replying to a previous message with stored media, fetch it
     let isReprocessing = false;
@@ -430,15 +445,42 @@ export const generateResponse = internalAction({
         { messageSid: originalRepliedMessageSid }
       );
       if (stored) {
-        mediaUrl = stored.storageUrl;
-        mediaContentType = stored.mediaType;
-        isReprocessing = true;
+        if (isVoiceNote(stored.mediaType)) {
+          // Use cached transcript — avoids re-calling Whisper API
+          if (stored.transcript) {
+            prompt = body
+              ? `${body}\n\n[Voice note transcript: "${stored.transcript}"]`
+              : `[Voice note transcript: "${stored.transcript}"]`;
+          } else {
+            // Fallback: transcript missing (pre-upgrade records), re-transcribe
+            const voiceResult = await ctx.runAction(
+              internal.voice.transcribeVoiceMessage,
+              {
+                mediaUrl: stored.storageUrl,
+                mediaType: stored.mediaType,
+                existingStorageId: stored.storageId,
+              }
+            );
+            if (voiceResult) {
+              prompt = body
+                ? `${body}\n\n[Voice note transcript: "${voiceResult.transcript}"]`
+                : `[Voice note transcript: "${voiceResult.transcript}"]`;
+            } else {
+              await ctx.runAction(internal.twilio.sendMessage, {
+                to: user.phone,
+                body: TEMPLATES.voice_transcription_failed.template,
+              });
+              return;
+            }
+          }
+          // Don't set mediaUrl/mediaContentType — treat as text prompt
+        } else {
+          mediaUrl = stored.storageUrl;
+          mediaContentType = stored.mediaType;
+          isReprocessing = true;
+        }
       }
     }
-
-    // Build prompt — process media attachments if present
-    // Images, non-voice audio, video, and documents go through Gemini Flash
-    let prompt = body;
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
       const result = await ctx.runAction(
         internal.documents.processMedia,
