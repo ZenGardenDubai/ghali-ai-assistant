@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.12.1...v0.12.2) (2026-02-26)
+
+
+### Bug Fixes
+
+* surface text/* documents to agent via resolveMedia ([#37](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/37)) ([fc276a9](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/fc276a963474f958e17ecf9e86ea96d67fefbde7))
+
 ## [0.12.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.12.0...v0.12.1) (2026-02-26)
 
 
