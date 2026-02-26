@@ -89,7 +89,8 @@ export default defineSchema({
     status: v.union(
       v.literal("pending"),
       v.literal("done"),
-      v.literal("cancelled")
+      v.literal("cancelled"),
+      v.literal("failed")
     ),
     cronExpr: v.optional(v.string()),
     timezone: v.optional(v.string()),
