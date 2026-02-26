@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
+import { MEMORY_CATEGORIES } from "./lib/memory";
 import { MEDIA_CATEGORY_PREFIX_MAP, isVoiceNote } from "./lib/media";
 import {
   AGENT_MAX_STEPS,
@@ -40,16 +41,19 @@ ${SYSTEM_BLOCK}
 MEMORY RULES (critical):
 - You have a memory file for this user. It's loaded in your context above.
 - After EVERY response, reflect: did you learn anything new about this user?
-  - Their name, age, birthday, location, timezone
-  - Their language preference (detect from how they write)
-  - Their job, industry, company
-  - Their interests (topics they ask about)
-  - Their family (spouse, kids, if naturally shared)
-  - Their preferences (formal/casual, topics they like/dislike)
-  - Upcoming events, travel plans, deadlines they mention
-- If yes → call updateMemory to append the new facts. Don't rewrite — append.
-- If no → don't call updateMemory (save tokens).
+  - Name, age, birthday, location, timezone → appendToMemory(personal)
+  - Job, industry, company, education → appendToMemory(work_education)
+  - Food, drink, communication style likes/dislikes → appendToMemory(preferences)
+  - Events, travel, deadlines, appointments → appendToMemory(schedule)
+  - Hobbies, topics they engage with, favorite music/movies/books/art/sports → appendToMemory(interests)
+  - Anything else → appendToMemory(general)
+- If yes → call appendToMemory with the right category. Don't rewrite — append.
+- If no → don't call appendToMemory (save tokens).
+- To correct or remove facts (user moved cities, changed jobs, etc.) → call editMemory.
+- Communication style preferences (tone, verbosity, emoji) → updatePersonality (NOT memory).
+- Language: always respond in the language the user writes in for that message. Only update the user's language preference in memory if they explicitly ask to change it ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch.
 - NEVER ask "should I remember this?" — just remember it silently.
+- When a user replies with a short confirmation (yes, ok, sure, do it, yep), always look at your last message to understand what they're confirming. Never treat a confirmation as a new standalone request.
 - Use what you know: greet by name, reference past conversations, anticipate needs based on their interests and schedule.
 
 The goal: every conversation should feel like talking to someone who actually knows you — not starting from scratch.
@@ -104,7 +108,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 5. *Document Search* — You can search previously uploaded documents via searchDocuments. Only PDF, text, and Office files are indexed. Images, audio, and video are analyzed once but NOT stored for future search.
 
-6. *Per-User Files* — Memory, personality, and heartbeat files are each capped at 10KB. If a file gets too large, summarize older content before appending.
+6. *Per-User Files* — Memory file capped at 50KB with auto-compaction. Personality and heartbeat capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
@@ -117,24 +121,51 @@ Keep this section in mind so you set accurate expectations with users.
 11. *Media Referencing* — When users refer to "my last image", "my last voice note", "my last video", "the document I sent", etc. without replying to a specific message, call resolveMedia to find the file by type (supports image, audio, video, document, any). Then chain into the appropriate tool: use reprocessMedia for content extraction (voice transcription, document text extraction, image description, video description), or convertFile for format conversion. For voice notes, resolveMedia may return a cached transcript — use it directly. Supports position ("second most recent image") via the position param.`;
 
 // Tools that let the agent update per-user files
-const updateMemory = createTool({
+const appendToMemory = createTool({
   description:
-    "Update the user's memory file with new facts learned from conversation. Append new facts, don't rewrite existing ones.",
+    "Append new facts to the user's memory file under a specific category. Use for new information learned from conversation.",
   args: z.object({
+    category: z
+      .enum(["personal", "work_education", "preferences", "schedule", "interests", "general"])
+      .describe(
+        "Category: personal (name, age, birthday, location, family), work_education (job, company, education), preferences (food, drink, likes/dislikes), schedule (events, travel, deadlines), interests (hobbies, music, movies, books, art, sports, topics), general (anything else)"
+      ),
     content: z
       .string()
-      .describe("The full updated memory file content (markdown)"),
+      .describe("New bullet points to append (e.g. '- Name: Ahmad\\n- Birthday: March 15')"),
   }),
-  handler: async (ctx, { content }) => {
-    if (isFileTooLarge(content)) {
-      return "Error: Memory file exceeds 10KB limit. Please summarize.";
-    }
-    await ctx.runMutation(internal.users.internalUpdateUserFile, {
+  handler: async (ctx, { category, content }) => {
+    const result = await ctx.runMutation(internal.users.internalAppendMemory, {
       userId: ctx.userId as Id<"users">,
-      filename: "memory",
+      category,
       content,
-    });
-    return "Memory updated.";
+    }) as { compactionScheduled: boolean };
+    const msg = "Memory updated.";
+    return result.compactionScheduled ? `${msg} (auto-compaction scheduled)` : msg;
+  },
+});
+
+const editMemory = createTool({
+  description:
+    "Edit or delete a specific fact in the user's memory. Use when a fact has changed (user moved, changed jobs, etc.) or needs to be removed.",
+  args: z.object({
+    search: z
+      .string()
+      .describe("Exact text to find in the memory file"),
+    replacement: z
+      .string()
+      .describe("Text to replace with. Use empty string to delete the matched text."),
+  }),
+  handler: async (ctx, { search, replacement }) => {
+    const result = await ctx.runMutation(internal.users.internalEditMemory, {
+      userId: ctx.userId as Id<"users">,
+      search,
+      replacement,
+    }) as { found: boolean };
+    if (!result.found) {
+      return "Could not find that text in memory. Check the exact wording.";
+    }
+    return replacement === "" ? "Memory entry removed." : "Memory updated.";
   },
 });
 
@@ -148,7 +179,7 @@ const updatePersonality = createTool({
   }),
   handler: async (ctx, { content }) => {
     if (isFileTooLarge(content)) {
-      return "Error: Personality file exceeds 10KB limit. Please summarize.";
+      return "Error: Personality file exceeds 50KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
       userId: ctx.userId as Id<"users">,
@@ -171,7 +202,7 @@ const updateHeartbeat = createTool({
   }),
   handler: async (ctx, { content }) => {
     if (isFileTooLarge(content)) {
-      return "Error: Heartbeat file exceeds 10KB limit. Please summarize.";
+      return "Error: Heartbeat file exceeds 50KB limit. Please summarize.";
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
       userId: ctx.userId as Id<"users">,
@@ -634,7 +665,8 @@ export const ghaliAgent = new Agent(components.agent, {
   textEmbeddingModel: openai.embedding(MODELS.EMBEDDING),
   instructions: AGENT_INSTRUCTIONS,
   tools: {
-    updateMemory,
+    appendToMemory,
+    editMemory,
     updatePersonality,
     updateHeartbeat,
     deepReasoning,

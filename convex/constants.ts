@@ -43,8 +43,14 @@ export const IMAGE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 /** Incoming media files (images, PDFs, docs) expire after 90 days */
 export const MEDIA_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
-/** Max per-user file size in bytes (10KB) — memory, personality, heartbeat */
-export const MAX_USER_FILE_SIZE = 10_240;
+/** Max per-user file size in bytes (50KB) — memory, personality, heartbeat */
+export const MAX_USER_FILE_SIZE = 51_200;
+
+/** Memory compaction triggers at 75% of max (≈38KB) */
+export const MEMORY_COMPACTION_THRESHOLD = 38_400;
+
+/** Target size after compaction (≈25KB) */
+export const MEMORY_COMPACTION_TARGET = 25_600;
 
 // ============================================================================
 // WhatsApp & Messaging
@@ -77,7 +83,7 @@ export const VOICE_MAX_SIZE_BYTES = 25 * 1024 * 1024;
 export const AGENT_MAX_STEPS = 5;
 
 /** Number of recent thread messages loaded into context */
-export const AGENT_RECENT_MESSAGES = 50;
+export const AGENT_RECENT_MESSAGES = 100;
 
 /** Default image aspect ratio (portrait, optimized for phones) */
 export const DEFAULT_IMAGE_ASPECT_RATIO = "9:16" as const;
