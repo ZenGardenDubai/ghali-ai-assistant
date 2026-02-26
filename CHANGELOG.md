@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.12.0...v0.12.1) (2026-02-26)
+
+
+### Bug Fixes
+
+* reminders fire late due to wrong tool and silent send failure ([#36](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/36)) ([5fc91df](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5fc91dfc6f906fed5c35bf66522fad900cff06de))
+
 ## [0.12.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.11.0...v0.12.0) (2026-02-26)
 
 
