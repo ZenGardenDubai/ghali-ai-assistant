@@ -55,18 +55,22 @@ export const getRecentUserMedia = internalQuery({
   },
   handler: async (ctx, { userId, limit, mediaTypePrefixes }) => {
     const maxResults = limit ?? 5;
-    let files = await ctx.db
+    const hasFilter = mediaTypePrefixes && mediaTypePrefixes.length > 0;
+
+    const orderedQuery = ctx.db
       .query("mediaFiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .order("desc")
-      .take(mediaTypePrefixes && mediaTypePrefixes.length > 0 ? maxResults * 3 : maxResults);
+      .order("desc");
 
-    if (mediaTypePrefixes && mediaTypePrefixes.length > 0) {
-      const prefixes = mediaTypePrefixes;
-      files = files.filter((f) =>
-        prefixes.some((prefix) => f.mediaType.startsWith(prefix))
-      );
-    }
+    const rawFiles = hasFilter
+      ? await orderedQuery.collect()
+      : await orderedQuery.take(maxResults);
+
+    const files = hasFilter
+      ? rawFiles.filter((f) =>
+          mediaTypePrefixes!.some((prefix) => f.mediaType.startsWith(prefix))
+        )
+      : rawFiles;
 
     return files.slice(0, maxResults).map((f) => ({
       storageId: f.storageId,
