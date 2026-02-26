@@ -104,7 +104,7 @@ const addItem = createTool({
     priority: z.enum(["high", "normal", "low"]).optional(),
     dueDate: z.string().optional().describe("Natural language date: 'Friday', 'March 15', 'next week'"),
     amount: z.number().optional(),
-    currency: z.string().optional().describe("Default AED if amount is set"),
+    currency: z.string().optional().describe("Derived from user profile if omitted (e.g., UAE→AED, US→USD). Ask user once if unknown."),
     tags: z.array(z.string()).optional(),
     metadata: z.record(z.string()).optional().describe("Flexible key-value pairs: phone, email, company, url, rating, etc."),
     reminderAt: z.string().optional().describe("When to remind: 'tomorrow 9am', 'Friday 3pm', 'in 2 hours'"),
@@ -114,9 +114,9 @@ const addItem = createTool({
 
 **Behavior:**
 - If `collectionName` provided and doesn't exist → create it, confirm to user
-- If `amount` set and no `currency` → default "AED"
+- If `amount` set and no `currency` → derive from user profile (timezone/country: UAE→AED, US→USD, UK→GBP, etc.). If unknown, ask user once and store preference in memory.
 - If `reminderAt` set → parse to timestamp, create one-shot cron job, store cronId on item
-- Embed title + body + tags asynchronously after creation
+- Embed title + body + tags asynchronously after creation (see Search Strategy below for race condition handling)
 - Deduct 1 credit
 
 ### 2. `queryItems`
@@ -230,6 +230,31 @@ const setReminder = createTool({
 - Cron job self-cleans: fires → marks item done → deletes cron
 - Cap: 20 active reminders (Basic), 100 (Pro)
 - Deduct 1 credit
+
+---
+
+## Search Strategy (Hybrid)
+
+Embeddings are generated asynchronously after item creation. This creates a race condition: if a user creates an item and immediately references it ("mark the proposal as done"), the embedding won't exist yet for semantic search.
+
+**Solution: Hybrid search — text match first, semantic second.**
+
+```
+queryItems / updateItem resolution order:
+1. Exact title match (case-insensitive) → instant, always available
+2. Fuzzy text match on title + body (substring, prefix) → instant, always available  
+3. Semantic vector search (embedding similarity) → available once embedding completes
+```
+
+**Implementation:**
+- `updateItem.itemQuery` first runs a text-based search on `title` field
+- If no match or ambiguous, fall back to vector search
+- If vector search also fails (embedding not ready), tell user: "I just saved that — try again in a moment, or refer to it by its exact name"
+- Add `embeddingReady: v.optional(v.boolean())` field to items schema for graceful handling
+- `queryItems` with `query` param uses the same cascade: text → vector
+
+**Why not block on embedding?**
+Blocking item creation until embedding completes adds 500ms-1s latency per write. For a WhatsApp assistant where responsiveness matters, async + hybrid search is the better tradeoff.
 
 ---
 
