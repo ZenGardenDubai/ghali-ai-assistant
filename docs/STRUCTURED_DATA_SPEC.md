@@ -313,7 +313,7 @@ You manage the user's personal data through items and collections. Items can be 
 - Create duplicate collections with slightly different names ("Expenses" vs "My Expenses")
 - Ask "which collection?" if context makes it obvious
 - Return raw JSON or IDs to the user
-- Show more than 10 items without summarizing first
+- Display more than 10 items without summarizing first (query can fetch up to 20, but show top 10 and offer "want to see more?")
 ```
 
 ---
@@ -373,7 +373,7 @@ The agent must format results based on context. Add to instructions:
 - No markdown tables — use bullet lists
 - Use emoji for visual grouping (💰📋✅👤📝)
 - Bold for headers and totals
-- Keep responses under 15 items — summarize and offer "want to see more?"
+- Keep responses under 10 items — summarize and offer "want to see more?"
 - Numbers always formatted with commas: 1,200 not 1200
 ```
 
