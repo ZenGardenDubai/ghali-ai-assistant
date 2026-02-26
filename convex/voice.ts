@@ -38,12 +38,26 @@ export const transcribeVoiceMessage = internalAction({
     const startTime = Date.now();
 
     try {
-      // SSRF protection — allow Twilio URLs or our own Convex storage (via existingStorageId)
-      const isTwilioUrl = mediaUrl.startsWith("https://api.twilio.com/");
-      const isConvexStorage = mediaUrl.includes(".convex.cloud/");
-      const isOwnStorage = existingStorageId != null && isConvexStorage;
+      // SSRF protection — strict origin validation via URL parsing
+      let parsed: URL;
+      try {
+        parsed = new URL(mediaUrl);
+      } catch {
+        console.error("[Voice] Invalid media URL");
+        return null;
+      }
 
-      if (!isTwilioUrl && !isOwnStorage) {
+      const isTwilioUrl =
+        parsed.protocol === "https:" && parsed.hostname === "api.twilio.com";
+      const isConvexStorageUrl =
+        parsed.protocol === "https:" && parsed.hostname.endsWith(".convex.cloud");
+
+      if (existingStorageId != null) {
+        if (!isConvexStorageUrl) {
+          console.error("[Voice] existingStorageId requires Convex storage URL");
+          return null;
+        }
+      } else if (!isTwilioUrl) {
         console.error("[Voice] Invalid media URL origin");
         return null;
       }
