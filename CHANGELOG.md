@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.8.0...v0.9.0) (2026-02-26)
+
+
+### Features
+
+* add resolveMedia tool for generic media referencing by type ([#24](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/24)) ([5801981](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5801981077c7e540d1cc13fe9c18131f95f7d3fa))
+
 ## [0.8.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.7.1...v0.8.0) (2026-02-26)
 
 
