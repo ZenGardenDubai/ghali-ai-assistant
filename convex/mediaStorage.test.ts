@@ -328,4 +328,144 @@ describe("getRecentUserMedia", () => {
     });
     expect(typeof files[0]!.createdAt).toBe("number");
   });
+
+  it("returns transcript when available", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+
+    const storageId = await storeBlob(t, "audio/ogg");
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("mediaFiles", {
+        userId,
+        storageId,
+        messageSid: "SM001",
+        mediaType: "audio/ogg",
+        expiresAt: Date.now() + 86400000,
+        transcript: "Hello, this is a test transcript.",
+      });
+    });
+
+    const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
+      userId,
+    });
+
+    expect(files).toHaveLength(1);
+    expect(files[0]!.transcript).toBe("Hello, this is a test transcript.");
+  });
+
+  it("returns undefined transcript when not available", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+
+    const storageId = await storeBlob(t, "image/jpeg");
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("mediaFiles", {
+        userId,
+        storageId,
+        messageSid: "SM001",
+        mediaType: "image/jpeg",
+        expiresAt: Date.now() + 86400000,
+      });
+    });
+
+    const files = await t.query(internal.mediaStorage.getRecentUserMedia, {
+      userId,
+    });
+
+    expect(files).toHaveLength(1);
+    expect(files[0]!.transcript).toBeUndefined();
+  });
+});
+
+describe("getStorageUrl", () => {
+  it("returns URL for a valid storage ID without userId check", async () => {
+    const t = convexTest(schema, modules);
+    const storageId = await storeBlob(t, "image/jpeg");
+
+    const url = await t.query(internal.mediaStorage.getStorageUrl, {
+      storageId,
+    });
+
+    expect(url).toBeTruthy();
+    expect(typeof url).toBe("string");
+  });
+
+  it("returns URL when userId owns the file", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+    const storageId = await storeBlob(t, "audio/ogg");
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("mediaFiles", {
+        userId,
+        storageId,
+        messageSid: "SM001",
+        mediaType: "audio/ogg",
+        expiresAt: Date.now() + 86400000,
+      });
+    });
+
+    const url = await t.query(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId,
+    });
+
+    expect(url).toBeTruthy();
+    expect(typeof url).toBe("string");
+  });
+
+  it("returns null when userId does not own the file", async () => {
+    const t = convexTest(schema, modules);
+    const userId1 = await createTestUser(t);
+    const userId2 = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        phone: "+971509999999",
+        language: "en",
+        timezone: "Asia/Dubai",
+        tier: "basic",
+        isAdmin: false,
+        credits: 60,
+        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        onboardingStep: null,
+        createdAt: Date.now(),
+      });
+    });
+
+    const storageId = await storeBlob(t, "image/jpeg");
+
+    // File belongs to userId1
+    await t.run(async (ctx) => {
+      await ctx.db.insert("mediaFiles", {
+        userId: userId1,
+        storageId,
+        messageSid: "SM001",
+        mediaType: "image/jpeg",
+        expiresAt: Date.now() + 86400000,
+      });
+    });
+
+    // userId2 tries to access it
+    const url = await t.query(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId: userId2,
+    });
+
+    expect(url).toBeNull();
+  });
+
+  it("returns null when userId is provided but file has no mediaFiles record", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+    const storageId = await storeBlob(t, "image/jpeg");
+
+    // No mediaFiles record — just a raw storage blob
+    const url = await t.query(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId,
+    });
+
+    expect(url).toBeNull();
+  });
 });

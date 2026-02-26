@@ -466,6 +466,10 @@ describe("MEDIA_CATEGORY_PREFIX_MAP", () => {
     expect(MEDIA_CATEGORY_PREFIX_MAP.audio).toBe("audio/");
   });
 
+  it("maps video category to video/ prefix", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.video).toBe("video/");
+  });
+
   it("maps document category to application/ prefix", () => {
     expect(MEDIA_CATEGORY_PREFIX_MAP.document).toBe("application/");
   });
@@ -474,7 +478,7 @@ describe("MEDIA_CATEGORY_PREFIX_MAP", () => {
     expect(MEDIA_CATEGORY_PREFIX_MAP.any).toBeUndefined();
   });
 
-  it("has exactly four categories", () => {
-    expect(Object.keys(MEDIA_CATEGORY_PREFIX_MAP)).toHaveLength(4);
+  it("has exactly five categories", () => {
+    expect(Object.keys(MEDIA_CATEGORY_PREFIX_MAP)).toHaveLength(5);
   });
 });
