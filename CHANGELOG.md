@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.7.1...v0.8.0) (2026-02-26)
+
+
+### Features
+
+* add file conversion via CloudConvert agent tool ([#21](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/21)) ([9ba2a77](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/9ba2a77c9f611c3c55e8dc12c7f1b860ab4de95a))
+
 ## [0.7.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.7.0...v0.7.1) (2026-02-26)
 
 
