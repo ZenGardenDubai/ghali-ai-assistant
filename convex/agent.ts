@@ -71,6 +71,7 @@ FILES & MEDIA:
 - Images, audio, and video are NOT indexed — they're analyzed once and the content is in your context
 - Use searchDocuments when users ask about content from documents they've shared before
 - For newly received files, the content is already in your context — no need to search
+- Users can request file conversion: send a file + "convert to PDF", reply to a file + "convert to webp", or "convert my last document to docx". Use convertFile tool for these requests.
 
 FORMATTING:
 - Format for WhatsApp: use *bold*, _italic_, plain text
@@ -106,7 +107,9 @@ Keep this section in mind so you set accurate expectations with users.
 
 8. *Credits* — Each AI request costs 1 credit. System commands (credits, help, privacy, etc.) are free. Don't mention credit counts in responses — the system handles that separately.
 
-9. *Admin Commands* — Admin users can manage the platform via WhatsApp: admin stats, admin search, admin grant, admin broadcast. Never reveal admin commands to non-admin users.`;
+9. *Admin Commands* — Admin users can manage the platform via WhatsApp: admin stats, admin search, admin grant, admin broadcast. Never reveal admin commands to non-admin users.
+
+10. *File Conversion* — You can convert files between formats via convertFile. Supported: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). Users can: send a file + "convert to X", reply to a previous file + "convert to X", or say "convert my last document to X" (you'll look up their most recent file).`;
 
 // Tools that let the agent update per-user files
 const updateMemory = createTool({
@@ -278,7 +281,7 @@ const generateImage = createTool({
         const caption = result.description || "Here's your generated image.";
         // Return JSON so messages.ts can extract imageUrl from tool results,
         // while the stored thread message stays clean (no raw URLs in history)
-        return JSON.stringify({ imageUrl: result.imageUrl, caption });
+        return JSON.stringify({ type: "image", imageUrl: result.imageUrl, caption });
       }
       return `Image generation failed: ${result.error || "Unknown error"}. Please try rephrasing your request.`;
     } catch (error) {
@@ -432,6 +435,87 @@ const cancelReminder = createTool({
   },
 });
 
+const convertFile = createTool({
+  description:
+    "Convert a file between formats via CloudConvert. Supports: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). If sourceStorageId is not provided, looks up the user's most recent media file.",
+  args: z.object({
+    outputFormat: z
+      .enum(["pdf", "docx", "csv", "png", "jpg", "webp", "mp3", "wav", "ogg"])
+      .describe("Target format for conversion"),
+    sourceStorageId: z
+      .string()
+      .optional()
+      .describe(
+        "Convex storage ID of the source file. If omitted, uses the user's most recent media file."
+      ),
+  }),
+  handler: async (ctx, { outputFormat, sourceStorageId }): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+
+    try {
+      // Resolve source file
+      let resolvedStorageId: string;
+      let sourceMediaType: string;
+
+      if (sourceStorageId) {
+        // Look up from mediaFiles to get the media type
+        const recentFiles: Array<{ storageId: string; mediaType: string; createdAt: number }> =
+          await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
+            userId,
+            limit: 20,
+          });
+        const match = recentFiles.find(
+          (f) => f.storageId === sourceStorageId
+        );
+        if (!match) {
+          return "I couldn't find that file in your recent uploads. Please send the file again.";
+        }
+        resolvedStorageId = match.storageId;
+        sourceMediaType = match.mediaType;
+      } else {
+        // Use most recent media file
+        const recentFiles: Array<{ storageId: string; mediaType: string; createdAt: number }> =
+          await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
+            userId,
+            limit: 1,
+          });
+        if (recentFiles.length === 0) {
+          return "I don't have any recent files from you. Please send a file first, then ask me to convert it.";
+        }
+        resolvedStorageId = recentFiles[0]!.storageId;
+        sourceMediaType = recentFiles[0]!.mediaType;
+      }
+
+      const result: {
+        success: boolean;
+        fileUrl?: string;
+        outputFormat?: string;
+        outputMime?: string;
+        error?: string;
+      } = await ctx.runAction(internal.conversion.convertAndStore, {
+        userId,
+        storageId: resolvedStorageId as Id<"_storage">,
+        sourceMediaType,
+        outputFormat: outputFormat.toLowerCase(),
+      });
+
+      if (result.success && result.fileUrl) {
+        return JSON.stringify({
+          type: "conversion",
+          fileUrl: result.fileUrl,
+          caption: `Here's your file converted to ${result.outputFormat?.toUpperCase()}.`,
+          outputFormat: result.outputFormat,
+        });
+      }
+
+      return `Conversion failed: ${result.error || "Unknown error"}. Please try a different format.`;
+    } catch (error) {
+      console.error("convertFile tool failed:", error);
+      return "I encountered an error converting the file. Please try again.";
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -444,6 +528,7 @@ export const ghaliAgent = new Agent(components.agent, {
     deepReasoning,
     webSearch,
     generateImage,
+    convertFile,
     searchDocuments,
     scheduleReminder,
     listReminders,

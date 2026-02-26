@@ -46,6 +46,28 @@ export const getMediaBySid = internalQuery({
   },
 });
 
+/** Get the most recent media files for a user (for "convert my last file" flows). */
+export const getRecentUserMedia = internalQuery({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, limit }) => {
+    const maxResults = limit ?? 5;
+    const files = await ctx.db
+      .query("mediaFiles")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(maxResults);
+
+    return files.map((f) => ({
+      storageId: f.storageId,
+      mediaType: f.mediaType,
+      createdAt: f._creationTime,
+    }));
+  },
+});
+
 /** Delete all media files for a user (used by "clear documents" / "clear everything") */
 export const deleteUserMediaFiles = internalMutation({
   args: { userId: v.id("users") },
