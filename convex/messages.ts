@@ -403,12 +403,12 @@ export const generateResponse = internalAction({
     // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.
     // Other audio formats (mp3, m4a, etc.) are treated as files for Gemini analysis.
     if (mediaUrl && mediaContentType && isVoiceNote(mediaContentType)) {
-      const transcript = await ctx.runAction(
+      const voiceResult = await ctx.runAction(
         internal.voice.transcribeVoiceMessage,
         { mediaUrl, mediaType: mediaContentType }
       );
 
-      if (!transcript) {
+      if (!voiceResult) {
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
           body: TEMPLATES.voice_transcription_failed.template,
@@ -416,11 +416,25 @@ export const generateResponse = internalAction({
         return;
       }
 
+      // Track voice note in mediaFiles for future reply-to-media
+      if (messageSid && voiceResult.storageId) {
+        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+          userId: typedUserId,
+          storageId: voiceResult.storageId,
+          messageSid,
+          mediaType: mediaContentType,
+          expiresAt: Date.now() + MEDIA_RETENTION_MS,
+        });
+      }
+
       // Replace body with transcript, clear media fields
-      body = transcript;
+      body = voiceResult.transcript;
       mediaUrl = undefined;
       mediaContentType = undefined;
     }
+
+    // Build prompt — process media attachments if present
+    let prompt = body;
 
     // Reply-to-media: if replying to a previous message with stored media, fetch it
     let isReprocessing = false;
@@ -430,15 +444,28 @@ export const generateResponse = internalAction({
         { messageSid: originalRepliedMessageSid }
       );
       if (stored) {
-        mediaUrl = stored.storageUrl;
-        mediaContentType = stored.mediaType;
-        isReprocessing = true;
+        // Voice notes: re-transcribe from Convex storage instead of Gemini analysis
+        if (isVoiceNote(stored.mediaType)) {
+          const voiceResult = await ctx.runAction(
+            internal.voice.transcribeVoiceMessage,
+            { mediaUrl: stored.storageUrl, mediaType: stored.mediaType }
+          );
+          if (voiceResult) {
+            const transcriptContext = `[User replied to a voice note]\nTranscription of the voice note:\n"${voiceResult.transcript}"`;
+            prompt = body
+              ? `${transcriptContext}\n\nUser's question: "${body}"`
+              : transcriptContext;
+          }
+          // Skip further media processing — voice note handled
+        } else {
+          mediaUrl = stored.storageUrl;
+          mediaContentType = stored.mediaType;
+          isReprocessing = true;
+        }
       }
     }
 
-    // Build prompt — process media attachments if present
     // Images, non-voice audio, video, and documents go through Gemini Flash
-    let prompt = body;
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
       const result = await ctx.runAction(
         internal.documents.processMedia,

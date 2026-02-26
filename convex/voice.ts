@@ -23,8 +23,11 @@ export const transcribeVoiceMessage = internalAction({
     mediaUrl: v.string(),
     mediaType: v.string(),
   },
-  returns: v.union(v.string(), v.null()),
-  handler: async (_ctx, { mediaUrl, mediaType }) => {
+  returns: v.union(
+    v.object({ transcript: v.string(), storageId: v.union(v.id("_storage"), v.null()) }),
+    v.null()
+  ),
+  handler: async (ctx, { mediaUrl, mediaType }) => {
     const startTime = Date.now();
 
     try {
@@ -37,19 +40,21 @@ export const transcribeVoiceMessage = internalAction({
         return null;
       }
 
-      // Validate URL points to Twilio (SSRF protection)
-      if (!mediaUrl.startsWith("https://api.twilio.com/")) {
+      // Validate URL origin (SSRF protection) — allow Twilio and Convex storage
+      const host = new URL(mediaUrl).hostname;
+      const isTwilioUrl = mediaUrl.startsWith("https://api.twilio.com/");
+      const isConvexUrl = host.endsWith(".convex.cloud") || host.endsWith(".convex.site");
+      if (!isTwilioUrl && !isConvexUrl) {
         console.error("[Voice] Invalid media URL origin");
         return null;
       }
 
-      // Download audio from Twilio with Basic Auth
-      console.log(`[Voice] downloading | type: ${mediaType}`);
-      const response = await fetch(mediaUrl, {
-        headers: {
-          Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
-        },
-      });
+      // Download audio — Twilio needs Basic Auth, Convex storage doesn't
+      console.log(`[Voice] downloading | type: ${mediaType} | source: ${isTwilioUrl ? "twilio" : "storage"}`);
+      const fetchOptions: RequestInit = isTwilioUrl
+        ? { headers: { Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}` } }
+        : {};
+      const response = await fetch(mediaUrl, fetchOptions);
 
       if (!response.ok) {
         console.error(
@@ -114,11 +119,24 @@ export const transcribeVoiceMessage = internalAction({
         return null;
       }
 
+      // Store voice note in Convex storage for future reply-to-media
+      // Skip if already downloaded from Convex storage (re-processing)
+      let storageId: string | null = null;
+      if (!isConvexUrl) {
+        try {
+          const blob = new Blob([audioBytes], { type: mediaType });
+          storageId = await ctx.storage.store(blob);
+          console.log(`[Voice] stored in storage: ${storageId}`);
+        } catch (error) {
+          console.error("[Voice] Storage store failed (non-fatal):", error);
+        }
+      }
+
       console.log(
         `[Voice] done | ${latencyMs}ms | ${transcript.length} chars`
       );
 
-      return transcript;
+      return { transcript, storageId: storageId as any };
     } catch (error) {
       console.error("[Voice] Transcription failed:", error);
       return null;
