@@ -16,6 +16,7 @@ import {
   FORMAT_TO_MIME,
   isConversionSupported,
   getFormatFromMime,
+  MEDIA_CATEGORY_PREFIX_MAP,
 } from "./media";
 
 describe("normalizeMimeType", () => {
@@ -453,5 +454,27 @@ describe("getFormatFromMime", () => {
 
   it("returns null for empty string", () => {
     expect(getFormatFromMime("")).toBeNull();
+  });
+});
+
+describe("MEDIA_CATEGORY_PREFIX_MAP", () => {
+  it("maps image category to image/ prefix", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.image).toBe("image/");
+  });
+
+  it("maps audio category to audio/ prefix", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.audio).toBe("audio/");
+  });
+
+  it("maps document category to application/ prefix", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.document).toBe("application/");
+  });
+
+  it("maps any category to undefined (no filter)", () => {
+    expect(MEDIA_CATEGORY_PREFIX_MAP.any).toBeUndefined();
+  });
+
+  it("has exactly four categories", () => {
+    expect(Object.keys(MEDIA_CATEGORY_PREFIX_MAP)).toHaveLength(4);
   });
 });

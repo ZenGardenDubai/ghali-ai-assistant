@@ -46,21 +46,26 @@ export const getMediaBySid = internalQuery({
   },
 });
 
-/** Get the most recent media files for a user (for "convert my last file" flows). */
+/** Get the most recent media files for a user, with optional type filtering. */
 export const getRecentUserMedia = internalQuery({
   args: {
     userId: v.id("users"),
     limit: v.optional(v.number()),
+    mediaTypePrefix: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, limit }) => {
+  handler: async (ctx, { userId, limit, mediaTypePrefix }) => {
     const maxResults = limit ?? 5;
-    const files = await ctx.db
+    let files = await ctx.db
       .query("mediaFiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .order("desc")
-      .take(maxResults);
+      .take(mediaTypePrefix ? maxResults * 3 : maxResults);
 
-    return files.map((f) => ({
+    if (mediaTypePrefix) {
+      files = files.filter((f) => f.mediaType.startsWith(mediaTypePrefix));
+    }
+
+    return files.slice(0, maxResults).map((f) => ({
       storageId: f.storageId,
       mediaType: f.mediaType,
       createdAt: f._creationTime,

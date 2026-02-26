@@ -8,6 +8,7 @@ import { z } from "zod";
 import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
+import { MEDIA_CATEGORY_PREFIX_MAP } from "./lib/media";
 import {
   AGENT_MAX_STEPS,
   AGENT_RECENT_MESSAGES,
@@ -72,6 +73,7 @@ FILES & MEDIA:
 - Use searchDocuments when users ask about content from documents they've shared before
 - For newly received files, the content is already in your context — no need to search
 - Users can request file conversion: send a file + "convert to PDF", reply to a file + "convert to webp", or "convert my last document to docx". Use convertFile tool for these requests.
+- When users reference "my last image/voice note/document" without replying to a specific message, use resolveMedia to find the file, then call the appropriate tool (e.g. convertFile).
 
 FORMATTING:
 - Format for WhatsApp: use *bold*, _italic_, plain text
@@ -109,7 +111,9 @@ Keep this section in mind so you set accurate expectations with users.
 
 9. *Admin Commands* — Admin users can manage the platform via WhatsApp: admin stats, admin search, admin grant, admin broadcast. Never reveal admin commands to non-admin users.
 
-10. *File Conversion* — You can convert files between formats via convertFile. Supported: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). Users can: send a file + "convert to X", reply to a previous file + "convert to X", or say "convert my last document to X" (you'll look up their most recent file).`;
+10. *File Conversion* — You can convert files between formats via convertFile. Supported: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). Users can: send a file + "convert to X", reply to a previous file + "convert to X", or say "convert my last document to X" (you'll look up their most recent file).
+
+11. *Media Referencing* — When users refer to "my last image", "my last voice note", "the document I sent", etc. without replying to a specific message, call resolveMedia to find the file by type. Then chain into the appropriate tool: use convertFile for format conversion, or inform the user of the found file's details. Supports position ("second most recent image") via the position param.`;
 
 // Tools that let the agent update per-user files
 const updateMemory = createTool({
@@ -435,6 +439,44 @@ const cancelReminder = createTool({
   },
 });
 
+const resolveMedia = createTool({
+  description:
+    "Find a user's recent media file by type. Use when the user refers to 'my last image', 'my last voice note', 'the document I sent', 'the PDF I shared', etc. Returns storageId and mediaType for chaining into other tools (e.g. convertFile).",
+  args: z.object({
+    mediaCategory: z
+      .enum(["image", "audio", "document", "any"])
+      .describe(
+        "Category of media to find: 'image' for photos/images, 'audio' for voice notes/audio files, 'document' for PDFs and Office files, 'any' for the most recent file regardless of type."
+      ),
+    position: z
+      .number()
+      .optional()
+      .describe(
+        "1 = most recent (default), 2 = second most recent, etc."
+      ),
+  }),
+  handler: async (ctx, { mediaCategory, position }): Promise<string> => {
+    const pos = position ?? 1;
+    const mediaTypePrefix = MEDIA_CATEGORY_PREFIX_MAP[mediaCategory];
+    const userId = ctx.userId as Id<"users">;
+
+    const files: Array<{ storageId: string; mediaType: string; createdAt: number }> =
+      await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
+        userId,
+        limit: pos,
+        mediaTypePrefix,
+      });
+
+    if (files.length < pos) {
+      const categoryLabel = mediaCategory === "any" ? "media" : mediaCategory;
+      return `No ${categoryLabel} file found. Please send a ${categoryLabel} file first.`;
+    }
+
+    const file = files[pos - 1]!;
+    return JSON.stringify({ storageId: file.storageId, mediaType: file.mediaType });
+  },
+});
+
 const convertFile = createTool({
   description:
     "Convert a file between formats via CloudConvert. Supports: documents (PDF↔DOCX, PPTX→PDF, XLSX→PDF/CSV), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG). If sourceStorageId is not provided, looks up the user's most recent media file.",
@@ -528,6 +570,7 @@ export const ghaliAgent = new Agent(components.agent, {
     deepReasoning,
     webSearch,
     generateImage,
+    resolveMedia,
     convertFile,
     searchDocuments,
     scheduleReminder,
