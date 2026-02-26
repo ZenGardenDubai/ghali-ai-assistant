@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.9.0...v0.10.0) (2026-02-26)
+
+
+### Features
+
+* add reprocessMedia tool for extracting content from previous files ([#26](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/26)) ([f3dd8bb](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f3dd8bb8009514076623479cab9cb3b96eb482d4))
+
 ## [0.9.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.8.0...v0.9.0) (2026-02-26)
 
 
