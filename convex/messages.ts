@@ -654,8 +654,7 @@ export const generateResponse = internalAction({
       // Low-credit warning — fires once when balance crosses below the threshold
       if (
         newCredits <= CREDITS_LOW_THRESHOLD &&
-        user.credits > CREDITS_LOW_THRESHOLD &&
-        user.tier === "basic"
+        user.credits > CREDITS_LOW_THRESHOLD
       ) {
         await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
           to: user.phone,

@@ -7,18 +7,15 @@ import { buildUserContext } from "./lib/userFiles";
 import { WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
 /**
- * Cron target: find pro users with non-empty heartbeat files
+ * Cron target: find all users with non-empty heartbeat files
  * and schedule individual heartbeat processing for each.
  */
 export const processHeartbeats = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const proUsers = await ctx.db
-      .query("users")
-      .withIndex("by_tier", (q) => q.eq("tier", "pro"))
-      .collect();
+    const allUsers = await ctx.db.query("users").collect();
 
-    for (const user of proUsers) {
+    for (const user of allUsers) {
 
       // Check heartbeat file
       const heartbeatFile = await ctx.db
@@ -47,9 +44,9 @@ export const processUserHeartbeat = internalAction({
     userId: v.id("users"),
   },
   handler: async (ctx, { userId }) => {
-    // Load user, double-check pro tier
+    // Load user
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.tier !== "pro") return;
+    if (!user) return;
 
     // Check WhatsApp 24h session window
     const withinWindow =

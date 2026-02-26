@@ -16,6 +16,8 @@ Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog
 
 ## Tiers & Pricing
 
+All features are available to all users. The only difference between Basic and Pro is credit allocation.
+
 | Tier | Price | Credits |
 |------|-------|---------|
 | Basic | Free | 60/month |
@@ -37,7 +39,7 @@ Managed via Clerk Billing webhooks → `convex/billing.ts` (all `internalMutatio
 
 Key behaviors:
 
-- **Cancel = grace period, not immediate downgrade.** When a user cancels, they keep Pro benefits (tier, credits) until their paid period expires. The `subscriptionCanceling` flag is set so the UI can show "Your plan will end on [date]".
+- **Cancel = grace period, not immediate downgrade.** When a user cancels, they keep Pro credit allocation until their paid period expires. The `subscriptionCanceling` flag is set so the UI can show "Your plan will end on [date]".
 - **Credits are not reset on downgrade.** When `subscriptionItem.ended` fires, tier changes to basic but remaining credits stay as-is. The next monthly credit reset cron will give them 60 (basic) instead of 600 (pro).
 - **Reactivation resets credits to 600.** If a user reactivates (new `subscriptionItem.active`), credits are set to `CREDITS_PRO` and the canceling flag is cleared.
 - **Duplicate link guard.** If a `clerkUserId` is already linked to a user, subsequent `linkClerkUser` calls for the same `clerkUserId` are silently skipped.

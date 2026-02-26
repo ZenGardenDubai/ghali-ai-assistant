@@ -336,7 +336,7 @@ export default function AccountPage() {
                 <p className="mt-0.5 text-xs text-white/30">
                   {account?.tier === "pro"
                     ? "View billing, change plan, or cancel"
-                    : "600 credits/mo, reminders, and more"}
+                    : "600 credits/mo (10x Basic)"}
                 </p>
               </div>
               <ChevronRightIcon className="h-4 w-4 flex-shrink-0 text-white/15 transition-colors group-hover:text-[#ED6B23]/50" />

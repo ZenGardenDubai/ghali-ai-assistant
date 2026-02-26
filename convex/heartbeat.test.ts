@@ -6,7 +6,7 @@ import schema from "./schema";
 const modules = import.meta.glob("./**/*.ts");
 
 describe("processHeartbeats", () => {
-  it("skips basic tier users", async () => {
+  it("processes basic users with non-empty heartbeat", async () => {
     const t = convexTest(schema, modules);
 
     // Create a basic user (default tier)
@@ -21,25 +21,19 @@ describe("processHeartbeats", () => {
       content: "- remind gym 7am daily",
     });
 
-    // Run processHeartbeats — should not schedule anything
+    // Run processHeartbeats — should schedule processing (all tiers eligible)
     await t.mutation(internal.heartbeat.processHeartbeats, {});
 
-    // Verify user is still basic
+    // Verify user is still basic (tier unchanged, but heartbeat was processed)
     const user = await t.query(internal.users.getUser, { userId });
     expect(user!.tier).toBe("basic");
   });
 
-  it("skips pro users with empty heartbeat", async () => {
+  it("skips users with empty heartbeat", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
-    });
-
-    // Upgrade to pro but leave heartbeat empty (default)
-    await t.mutation(internal.users.updateUser, {
-      userId,
-      fields: { tier: "pro" },
     });
 
     // Heartbeat file is empty by default from findOrCreateUser
@@ -53,17 +47,11 @@ describe("processHeartbeats", () => {
     await t.mutation(internal.heartbeat.processHeartbeats, {});
   });
 
-  it("skips pro users with whitespace-only heartbeat", async () => {
+  it("skips users with whitespace-only heartbeat", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
-    });
-
-    // Upgrade to pro with whitespace-only heartbeat
-    await t.mutation(internal.users.updateUser, {
-      userId,
-      fields: { tier: "pro" },
     });
 
     await t.mutation(internal.users.updateUserFile, {
@@ -76,17 +64,11 @@ describe("processHeartbeats", () => {
     await t.mutation(internal.heartbeat.processHeartbeats, {});
   });
 
-  it("schedules processing for pro users with non-empty heartbeat", async () => {
+  it("schedules processing for users with non-empty heartbeat", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
-    });
-
-    // Upgrade to pro with valid heartbeat
-    await t.mutation(internal.users.updateUser, {
-      userId,
-      fields: { tier: "pro" },
     });
 
     await t.mutation(internal.users.updateUserFile, {

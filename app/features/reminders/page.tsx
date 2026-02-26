@@ -83,9 +83,9 @@ export default function RemindersPage() {
       </FeatureSection>
 
       <FeatureSection>
-        <div className="rounded-2xl border border-[#ED6B23]/20 bg-[#ED6B23]/5 p-6">
-          <p className="text-sm text-[#ED6B23]">
-            <strong>Pro feature:</strong> Precise reminders and proactive heartbeat check-ins are available on the Pro plan. Basic users get all other features.
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <p className="text-sm text-white/60">
+            Reminders and heartbeat check-ins are available to all users. Each reminder or check-in uses 1 credit.
           </p>
         </div>
       </FeatureSection>

@@ -112,8 +112,7 @@ Originally considered Airtable as backend, but since users never see the UI, Con
 ### Pricing
 
 These features generate storage and compute cost. Options:
-- Pro-only (like heartbeat/reminders)
-- Basic gets 1 list type, Pro gets all
+- Available to all users (each operation costs 1 credit, naturally limited by credit allocation)
 - Basic gets limited records (e.g., 100), Pro unlimited
 
 ### Implementation Order

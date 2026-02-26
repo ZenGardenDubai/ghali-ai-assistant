@@ -131,7 +131,7 @@ export default function TermsPage() {
             <p className="mb-3">ghali.ae operates on a credit-based system:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong className="text-white/80">Basic Tier:</strong> Free users receive 60 credits per month</li>
-              <li><strong className="text-white/80">Pro Tier:</strong> Paid subscribers receive 600 credits per month plus additional features</li>
+              <li><strong className="text-white/80">Pro Tier:</strong> Paid subscribers receive 600 credits per month (same features, more credits)</li>
               <li>Each message costs 1 credit; system commands are free</li>
               <li>Unused credits do not roll over between reset periods</li>
               <li>We reserve the right to modify credit allocations with notice</li>

@@ -759,27 +759,26 @@ Prevent abuse with per-user rate limits using `@convex-dev/rate-limiter`.
 
 ## 18. Heartbeat (Proactive Check-ins)
 
-Hourly cron evaluates pro users' heartbeat files and sends proactive WhatsApp messages when reminders are due. AI-parsed — Flash reads the file and decides what's due. No credit deduction (Pro perk). Respects WhatsApp's 24-hour session window.
+Hourly cron evaluates all users' heartbeat files and sends proactive WhatsApp messages when reminders are due. AI-parsed — Flash reads the file and decides what's due. Available to all users (Basic and Pro). Respects WhatsApp's 24-hour session window.
 
-- [x] **18.1 Test: heartbeat skips basic users**
-  - Basic tier users are filtered out by `by_tier` index
+- [x] **18.1 Test: heartbeat processes basic users with non-empty heartbeat**
+  - All tiers are eligible for heartbeat processing
 
-- [x] **18.2 Test: heartbeat skips pro users with empty heartbeat**
+- [x] **18.2 Test: heartbeat skips users with empty heartbeat**
   - Empty heartbeat file → no processing scheduled
 
-- [x] **18.3 Test: heartbeat skips pro users with whitespace-only heartbeat**
+- [x] **18.3 Test: heartbeat skips users with whitespace-only heartbeat**
   - Whitespace-only content is treated as empty
 
-- [x] **18.4 Test: heartbeat schedules processing for eligible pro users**
-  - Pro user with non-empty heartbeat → `processUserHeartbeat` action scheduled
+- [x] **18.4 Test: heartbeat schedules processing for users with non-empty heartbeat**
+  - User with non-empty heartbeat → `processUserHeartbeat` action scheduled
 
 - [x] **18.5 Implement `processHeartbeats` (internalMutation, cron target)**
-  - Query pro users via `by_tier` index
+  - Query all users
   - Check heartbeat file is non-empty
   - Schedule `processUserHeartbeat` for each eligible user
 
 - [x] **18.6 Implement `processUserHeartbeat` (internalAction)**
-  - Double-check pro tier (race condition guard)
   - Enforce WhatsApp 24h session window via `lastMessageAt`
   - Build user context + current datetime
   - Flash evaluates heartbeat against current time
@@ -793,7 +792,7 @@ Hourly cron evaluates pro users' heartbeat files and sends proactive WhatsApp me
   - Used by heartbeat to enforce WhatsApp 24h session window
 
 - [x] **18.8 Add `by_tier` index to users table**
-  - Efficient pro-user-only queries for heartbeat cron
+  - Used for tier-based queries (retained for other use cases)
 
 - [x] **18.9 Add hourly cron to `crons.ts`**
   - `crons.interval("heartbeat-check", { hours: 1 }, internal.heartbeat.processHeartbeats)`

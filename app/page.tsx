@@ -126,7 +126,7 @@ const jsonLd = {
           name: "Pro",
           price: "9.99",
           priceCurrency: "USD",
-          description: "600 messages per month with premium features",
+          description: "600 messages per month (10x Basic)",
         },
       ],
     },
@@ -562,6 +562,8 @@ function Pricing() {
               <PricingItem>Audio &amp; video understanding</PricingItem>
               <PricingItem>Document analysis &amp; knowledge base</PricingItem>
               <PricingItem>Deep thinking for tough questions</PricingItem>
+              <PricingItem>Precise reminders &amp; scheduling</PricingItem>
+              <PricingItem>Proactive check-ins (heartbeat)</PricingItem>
               <PricingItem>Learns your style &amp; preferences</PricingItem>
               <PricingItem>No credit card required</PricingItem>
             </ul>
@@ -592,11 +594,8 @@ function Pricing() {
               or $99.48/year (save 17%)
             </p>
             <ul className="mt-8 space-y-3 text-white/60">
-              <PricingItem highlight>600 messages per month</PricingItem>
-              <PricingItem highlight>Precise reminders &amp; scheduling</PricingItem>
-              <PricingItem highlight>Proactive check-ins (heartbeat)</PricingItem>
-              <PricingItem highlight>Expanded access to top-tier models</PricingItem>
-              <PricingItem highlight>Priority responses</PricingItem>
+              <PricingItem highlight>600 messages per month (10x Basic)</PricingItem>
+              <PricingItem highlight>Same features, more room to use them</PricingItem>
               <PricingItem highlight>Everything in Basic</PricingItem>
             </ul>
             <CtaButton

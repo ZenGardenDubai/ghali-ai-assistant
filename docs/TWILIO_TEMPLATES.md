@@ -7,7 +7,7 @@ WhatsApp requires pre-approved **Content Templates** for messages sent outside t
 | Scenario | Currently | Template needed? |
 |---|---|---|
 | **Reminders** | Skipped if outside 24h window | Yes — users expect these regardless |
-| **Heartbeat** | Skipped if outside 24h window | Yes — core Pro feature |
+| **Heartbeat** | Skipped if outside 24h window | Yes — available to all users |
 | **Admin broadcast** | Only sent to active users | Yes — for announcements to all users |
 | **Credit reset** | No notification sent | Nice-to-have — re-engagement |
 | **Credits low** | No warning sent | Nice-to-have — reduces surprise |
@@ -100,7 +100,7 @@ async function twilioTemplateCall(
 ### 2. `ghali_heartbeat` — Proactive Check-in
 
 **Category:** Utility
-**Used by:** `convex/heartbeat.ts` — hourly cron for Pro users outside the 24h window
+**Used by:** `convex/heartbeat.ts` — hourly cron for all users outside the 24h window
 **Variables:** `{{1}}` = personalized message from the agent
 
 ```json
@@ -225,7 +225,7 @@ async function twilioTemplateCall(
 
 ### Phase 1 — Must-have (users actively expect these)
 1. `ghali_reminder` — reminders are broken without this
-2. `ghali_heartbeat` — core Pro feature, currently skipped
+2. `ghali_heartbeat` — proactive check-in for all users, currently skipped outside 24h window
 
 ### Phase 2 — Nice-to-have (improves UX)
 3. `ghali_broadcast` — enables admin announcements to all users

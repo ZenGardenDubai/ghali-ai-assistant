@@ -25,7 +25,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 ### User Experience
 - **Per-user memory** — learns facts, preferences, and history organically through conversation
 - **Adaptive personality** — two-layer system: immutable core DNA + editable user preferences
-- **Heartbeat** — per-user checklist for proactive reminders and follow-ups (hourly precision, Pro only)
+- **Heartbeat** — per-user checklist for proactive reminders and follow-ups (hourly precision, all users)
 - **3-step onboarding** — name, language, style preference (skippable)
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
 
