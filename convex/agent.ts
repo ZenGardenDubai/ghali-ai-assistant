@@ -773,15 +773,23 @@ const addItem = createTool({
         ? (args.currency ?? deriveCurrency(tz))
         : undefined;
 
+      // Validate reminderAt is in the future (consistent with updateItemTool)
+      if (reminderAt && reminderAt <= Date.now()) {
+        return JSON.stringify({
+          status: "error",
+          code: "PAST_REMINDER_AT",
+          message: "Reminder time must be in the future.",
+        });
+      }
+
       // Schedule reminder first so we can pass jobId to createItem in one write
       let reminderSet = false;
       let reminderJobId: Id<"scheduledJobs"> | undefined;
-      const effectiveReminderAt = reminderAt && reminderAt > Date.now() ? reminderAt : undefined;
-      if (effectiveReminderAt) {
+      if (reminderAt) {
         reminderJobId = await ctx.runMutation(internal.reminders.createReminder, {
           userId,
           payload: args.reminderMessage ?? args.title,
-          runAt: effectiveReminderAt,
+          runAt: reminderAt,
           timezone: tz,
         }) as Id<"scheduledJobs">;
         reminderSet = true;
@@ -802,7 +810,7 @@ const addItem = createTool({
           currency,
           tags: args.tags,
           metadata: args.metadata,
-          reminderAt: effectiveReminderAt,
+          reminderAt,
           reminderJobId,
         }) as Id<"items">;
       } catch (error) {
