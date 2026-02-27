@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.17.0...v0.18.0) (2026-02-27)
+
+
+### Features
+
+* **analytics:** add ProWrite LLM tracking + feature_used event ([#62](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/62)) ([2499e49](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2499e492f6c41a0b4058f883577a7d5c34dea4c5))
+
 ## [0.17.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.3...v0.17.0) (2026-02-27)
 
 
