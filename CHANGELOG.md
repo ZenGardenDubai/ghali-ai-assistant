@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.0...v0.16.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* scope queryItems by collectionName when querying specific item type ([#53](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/53)) ([67fbc6a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/67fbc6af3e37db720b6798ea4559e7066d975a9c)), closes [#48](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/48)
+
 ## [0.16.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.15.0...v0.16.0) (2026-02-27)
 
 
