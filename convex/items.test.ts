@@ -340,6 +340,137 @@ describe("createItem", () => {
 
     expect(itemId).toBeDefined();
   });
+
+  it("returns existing item ID on duplicate title in same collection (silent dedup)", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const collId = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Contacts",
+    });
+
+    const id1 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Test User",
+      metadata: { phone: "+971501234567" },
+    });
+
+    const id2 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Test User",
+      metadata: { phone: "+971501234567" },
+    });
+
+    expect(id1).toBe(id2);
+
+    // Only one item should exist
+    const items = await t.query(internal.items.queryItems, { userId });
+    expect(items).toHaveLength(1);
+  });
+
+  it("deduplicates items case-insensitively", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const id1 = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "Test User",
+    });
+
+    const id2 = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "test user",
+    });
+
+    const id3 = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "TEST USER",
+    });
+
+    expect(id1).toBe(id2);
+    expect(id1).toBe(id3);
+  });
+
+  it("does not dedup items across different collections", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const coll1 = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Contacts",
+    });
+    const coll2 = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Notes",
+    });
+
+    const id1 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: coll1,
+      title: "Ahmed",
+    });
+
+    const id2 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: coll2,
+      title: "Ahmed",
+    });
+
+    expect(id1).not.toBe(id2);
+
+    const items = await t.query(internal.items.queryItems, { userId });
+    expect(items).toHaveLength(2);
+  });
+
+  it("does not dedup against archived items", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const archivedId = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "Old Contact",
+      status: "archived",
+    });
+
+    const newId = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "Old Contact",
+    });
+
+    expect(archivedId).not.toBe(newId);
+
+    const active = await t.query(internal.items.queryItems, { userId });
+    expect(active).toHaveLength(1);
+  });
+
+  it("does not dedup items without collection against items with collection", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const collId = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Contacts",
+    });
+
+    const id1 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Ahmed",
+    });
+
+    const id2 = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "Ahmed", // no collectionId
+    });
+
+    expect(id1).not.toBe(id2);
+
+    const items = await t.query(internal.items.queryItems, { userId });
+    expect(items).toHaveLength(2);
+  });
 });
 
 describe("getItem", () => {

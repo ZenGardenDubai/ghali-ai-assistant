@@ -245,31 +245,40 @@ export const createItem = internalMutation({
       }
     }
 
-    // Enforce tier limit for active+done items
+    // Dedup + limit enforcement for active/done items (single query, two checks)
     if (status !== "archived") {
       const user = await ctx.db.get(userId);
       if (!user) throw new Error("User not found");
 
+      const activeAndDone = await ctx.db
+        .query("items")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .filter((q) =>
+          q.or(
+            q.eq(q.field("status"), "active"),
+            q.eq(q.field("status"), "done")
+          )
+        )
+        .collect();
+
+      // Dedup: return existing ID if same title (case-insensitive) in same collection
+      const duplicate = activeAndDone.find(
+        (i) =>
+          i.title.toLowerCase() === fields.title.toLowerCase() &&
+          (i.collectionId ?? null) === (collectionId ?? null)
+      );
+      if (duplicate) {
+        return duplicate._id;
+      }
+
+      // Enforce tier limit
       const limit =
         user.tier === "pro" ? ITEMS_LIMIT_PRO : ITEMS_LIMIT_BASIC;
 
-      if (limit !== Infinity) {
-        const existing = await ctx.db
-          .query("items")
-          .withIndex("by_userId", (q) => q.eq("userId", userId))
-          .filter((q) =>
-            q.or(
-              q.eq(q.field("status"), "active"),
-              q.eq(q.field("status"), "done")
-            )
-          )
-          .collect();
-
-        if (existing.length >= limit) {
-          throw new Error(
-            `Item limit reached (${limit}). Archive some items first or upgrade to Pro.`
-          );
-        }
+      if (limit !== Infinity && activeAndDone.length >= limit) {
+        throw new Error(
+          `Item limit reached (${limit}). Archive some items first or upgrade to Pro.`
+        );
       }
     }
 
