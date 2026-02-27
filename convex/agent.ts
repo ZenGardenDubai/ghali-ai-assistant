@@ -141,6 +141,13 @@ STRUCTURED DATA RULES:
   - Contacts: "save John's number 555-1234" → addItem(title: "John", body: "555-1234", collectionName: "Contacts", collectionType: "contact")
   - Notes: "note: meeting moved to 3pm" → addItem(title: "Meeting moved to 3pm", collectionName: "Notes", collectionType: "note")
   - Bookmarks: "save this link https://..." → addItem(title: extracted title, body: URL, collectionName: "Bookmarks", collectionType: "bookmark")
+- *Query scoping*: When the user asks about a specific item type, ALWAYS pass collectionName to queryItems — never omit it and rely on broad search:
+  - "tasks / pending tasks / to-do" → queryItems(collectionName: "Tasks", ...)
+  - "expenses / spending / what I spent" → queryItems(collectionName: "Expenses", ...)
+  - "contacts / people / saved contacts" → queryItems(collectionName: "Contacts", ...)
+  - "notes / my notes" → queryItems(collectionName: "Notes", ...)
+  - "bookmarks / saved links" → queryItems(collectionName: "Bookmarks", ...)
+  Omitting collectionName causes results to leak across all collections — always scope by collection when the user is asking about a specific type.
 - *Auto-creation*: silently create collections when needed (don't ask for confirmation). Use sensible defaults for collectionType based on content.
 - *No duplicates*: before adding, consider if the user is updating an existing item (use updateItem instead).
 - *Deletion*: items use soft-delete via archive status. To "delete" an item, set status to "archived" via updateItem. There is no hard delete.
@@ -853,7 +860,7 @@ const queryItemsTool = createTool({
     "Query and search the user's items (expenses, tasks, contacts, notes). Supports text search, filters, and aggregation (sum, count, group by tag/collection).",
   args: z.object({
     query: z.string().optional().describe("Text search query to find items by title/body/tags"),
-    collectionName: z.string().optional().describe("Filter by collection name"),
+    collectionName: z.string().optional().describe("Filter by collection name (e.g. 'Tasks', 'Expenses', 'Contacts', 'Notes', 'Bookmarks'). Always pass this when the user is asking about a specific item type — omitting it searches across all collections and can return unrelated items."),
     status: z.enum(["active", "done", "archived", "all"]).optional().describe("Filter by status. Default: active+done (excludes archived)"),
     tags: z.array(z.string()).optional().describe("Filter by tags (items matching ANY tag)"),
     dueBefore: z.string().optional().describe("ISO date — items due before this date"),
