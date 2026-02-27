@@ -32,6 +32,7 @@ import {
   buildSimpleItemPatch,
   normalizeFilterDate,
 } from "./lib/items";
+import { formatProWriteResult } from "./lib/proWrite";
 import type { AggregateMode, QueryItem } from "./lib/items";
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
@@ -159,7 +160,17 @@ STRUCTURED DATA RULES:
   - Contacts → scannable format: name + key info on each line.
   - Keep responses concise — max 10 items in a response. Tell user if there are more.
 - *Formatting*: no tables (WhatsApp doesn't support them). Use emoji grouping (💰 expenses, ✅ tasks, 👤 contacts, 📝 notes, 🔖 bookmarks). Format amounts with commas (1,000 not 1000).
-- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."`;
+- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."
+
+14. *ProWrite* — Professional multi-AI writing pipeline for high-quality content (LinkedIn posts, emails, articles, reports).
+   - Trigger: "prowrite ..." → call proWriteBrief immediately with the request
+   - Suggestion: "write me a ..." (without "prowrite") → suggest ProWrite and explain briefly: "I can write that directly, or I can use *ProWrite* — a multi-AI pipeline that researches, drafts, and polishes professional content through 8 AI models. Say *prowrite* to activate it."
+   - Flow: proWriteBrief → show numbered questions (1. 2. 3.) → user answers → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute
+   - Questions format: ALWAYS show clarifying questions as a numbered list (1. ... 2. ... 3. ...), never as bullet points or inline.
+   - Skip mode: if user says "skip", "skip questions", "just write it", "go ahead", "no questions", or any short dismissal after being shown questions → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute with skipClarify=true immediately. Do NOT ask "skip what?" — in ProWrite context, "skip" always means skip the clarifying questions.
+   - The brief is stored server-side automatically. proWriteExecute only needs the user's answers (or empty string if skipped). No IDs or references to pass.
+   - Output may be long — WhatsApp auto-splits. This is expected.
+   - Cost: 1 credit (same as any message)`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
@@ -1306,6 +1317,87 @@ const manageCollection = createTool({
   },
 });
 
+// ---------------------------------------------------------------------------
+// ProWrite — multi-LLM professional writing pipeline
+// ---------------------------------------------------------------------------
+
+const proWriteBrief = createTool({
+  description:
+    "Start the ProWrite professional writing pipeline. Parses the user's writing request into a creative brief and returns clarifying questions. Use when the user says 'prowrite ...' to trigger the pipeline.",
+  args: z.object({
+    request: z
+      .string()
+      .describe("The user's full writing request — what they want written, any context they provided"),
+  }),
+  handler: async (ctx, { request }): Promise<string> => {
+    if (request.length > 5000) {
+      return JSON.stringify({
+        status: "error",
+        message: "Your writing request is too long. Please keep it under 5000 characters.",
+      });
+    }
+    try {
+      const result = await ctx.runAction(internal.proWrite.generateBrief, {
+        request,
+        userId: ctx.userId as Id<"users">,
+      });
+      return JSON.stringify({
+        status: "success",
+        brief: result.brief,
+        questions: result.questions,
+        instructions: "Show the user a brief summary of what you understood, then ask these questions as a numbered list (1. 2. 3.). Tell them they can say 'skip' to proceed without answering. When the user answers or skips, FIRST send '✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready.' THEN call proWriteExecute.",
+      });
+    } catch (error) {
+      console.error("proWriteBrief tool failed:", error);
+      return JSON.stringify({
+        status: "error",
+        message: "ProWrite pipeline failed to start. Please try again.",
+      });
+    }
+  },
+});
+
+const proWriteExecute = createTool({
+  description:
+    "Execute the ProWrite pipeline after the user has answered (or skipped) the clarifying questions. The brief is stored server-side automatically — no need to pass it. Runs 8 sequential AI steps and returns the finished article.",
+  args: z.object({
+    answers: z
+      .string()
+      .describe("The user's answers to clarifying questions, concatenated. Empty string if skipped."),
+    skipClarify: z
+      .boolean()
+      .optional()
+      .describe("True if the user skipped the clarifying questions"),
+  }),
+  handler: async (ctx, { answers, skipClarify }): Promise<string> => {
+    try {
+      // Get user's personality file for voice matching
+      let personality = "";
+      try {
+        const file = await ctx.runQuery(internal.users.getUserFile, {
+          userId: ctx.userId as Id<"users">,
+          filename: "personality",
+        });
+        if (file) personality = file.content;
+      } catch {
+        // No personality file — will use default voice
+      }
+
+      const result = await ctx.runAction(internal.proWrite.executePipeline, {
+        answers,
+        userId: ctx.userId as Id<"users">,
+        personality,
+        skipClarify: skipClarify ?? false,
+      });
+
+      return formatProWriteResult(result);
+    } catch (error) {
+      console.error("proWriteExecute tool failed:", error);
+      return "The ProWrite pipeline encountered an error. Please try again with 'prowrite'.";
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -1330,6 +1422,8 @@ export const ghaliAgent = new Agent(components.agent, {
     queryItems: queryItemsTool,
     updateItem: updateItemTool,
     manageCollection,
+    proWriteBrief,
+    proWriteExecute,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {

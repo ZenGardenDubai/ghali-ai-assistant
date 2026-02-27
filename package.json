@@ -27,6 +27,7 @@
     "@convex-dev/rag": "^0.7.1",
     "@convex-dev/rate-limiter": "^0.3.2",
     "@google/genai": "^1.42.0",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
     "ai": "^5.0.137",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

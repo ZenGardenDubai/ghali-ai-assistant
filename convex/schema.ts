@@ -112,6 +112,13 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_name", ["userId", "name"]),
 
+  proWriteBriefs: defineTable({
+    userId: v.id("users"),
+    brief: v.string(),
+    questions: v.array(v.string()),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
   items: defineTable({
     userId: v.id("users"),
     collectionId: v.optional(v.id("collections")),
