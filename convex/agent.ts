@@ -30,6 +30,7 @@ import {
   applyItemFilters,
   simplifyItemsForResponse,
   buildSimpleItemPatch,
+  normalizeFilterDate,
 } from "./lib/items";
 import type { AggregateMode, QueryItem } from "./lib/items";
 
@@ -775,11 +776,12 @@ const addItem = createTool({
       // Schedule reminder first so we can pass jobId to createItem in one write
       let reminderSet = false;
       let reminderJobId: Id<"scheduledJobs"> | undefined;
-      if (reminderAt && reminderAt > Date.now()) {
+      const effectiveReminderAt = reminderAt && reminderAt > Date.now() ? reminderAt : undefined;
+      if (effectiveReminderAt) {
         reminderJobId = await ctx.runMutation(internal.reminders.createReminder, {
           userId,
           payload: args.reminderMessage ?? args.title,
-          runAt: reminderAt,
+          runAt: effectiveReminderAt,
           timezone: tz,
         }) as Id<"scheduledJobs">;
         reminderSet = true;
@@ -800,7 +802,7 @@ const addItem = createTool({
           currency,
           tags: args.tags,
           metadata: args.metadata,
-          reminderAt,
+          reminderAt: effectiveReminderAt,
           reminderJobId,
         }) as Id<"items">;
       } catch (error) {
@@ -869,11 +871,11 @@ const queryItemsTool = createTool({
         collectionId = col._id;
       }
 
-      // Parse dates
-      const dueBefore = args.dueBefore ? parseDatetimeInTimezone(args.dueBefore, tz) : undefined;
-      const dueAfter = args.dueAfter ? parseDatetimeInTimezone(args.dueAfter, tz) : undefined;
-      const dateFrom = args.dateFrom ? parseDatetimeInTimezone(args.dateFrom, tz) : undefined;
-      const dateTo = args.dateTo ? parseDatetimeInTimezone(args.dateTo, tz) : undefined;
+      // Parse dates (accept both "YYYY-MM-DD" and full datetime)
+      const dueBefore = args.dueBefore ? parseDatetimeInTimezone(normalizeFilterDate(args.dueBefore, true), tz) : undefined;
+      const dueAfter = args.dueAfter ? parseDatetimeInTimezone(normalizeFilterDate(args.dueAfter, false), tz) : undefined;
+      const dateFrom = args.dateFrom ? parseDatetimeInTimezone(normalizeFilterDate(args.dateFrom, false), tz) : undefined;
+      const dateTo = args.dateTo ? parseDatetimeInTimezone(normalizeFilterDate(args.dateTo, true), tz) : undefined;
 
       // Fetch items
       let items: Array<{
@@ -1050,24 +1052,29 @@ const updateItemTool = createTool({
         } catch {
           // Reminder may already have fired — not critical
         }
-        if (updates.clearReminder) {
-          patch.clearReminder = true; // signals updateItem mutation to strip reminder fields
-          changes.push("reminderCleared");
-        }
+      }
+      if (updates.clearReminder) {
+        patch.clearReminder = true; // signals updateItem mutation to strip reminder fields
+        changes.push("reminderCleared");
       }
 
       if (updates.reminderAt) {
         const reminderAt = parseDatetimeInTimezone(updates.reminderAt, tz);
-        patch.reminderAt = reminderAt;
-        if (reminderAt > Date.now()) {
-          const jobId = await ctx.runMutation(internal.reminders.createReminder, {
-            userId,
-            payload: updates.reminderMessage ?? updates.title ?? top.title,
-            runAt: reminderAt,
-            timezone: tz,
-          }) as Id<"scheduledJobs">;
-          patch.reminderJobId = jobId;
+        if (reminderAt <= Date.now()) {
+          return JSON.stringify({
+            status: "error",
+            code: "PAST_REMINDER_AT",
+            message: "Reminder time must be in the future.",
+          });
         }
+        patch.reminderAt = reminderAt;
+        const jobId = await ctx.runMutation(internal.reminders.createReminder, {
+          userId,
+          payload: updates.reminderMessage ?? updates.title ?? top.title,
+          runAt: reminderAt,
+          timezone: tz,
+        }) as Id<"scheduledJobs">;
+        patch.reminderJobId = jobId;
         changes.push("reminderSet");
       }
 

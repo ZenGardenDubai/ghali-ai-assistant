@@ -128,16 +128,35 @@ export function buildSimpleItemPatch(updates: {
   const patch: Record<string, unknown> = {};
   const changes: string[] = [];
 
-  if (updates.title) { patch.title = updates.title; changes.push("title"); }
-  if (updates.body) { patch.body = updates.body; changes.push("body"); }
-  if (updates.status) { patch.status = updates.status; changes.push("status"); }
-  if (updates.priority) { patch.priority = updates.priority; changes.push("priority"); }
+  if (updates.title !== undefined) { patch.title = updates.title; changes.push("title"); }
+  if (updates.body !== undefined) { patch.body = updates.body; changes.push("body"); }
+  if (updates.status !== undefined) { patch.status = updates.status; changes.push("status"); }
+  if (updates.priority !== undefined) { patch.priority = updates.priority; changes.push("priority"); }
   if (updates.amount != null) { patch.amount = updates.amount; changes.push("amount"); }
-  if (updates.currency) { patch.currency = updates.currency; changes.push("currency"); }
-  if (updates.tags) { patch.tags = updates.tags; changes.push("tags"); }
-  if (updates.metadata) { patch.metadata = updates.metadata; changes.push("metadata"); }
+  if (updates.currency !== undefined) { patch.currency = updates.currency; changes.push("currency"); }
+  if (updates.tags !== undefined) { patch.tags = updates.tags; changes.push("tags"); }
+  if (updates.metadata !== undefined) { patch.metadata = updates.metadata; changes.push("metadata"); }
 
   return { patch, changes };
+}
+
+// ============================================================================
+// Date Normalization
+// ============================================================================
+
+/**
+ * Normalize a date string for filter parsing.
+ * Accepts both "YYYY-MM-DD" (date-only) and "YYYY-MM-DDTHH:MM:SS" (full datetime).
+ * For date-only inputs, appends start-of-day or end-of-day time.
+ */
+export function normalizeFilterDate(
+  value: string,
+  endOfDay = false
+): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T${endOfDay ? "23:59:59" : "00:00:00"}`;
+  }
+  return value;
 }
 
 // ============================================================================

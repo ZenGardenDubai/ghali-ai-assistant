@@ -6,6 +6,7 @@ import {
   applyItemFilters,
   simplifyItemsForResponse,
   buildSimpleItemPatch,
+  normalizeFilterDate,
   type ItemLike,
   type QueryItem,
 } from "./items";
@@ -342,6 +343,15 @@ describe("buildSimpleItemPatch", () => {
     expect(changes).toEqual([]);
   });
 
+  it("preserves explicit empty-string values", () => {
+    const { patch, changes } = buildSimpleItemPatch({
+      body: "",
+      currency: "",
+    });
+    expect(patch).toEqual({ body: "", currency: "" });
+    expect(changes).toEqual(["body", "currency"]);
+  });
+
   it("includes all field types", () => {
     const { patch, changes } = buildSimpleItemPatch({
       title: "T",
@@ -355,5 +365,24 @@ describe("buildSimpleItemPatch", () => {
     });
     expect(Object.keys(patch)).toHaveLength(8);
     expect(changes).toHaveLength(8);
+  });
+});
+
+// ============================================================================
+// normalizeFilterDate
+// ============================================================================
+
+describe("normalizeFilterDate", () => {
+  it("appends start-of-day time for date-only input", () => {
+    expect(normalizeFilterDate("2026-03-01")).toBe("2026-03-01T00:00:00");
+  });
+
+  it("appends end-of-day time when endOfDay is true", () => {
+    expect(normalizeFilterDate("2026-03-01", true)).toBe("2026-03-01T23:59:59");
+  });
+
+  it("passes through full datetime strings unchanged", () => {
+    expect(normalizeFilterDate("2026-03-01T14:30:00")).toBe("2026-03-01T14:30:00");
+    expect(normalizeFilterDate("2026-03-01T14:30:00", true)).toBe("2026-03-01T14:30:00");
   });
 });
