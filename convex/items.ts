@@ -19,6 +19,7 @@ import { scoreItemMatch } from "./lib/items";
 
 /** Valid item statuses */
 const ITEM_STATUSES = ["active", "done", "archived"] as const;
+type ItemStatus = (typeof ITEM_STATUSES)[number];
 
 // ============================================================================
 // Collections
@@ -85,12 +86,15 @@ export const getCollectionByName = internalQuery({
     name: v.string(),
   },
   handler: async (ctx, { userId, name }) => {
-    return await ctx.db
+    // Case-insensitive lookup (consistent with createCollection dedup)
+    const collections = await ctx.db
       .query("collections")
-      .withIndex("by_userId_name", (q) =>
-        q.eq("userId", userId).eq("name", name)
-      )
-      .unique();
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    return collections.find(
+      (c) => c.name.toLowerCase() === name.toLowerCase()
+    ) ?? null;
   },
 });
 
@@ -161,14 +165,16 @@ export const updateCollection = internalMutation({
       throw new Error("Collection not found");
     }
 
-    // If renaming, check for name collision
-    if (updates.name && updates.name !== collection.name) {
-      const existing = await ctx.db
+    // If renaming, check for case-insensitive name collision
+    if (updates.name && updates.name.toLowerCase() !== collection.name.toLowerCase()) {
+      const userCollections = await ctx.db
         .query("collections")
-        .withIndex("by_userId_name", (q) =>
-          q.eq("userId", userId).eq("name", updates.name!)
-        )
-        .unique();
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect();
+
+      const existing = userCollections.find(
+        (c) => c._id !== collectionId && c.name.toLowerCase() === updates.name!.toLowerCase()
+      );
 
       if (existing) {
         throw new Error(
@@ -265,7 +271,7 @@ export const createItem = internalMutation({
     return await ctx.db.insert("items", {
       userId,
       collectionId,
-      status,
+      status: status as ItemStatus,
       ...fields,
     });
   },
@@ -353,8 +359,8 @@ export const updateItem = internalMutation({
     if (updates.status && updates.status !== "done" && item.status === "done") {
       // Convex patch ignores undefined, so we need to replace the full document
       const currentDoc = (await ctx.db.get(itemId))!;
-      const { _id, _creationTime, completedAt: _removed, ...rest } = currentDoc;
-      void _removed; // discard completedAt
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { _id, _creationTime, completedAt, ...rest } = currentDoc;
       await ctx.db.replace(itemId, { ...rest, ...patch });
       return await ctx.db.get(itemId);
     }
@@ -398,7 +404,7 @@ export const queryItems = internalQuery({
       query = ctx.db
         .query("items")
         .withIndex("by_userId_status", (q) =>
-          q.eq("userId", userId).eq("status", status)
+          q.eq("userId", userId).eq("status", status as ItemStatus)
         );
     } else {
       query = ctx.db

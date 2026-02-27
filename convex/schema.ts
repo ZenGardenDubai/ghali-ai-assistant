@@ -119,7 +119,7 @@ export default defineSchema({
     // Core fields
     title: v.string(),
     body: v.optional(v.string()),
-    status: v.string(),
+    status: v.union(v.literal("active"), v.literal("done"), v.literal("archived")),
 
     // Queryable typed fields
     priority: v.optional(v.string()),
