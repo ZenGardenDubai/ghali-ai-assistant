@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.13.0...v0.14.0) (2026-02-27)
+
+
+### Features
+
+* add agent item/collection tools + JSON refactor ([#44](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/44)) ([7939e5d](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/7939e5d429438b728bef9685ce2ab42931c7385f))
+
 ## [0.13.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.12.2...v0.13.0) (2026-02-27)
 
 
