@@ -737,10 +737,13 @@ const addItem = createTool({
   handler: async (ctx, args): Promise<string> => {
     const userId = ctx.userId as Id<"users">;
     try {
-      // Get user for timezone
+      // Get user for timezone + credit check
       const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
-        timezone: string; tier: string;
+        timezone: string; tier: string; credits: number;
       } | null;
+      if ((user?.credits ?? 0) <= 0) {
+        return JSON.stringify({ status: "error", code: "CREDIT_INSUFFICIENT", message: "No credits remaining." });
+      }
       const tz = user?.timezone ?? "UTC";
 
       // Resolve or create collection
@@ -828,6 +831,9 @@ const addItem = createTool({
         throw error; // Re-throw to be caught by outer catch
       }
 
+      // Schedule async embedding (non-blocking, best-effort)
+      await ctx.scheduler.runAfter(0, internal.items.embedItem, { itemId, userId });
+
       return JSON.stringify({
         status: "success",
         action: "item_created",
@@ -894,13 +900,13 @@ const queryItemsTool = createTool({
       }>;
 
       if (args.query) {
-        // Text search with post-filtering (findItemByText doesn't accept filters)
+        // Text search first (instant, always works)
         const raw = await ctx.runQuery(internal.items.findItemByText, {
           userId,
           query: args.query,
-          limit: 50, // fetch more to allow for filtering
+          limit: 50,
         });
-        items = applyItemFilters(raw as QueryItem[], {
+        const textResults = applyItemFilters(raw as QueryItem[], {
           collectionId,
           status: args.status,
           tags: args.tags,
@@ -911,6 +917,29 @@ const queryItemsTool = createTool({
           hasAmount: args.hasAmount,
           limit: args.limit,
         });
+
+        // Hybrid search: if best text score < 60 (no substring+ match), try vector fallback
+        // Use best score from filtered results, not raw (raw top match may have been filtered out)
+        const bestFilteredScore = (textResults as Array<{ _score?: number }>)[0]?._score ?? 0;
+        const bestRawScore = (raw as Array<{ _score: number }>)[0]?._score ?? 0;
+        const bestTextScore = textResults.length > 0 ? bestFilteredScore : bestRawScore;
+        if (bestTextScore >= 60 || (textResults.length > 0 && bestTextScore >= 40)) {
+          items = textResults;
+        } else {
+          try {
+            const vectorResults = await ctx.runAction(internal.items.vectorSearchItems, {
+              userId,
+              query: args.query,
+              limit: args.limit ?? 20,
+              collectionId,
+              status: args.status,
+            }) as typeof items;
+            items = vectorResults.length > 0 ? vectorResults : textResults;
+          } catch {
+            // Vector search failure is non-critical — fall back to text results
+            items = textResults;
+          }
+        }
       } else {
         items = await ctx.runQuery(internal.items.queryItems, {
           userId,
@@ -1001,16 +1030,35 @@ const updateItemTool = createTool({
     const userId = ctx.userId as Id<"users">;
     try {
       const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
-        timezone: string;
+        timezone: string; credits: number;
       } | null;
+      if ((user?.credits ?? 0) <= 0) {
+        return JSON.stringify({ status: "error", code: "CREDIT_INSUFFICIENT", message: "No credits remaining." });
+      }
       const tz = user?.timezone ?? "UTC";
 
       // Find item by text
-      const matches = await ctx.runQuery(internal.items.findItemByText, {
+      let matches = await ctx.runQuery(internal.items.findItemByText, {
         userId,
         query: itemQuery,
         limit: 3,
       }) as Array<{ _id: string; _score: number; title: string; status: string; reminderAt?: number; reminderJobId?: Id<"scheduledJobs">; collectionId?: string }>;
+
+      // Hybrid search: if no text matches or top score < 40, try vector fallback
+      if (matches.length === 0 || matches[0]!._score < 40) {
+        try {
+          const vectorResults = await ctx.runAction(internal.items.vectorSearchItems, {
+            userId,
+            query: itemQuery,
+            limit: 3,
+          }) as typeof matches;
+          if (vectorResults.length > 0) {
+            matches = vectorResults;
+          }
+        } catch {
+          // Vector search failure — continue with text results
+        }
+      }
 
       if (matches.length === 0) {
         return JSON.stringify({ status: "error", code: "NOT_FOUND", message: `No item found matching "${itemQuery}".` });
@@ -1100,6 +1148,15 @@ const updateItemTool = createTool({
         },
       });
 
+      // Re-embed if title, body, or tags changed
+      const needsReEmbed = changes.some((c) => ["title", "body", "tags"].includes(c));
+      if (needsReEmbed) {
+        await ctx.scheduler.runAfter(0, internal.items.embedItem, {
+          itemId: top._id as Id<"items">,
+          userId,
+        });
+      }
+
       return JSON.stringify({
         status: "success",
         action: "item_updated",
@@ -1147,6 +1204,14 @@ const manageCollection = createTool({
           })),
           count: collections.length,
         });
+      }
+
+      // Credit check for write operations (list is free)
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        credits: number;
+      } | null;
+      if ((user?.credits ?? 0) <= 0) {
+        return JSON.stringify({ status: "error", code: "CREDIT_INSUFFICIENT", message: "No credits remaining." });
       }
 
       if (!args.name) {
