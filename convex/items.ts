@@ -470,7 +470,7 @@ export const findItemByText = internalQuery({
   handler: async (ctx, { userId, query, limit }) => {
     const maxResults = limit ?? 5;
 
-    // Get all active+done items for this user
+    // Get active+done items for this user (capped at 1000 to bound memory)
     const items = await ctx.db
       .query("items")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -480,7 +480,7 @@ export const findItemByText = internalQuery({
           q.eq(q.field("status"), "done")
         )
       )
-      .collect();
+      .take(1000);
 
     // Score each item
     const scored = items

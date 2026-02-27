@@ -79,7 +79,7 @@ export const VOICE_MAX_SIZE_BYTES = 25 * 1024 * 1024;
 // Agent Configuration
 // ============================================================================
 
-/** Max tool-call steps per agent turn */
+/** Max tool-call steps per agent turn (7 to support item workflows: query + create collection + create item + schedule reminder) */
 export const AGENT_MAX_STEPS = 7;
 
 /** Number of recent thread messages loaded into context */

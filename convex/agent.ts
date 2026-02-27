@@ -136,6 +136,7 @@ STRUCTURED DATA RULES:
   - Bookmarks: "save this link https://..." → addItem(title: extracted title, body: URL, collectionName: "Bookmarks", collectionType: "bookmark")
 - *Auto-creation*: silently create collections when needed (don't ask for confirmation). Use sensible defaults for collectionType based on content.
 - *No duplicates*: before adding, consider if the user is updating an existing item (use updateItem instead).
+- *Deletion*: items use soft-delete via archive status. To "delete" an item, set status to "archived" via updateItem. There is no hard delete.
 - *Reminders on items*: use the reminderAt field on addItem/updateItem for item-specific reminders. Confirm timezone with user if ambiguous.
 - *Query presentation*:
   - Expenses → show totals first, then itemized list. Use aggregate: "sum" for totals.
@@ -720,6 +721,7 @@ const addItem = createTool({
     tags: z.array(z.string()).optional().describe("Tags for categorization (e.g. ['food', 'lunch'])"),
     metadata: z.record(z.unknown()).optional().describe("Extra key-value data"),
     reminderAt: z.string().optional().describe("Reminder time as ISO string. Schedules a WhatsApp reminder."),
+    reminderMessage: z.string().optional().describe("Custom reminder text in the user's language (defaults to item title)"),
   }),
   handler: async (ctx, args): Promise<string> => {
     const userId = ctx.userId as Id<"users">;
@@ -760,7 +762,20 @@ const addItem = createTool({
         ? (args.currency ?? deriveCurrency(tz))
         : undefined;
 
-      // Create item
+      // Schedule reminder first so we can pass jobId to createItem in one write
+      let reminderSet = false;
+      let reminderJobId: Id<"scheduledJobs"> | undefined;
+      if (reminderAt && reminderAt > Date.now()) {
+        reminderJobId = await ctx.runMutation(internal.reminders.createReminder, {
+          userId,
+          payload: args.reminderMessage ?? args.title,
+          runAt: reminderAt,
+          timezone: tz,
+        }) as Id<"scheduledJobs">;
+        reminderSet = true;
+      }
+
+      // Create item (with reminderJobId if reminder was scheduled)
       const itemId = await ctx.runMutation(internal.items.createItem, {
         userId,
         collectionId,
@@ -774,25 +789,8 @@ const addItem = createTool({
         tags: args.tags,
         metadata: args.metadata,
         reminderAt,
+        reminderJobId,
       }) as Id<"items">;
-
-      // Schedule reminder if requested
-      let reminderSet = false;
-      if (reminderAt && reminderAt > Date.now()) {
-        const jobId = await ctx.runMutation(internal.reminders.createReminder, {
-          userId,
-          payload: `Reminder: ${args.title}`,
-          runAt: reminderAt,
-          timezone: tz,
-        }) as Id<"scheduledJobs">;
-        // Persist the jobId on the item for future cancellation
-        await ctx.runMutation(internal.items.updateItem, {
-          itemId,
-          userId,
-          updates: { reminderJobId: jobId },
-        });
-        reminderSet = true;
-      }
 
       return JSON.stringify({
         status: "success",
@@ -860,11 +858,37 @@ const queryItemsTool = createTool({
       }>;
 
       if (args.query) {
+        // Text search with post-filtering (findItemByText doesn't accept filters)
         items = await ctx.runQuery(internal.items.findItemByText, {
           userId,
           query: args.query,
-          limit: args.limit ?? 20,
+          limit: 50, // fetch more to allow for filtering
         });
+        if (collectionId) {
+          items = items.filter((i) => i.collectionId === collectionId);
+        }
+        if (args.status && args.status !== "all") {
+          items = items.filter((i) => i.status === args.status);
+        }
+        if (args.tags && args.tags.length > 0) {
+          items = items.filter((i) => i.tags?.some((t) => args.tags!.includes(t)));
+        }
+        if (dueBefore != null) {
+          items = items.filter((i) => i.dueDate != null && i.dueDate <= dueBefore);
+        }
+        if (dueAfter != null) {
+          items = items.filter((i) => i.dueDate != null && i.dueDate >= dueAfter);
+        }
+        if (args.hasAmount) {
+          items = items.filter((i) => i.amount != null);
+        }
+        if (dateFrom != null) {
+          items = items.filter((i) => i._creationTime >= dateFrom);
+        }
+        if (dateTo != null) {
+          items = items.filter((i) => i._creationTime <= dateTo);
+        }
+        items = items.slice(0, args.limit ?? 20);
       } else {
         items = await ctx.runQuery(internal.items.queryItems, {
           userId,
@@ -953,10 +977,12 @@ const updateItemTool = createTool({
       priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
       dueDate: z.string().optional().describe("New due date as ISO string"),
       amount: z.number().optional(),
+      currency: z.string().optional().describe("Currency code (e.g. 'AED', 'USD')"),
       tags: z.array(z.string()).optional(),
       metadata: z.record(z.unknown()).optional(),
       collectionName: z.string().optional().describe("Move to a different collection (auto-created if needed)"),
       reminderAt: z.string().optional().describe("Set a new reminder (ISO string)"),
+      reminderMessage: z.string().optional().describe("Custom reminder text (defaults to item title)"),
       clearReminder: z.boolean().optional().describe("Cancel the item's scheduled reminder"),
     }),
   }),
@@ -980,8 +1006,8 @@ const updateItemTool = createTool({
       }
 
       const top = matches[0]!;
-      // Ambiguity check: top score < 80 and gap to second < 20
-      if (top._score < 80 && matches.length > 1 && (top._score - matches[1]!._score) < 20) {
+      // Ambiguity check: top must score ≥80 (exact/prefix match) or be ≥1.5x the runner-up
+      if (top._score < 80 && matches.length > 1 && top._score < matches[1]!._score * 1.5) {
         const options = matches.map((m) => m.title).join(", ");
         return JSON.stringify({ status: "error", code: "AMBIGUOUS_MATCH", message: `Multiple items match "${itemQuery}": ${options}. Be more specific.` });
       }
@@ -995,6 +1021,7 @@ const updateItemTool = createTool({
       if (updates.status) { patch.status = updates.status; changes.push("status"); }
       if (updates.priority) { patch.priority = updates.priority; changes.push("priority"); }
       if (updates.amount != null) { patch.amount = updates.amount; changes.push("amount"); }
+      if (updates.currency) { patch.currency = updates.currency; changes.push("currency"); }
       if (updates.tags) { patch.tags = updates.tags; changes.push("tags"); }
       if (updates.metadata) { patch.metadata = updates.metadata; changes.push("metadata"); }
 
@@ -1022,9 +1049,8 @@ const updateItemTool = createTool({
         changes.push("collection");
       }
 
-      // Handle reminders
-      if (updates.clearReminder && top.reminderJobId) {
-        // Cancel the scheduled reminder job using the stored jobId
+      // Handle reminders — cancel old job before setting a new one to avoid ghost reminders
+      if ((updates.clearReminder || updates.reminderAt) && top.reminderJobId) {
         try {
           await ctx.runMutation(internal.reminders.cancelReminder, {
             jobId: top.reminderJobId,
@@ -1033,7 +1059,9 @@ const updateItemTool = createTool({
         } catch {
           // Reminder may already have fired — not critical
         }
-        changes.push("reminderCleared");
+        if (updates.clearReminder) {
+          changes.push("reminderCleared");
+        }
       }
 
       if (updates.reminderAt) {
@@ -1042,7 +1070,7 @@ const updateItemTool = createTool({
         if (reminderAt > Date.now()) {
           const jobId = await ctx.runMutation(internal.reminders.createReminder, {
             userId,
-            payload: `Reminder: ${updates.title ?? top.title}`,
+            payload: updates.reminderMessage ?? updates.title ?? top.title,
             runAt: reminderAt,
             timezone: tz,
           }) as Id<"scheduledJobs">;
@@ -1081,8 +1109,8 @@ const manageCollection = createTool({
   description:
     "Manage collections: list all, create new, rename, archive, or update description/icon/type.",
   args: z.object({
-    action: z.enum(["list", "create", "rename", "archive", "describe"]).describe("Action to perform"),
-    name: z.string().optional().describe("Collection name (required for create/rename/archive/describe)"),
+    action: z.enum(["list", "create", "rename", "archive", "update"]).describe("Action to perform"),
+    name: z.string().optional().describe("Collection name (required for create/rename/archive/update)"),
     newName: z.string().optional().describe("New name (for rename action)"),
     icon: z.string().optional().describe("Emoji icon for the collection"),
     type: z.string().optional().describe("Collection type: expense, task, contact, note, bookmark"),
@@ -1133,7 +1161,7 @@ const manageCollection = createTool({
         });
       }
 
-      // For rename, archive, describe — look up by name first
+      // For rename, archive, update — look up by name first
       const col = await ctx.runQuery(internal.items.getCollectionByName, {
         userId,
         name: args.name,
@@ -1172,7 +1200,7 @@ const manageCollection = createTool({
         });
       }
 
-      if (args.action === "describe") {
+      if (args.action === "update") {
         const updateFields: { collectionId: Id<"collections">; userId: Id<"users">; description?: string; icon?: string; type?: string } = {
           collectionId: col._id,
           userId,
