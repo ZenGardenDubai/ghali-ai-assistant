@@ -270,7 +270,7 @@ export const executePipeline = internalAction({
   },
   handler: async (
     ctx,
-    { userId, phone, enrichedBrief, voiceProfile, originalRequest: _originalRequest }
+    { userId, phone, enrichedBrief, voiceProfile }
   ) => {
     try {
       // Step 2: Research
