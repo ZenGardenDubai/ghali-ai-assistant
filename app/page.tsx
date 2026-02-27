@@ -325,8 +325,22 @@ function Strengths() {
             </p>
           </Link>
 
-          {/* Card 4 — Track Everything (wide) */}
-          <Link href="/features/track-everything" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] lg:col-span-2">
+          {/* Card 4 — ProWrite */}
+          <Link href="/features/prowrite" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04]">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
+              ✍️
+            </div>
+            <h3 className="font-[family-name:var(--font-display)] text-2xl">
+              Professional Writing, 8 AI Models Deep
+            </h3>
+            <p className="mt-3 text-white/50 leading-relaxed">
+              Say &ldquo;prowrite&rdquo; and Ghali researches, drafts, and polishes
+              your content through a multi-model pipeline.
+            </p>
+          </Link>
+
+          {/* Card 5 — Track Everything */}
+          <Link href="/features/track-everything" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04]">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
               <ClipboardIcon />
             </div>
@@ -335,12 +349,11 @@ function Strengths() {
             </h3>
             <p className="mt-3 text-white/50 leading-relaxed">
               Expenses, tasks, contacts, notes &mdash; just tell Ghali and it
-              organizes everything. Smart search finds anything instantly, and
-              reminders make sure nothing slips through.
+              organizes everything.
             </p>
           </Link>
 
-          {/* Card 5 — One Assistant (full width, with use cases) */}
+          {/* Card 6 — One Assistant (full width, with use cases) */}
           <Link href="/features/smart-ai" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] lg:col-span-3">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
               <SparklesIcon />
@@ -488,6 +501,12 @@ function Capabilities() {
       href: "/features/track-everything",
     },
     {
+      icon: "✍️",
+      title: "Professional writing",
+      desc: "Multi-AI pipeline for polished content",
+      href: "/features/prowrite",
+    },
+    {
       icon: "🌍",
       title: "Speak your language",
       desc: "Arabic, English, and more",
@@ -541,7 +560,7 @@ function ExploreFeatures() {
                 There&apos;s more
               </p>
               <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl sm:text-3xl">
-                Explore all 10 features
+                Explore all features
               </h2>
               <p className="mt-2 text-white/40">
                 Deep thinking, document analysis, reminders, open source, and more.

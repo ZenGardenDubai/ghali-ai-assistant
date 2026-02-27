@@ -79,8 +79,13 @@ export const VOICE_MAX_SIZE_BYTES = 25 * 1024 * 1024;
 // Agent Configuration
 // ============================================================================
 
-/** Max tool-call steps per agent turn (7 to support item workflows: query + create collection + create item + schedule reminder) */
-export const AGENT_MAX_STEPS = 7;
+/**
+ * Max tool-call steps per agent turn.
+ * Item workflows need up to 7 (query + create collection + create item + schedule reminder + memory + ...).
+ * ProWrite needs 2 (brief + execute) but runs in dedicated turns, not combined with item workflows.
+ * Set to 8 for headroom.
+ */
+export const AGENT_MAX_STEPS = 8;
 
 /** Number of recent thread messages loaded into context */
 export const AGENT_RECENT_MESSAGES = 100;
@@ -271,4 +276,8 @@ export const MODELS = {
   IMAGE_GENERATION: "gemini-3-pro-image-preview",
   /** Text embedding model for RAG */
   EMBEDDING: "text-embedding-3-small",
+  /** ProWrite draft model — Kimi K2.5 via OpenRouter */
+  PROWRITE_DRAFT: "moonshotai/kimi-k2.5",
+  /** ProWrite elevate model — GPT-5.2 via OpenAI direct */
+  PROWRITE_ELEVATE: "gpt-5.2",
 } as const;

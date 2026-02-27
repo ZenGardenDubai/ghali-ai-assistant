@@ -38,4 +38,11 @@ crons.daily(
   internal.webhookDedup.cleanupExpired
 );
 
+// Daily cleanup of expired ProWrite briefs (older than 24h)
+crons.daily(
+  "prowrite-brief-cleanup",
+  { hourUTC: 2, minuteUTC: 30 },
+  internal.proWrite.cleanupExpiredBriefs
+);
+
 export default crons;
