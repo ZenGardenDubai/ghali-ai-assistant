@@ -167,16 +167,20 @@ export const generateBrief = internalAction({
       prompt: prompt.user,
     });
 
-    // Track LLM usage for the brief step
+    // Track LLM usage for the brief step (fire-and-forget — never fail the brief)
     if (phone && tier) {
-      await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
-        phone,
-        model: result.model,
-        provider: result.provider,
-        promptTokens: result.promptTokens,
-        completionTokens: result.completionTokens,
-        tier,
-      });
+      try {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
+          phone,
+          model: result.model,
+          provider: result.provider,
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+          tier,
+        });
+      } catch (error) {
+        console.error("[ProWrite] Failed to schedule BRIEF analytics:", error);
+      }
     }
 
     const parsed = parseBriefOutput(result.text);
@@ -255,17 +259,21 @@ export const executePipeline = internalAction({
     const pipelineStart = Date.now();
     const deadlineMs = pipelineStart + PIPELINE_BUDGET_MS;
 
-    // Helper to fire $ai_generation for a pipeline step
+    // Helper to fire $ai_generation for a pipeline step (never throws — analytics are best-effort)
     const trackStep = async (result: TimedGenerateResult) => {
       if (!phone || !tier) return;
-      await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
-        phone,
-        model: result.model,
-        provider: result.provider,
-        promptTokens: result.promptTokens,
-        completionTokens: result.completionTokens,
-        tier,
-      });
+      try {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
+          phone,
+          model: result.model,
+          provider: result.provider,
+          promptTokens: result.promptTokens,
+          completionTokens: result.completionTokens,
+          tier,
+        });
+      } catch (error) {
+        console.error("[ProWrite] Failed to schedule step analytics:", error);
+      }
     };
 
     let stepsCompleted = 0;
@@ -425,14 +433,18 @@ export const executePipeline = internalAction({
       const totalSec = (totalMs / 1000).toFixed(1);
       console.log(`[ProWrite] Pipeline complete (${totalSec}s total)`);
 
-      // Track feature_used for the entire pipeline
+      // Track feature_used for the entire pipeline (best-effort)
       if (phone && tier) {
-        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
-          phone,
-          feature: "prowrite",
-          tier,
-          properties: { steps: stepsCompleted, latency_ms: totalMs },
-        });
+        try {
+          await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+            phone,
+            feature: "prowrite",
+            tier,
+            properties: { steps: stepsCompleted, latency_ms: totalMs },
+          });
+        } catch (error) {
+          console.error("[ProWrite] Failed to schedule feature_used analytics:", error);
+        }
       }
 
       return humanizeResult.text;

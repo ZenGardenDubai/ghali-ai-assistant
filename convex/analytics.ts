@@ -199,6 +199,17 @@ export const trackFileConverted = internalAction({
   },
 });
 
+const ALLOWED_FEATURES = new Set([
+  "prowrite",
+  "image_generation",
+  "deep_reasoning",
+  "document_processing",
+  "document_conversion",
+  "items",
+  "voice_note",
+  "web_search",
+]);
+
 export const trackFeatureUsed = internalAction({
   args: {
     phone: v.string(),
@@ -207,11 +218,16 @@ export const trackFeatureUsed = internalAction({
     properties: v.optional(v.any()),
   },
   handler: async (_ctx, { phone, feature, tier, properties }) => {
+    if (!ALLOWED_FEATURES.has(feature)) {
+      console.warn(`[PostHog] Ignoring unknown feature_used value: ${feature}`);
+      return;
+    }
     await captureEvent(phone, "feature_used", {
+      // Spread extra properties first so reserved keys cannot be overridden
+      ...(properties as Record<string, unknown> | undefined),
       feature,
       tier,
       phone_country: detectCountryFromPhone(phone),
-      ...(properties as Record<string, unknown> | undefined),
     });
   },
 });

@@ -21,7 +21,7 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 | File | Purpose |
 |---|---|
-| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 8 internal actions |
+| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 10 internal actions |
 | `convex/analyticsHelper.ts` | Scheduling mutation for agent's usageHandler (no Node.js deps) |
 | `convex/lib/analytics.ts` | `detectCountryFromPhone()` pure function |
 | `convex/agent.ts` | `usageHandler` — captures `$ai_generation` for every LLM call |
