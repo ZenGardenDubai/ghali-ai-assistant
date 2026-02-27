@@ -135,6 +135,25 @@ Voice notes (audio/ogg) are excluded — they are transcribed and used as text i
 
 Twilio provides `OriginalRepliedMessageSid` only for replies made within 7 days. Files remain in storage for 90 days (matching generated image retention) but can only be triggered by reply within the Twilio window.
 
+## Structured Data (Items & Collections)
+
+| Rule | Value | Constant |
+|------|-------|----------|
+| Basic tier max items | 200 | `ITEMS_LIMIT_BASIC` |
+| Pro tier max items | Unlimited | `ITEMS_LIMIT_PRO` |
+| Basic tier max collections | 10 | `COLLECTIONS_LIMIT_BASIC` |
+| Pro tier max collections | Unlimited | `COLLECTIONS_LIMIT_PRO` |
+| Default query limit | 20 | `ITEMS_QUERY_DEFAULT_LIMIT` |
+| Max query limit | 50 | `ITEMS_QUERY_MAX_LIMIT` |
+| Embedding model | text-embedding-3-small | `MODELS.EMBEDDING` |
+| Embedding dimension | 1536 | — |
+
+Item types: `expense`, `task`, `contact`, `note`, `bookmark`, `habit`, `other`
+
+Item statuses: `active`, `done`, `archived`
+
+Limits count `active` + `done` items only — archived items don't count toward the limit.
+
 ## Country Code Blocking
 
 Defined in `convex/lib/utils.ts` as `BLOCKED_COUNTRY_CODES`:
