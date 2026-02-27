@@ -4,7 +4,7 @@ System architecture overview for Ghali. See [SPEC.md](SPEC.md) for full build sp
 
 ## Message Flow
 
-```
+```text
 WhatsApp message
   → Twilio webhook (Convex HTTP route, POST /twilio/webhook)
   → Validate signature (Web Crypto HMAC-SHA1) + check country blocklist
@@ -24,7 +24,7 @@ Background action:
       → searchDocuments → user's RAG knowledge base
       → addItem/queryItems/updateItem → structured data
       → updateMemory/updatePersonality/updateHeartbeat → user files
-  → Format for WhatsApp + split long messages (1600 char limit)
+  → Format for WhatsApp + split long messages (1500 char limit)
   → Send reply via Twilio API
 ```
 

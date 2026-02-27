@@ -4,7 +4,7 @@
 
 | Layer | Technology | Role |
 |-------|-----------|------|
-| Framework | Next.js 15 (App Router) | Web frontend + API routes |
+| Framework | Next.js 16 (App Router) | Web frontend + API routes |
 | Language | TypeScript | End-to-end type safety |
 | Database | Convex | Real-time serverless DB + backend |
 | Auth | Clerk | Authentication + billing (subscriptions) |

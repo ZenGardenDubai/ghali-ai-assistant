@@ -25,6 +25,15 @@ const breadcrumbJsonLd = {
   ],
 };
 
+const TRACKABLE_ITEMS = [
+  { icon: "💰", title: "Expenses", description: "Amounts, currencies, tags, and categories. Track spending as it happens." },
+  { icon: "✅", title: "Tasks", description: "Status, due dates, and priority. Mark done when you're finished." },
+  { icon: "👤", title: "Contacts", description: "Names, phone numbers, and notes. Your personal address book." },
+  { icon: "📝", title: "Notes", description: "Freeform text, tagged and searchable. Capture ideas on the go." },
+  { icon: "🔖", title: "Bookmarks", description: "URLs, descriptions, and tags. Save links for later." },
+  { icon: "🏃", title: "Habits", description: "Track streaks and progress. Build consistency over time." },
+];
+
 export default function TrackEverythingPage() {
   return (
     <FeaturePage
@@ -44,36 +53,9 @@ export default function TrackEverythingPage() {
 
       <FeatureSection title="What you can track">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <FeatureCard
-            icon="💰"
-            title="Expenses"
-            description="Amounts, currencies, tags, and categories. Track spending as it happens."
-          />
-          <FeatureCard
-            icon="✅"
-            title="Tasks"
-            description="Status, due dates, and priority. Mark done when you're finished."
-          />
-          <FeatureCard
-            icon="👤"
-            title="Contacts"
-            description="Names, phone numbers, and notes. Your personal address book."
-          />
-          <FeatureCard
-            icon="📝"
-            title="Notes"
-            description="Freeform text, tagged and searchable. Capture ideas on the go."
-          />
-          <FeatureCard
-            icon="🔖"
-            title="Bookmarks"
-            description="URLs, descriptions, and tags. Save links for later."
-          />
-          <FeatureCard
-            icon="🏃"
-            title="Habits"
-            description="Track streaks and progress. Build consistency over time."
-          />
+          {TRACKABLE_ITEMS.map((item) => (
+            <FeatureCard key={item.title} icon={item.icon} title={item.title} description={item.description} />
+          ))}
         </div>
       </FeatureSection>
 

@@ -30,7 +30,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
 
 ### Structured Data
-- **Items & Collections** — track expenses, tasks, contacts, notes, bookmarks via natural language
+- **Items & Collections** — track expenses, tasks, contacts, notes, bookmarks, habits via natural language
 - **Hybrid search** — text scoring + semantic vector search (OpenAI embeddings)
 - **Smart aggregation** — sum, count, group by tag or collection
 - **Collections** — organize items into named groups with emoji and descriptions
