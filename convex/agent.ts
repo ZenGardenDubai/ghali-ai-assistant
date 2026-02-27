@@ -9,7 +9,6 @@ import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
 import {
-  detectProWriteTrigger as _detectProWriteTrigger,
   buildBriefSystemPrompt,
   buildClarifySystemPrompt,
   buildEnrichSystemPrompt,
