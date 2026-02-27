@@ -88,6 +88,11 @@ export const clearEverything = internalAction({
       userId,
     });
 
+    // Delete all items and collections
+    await ctx.runMutation(internal.items.deleteAllUserItems, {
+      userId,
+    });
+
     // Clear pending action
     await ctx.runMutation(internal.users.clearPendingAction, { userId });
 
