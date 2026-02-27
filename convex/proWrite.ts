@@ -9,7 +9,6 @@
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
 import { anthropic } from "@ai-sdk/anthropic";
 import { google } from "@ai-sdk/google";
 import { openai } from "@ai-sdk/openai";
@@ -88,15 +87,19 @@ export const cleanupExpiredBriefs = internalMutation({
   args: {},
   handler: async (ctx) => {
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const BATCH_SIZE = 500;
     const expired = await ctx.db
       .query("proWriteBriefs")
       .withIndex("by_createdAt", (q) => q.lt("createdAt", oneDayAgo))
-      .collect();
+      .take(BATCH_SIZE);
     for (const brief of expired) {
       await ctx.db.delete(brief._id);
     }
     if (expired.length > 0) {
       console.log(`[ProWrite] Cleaned up ${expired.length} expired briefs`);
+      if (expired.length === BATCH_SIZE) {
+        console.log("[ProWrite] Cleanup hit batch limit; remaining expired briefs will be cleaned in next run.");
+      }
     }
   },
 });

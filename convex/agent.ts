@@ -1363,13 +1363,15 @@ const proWriteExecute = createTool({
   args: z.object({
     answers: z
       .string()
-      .describe("The user's answers to clarifying questions, concatenated. Empty string if skipped."),
+      .optional()
+      .describe("The user's answers to clarifying questions, concatenated. Omit or empty string if skipped."),
     skipClarify: z
       .boolean()
       .optional()
       .describe("True if the user skipped the clarifying questions"),
   }),
   handler: async (ctx, { answers, skipClarify }): Promise<string> => {
+    const safeAnswers = answers ?? "";
     try {
       // Get user's personality file for voice matching
       let personality = "";
@@ -1384,7 +1386,7 @@ const proWriteExecute = createTool({
       }
 
       const result = await ctx.runAction(internal.proWrite.executePipeline, {
-        answers,
+        answers: safeAnswers,
         userId: ctx.userId as Id<"users">,
         personality,
         skipClarify: skipClarify ?? false,
