@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.1...v0.16.2) (2026-02-27)
+
+
+### Bug Fixes
+
+* prevent phantom items in query results ([#55](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/55)) ([46a5d98](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/46a5d985fa8b3d4192e402c5e3cdab8eda0b6d28))
+
 ## [0.16.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.0...v0.16.1) (2026-02-27)
 
 
