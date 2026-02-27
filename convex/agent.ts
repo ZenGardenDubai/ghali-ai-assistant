@@ -150,6 +150,7 @@ STRUCTURED DATA RULES:
   Omitting collectionName causes results to leak across all collections — always scope by collection when the user is asking about a specific type.
 - *Auto-creation*: silently create collections when needed (don't ask for confirmation). Use sensible defaults for collectionType based on content.
 - *No duplicates*: before adding, consider if the user is updating an existing item (use updateItem instead).
+- *Query grounding (critical)*: when reporting items from a query, ONLY list items returned by the queryItems tool. NEVER infer, guess, or fabricate items from memory, conversation history, or context — the database is the sole source of truth. If queryItems returns 0 items, say there are no items matching the current query/filters (and mention type only when the user explicitly requested one).
 - *Deletion*: items use soft-delete via archive status. To "delete" an item, set status to "archived" via updateItem. There is no hard delete.
 - *Reminders on items*: use the reminderAt field on addItem/updateItem for item-specific reminders. Confirm timezone with user if ambiguous.
 - *Query presentation*:
@@ -158,7 +159,7 @@ STRUCTURED DATA RULES:
   - Contacts → scannable format: name + key info on each line.
   - Keep responses concise — max 10 items in a response. Tell user if there are more.
 - *Formatting*: no tables (WhatsApp doesn't support them). Use emoji grouping (💰 expenses, ✅ tasks, 👤 contacts, 📝 notes, 🔖 bookmarks). Format amounts with commas (1,000 not 1000).
-- *Discoverability*: when a user sends a message that looks trackable (expense, task, etc.) for the first time, silently create the item AND briefly mention "I've saved this to your [collection] — you can ask me to track these anytime." Don't over-explain.`;
+- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
