@@ -124,7 +124,7 @@ export function aggregateItems(
       .map(([key, val]) => ({
         key,
         count: val.count,
-        amount: val.amount || undefined,
+        amount: val.amount !== 0 ? val.amount : undefined,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -145,7 +145,7 @@ export function aggregateItems(
       .map(([key, val]) => ({
         key: collectionNames?.get(key) ?? key,
         count: val.count,
-        amount: val.amount || undefined,
+        amount: val.amount !== 0 ? val.amount : undefined,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -181,7 +181,7 @@ function getMostCommonCurrency(items: ItemLike[]): string | undefined {
 
 const TIMEZONE_CURRENCY: Record<string, string> = {
   "Asia/Dubai": "AED",
-  "Asia/Muscat": "AED", // Oman uses OMR but close to UAE
+  "Asia/Muscat": "OMR",
   "Asia/Riyadh": "SAR",
   "Asia/Bahrain": "BHD",
   "Asia/Qatar": "QAR",

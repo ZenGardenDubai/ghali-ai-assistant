@@ -17,6 +17,9 @@ import {
 } from "./constants";
 import { scoreItemMatch } from "./lib/items";
 
+/** Valid item statuses */
+const ITEM_STATUSES = ["active", "done", "archived"] as const;
+
 // ============================================================================
 // Collections
 // ============================================================================
@@ -33,13 +36,15 @@ export const createCollection = internalMutation({
     type: v.optional(v.string()),
   },
   handler: async (ctx, { userId, name, icon, description, type }) => {
-    // Dedup — check if collection with this name already exists
-    const existing = await ctx.db
+    // Dedup — check if collection with this name already exists (case-insensitive)
+    const userCollections = await ctx.db
       .query("collections")
-      .withIndex("by_userId_name", (q) =>
-        q.eq("userId", userId).eq("name", name)
-      )
-      .unique();
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    const existing = userCollections.find(
+      (c) => c.name.toLowerCase() === name.toLowerCase()
+    );
 
     if (existing) {
       return existing._id;
@@ -53,18 +58,8 @@ export const createCollection = internalMutation({
       user.tier === "pro" ? COLLECTIONS_LIMIT_PRO : COLLECTIONS_LIMIT_BASIC;
 
     if (limit !== Infinity) {
-      const count = await ctx.db
-        .query("collections")
-        .withIndex("by_userId", (q) => q.eq("userId", userId))
-        .filter((q) =>
-          q.or(
-            q.eq(q.field("archived"), undefined),
-            q.eq(q.field("archived"), false)
-          )
-        )
-        .collect();
-
-      if (count.length >= limit) {
+      const activeCollections = userCollections.filter((c) => !c.archived);
+      if (activeCollections.length >= limit) {
         throw new Error(
           `Collection limit reached (${limit}). Archive some collections first or upgrade to Pro.`
         );
@@ -117,30 +112,33 @@ export const listCollections = internalQuery({
       collections = collections.filter((c) => !c.archived);
     }
 
-    // Get item counts for each collection
-    const result = await Promise.all(
-      collections.map(async (collection) => {
-        const items = await ctx.db
-          .query("items")
-          .withIndex("by_collectionId", (q) =>
-            q.eq("collectionId", collection._id)
-          )
-          .filter((q) =>
-            q.or(
-              q.eq(q.field("status"), "active"),
-              q.eq(q.field("status"), "done")
-            )
-          )
-          .collect();
+    // Get all user items once, then count per collection (avoids N+1)
+    const allItems = await ctx.db
+      .query("items")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "done")
+        )
+      )
+      .collect();
 
-        return {
-          ...collection,
-          itemCount: items.length,
-        };
-      })
-    );
+    // Build a count map
+    const countMap = new Map<string, number>();
+    for (const item of allItems) {
+      if (item.collectionId) {
+        countMap.set(
+          item.collectionId,
+          (countMap.get(item.collectionId) ?? 0) + 1
+        );
+      }
+    }
 
-    return result;
+    return collections.map((collection) => ({
+      ...collection,
+      itemCount: countMap.get(collection._id) ?? 0,
+    }));
   },
 });
 
@@ -201,6 +199,7 @@ export const updateCollection = internalMutation({
 
 /**
  * Create an item. Enforces tier-based limits on active+done items.
+ * Validates collectionId ownership if provided.
  */
 export const createItem = internalMutation({
   args: {
@@ -219,8 +218,21 @@ export const createItem = internalMutation({
     mediaStorageId: v.optional(v.id("_storage")),
     reminderCronId: v.optional(v.string()),
   },
-  handler: async (ctx, { userId, status: statusArg, ...fields }) => {
+  handler: async (ctx, { userId, status: statusArg, collectionId, ...fields }) => {
     const status = statusArg ?? "active";
+
+    // Validate status
+    if (!ITEM_STATUSES.includes(status as typeof ITEM_STATUSES[number])) {
+      throw new Error(`Invalid status "${status}". Must be one of: ${ITEM_STATUSES.join(", ")}`);
+    }
+
+    // Validate collection ownership if provided
+    if (collectionId) {
+      const collection = await ctx.db.get(collectionId);
+      if (!collection || collection.userId !== userId) {
+        throw new Error("Collection not found");
+      }
+    }
 
     // Enforce tier limit for active+done items
     if (status !== "archived") {
@@ -252,6 +264,7 @@ export const createItem = internalMutation({
 
     return await ctx.db.insert("items", {
       userId,
+      collectionId,
       status,
       ...fields,
     });
@@ -277,7 +290,7 @@ export const getItem = internalQuery({
 
 /**
  * Update an item. Auto-sets completedAt on status→done.
- * Shallow merges metadata.
+ * Shallow merges metadata. Validates collection ownership on move.
  */
 export const updateItem = internalMutation({
   args: {
@@ -305,6 +318,19 @@ export const updateItem = internalMutation({
       throw new Error("Item not found");
     }
 
+    // Validate status if provided
+    if (updates.status && !ITEM_STATUSES.includes(updates.status as typeof ITEM_STATUSES[number])) {
+      throw new Error(`Invalid status "${updates.status}". Must be one of: ${ITEM_STATUSES.join(", ")}`);
+    }
+
+    // Validate collection ownership if moving to a different collection
+    if (updates.collectionId && updates.collectionId !== item.collectionId) {
+      const collection = await ctx.db.get(updates.collectionId);
+      if (!collection || collection.userId !== userId) {
+        throw new Error("Collection not found");
+      }
+    }
+
     const patch: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(updates)) {
@@ -323,9 +349,14 @@ export const updateItem = internalMutation({
       patch.completedAt = Date.now();
     }
 
-    // Clear completedAt if status moves away from done
+    // Clear completedAt if status moves away from done — use replace for the field
     if (updates.status && updates.status !== "done" && item.status === "done") {
-      patch.completedAt = undefined;
+      // Convex patch ignores undefined, so we need to replace the full document
+      const currentDoc = (await ctx.db.get(itemId))!;
+      const { _id, _creationTime, completedAt: _removed, ...rest } = currentDoc;
+      void _removed; // discard completedAt
+      await ctx.db.replace(itemId, { ...rest, ...patch });
+      return await ctx.db.get(itemId);
     }
 
     if (Object.keys(patch).length > 0) {
@@ -519,4 +550,3 @@ export const deleteAllUserItems = internalMutation({
     return { itemsDeleted: items.length, collectionsDeleted: collections.length };
   },
 });
-

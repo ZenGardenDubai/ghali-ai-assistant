@@ -56,6 +56,29 @@ describe("createCollection", () => {
     expect(id1).toBe(id2);
   });
 
+  it("deduplicates case-insensitively", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const id1 = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Expenses",
+    });
+
+    const id2 = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "expenses",
+    });
+
+    const id3 = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "EXPENSES",
+    });
+
+    expect(id1).toBe(id2);
+    expect(id1).toBe(id3);
+  });
+
   it("enforces basic tier collection limit", async () => {
     const t = convexTest(schema, modules);
     const userId = await createUser(t);
@@ -243,6 +266,38 @@ describe("createItem", () => {
     expect(item!.currency).toBe("AED");
   });
 
+  it("rejects invalid status", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    await expect(
+      t.mutation(internal.items.createItem, {
+        userId,
+        title: "Bad status",
+        status: "completed",
+      })
+    ).rejects.toThrow("Invalid status");
+  });
+
+  it("rejects collectionId belonging to another user", async () => {
+    const t = convexTest(schema, modules);
+    const userId1 = await createUser(t, "+971501234567");
+    const userId2 = await createUser(t, "+971509876543");
+
+    const collId = await t.mutation(internal.items.createCollection, {
+      userId: userId1,
+      name: "My Collection",
+    });
+
+    await expect(
+      t.mutation(internal.items.createItem, {
+        userId: userId2,
+        collectionId: collId,
+        title: "Sneaky item",
+      })
+    ).rejects.toThrow("Collection not found");
+  });
+
   it("enforces basic tier item limit", async () => {
     const t = convexTest(schema, modules);
     const userId = await createUser(t);
@@ -401,6 +456,48 @@ describe("updateItem", () => {
       company: "Emirates",
       email: "ahmed@emirates.com",
     });
+  });
+
+  it("rejects moving item to another user's collection", async () => {
+    const t = convexTest(schema, modules);
+    const userId1 = await createUser(t, "+971501234567");
+    const userId2 = await createUser(t, "+971509876543");
+
+    const collId = await t.mutation(internal.items.createCollection, {
+      userId: userId2,
+      name: "Their Collection",
+    });
+
+    const itemId = await t.mutation(internal.items.createItem, {
+      userId: userId1,
+      title: "My item",
+    });
+
+    await expect(
+      t.mutation(internal.items.updateItem, {
+        itemId,
+        userId: userId1,
+        updates: { collectionId: collId },
+      })
+    ).rejects.toThrow("Collection not found");
+  });
+
+  it("rejects invalid status update", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const itemId = await t.mutation(internal.items.createItem, {
+      userId,
+      title: "Task",
+    });
+
+    await expect(
+      t.mutation(internal.items.updateItem, {
+        itemId,
+        userId,
+        updates: { status: "completed" },
+      })
+    ).rejects.toThrow("Invalid status");
   });
 
   it("rejects update for wrong owner", async () => {

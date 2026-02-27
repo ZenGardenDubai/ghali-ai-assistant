@@ -146,7 +146,6 @@ export default defineSchema({
     .index("by_userId_status", ["userId", "status"])
     .index("by_userId_dueDate", ["userId", "dueDate"])
     .index("by_userId_reminderAt", ["userId", "reminderAt"])
-    .index("by_userId_tags", ["userId", "tags"])
     .vectorIndex("by_embedding", {
       vectorField: "embedding",
       dimensions: 1536,
