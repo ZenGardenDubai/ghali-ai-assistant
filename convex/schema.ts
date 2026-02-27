@@ -100,4 +100,56 @@ export default defineSchema({
     .index("by_runAt", ["runAt"])
     .index("by_status_runAt", ["status", "runAt"])
     .index("by_userId_status", ["userId", "status"]),
+
+  collections: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    icon: v.optional(v.string()),
+    description: v.optional(v.string()),
+    type: v.optional(v.string()),
+    archived: v.optional(v.boolean()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_name", ["userId", "name"]),
+
+  items: defineTable({
+    userId: v.id("users"),
+    collectionId: v.optional(v.id("collections")),
+
+    // Core fields
+    title: v.string(),
+    body: v.optional(v.string()),
+    status: v.string(),
+
+    // Queryable typed fields
+    priority: v.optional(v.string()),
+    dueDate: v.optional(v.number()),
+    amount: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    reminderAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+
+    // Flexible fields
+    tags: v.optional(v.array(v.string())),
+    metadata: v.optional(v.any()),
+    mediaStorageId: v.optional(v.id("_storage")),
+
+    // Search
+    embedding: v.optional(v.array(v.float64())),
+    embeddingReady: v.optional(v.boolean()),
+
+    // Reminder tracking
+    reminderCronId: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_collectionId", ["collectionId"])
+    .index("by_userId_status", ["userId", "status"])
+    .index("by_userId_dueDate", ["userId", "dueDate"])
+    .index("by_userId_reminderAt", ["userId", "reminderAt"])
+    .index("by_userId_tags", ["userId", "tags"])
+    .vectorIndex("by_embedding", {
+      vectorField: "embedding",
+      dimensions: 1536,
+      filterFields: ["userId", "collectionId", "status"],
+    }),
 });

@@ -147,10 +147,38 @@ export const RATE_LIMIT_BURST_CAPACITY = 40;
 export const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // ============================================================================
+// Structured Data (Items & Collections)
+// ============================================================================
+
+/** Max active+done items for basic tier */
+export const ITEMS_LIMIT_BASIC = 200;
+
+/** Max active+done items for pro tier (unlimited) */
+export const ITEMS_LIMIT_PRO = Infinity;
+
+/** Max collections for basic tier */
+export const COLLECTIONS_LIMIT_BASIC = 10;
+
+/** Max collections for pro tier (unlimited) */
+export const COLLECTIONS_LIMIT_PRO = Infinity;
+
+/** Max active reminders for basic tier */
+export const REMINDERS_LIMIT_BASIC = 20;
+
+/** Max active reminders for pro tier */
+export const REMINDERS_LIMIT_PRO = 100;
+
+/** Default number of items returned by queryItems */
+export const ITEMS_QUERY_DEFAULT_LIMIT = 20;
+
+/** Maximum number of items returned by queryItems */
+export const ITEMS_QUERY_MAX_LIMIT = 50;
+
+// ============================================================================
 // Reminders
 // ============================================================================
 
-/** Maximum pending reminders per user */
+/** Maximum pending reminders per user (legacy — use tier-based limits for items) */
 export const MAX_REMINDERS_PER_USER = 25;
 
 /** Credit threshold for low-credit warning (fires once when balance crosses below) */
