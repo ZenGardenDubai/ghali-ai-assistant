@@ -7,9 +7,48 @@ import {
   simplifyItemsForResponse,
   buildSimpleItemPatch,
   normalizeFilterDate,
+  buildEmbeddingText,
   type ItemLike,
   type QueryItem,
 } from "./items";
+
+// ============================================================================
+// buildEmbeddingText
+// ============================================================================
+
+describe("buildEmbeddingText", () => {
+  it("returns title only when no body or tags", () => {
+    expect(buildEmbeddingText({ title: "Coffee" })).toBe("Coffee");
+  });
+
+  it("includes body when provided", () => {
+    expect(buildEmbeddingText({ title: "Coffee", body: "At Starbucks" })).toBe(
+      "Coffee At Starbucks"
+    );
+  });
+
+  it("includes tags when provided", () => {
+    expect(
+      buildEmbeddingText({ title: "Coffee", tags: ["food", "drink"] })
+    ).toBe("Coffee food drink");
+  });
+
+  it("includes title, body, and tags", () => {
+    expect(
+      buildEmbeddingText({
+        title: "Coffee",
+        body: "At Starbucks",
+        tags: ["food", "drink"],
+      })
+    ).toBe("Coffee At Starbucks food drink");
+  });
+
+  it("skips empty body and empty tags array", () => {
+    expect(buildEmbeddingText({ title: "Note", body: "", tags: [] })).toBe(
+      "Note"
+    );
+  });
+});
 
 // ============================================================================
 // scoreItemMatch

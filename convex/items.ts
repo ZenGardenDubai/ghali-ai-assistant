@@ -6,7 +6,10 @@
  */
 
 import { v } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { openai } from "@ai-sdk/openai";
+import { embed } from "ai";
 import {
   ITEMS_LIMIT_BASIC,
   ITEMS_LIMIT_PRO,
@@ -15,7 +18,8 @@ import {
   ITEMS_QUERY_DEFAULT_LIMIT,
   ITEMS_QUERY_MAX_LIMIT,
 } from "./constants";
-import { scoreItemMatch } from "./lib/items";
+import { MODELS } from "./models";
+import { scoreItemMatch, buildEmbeddingText } from "./lib/items";
 
 /** Valid item statuses */
 const ITEM_STATUSES = ["active", "done", "archived"] as const;
@@ -572,5 +576,152 @@ export const deleteAllUserItems = internalMutation({
     }
 
     return { itemsDeleted: items.length, collectionsDeleted: collections.length };
+  },
+});
+
+// ============================================================================
+// Embedding Pipeline
+// ============================================================================
+
+/**
+ * Set the embedding vector on an item (called by embedItem action).
+ */
+export const setEmbedding = internalMutation({
+  args: {
+    itemId: v.id("items"),
+    userId: v.id("users"),
+    embedding: v.array(v.float64()),
+  },
+  handler: async (ctx, { itemId, userId, embedding }) => {
+    const item = await ctx.db.get(itemId);
+    if (!item || item.userId !== userId) {
+      throw new Error("Item not found");
+    }
+    await ctx.db.patch(itemId, { embedding, embeddingReady: true });
+  },
+});
+
+/**
+ * Generate and store an embedding for an item.
+ * Non-critical — failures are logged but don't block the user.
+ */
+export const embedItem = internalAction({
+  args: {
+    itemId: v.id("items"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { itemId, userId }) => {
+    try {
+      const item = await ctx.runQuery(internal.items.getItem, { itemId, userId });
+      if (!item) {
+        console.log(`[embed] item not found: ${itemId}`);
+        return;
+      }
+
+      const text = buildEmbeddingText({
+        title: item.title,
+        body: item.body,
+        tags: item.tags,
+      });
+
+      const { embedding } = await embed({
+        model: openai.embedding(MODELS.EMBEDDING),
+        value: text,
+      });
+
+      await ctx.runMutation(internal.items.setEmbedding, {
+        itemId,
+        userId,
+        embedding,
+      });
+
+      console.log(`[embed] done | item: ${itemId} | text: "${text.slice(0, 50)}"`);
+    } catch (error) {
+      console.error(`[embed] failed for item ${itemId}:`, error);
+    }
+  },
+});
+
+/**
+ * Fetch full item documents by their IDs.
+ * Used after vectorSearch (which only returns IDs + scores).
+ */
+export const getItemsByIds = internalQuery({
+  args: {
+    itemIds: v.array(v.id("items")),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { itemIds, userId }) => {
+    const items = await Promise.all(itemIds.map((id) => ctx.db.get(id)));
+    return items.filter((i): i is NonNullable<typeof i> => i !== null && i.userId === userId);
+  },
+});
+
+/**
+ * Vector search items: embeds the query, runs vectorSearch, fetches full docs.
+ * vectorSearch is only available in action context in Convex.
+ */
+export const vectorSearchItems = internalAction({
+  args: {
+    userId: v.id("users"),
+    query: v.string(),
+    limit: v.optional(v.number()),
+    collectionId: v.optional(v.id("collections")),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, { userId, query, limit, collectionId, status }): Promise<
+    Array<{
+      _id: string;
+      _score: number;
+      title: string;
+      body?: string;
+      status: string;
+      tags?: string[];
+      collectionId?: string;
+      _creationTime: number;
+      [key: string]: unknown;
+    }>
+  > => {
+    const { embedding } = await embed({
+      model: openai.embedding(MODELS.EMBEDDING),
+      value: query,
+    });
+
+    // vectorSearch only supports eq + or (no and), so filter by userId
+    // and apply collectionId/status filters in-memory after fetch.
+    const searchResults = await ctx.vectorSearch("items", "by_embedding", {
+      vector: embedding,
+      limit: (limit ?? 10) * 2, // over-fetch to account for post-filtering
+      filter: (q) => q.eq("userId", userId),
+    });
+
+    if (searchResults.length === 0) return [];
+
+    // Fetch full documents (with ownership check)
+    const docs = await ctx.runQuery(internal.items.getItemsByIds, {
+      itemIds: searchResults.map((r) => r._id),
+      userId,
+    });
+
+    // Merge scores with full docs and apply in-memory filters
+    const scoreMap = new Map(searchResults.map((r) => [r._id.toString(), r._score]));
+    let results = docs.map((doc) => ({
+      ...doc,
+      _id: doc._id.toString(),
+      _score: scoreMap.get(doc._id.toString()) ?? 0,
+      collectionId: doc.collectionId?.toString(),
+    }));
+
+    if (collectionId) {
+      results = results.filter((r) => r.collectionId === collectionId.toString());
+    }
+    if (status) {
+      results = results.filter((r) => r.status === status);
+    } else {
+      // Exclude archived items by default (consistent with findItemByText and queryItems)
+      results = results.filter((r) => r.status !== "archived");
+    }
+
+    return results.slice(0, limit ?? 10);
   },
 });

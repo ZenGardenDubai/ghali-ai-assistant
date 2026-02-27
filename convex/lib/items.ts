@@ -30,6 +30,25 @@ export interface QueryItem extends ItemLike {
 }
 
 // ============================================================================
+// Embedding Text Builder
+// ============================================================================
+
+/**
+ * Build a single text string for embedding from item fields.
+ * Concatenates title, body, and tags into one searchable text.
+ */
+export function buildEmbeddingText(item: {
+  title: string;
+  body?: string;
+  tags?: string[];
+}): string {
+  const parts = [item.title];
+  if (item.body) parts.push(item.body);
+  if (item.tags?.length) parts.push(item.tags.join(" "));
+  return parts.join(" ");
+}
+
+// ============================================================================
 // Item Filtering (used by queryItemsTool text-search path)
 // ============================================================================
 
