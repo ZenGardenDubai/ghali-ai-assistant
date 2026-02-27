@@ -276,6 +276,7 @@ export const executePipeline = internalAction({
       }
     };
 
+    // Counts logical pipeline stages completed (including non-LLM steps like RAG), not just $ai_generation events
     let stepsCompleted = 0;
 
     // Load the most recent brief for this user (no ID relay through agent)

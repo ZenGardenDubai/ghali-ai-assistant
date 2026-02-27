@@ -75,7 +75,7 @@ PostHog standard event for LLM calls. Shows in LLM Analytics dashboard.
 **Triggered in**:
 - `convex/agent.ts` usageHandler — every LLM call (Flash, embeddings, deep reasoning)
 - `convex/images.ts` — image generation (with estimated tokens: 1290 output)
-- `convex/proWrite.ts` — each pipeline step (BRIEF, ENRICH, RESEARCH, SYNTHESIZE, DRAFT, ELEVATE, REFINE, HUMANIZE) with providers `anthropic`, `google`, `openrouter`, `openai`
+- `convex/proWrite.ts` — each LLM pipeline step (BRIEF, ENRICH, RESEARCH, SYNTHESIZE, DRAFT, ELEVATE, REFINE, HUMANIZE) with providers `anthropic`, `google`, `openrouter`, `openai`. Note: the RAG step is a non-LLM retrieval step and does not emit `$ai_generation`.
 
 ### `credit_used`
 
@@ -179,7 +179,7 @@ Captured via `posthog-js` on ghali.ae:
 | Credits Exhausted | Line | `credits_exhausted` events per day |
 | Feature Usage | Bar | `feature_used` broken down by `feature` property (TODO: create manually — see below) |
 
-## TODO: Create "Feature Usage" Insight
+## TODO: Create "Feature Usage" Insight ([#63](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/63))
 
 Not yet created in PostHog. Steps:
 
