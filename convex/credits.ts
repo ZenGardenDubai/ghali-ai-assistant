@@ -62,6 +62,27 @@ export const deductCredit = internalMutation({
 });
 
 /**
+ * Deduct multiple credits from a user in a single mutation.
+ * Used by premium features (e.g. ProWrite) that cost more than 1 credit.
+ * Credits floor at 0 — never goes negative.
+ */
+export const deductMultipleCredits = internalMutation({
+  args: {
+    userId: v.id("users"),
+    amount: v.number(),
+  },
+  handler: async (ctx, { userId, amount }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    const newCredits = Math.max(0, user.credits - amount);
+    await ctx.db.patch(userId, { credits: newCredits });
+    return { credits: newCredits };
+  },
+});
+
+/**
  * Monthly credit reset cron handler.
  * Resets credits for users whose creditsResetAt has passed.
  */

@@ -272,3 +272,29 @@ export const MODELS = {
   /** Text embedding model for RAG */
   EMBEDDING: "text-embedding-3-small",
 } as const;
+
+// ============================================================================
+// ProWrite
+// ============================================================================
+
+/**
+ * Credits deducted for a full ProWrite article (write phase).
+ * The write phase deducts CREDITS_PROWRITE - 1 internally; the normal per-request
+ * system deducts the final 1, totalling CREDITS_PROWRITE.
+ */
+export const CREDITS_PROWRITE = 10;
+
+/**
+ * ProWrite model identifiers — all non-research steps route through OpenRouter.
+ * Research uses Google AI API directly (for Search grounding).
+ */
+export const PROWRITE_MODELS = {
+  /** Brief, clarify, enrich, synthesize, and humanize steps — via OpenRouter */
+  OPUS: "anthropic/claude-opus-4-6",
+  /** Draft and refine steps — via OpenRouter */
+  KIMI: "moonshotai/kimi-k2",
+  /** Elevate step — creative elevation at high temperature — via OpenRouter */
+  CREATIVE: "openai/gpt-5.2",
+  /** Fallback for the elevate step if the primary model is unavailable */
+  CREATIVE_FALLBACK: "openai/gpt-4o",
+} as const;

@@ -2,12 +2,23 @@ import { Agent, createTool } from "@convex-dev/agent";
 import { components, internal } from "./_generated/api";
 import { google } from "@ai-sdk/google";
 import { anthropic } from "@ai-sdk/anthropic";
-import { openai } from "@ai-sdk/openai";
+import { openai, createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { z } from "zod";
 import { Id } from "./_generated/dataModel";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
+import {
+  detectProWriteTrigger as _detectProWriteTrigger,
+  buildBriefSystemPrompt,
+  buildClarifySystemPrompt,
+  buildEnrichSystemPrompt,
+  buildSynthesisSystemPrompt,
+  buildDraftSystemPrompt,
+  buildElevateSystemPrompt,
+  buildRefineSystemPrompt,
+  buildHumanizeSystemPrompt,
+} from "./lib/prowrite";
 import { MEMORY_CATEGORIES } from "./lib/memory";
 import { MEDIA_CATEGORY_PREFIX_MAP, isVoiceNote } from "./lib/media";
 import {
@@ -15,6 +26,7 @@ import {
   AGENT_RECENT_MESSAGES,
   COLLECTIONS_LIMIT_BASIC,
   CREDITS_BASIC,
+  CREDITS_PROWRITE,
   DEFAULT_IMAGE_ASPECT_RATIO,
   IMAGE_PROMPT_MAX_LENGTH,
   ITEMS_LIMIT_BASIC,
@@ -22,6 +34,7 @@ import {
   PRO_FEATURES,
   PRO_PLAN_PRICE_MONTHLY_USD,
   PRO_PLAN_PRICE_ANNUAL_USD,
+  PROWRITE_MODELS,
 } from "./constants";
 import { parseDatetimeInTimezone, getNextCronRun } from "./lib/cronParser";
 import {
@@ -33,6 +46,16 @@ import {
   normalizeFilterDate,
 } from "./lib/items";
 import type { AggregateMode, QueryItem } from "./lib/items";
+
+/**
+ * OpenRouter client — used by the ProWrite pipeline for multi-provider access.
+ * Provides an OpenAI-compatible interface to Kimi K2, GPT-5.2, and Claude Opus via OpenRouter.
+ */
+const openRouter = createOpenAI({
+  name: "openrouter",
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: process.env.OPENROUTER_API_KEY ?? "",
+});
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -159,7 +182,34 @@ STRUCTURED DATA RULES:
   - Contacts → scannable format: name + key info on each line.
   - Keep responses concise — max 10 items in a response. Tell user if there are more.
 - *Formatting*: no tables (WhatsApp doesn't support them). Use emoji grouping (💰 expenses, ✅ tasks, 👤 contacts, 📝 notes, 🔖 bookmarks). Format amounts with commas (1,000 not 1000).
-- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."`;
+- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."
+
+14. *ProWrite — Professional Writing Pipeline*
+
+Use the proWrite tool for professional long-form writing: LinkedIn posts, blog articles, essays, newsletters, reports, op-eds. Do NOT use it for casual replies, short notes, code, or conversational messages.
+
+TRIGGER PHRASES: "write me a [post/article/essay/newsletter]", "draft a [content type]", "help me write about X", "compose an article", "prowrite: ..."
+
+TWO-PHASE FLOW:
+a) User sends a writing request → call proWrite({request: "...", phase: "brief"})
+b) Tool returns {type: "prowrite_brief", brief, questions} → Present a 1–2 sentence brief summary + the questions naturally (not as raw JSON)
+c) User answers → BEFORE calling write phase, send EXACTLY: "Starting the writing pipeline now ✍️ This usually takes 3–4 minutes — I'll send you the final article when it's ready."
+d) Call proWrite({request: originalRequest, phase: "write", userAnswers: "the user's full answers"})
+e) Tool returns {type: "prowrite_article", article} → Send the article text, then ask "Want any adjustments?"
+
+FAST PATH — skip questions when user says "just write it", "skip questions", or uses "prowrite:" prefix:
+→ call proWrite({request, phase: "write", skipQuestions: true}) directly (skip the brief phase entirely)
+→ Still send the "Starting the writing pipeline" message first
+
+ADJUSTMENTS — when the user asks to revise the article (shorter, different tone, etc.):
+→ call proWrite({request: "[original request + adjustment details]", phase: "write"})
+
+CREDIT COST: ProWrite costs ${CREDITS_PROWRITE} credits per article. If a user has fewer than ${CREDITS_PROWRITE} credits, the tool will return an error — tell them they need more credits to use ProWrite.
+
+RESULTS FORMAT:
+- {type: "prowrite_brief"} → present brief + questions to user
+- {type: "prowrite_article"} → send article text to user
+- {status: "error"} → explain the error to the user`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
@@ -1306,6 +1356,246 @@ const manageCollection = createTool({
   },
 });
 
+const proWrite = createTool({
+  description:
+    "Multi-LLM professional writing pipeline. Use for LinkedIn posts, articles, blog posts, essays, newsletters, and other long-form professional content. Phase 'brief': generates a creative brief and clarifying questions. Phase 'write': runs the full 8-step pipeline (takes 3–4 minutes) and returns the finished article.",
+  args: z.object({
+    request: z.string().describe("The user's writing request — include topic, platform, audience, and word count if provided"),
+    phase: z
+      .enum(["brief", "write"])
+      .describe("brief: parse request and generate clarifying questions. write: run the full writing pipeline."),
+    userAnswers: z
+      .string()
+      .optional()
+      .describe("The user's answers to the clarifying questions from the brief phase. Pass these when running the write phase after the user has replied."),
+    skipQuestions: z
+      .boolean()
+      .optional()
+      .describe("If true, skip the clarify step and run the write pipeline with defaults (for 'just write it' / 'skip questions' requests)."),
+  }),
+  handler: async (ctx, { request, phase, userAnswers, skipQuestions }): Promise<string> => {
+    if (!process.env.OPENROUTER_API_KEY) {
+      return JSON.stringify({
+        status: "error",
+        code: "NOT_CONFIGURED",
+        message: "ProWrite is not available at the moment. Please try again later.",
+      });
+    }
+
+    // ── Phase 1: Brief + Clarify ──────────────────────────────────────────
+    if (phase === "brief") {
+      try {
+        // Step 1 — BRIEF: generate the creative brief
+        const briefResult = await generateText({
+          model: openRouter(PROWRITE_MODELS.OPUS),
+          system: buildBriefSystemPrompt(),
+          prompt: `Writing request: ${request}`,
+        });
+
+        if (skipQuestions) {
+          return JSON.stringify({
+            type: "prowrite_brief",
+            brief: briefResult.text,
+            questions: [],
+            skipQuestions: true,
+          });
+        }
+
+        // Step 1.5 — CLARIFY: generate targeted questions from the brief
+        const clarifyResult = await generateText({
+          model: openRouter(PROWRITE_MODELS.OPUS),
+          system: buildClarifySystemPrompt(),
+          prompt: `Creative brief:\n${briefResult.text}\n\nOriginal request: ${request}`,
+        });
+
+        let questions: string[] = [];
+        try {
+          questions = JSON.parse(clarifyResult.text) as string[];
+          if (!Array.isArray(questions)) questions = [clarifyResult.text];
+        } catch {
+          questions = [clarifyResult.text];
+        }
+
+        return JSON.stringify({
+          type: "prowrite_brief",
+          brief: briefResult.text,
+          questions,
+        });
+      } catch (error) {
+        console.error("ProWrite brief phase failed:", error);
+        const msg = error instanceof Error ? error.message : String(error);
+        return JSON.stringify({ status: "error", code: "BRIEF_FAILED", message: msg });
+      }
+    }
+
+    // ── Phase 2: Write (full pipeline) ────────────────────────────────────
+    const userId = ctx.userId as Id<"users">;
+
+    // Credit check — ProWrite costs CREDITS_PROWRITE total.
+    // We deduct CREDITS_PROWRITE - 1 here; the normal per-request system deducts 1 more.
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+      credits: number;
+      name?: string;
+      timezone: string;
+    } | null;
+
+    if (!user || user.credits < CREDITS_PROWRITE) {
+      return JSON.stringify({
+        status: "error",
+        code: "INSUFFICIENT_CREDITS",
+        message: `ProWrite requires ${CREDITS_PROWRITE} credits. You currently have ${user?.credits ?? 0}.`,
+      });
+    }
+
+    // Deduct the extra credits upfront (the per-request system deducts 1 more = CREDITS_PROWRITE total)
+    await ctx.runMutation(internal.credits.deductMultipleCredits, {
+      userId,
+      amount: CREDITS_PROWRITE - 1,
+    });
+
+    try {
+      // Step 1.7 — ENRICH: fold user answers into the brief (or re-generate from request)
+      let enrichedBrief: string;
+      if (userAnswers) {
+        const enrichResult = await generateText({
+          model: openRouter(PROWRITE_MODELS.OPUS),
+          system: buildEnrichSystemPrompt(),
+          prompt: `Original writing request: ${request}\n\nUser's answers to clarifying questions: ${userAnswers}`,
+        });
+        enrichedBrief = enrichResult.text;
+      } else {
+        // No answers — generate brief directly from request
+        const briefResult = await generateText({
+          model: openRouter(PROWRITE_MODELS.OPUS),
+          system: buildBriefSystemPrompt(),
+          prompt: `Writing request: ${request}`,
+        });
+        enrichedBrief = briefResult.text;
+      }
+
+      // Extract word count from the enriched brief (JSON field)
+      let wordCount = 500;
+      try {
+        const briefObj = JSON.parse(enrichedBrief) as { wordCount?: unknown };
+        if (typeof briefObj.wordCount === "number" && briefObj.wordCount > 0) {
+          wordCount = briefObj.wordCount;
+        }
+      } catch {
+        // Brief may not be valid JSON — use default word count
+      }
+
+      // Step 2 — RESEARCH: web-grounded facts via Gemini + Google Search
+      let research = "";
+      try {
+        const researchResult = await generateText({
+          model: google(MODELS.FLASH),
+          tools: { google_search: google.tools.googleSearch({}) },
+          prompt: `Research this topic thoroughly for a professional article. Find current facts, statistics, expert quotes, and real-world examples. Topic: ${request}`,
+          maxSteps: 5,
+        });
+        research = researchResult.text;
+      } catch (error) {
+        console.error("ProWrite: research step failed, continuing without research:", error);
+        research = "(Research unavailable — proceeding with general knowledge.)";
+      }
+
+      // Step 3 — RAG: search user's personal document vault
+      let ragContent = "";
+      try {
+        ragContent = await ctx.runAction(internal.rag.searchDocuments, {
+          userId: userId as string,
+          query: request,
+        });
+      } catch (error) {
+        console.error("ProWrite: RAG step failed, continuing without user docs:", error);
+        ragContent = "";
+      }
+
+      // Step 4 — SYNTHESIZE: build fact sheet + narrative arc + outline
+      const synthesisResult = await generateText({
+        model: openRouter(PROWRITE_MODELS.OPUS),
+        system: buildSynthesisSystemPrompt(),
+        prompt: `Brief:\n${enrichedBrief}\n\nWeb research:\n${research}\n\nUser's documents:\n${ragContent || "(none)"}`,
+      });
+
+      // Step 5 — DRAFT: write the full article (Kimi K2)
+      const draftResult = await generateText({
+        model: openRouter(PROWRITE_MODELS.KIMI),
+        system: buildDraftSystemPrompt(wordCount),
+        prompt: `Fact sheet and outline:\n${synthesisResult.text}\n\nOriginal request: ${request}`,
+      });
+
+      // Step 6 — ELEVATE: inject creativity at high temperature (GPT-5.2, fallback GPT-4o)
+      let elevated = draftResult.text;
+      try {
+        const elevateResult = await generateText({
+          model: openRouter(PROWRITE_MODELS.CREATIVE),
+          system: buildElevateSystemPrompt(),
+          prompt: elevated,
+          temperature: 0.9,
+        });
+        elevated = elevateResult.text;
+      } catch {
+        try {
+          const fallbackResult = await generateText({
+            model: openRouter(PROWRITE_MODELS.CREATIVE_FALLBACK),
+            system: buildElevateSystemPrompt(),
+            prompt: elevated,
+            temperature: 0.9,
+          });
+          elevated = fallbackResult.text;
+        } catch (fallbackError) {
+          console.error("ProWrite: elevate step failed (both models), continuing with draft:", fallbackError);
+          // Continue with unelevated draft rather than failing the whole pipeline
+        }
+      }
+
+      // Step 7 — REFINE: polish coherence and flow (Kimi K2)
+      const refineResult = await generateText({
+        model: openRouter(PROWRITE_MODELS.KIMI),
+        system: buildRefineSystemPrompt(),
+        prompt: elevated,
+      });
+
+      // Step 8 — HUMANIZE: strip AI artifacts, match user's voice (Claude Opus)
+      const userFiles = await ctx.runQuery(internal.users.internalGetUserFiles, { userId }) as Array<{
+        filename: string;
+        content: string;
+      }>;
+      const personalityFile = userFiles.find((f) => f.filename === "personality");
+      const voiceProfile = [
+        user.name ? `Name: ${user.name}` : "",
+        personalityFile?.content ?? "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const humanizeResult = await generateText({
+        model: openRouter(PROWRITE_MODELS.OPUS),
+        system: buildHumanizeSystemPrompt(voiceProfile),
+        prompt: refineResult.text,
+      });
+
+      const article = humanizeResult.text;
+      const approxWordCount = article.split(/\s+/).filter(Boolean).length;
+
+      return JSON.stringify({
+        type: "prowrite_article",
+        article,
+        wordCount: approxWordCount,
+      });
+    } catch (error) {
+      console.error("ProWrite pipeline failed:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({
+        status: "error",
+        code: "PIPELINE_FAILED",
+        message: `The writing pipeline encountered an error: ${msg}`,
+      });
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -1330,6 +1620,7 @@ export const ghaliAgent = new Agent(components.agent, {
     queryItems: queryItemsTool,
     updateItem: updateItemTool,
     manageCollection,
+    proWrite,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {
