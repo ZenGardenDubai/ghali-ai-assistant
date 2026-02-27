@@ -55,6 +55,7 @@ Pick one, or say *skip* — you can change this anytime.`,
 🧠 Remember your preferences over time
 ⏰ Precise reminders — down to the minute
 💓 Heartbeat — proactive check-ins
+📊 Track expenses, tasks, contacts, notes & more
 
 Say *help* anytime for commands. Let's go!`,
     variables: [],
@@ -110,6 +111,7 @@ Thanks for being Pro! 💎`,
 🧠 *Memory* — I learn your preferences over time — no need to repeat yourself
 ⏰ *Reminders* — Set one-time or recurring reminders, precise to the minute
 💓 *Heartbeat* — Proactive check-ins based on your schedule
+📊 *Track anything* — Expenses, tasks, contacts, notes, bookmarks — just tell me and I organize it
 
 *Commands:*
 • *account* — your plan, credits, and settings

@@ -63,6 +63,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: "https://ghali.ae/features/track-everything",
+      lastModified: "2026-02-27",
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
       url: "https://ghali.ae/features/open-source",
       lastModified: "2026-02-22",
       changeFrequency: "monthly",

@@ -29,6 +29,13 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **3-step onboarding** — name, language, style preference (skippable)
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
 
+### Structured Data
+- **Items & Collections** — track expenses, tasks, contacts, notes, bookmarks, habits via natural language
+- **Hybrid search** — text scoring + semantic vector search (OpenAI embeddings)
+- **Smart aggregation** — sum, count, group by tag or collection
+- **Collections** — organize items into named groups with emoji and descriptions
+- **Reminders** — attach due dates and reminders to any item
+
 ### System
 - **Credit system** — 60/month free, 600/month Pro ($9.99/mo or $99.48/year). 1 credit per request.
 - **System commands** — `credits`, `help`, `privacy`, `upgrade`, `account` — template-based, no LLM cost
@@ -57,6 +64,7 @@ Background action:
     → generateImage tool → Gemini Pro (if needed)
     → googleSearch tool → real-time web data (if needed)
     → searchDocuments tool → user's RAG knowledge base (if needed)
+    → addItem/queryItems/updateItem tools → structured data (if needed)
   → Format for WhatsApp + split long messages
   → Send reply via Twilio API
 ```
@@ -158,6 +166,7 @@ ghali-ai-assistant/
 │   ├── agent.ts            # Ghali agent definition + tools
 │   ├── http.ts             # HTTP routes (Twilio + Clerk webhooks, admin API)
 │   ├── documents.ts        # Document processing + RAG pipeline
+│   ├── items.ts            # Structured data (items + collections + embeddings)
 │   ├── rag.ts              # RAG component setup
 │   ├── images.ts           # Image generation (Gemini Pro)
 │   ├── voice.ts            # Voice transcription (Whisper)
@@ -226,10 +235,14 @@ cd convex && npx vitest run
 - [x] Landing page (ghali.ae)
 - [x] Integration testing
 - [x] Deployment and configuration
+- [x] Structured data (items, collections, embeddings, vector search)
 - [ ] Post-launch hardening (monitoring, backups)
 
 ## Documentation
 
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture
+- [STACK.md](docs/STACK.md) — Tech stack and project structure
+- [STRUCTURED_DATA_SPEC.md](docs/STRUCTURED_DATA_SPEC.md) — Items & collections design
 - [SPEC.md](docs/SPEC.md) — Full build specification, architecture, and business rules
 - [PLAN.md](docs/PLAN.md) — Step-by-step execution plan with TDD tasks
 - [BUSINESS_RULES.md](docs/BUSINESS_RULES.md) — Business rules quick reference
