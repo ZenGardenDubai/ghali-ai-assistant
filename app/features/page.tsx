@@ -44,6 +44,7 @@ const featuresJsonLd = {
         { "@type": "WebPage", url: "https://ghali.ae/features/documents", name: "Documents & Knowledge Base" },
         { "@type": "WebPage", url: "https://ghali.ae/features/reminders", name: "Reminders & Scheduling" },
         { "@type": "WebPage", url: "https://ghali.ae/features/track-everything", name: "Track Everything" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/prowrite", name: "ProWrite" },
         { "@type": "WebPage", url: "https://ghali.ae/features/open-source", name: "Open Source" },
       ],
     },
@@ -113,6 +114,12 @@ const FEATURES = [
     title: "Track Everything",
     desc: "Expenses, tasks, contacts, notes, bookmarks — just say it and Ghali organizes it.",
     href: "/features/track-everything",
+  },
+  {
+    icon: "✍️",
+    title: "ProWrite",
+    desc: "8-model professional writing pipeline. LinkedIn posts, articles, emails — research-backed and human-sounding.",
+    href: "/features/prowrite",
   },
   {
     icon: "🔓",

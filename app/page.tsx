@@ -340,6 +340,19 @@ function Strengths() {
             </p>
           </Link>
 
+          {/* Card 4b — ProWrite */}
+          <Link href="/features/prowrite" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04]">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
+              ✍️
+            </div>
+            <h3 className="font-[family-name:var(--font-display)] text-2xl">
+              ProWrite
+            </h3>
+            <p className="mt-3 text-white/50 leading-relaxed">
+              Say <span className="text-white/70 font-mono text-sm">prowrite a LinkedIn post about...</span> and get a professional, human-sounding article through an 8-model pipeline in 3&ndash;4 minutes.
+            </p>
+          </Link>
+
           {/* Card 5 — One Assistant (full width, with use cases) */}
           <Link href="/features/smart-ai" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] lg:col-span-3">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
@@ -486,6 +499,12 @@ function Capabilities() {
       title: "Track expenses & tasks",
       desc: "Expenses, tasks, contacts, notes — all organized",
       href: "/features/track-everything",
+    },
+    {
+      icon: "✍️",
+      title: "ProWrite articles",
+      desc: "8-model pipeline for professional writing",
+      href: "/features/prowrite",
     },
     {
       icon: "🌍",

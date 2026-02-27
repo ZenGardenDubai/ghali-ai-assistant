@@ -56,6 +56,7 @@ Pick one, or say *skip* — you can change this anytime.`,
 ⏰ Precise reminders — down to the minute
 💓 Heartbeat — proactive check-ins
 📊 Track expenses, tasks, contacts, notes & more
+✍️ ProWrite — say *prowrite a LinkedIn post about...*
 
 Say *help* anytime for commands. Let's go!`,
     variables: [],
@@ -112,6 +113,7 @@ Thanks for being Pro! 💎`,
 ⏰ *Reminders* — Set one-time or recurring reminders, precise to the minute
 💓 *Heartbeat* — Proactive check-ins based on your schedule
 📊 *Track anything* — Expenses, tasks, contacts, notes, bookmarks — just tell me and I organize it
+✍️ *ProWrite* — Professional articles with a multi-AI pipeline (say *prowrite a LinkedIn post about...*)
 
 *Commands:*
 • *account* — your plan, credits, and settings
