@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.3...v0.17.0) (2026-02-27)
+
+
+### Features
+
+* add ProWrite multi-LLM professional writing pipeline ([#60](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/60)) ([6ee9ef7](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/6ee9ef74c9dc88a4a65fe66dccd53ab24c0315c5))
+
 ## [0.16.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.2...v0.16.3) (2026-02-27)
 
 
