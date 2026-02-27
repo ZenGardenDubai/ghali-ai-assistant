@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.12.2...v0.13.0) (2026-02-27)
+
+
+### Features
+
+* add structured data schema + CRUD (items & collections) ([#42](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/42)) ([ce5580b](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/ce5580bdb80443b5408d52dc7d0cae4f426f20c3))
+
 ## [0.12.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.12.1...v0.12.2) (2026-02-26)
 
 
