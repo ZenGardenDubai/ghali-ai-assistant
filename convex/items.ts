@@ -231,8 +231,18 @@ export const createItem = internalMutation({
         user.tier === "pro" ? ITEMS_LIMIT_PRO : ITEMS_LIMIT_BASIC;
 
       if (limit !== Infinity) {
-        const count = await countActiveAndDone(ctx, userId);
-        if (count >= limit) {
+        const existing = await ctx.db
+          .query("items")
+          .withIndex("by_userId", (q) => q.eq("userId", userId))
+          .filter((q) =>
+            q.or(
+              q.eq(q.field("status"), "active"),
+              q.eq(q.field("status"), "done")
+            )
+          )
+          .collect();
+
+        if (existing.length >= limit) {
           throw new Error(
             `Item limit reached (${limit}). Archive some items first or upgrade to Pro.`
           );
@@ -463,7 +473,18 @@ export const countUserItems = internalQuery({
     userId: v.id("users"),
   },
   handler: async (ctx, { userId }) => {
-    return await countActiveAndDone(ctx, userId);
+    const items = await ctx.db
+      .query("items")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "active"),
+          q.eq(q.field("status"), "done")
+        )
+      )
+      .collect();
+
+    return items.length;
   },
 });
 
@@ -499,22 +520,3 @@ export const deleteAllUserItems = internalMutation({
   },
 });
 
-// ============================================================================
-// Internal helpers
-// ============================================================================
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function countActiveAndDone(ctx: any, userId: any): Promise<number> {
-  const items = await ctx.db
-    .query("items")
-    .withIndex("by_userId", (q: any) => q.eq("userId", userId))
-    .filter((q: any) =>
-      q.or(
-        q.eq(q.field("status"), "active"),
-        q.eq(q.field("status"), "done")
-      )
-    )
-    .collect();
-
-  return items.length;
-}
