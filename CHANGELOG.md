@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.15.0...v0.16.0) (2026-02-27)
+
+
+### Features
+
+* structured data docs + landing page + feature page ([#51](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/51)) ([6268b6d](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/6268b6d0b4775466a05403e64cf30eac7b8669c0))
+
 ## [0.15.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.14.0...v0.15.0) (2026-02-27)
 
 
