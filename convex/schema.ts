@@ -139,6 +139,7 @@ export default defineSchema({
     embeddingReady: v.optional(v.boolean()),
 
     // Reminder tracking
+    reminderJobId: v.optional(v.id("scheduledJobs")),
     reminderCronId: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])

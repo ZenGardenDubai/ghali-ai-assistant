@@ -222,6 +222,7 @@ export const createItem = internalMutation({
     tags: v.optional(v.array(v.string())),
     metadata: v.optional(v.any()),
     mediaStorageId: v.optional(v.id("_storage")),
+    reminderJobId: v.optional(v.id("scheduledJobs")),
     reminderCronId: v.optional(v.string()),
   },
   handler: async (ctx, { userId, status: statusArg, collectionId, ...fields }) => {
@@ -314,8 +315,10 @@ export const updateItem = internalMutation({
       tags: v.optional(v.array(v.string())),
       metadata: v.optional(v.any()),
       collectionId: v.optional(v.id("collections")),
+      reminderJobId: v.optional(v.id("scheduledJobs")),
       reminderCronId: v.optional(v.string()),
       mediaStorageId: v.optional(v.id("_storage")),
+      clearReminder: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, { itemId, userId, updates }) => {
@@ -340,6 +343,7 @@ export const updateItem = internalMutation({
     const patch: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(updates)) {
+      if (key === "clearReminder") continue; // handled separately below
       if (value !== undefined) {
         if (key === "metadata" && item.metadata) {
           // Shallow merge metadata
@@ -355,12 +359,25 @@ export const updateItem = internalMutation({
       patch.completedAt = Date.now();
     }
 
-    // Clear completedAt if status moves away from done — use replace for the field
-    if (updates.status && updates.status !== "done" && item.status === "done") {
-      // Convex patch ignores undefined, so we need to replace the full document
+    // Fields that require replace (Convex patch can't unset fields)
+    const needsReplace =
+      (updates.status && updates.status !== "done" && item.status === "done") ||
+      updates.clearReminder;
+
+    if (needsReplace) {
       const currentDoc = (await ctx.db.get(itemId))!;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { _id, _creationTime, completedAt, ...rest } = currentDoc;
+      const { _id, _creationTime, ...rest } = currentDoc;
+      // Strip completedAt if status moves away from done
+      if (updates.status && updates.status !== "done" && item.status === "done") {
+        delete (rest as Record<string, unknown>).completedAt;
+      }
+      // Strip reminder fields if clearReminder is set
+      if (updates.clearReminder) {
+        delete (rest as Record<string, unknown>).reminderAt;
+        delete (rest as Record<string, unknown>).reminderJobId;
+        delete (rest as Record<string, unknown>).reminderCronId;
+      }
       await ctx.db.replace(itemId, { ...rest, ...patch });
       return await ctx.db.get(itemId);
     }
@@ -468,7 +485,7 @@ export const findItemByText = internalQuery({
   handler: async (ctx, { userId, query, limit }) => {
     const maxResults = limit ?? 5;
 
-    // Get all active+done items for this user
+    // Get active+done items for this user, newest first (capped at 1000 to bound memory)
     const items = await ctx.db
       .query("items")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
@@ -478,7 +495,8 @@ export const findItemByText = internalQuery({
           q.eq(q.field("status"), "done")
         )
       )
-      .collect();
+      .order("desc")
+      .take(1000);
 
     // Score each item
     const scored = items
