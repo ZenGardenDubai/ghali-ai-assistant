@@ -715,9 +715,9 @@ export const vectorSearchItems = internalAction({
     if (collectionId) {
       results = results.filter((r) => r.collectionId === collectionId.toString());
     }
-    if (status) {
+    if (status && status !== "all") {
       results = results.filter((r) => r.status === status);
-    } else {
+    } else if (!status) {
       // Exclude archived items by default (consistent with findItemByText and queryItems)
       results = results.filter((r) => r.status !== "archived");
     }
