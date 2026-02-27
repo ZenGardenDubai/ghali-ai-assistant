@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.14.0...v0.15.0) (2026-02-27)
+
+
+### Features
+
+* embedding pipeline + vector search + hybrid fallback ([#46](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/46)) ([3b6b933](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/3b6b93378581fa0f08b757becd9b6608825ddc69))
+
 ## [0.14.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.13.0...v0.14.0) (2026-02-27)
 
 
