@@ -222,6 +222,7 @@ export const createItem = internalMutation({
     tags: v.optional(v.array(v.string())),
     metadata: v.optional(v.any()),
     mediaStorageId: v.optional(v.id("_storage")),
+    reminderJobId: v.optional(v.id("scheduledJobs")),
     reminderCronId: v.optional(v.string()),
   },
   handler: async (ctx, { userId, status: statusArg, collectionId, ...fields }) => {
@@ -314,6 +315,7 @@ export const updateItem = internalMutation({
       tags: v.optional(v.array(v.string())),
       metadata: v.optional(v.any()),
       collectionId: v.optional(v.id("collections")),
+      reminderJobId: v.optional(v.id("scheduledJobs")),
       reminderCronId: v.optional(v.string()),
       mediaStorageId: v.optional(v.id("_storage")),
     }),

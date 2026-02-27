@@ -779,11 +779,17 @@ const addItem = createTool({
       // Schedule reminder if requested
       let reminderSet = false;
       if (reminderAt && reminderAt > Date.now()) {
-        await ctx.runMutation(internal.reminders.createReminder, {
+        const jobId = await ctx.runMutation(internal.reminders.createReminder, {
           userId,
           payload: `Reminder: ${args.title}`,
           runAt: reminderAt,
           timezone: tz,
+        }) as Id<"scheduledJobs">;
+        // Persist the jobId on the item for future cancellation
+        await ctx.runMutation(internal.items.updateItem, {
+          itemId,
+          userId,
+          updates: { reminderJobId: jobId },
         });
         reminderSet = true;
       }
@@ -967,7 +973,7 @@ const updateItemTool = createTool({
         userId,
         query: itemQuery,
         limit: 3,
-      }) as Array<{ _id: string; _score: number; title: string; status: string; reminderAt?: number; collectionId?: string }>;
+      }) as Array<{ _id: string; _score: number; title: string; status: string; reminderAt?: number; reminderJobId?: Id<"scheduledJobs">; collectionId?: string }>;
 
       if (matches.length === 0) {
         return JSON.stringify({ status: "error", code: "NOT_FOUND", message: `No item found matching "${itemQuery}".` });
@@ -1017,11 +1023,11 @@ const updateItemTool = createTool({
       }
 
       // Handle reminders
-      if (updates.clearReminder && top.reminderAt) {
-        // Cancel the scheduled reminder job
+      if (updates.clearReminder && top.reminderJobId) {
+        // Cancel the scheduled reminder job using the stored jobId
         try {
           await ctx.runMutation(internal.reminders.cancelReminder, {
-            jobId: top._id as unknown as Id<"scheduledJobs">,
+            jobId: top.reminderJobId,
             userId,
           });
         } catch {
@@ -1034,12 +1040,13 @@ const updateItemTool = createTool({
         const reminderAt = parseDatetimeInTimezone(updates.reminderAt, tz);
         patch.reminderAt = reminderAt;
         if (reminderAt > Date.now()) {
-          await ctx.runMutation(internal.reminders.createReminder, {
+          const jobId = await ctx.runMutation(internal.reminders.createReminder, {
             userId,
             payload: `Reminder: ${updates.title ?? top.title}`,
             runAt: reminderAt,
             timezone: tz,
-          });
+          }) as Id<"scheduledJobs">;
+          patch.reminderJobId = jobId;
         }
         changes.push("reminderSet");
       }
@@ -1052,8 +1059,8 @@ const updateItemTool = createTool({
           title?: string; body?: string; status?: string; priority?: string;
           dueDate?: number; amount?: number; currency?: string;
           reminderAt?: number; tags?: string[]; metadata?: unknown;
-          collectionId?: Id<"collections">; reminderCronId?: string;
-          mediaStorageId?: Id<"_storage">;
+          collectionId?: Id<"collections">; reminderJobId?: Id<"scheduledJobs">;
+          reminderCronId?: string; mediaStorageId?: Id<"_storage">;
         },
       });
 
