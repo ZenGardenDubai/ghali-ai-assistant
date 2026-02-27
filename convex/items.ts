@@ -318,6 +318,7 @@ export const updateItem = internalMutation({
       reminderJobId: v.optional(v.id("scheduledJobs")),
       reminderCronId: v.optional(v.string()),
       mediaStorageId: v.optional(v.id("_storage")),
+      clearReminder: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, { itemId, userId, updates }) => {
@@ -342,6 +343,7 @@ export const updateItem = internalMutation({
     const patch: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(updates)) {
+      if (key === "clearReminder") continue; // handled separately below
       if (value !== undefined) {
         if (key === "metadata" && item.metadata) {
           // Shallow merge metadata
@@ -357,12 +359,25 @@ export const updateItem = internalMutation({
       patch.completedAt = Date.now();
     }
 
-    // Clear completedAt if status moves away from done — use replace for the field
-    if (updates.status && updates.status !== "done" && item.status === "done") {
-      // Convex patch ignores undefined, so we need to replace the full document
+    // Fields that require replace (Convex patch can't unset fields)
+    const needsReplace =
+      (updates.status && updates.status !== "done" && item.status === "done") ||
+      updates.clearReminder;
+
+    if (needsReplace) {
       const currentDoc = (await ctx.db.get(itemId))!;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { _id, _creationTime, completedAt, ...rest } = currentDoc;
+      const { _id, _creationTime, ...rest } = currentDoc;
+      // Strip completedAt if status moves away from done
+      if (updates.status && updates.status !== "done" && item.status === "done") {
+        delete (rest as Record<string, unknown>).completedAt;
+      }
+      // Strip reminder fields if clearReminder is set
+      if (updates.clearReminder) {
+        delete (rest as Record<string, unknown>).reminderAt;
+        delete (rest as Record<string, unknown>).reminderJobId;
+        delete (rest as Record<string, unknown>).reminderCronId;
+      }
       await ctx.db.replace(itemId, { ...rest, ...patch });
       return await ctx.db.get(itemId);
     }

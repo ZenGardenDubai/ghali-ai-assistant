@@ -17,6 +17,129 @@ export interface ItemLike {
   status: string;
 }
 
+/**
+ * Extended item shape returned from queries (includes DB fields).
+ */
+export interface QueryItem extends ItemLike {
+  _id: string;
+  _creationTime: number;
+  priority?: string;
+  dueDate?: number;
+  completedAt?: number;
+  metadata?: unknown;
+}
+
+// ============================================================================
+// Item Filtering (used by queryItemsTool text-search path)
+// ============================================================================
+
+export interface ItemFilterParams {
+  status?: string;
+  collectionId?: string;
+  tags?: string[];
+  dueBefore?: number;
+  dueAfter?: number;
+  dateFrom?: number;
+  dateTo?: number;
+  hasAmount?: boolean;
+  limit?: number;
+}
+
+/**
+ * Apply in-memory filters to an array of items.
+ * Used after text search which doesn't support server-side filters.
+ */
+export function applyItemFilters<T extends QueryItem>(
+  items: T[],
+  filters: ItemFilterParams
+): T[] {
+  let result = items;
+
+  if (filters.collectionId) {
+    result = result.filter((i) => i.collectionId === filters.collectionId);
+  }
+  if (filters.status && filters.status !== "all") {
+    result = result.filter((i) => i.status === filters.status);
+  }
+  if (filters.tags && filters.tags.length > 0) {
+    result = result.filter((i) =>
+      i.tags?.some((t) => filters.tags!.includes(t))
+    );
+  }
+  if (filters.dueBefore != null) {
+    result = result.filter((i) => i.dueDate != null && i.dueDate <= filters.dueBefore!);
+  }
+  if (filters.dueAfter != null) {
+    result = result.filter((i) => i.dueDate != null && i.dueDate >= filters.dueAfter!);
+  }
+  if (filters.hasAmount) {
+    result = result.filter((i) => i.amount != null);
+  }
+  if (filters.dateFrom != null) {
+    result = result.filter((i) => i._creationTime >= filters.dateFrom!);
+  }
+  if (filters.dateTo != null) {
+    result = result.filter((i) => i._creationTime <= filters.dateTo!);
+  }
+
+  return result.slice(0, filters.limit ?? 20);
+}
+
+// ============================================================================
+// Response Formatting
+// ============================================================================
+
+/**
+ * Simplify items for JSON tool responses (strip internal fields, format dates).
+ */
+export function simplifyItemsForResponse(items: QueryItem[]) {
+  return items.map((i) => ({
+    id: i._id,
+    title: i.title,
+    body: i.body,
+    status: i.status,
+    priority: i.priority,
+    dueDate: i.dueDate ? new Date(i.dueDate).toISOString() : undefined,
+    amount: i.amount,
+    currency: i.currency,
+    tags: i.tags,
+    createdAt: new Date(i._creationTime).toISOString(),
+  }));
+}
+
+// ============================================================================
+// Update Patch Building
+// ============================================================================
+
+/**
+ * Build a patch object from update fields (simple field mapping, no side effects).
+ * Returns the patch and a list of changed field names.
+ */
+export function buildSimpleItemPatch(updates: {
+  title?: string;
+  body?: string;
+  status?: string;
+  priority?: string;
+  amount?: number;
+  currency?: string;
+  tags?: string[];
+  metadata?: unknown;
+}): { patch: Record<string, unknown>; changes: string[] } {
+  const patch: Record<string, unknown> = {};
+  const changes: string[] = [];
+
+  if (updates.title) { patch.title = updates.title; changes.push("title"); }
+  if (updates.body) { patch.body = updates.body; changes.push("body"); }
+  if (updates.status) { patch.status = updates.status; changes.push("status"); }
+  if (updates.priority) { patch.priority = updates.priority; changes.push("priority"); }
+  if (updates.amount != null) { patch.amount = updates.amount; changes.push("amount"); }
+  if (updates.currency) { patch.currency = updates.currency; changes.push("currency"); }
+  if (updates.tags) { patch.tags = updates.tags; changes.push("tags"); }
+  if (updates.metadata) { patch.metadata = updates.metadata; changes.push("metadata"); }
+
+  return { patch, changes };
+}
+
 // ============================================================================
 // Text Search Scoring
 // ============================================================================

@@ -24,8 +24,14 @@ import {
   PRO_PLAN_PRICE_ANNUAL_USD,
 } from "./constants";
 import { parseDatetimeInTimezone, getNextCronRun } from "./lib/cronParser";
-import { aggregateItems, deriveCurrency } from "./lib/items";
-import type { AggregateMode } from "./lib/items";
+import {
+  aggregateItems,
+  deriveCurrency,
+  applyItemFilters,
+  simplifyItemsForResponse,
+  buildSimpleItemPatch,
+} from "./lib/items";
+import type { AggregateMode, QueryItem } from "./lib/items";
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -386,7 +392,11 @@ const scheduleReminder = createTool({
   }),
   handler: async (ctx, { message, datetime, cronExpr, timezone }): Promise<string> => {
     if (!datetime && !cronExpr) {
-      return "Error: Provide either datetime (for one-shot) or cronExpr (for recurring).";
+      return JSON.stringify({
+        status: "error",
+        code: "MISSING_SCHEDULE_INPUT",
+        message: "Provide either datetime (for one-shot) or cronExpr (for recurring).",
+      });
     }
 
     const userId = ctx.userId as Id<"users">;
@@ -776,21 +786,37 @@ const addItem = createTool({
       }
 
       // Create item (with reminderJobId if reminder was scheduled)
-      const itemId = await ctx.runMutation(internal.items.createItem, {
-        userId,
-        collectionId,
-        title: args.title,
-        body: args.body,
-        status: args.status,
-        priority: args.priority,
-        dueDate,
-        amount: args.amount,
-        currency,
-        tags: args.tags,
-        metadata: args.metadata,
-        reminderAt,
-        reminderJobId,
-      }) as Id<"items">;
+      let itemId: Id<"items">;
+      try {
+        itemId = await ctx.runMutation(internal.items.createItem, {
+          userId,
+          collectionId,
+          title: args.title,
+          body: args.body,
+          status: args.status,
+          priority: args.priority,
+          dueDate,
+          amount: args.amount,
+          currency,
+          tags: args.tags,
+          metadata: args.metadata,
+          reminderAt,
+          reminderJobId,
+        }) as Id<"items">;
+      } catch (error) {
+        // Clean up orphaned reminder job if item creation fails
+        if (reminderJobId) {
+          try {
+            await ctx.runMutation(internal.reminders.cancelReminder, {
+              jobId: reminderJobId,
+              userId,
+            });
+          } catch {
+            // Best-effort cleanup
+          }
+        }
+        throw error; // Re-throw to be caught by outer catch
+      }
 
       return JSON.stringify({
         status: "success",
@@ -859,36 +885,22 @@ const queryItemsTool = createTool({
 
       if (args.query) {
         // Text search with post-filtering (findItemByText doesn't accept filters)
-        items = await ctx.runQuery(internal.items.findItemByText, {
+        const raw = await ctx.runQuery(internal.items.findItemByText, {
           userId,
           query: args.query,
           limit: 50, // fetch more to allow for filtering
         });
-        if (collectionId) {
-          items = items.filter((i) => i.collectionId === collectionId);
-        }
-        if (args.status && args.status !== "all") {
-          items = items.filter((i) => i.status === args.status);
-        }
-        if (args.tags && args.tags.length > 0) {
-          items = items.filter((i) => i.tags?.some((t) => args.tags!.includes(t)));
-        }
-        if (dueBefore != null) {
-          items = items.filter((i) => i.dueDate != null && i.dueDate <= dueBefore);
-        }
-        if (dueAfter != null) {
-          items = items.filter((i) => i.dueDate != null && i.dueDate >= dueAfter);
-        }
-        if (args.hasAmount) {
-          items = items.filter((i) => i.amount != null);
-        }
-        if (dateFrom != null) {
-          items = items.filter((i) => i._creationTime >= dateFrom);
-        }
-        if (dateTo != null) {
-          items = items.filter((i) => i._creationTime <= dateTo);
-        }
-        items = items.slice(0, args.limit ?? 20);
+        items = applyItemFilters(raw as QueryItem[], {
+          collectionId,
+          status: args.status,
+          tags: args.tags,
+          dueBefore,
+          dueAfter,
+          dateFrom,
+          dateTo,
+          hasAmount: args.hasAmount,
+          limit: args.limit,
+        });
       } else {
         items = await ctx.runQuery(internal.items.queryItems, {
           userId,
@@ -939,18 +951,7 @@ const queryItemsTool = createTool({
       }
 
       // Return items
-      const simplified = items.map((i) => ({
-        id: i._id,
-        title: i.title,
-        body: i.body,
-        status: i.status,
-        priority: i.priority,
-        dueDate: i.dueDate ? new Date(i.dueDate).toISOString() : undefined,
-        amount: i.amount,
-        currency: i.currency,
-        tags: i.tags,
-        createdAt: new Date(i._creationTime).toISOString(),
-      }));
+      const simplified = simplifyItemsForResponse(items as QueryItem[]);
 
       return JSON.stringify({
         status: "success",
@@ -1012,18 +1013,8 @@ const updateItemTool = createTool({
         return JSON.stringify({ status: "error", code: "AMBIGUOUS_MATCH", message: `Multiple items match "${itemQuery}": ${options}. Be more specific.` });
       }
 
-      // Build patch
-      const patch: Record<string, unknown> = {};
-      const changes: string[] = [];
-
-      if (updates.title) { patch.title = updates.title; changes.push("title"); }
-      if (updates.body) { patch.body = updates.body; changes.push("body"); }
-      if (updates.status) { patch.status = updates.status; changes.push("status"); }
-      if (updates.priority) { patch.priority = updates.priority; changes.push("priority"); }
-      if (updates.amount != null) { patch.amount = updates.amount; changes.push("amount"); }
-      if (updates.currency) { patch.currency = updates.currency; changes.push("currency"); }
-      if (updates.tags) { patch.tags = updates.tags; changes.push("tags"); }
-      if (updates.metadata) { patch.metadata = updates.metadata; changes.push("metadata"); }
+      // Build patch from simple fields
+      const { patch, changes } = buildSimpleItemPatch(updates);
 
       if (updates.dueDate) {
         patch.dueDate = parseDatetimeInTimezone(updates.dueDate, tz);
@@ -1060,6 +1051,7 @@ const updateItemTool = createTool({
           // Reminder may already have fired — not critical
         }
         if (updates.clearReminder) {
+          patch.clearReminder = true; // signals updateItem mutation to strip reminder fields
           changes.push("reminderCleared");
         }
       }
@@ -1089,6 +1081,7 @@ const updateItemTool = createTool({
           reminderAt?: number; tags?: string[]; metadata?: unknown;
           collectionId?: Id<"collections">; reminderJobId?: Id<"scheduledJobs">;
           reminderCronId?: string; mediaStorageId?: Id<"_storage">;
+          clearReminder?: boolean;
         },
       });
 

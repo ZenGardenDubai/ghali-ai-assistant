@@ -3,7 +3,11 @@ import {
   scoreItemMatch,
   aggregateItems,
   deriveCurrency,
+  applyItemFilters,
+  simplifyItemsForResponse,
+  buildSimpleItemPatch,
   type ItemLike,
+  type QueryItem,
 } from "./items";
 
 // ============================================================================
@@ -198,5 +202,158 @@ describe("deriveCurrency", () => {
   it("defaults to USD for unknown timezone", () => {
     expect(deriveCurrency("Unknown/Zone")).toBe("USD");
     expect(deriveCurrency("UTC")).toBe("USD");
+  });
+});
+
+// ============================================================================
+// applyItemFilters
+// ============================================================================
+
+describe("applyItemFilters", () => {
+  const now = Date.now();
+  const items: QueryItem[] = [
+    { _id: "1", _creationTime: now - 86400000, title: "Coffee", status: "active", amount: 25, currency: "AED", tags: ["dining"], collectionId: "c1", dueDate: now + 86400000 },
+    { _id: "2", _creationTime: now - 3600000, title: "Uber", status: "done", amount: 45, currency: "AED", tags: ["transport"], collectionId: "c1" },
+    { _id: "3", _creationTime: now, title: "Lunch", status: "active", amount: 120, currency: "AED", tags: ["dining", "client"], collectionId: "c2", dueDate: now + 172800000 },
+    { _id: "4", _creationTime: now, title: "Meeting notes", status: "active" },
+  ];
+
+  it("returns all items when no filters", () => {
+    expect(applyItemFilters(items, {})).toHaveLength(4);
+  });
+
+  it("filters by status", () => {
+    const result = applyItemFilters(items, { status: "done" });
+    expect(result).toHaveLength(1);
+    expect(result[0]._id).toBe("2");
+  });
+
+  it("skips status filter for 'all'", () => {
+    expect(applyItemFilters(items, { status: "all" })).toHaveLength(4);
+  });
+
+  it("filters by collectionId", () => {
+    const result = applyItemFilters(items, { collectionId: "c2" });
+    expect(result).toHaveLength(1);
+    expect(result[0]._id).toBe("3");
+  });
+
+  it("filters by tags (any match)", () => {
+    const result = applyItemFilters(items, { tags: ["client"] });
+    expect(result).toHaveLength(1);
+    expect(result[0]._id).toBe("3");
+  });
+
+  it("filters by dueBefore", () => {
+    const result = applyItemFilters(items, { dueBefore: now + 100000000 });
+    expect(result).toHaveLength(1); // only item 1 (dueDate < dueBefore)
+  });
+
+  it("filters by dueAfter", () => {
+    const result = applyItemFilters(items, { dueAfter: now + 100000000 });
+    expect(result).toHaveLength(1); // only item 3 (172800000 > 100000000)
+  });
+
+  it("filters by hasAmount", () => {
+    const result = applyItemFilters(items, { hasAmount: true });
+    expect(result).toHaveLength(3);
+  });
+
+  it("filters by dateFrom", () => {
+    const result = applyItemFilters(items, { dateFrom: now - 7200000 });
+    expect(result).toHaveLength(3); // items 2, 3, 4
+  });
+
+  it("filters by dateTo", () => {
+    const result = applyItemFilters(items, { dateTo: now - 7200000 });
+    expect(result).toHaveLength(1); // only item 1
+  });
+
+  it("applies limit", () => {
+    const result = applyItemFilters(items, { limit: 2 });
+    expect(result).toHaveLength(2);
+  });
+
+  it("combines multiple filters", () => {
+    const result = applyItemFilters(items, { status: "active", hasAmount: true, collectionId: "c1" });
+    expect(result).toHaveLength(1);
+    expect(result[0]._id).toBe("1");
+  });
+});
+
+// ============================================================================
+// simplifyItemsForResponse
+// ============================================================================
+
+describe("simplifyItemsForResponse", () => {
+  it("maps items to simplified format", () => {
+    const items: QueryItem[] = [
+      { _id: "1", _creationTime: 1700000000000, title: "Coffee", status: "active", amount: 25, currency: "AED", tags: ["dining"], priority: "low", dueDate: 1700100000000 },
+    ];
+    const result = simplifyItemsForResponse(items);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      id: "1",
+      title: "Coffee",
+      body: undefined,
+      status: "active",
+      priority: "low",
+      dueDate: new Date(1700100000000).toISOString(),
+      amount: 25,
+      currency: "AED",
+      tags: ["dining"],
+      createdAt: new Date(1700000000000).toISOString(),
+    });
+  });
+
+  it("omits dueDate when not set", () => {
+    const items: QueryItem[] = [
+      { _id: "2", _creationTime: 1700000000000, title: "Note", status: "active" },
+    ];
+    const result = simplifyItemsForResponse(items);
+    expect(result[0].dueDate).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// buildSimpleItemPatch
+// ============================================================================
+
+describe("buildSimpleItemPatch", () => {
+  it("builds patch from provided fields", () => {
+    const { patch, changes } = buildSimpleItemPatch({
+      title: "New title",
+      amount: 50,
+      tags: ["food"],
+    });
+    expect(patch).toEqual({ title: "New title", amount: 50, tags: ["food"] });
+    expect(changes).toEqual(["title", "amount", "tags"]);
+  });
+
+  it("ignores undefined fields", () => {
+    const { patch, changes } = buildSimpleItemPatch({ title: "Updated" });
+    expect(patch).toEqual({ title: "Updated" });
+    expect(changes).toEqual(["title"]);
+  });
+
+  it("returns empty patch when no fields provided", () => {
+    const { patch, changes } = buildSimpleItemPatch({});
+    expect(patch).toEqual({});
+    expect(changes).toEqual([]);
+  });
+
+  it("includes all field types", () => {
+    const { patch, changes } = buildSimpleItemPatch({
+      title: "T",
+      body: "B",
+      status: "done",
+      priority: "high",
+      amount: 100,
+      currency: "USD",
+      tags: ["a"],
+      metadata: { key: "val" },
+    });
+    expect(Object.keys(patch)).toHaveLength(8);
+    expect(changes).toHaveLength(8);
   });
 });
