@@ -1491,7 +1491,6 @@ const proWrite = createTool({
           model: google(MODELS.FLASH),
           tools: { google_search: google.tools.googleSearch({}) },
           prompt: `Research this topic thoroughly for a professional article. Find current facts, statistics, expert quotes, and real-world examples. Topic: ${request}`,
-          maxSteps: 5,
         });
         research = researchResult.text;
       } catch (error) {
