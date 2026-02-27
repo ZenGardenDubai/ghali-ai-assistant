@@ -488,6 +488,12 @@ function Capabilities() {
       href: "/features/track-everything",
     },
     {
+      icon: "✍️",
+      title: "ProWrite articles",
+      desc: "Multi-model pipeline delivers polished, human-sounding articles in minutes",
+      href: "/features/prowrite",
+    },
+    {
       icon: "🌍",
       title: "Speak your language",
       desc: "Arabic, English, and more",

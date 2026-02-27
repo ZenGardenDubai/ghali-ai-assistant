@@ -44,6 +44,7 @@ import type * as mediaStorage from "../mediaStorage.js";
 import type * as memoryCompaction from "../memoryCompaction.js";
 import type * as messages from "../messages.js";
 import type * as models from "../models.js";
+import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
 import type * as rateLimiting from "../rateLimiting.js";
 import type * as reminders from "../reminders.js";
@@ -96,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   memoryCompaction: typeof memoryCompaction;
   messages: typeof messages;
   models: typeof models;
+  proWrite: typeof proWrite;
   rag: typeof rag;
   rateLimiting: typeof rateLimiting;
   reminders: typeof reminders;

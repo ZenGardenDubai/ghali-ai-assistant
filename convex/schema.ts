@@ -19,7 +19,8 @@ export default defineSchema({
       v.literal("clear_memory"),
       v.literal("clear_documents"),
       v.literal("clear_everything"),
-      v.literal("admin_broadcast")
+      v.literal("admin_broadcast"),
+      v.literal("prowrite_clarify")
     )),
     pendingActionAt: v.optional(v.number()),
     pendingPayload: v.optional(v.string()),
@@ -111,6 +112,33 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_name", ["userId", "name"]),
+
+  proWritePipelines: defineTable({
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending_answers"),
+      v.literal("writing"),
+      v.literal("done"),
+      v.literal("error")
+    ),
+    originalRequest: v.string(),
+    brief: v.optional(v.string()),
+    questions: v.optional(v.string()),
+    userAnswers: v.optional(v.string()),
+    enrichedBrief: v.optional(v.string()),
+    researchData: v.optional(v.string()),
+    ragResults: v.optional(v.string()),
+    synthesis: v.optional(v.string()),
+    draft: v.optional(v.string()),
+    elevated: v.optional(v.string()),
+    refined: v.optional(v.string()),
+    finalArticle: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_status", ["userId", "status"]),
 
   items: defineTable({
     userId: v.id("users"),

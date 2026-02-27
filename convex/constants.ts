@@ -114,6 +114,9 @@ export const MEDIA_MAX_SIZE_BYTES = 20 * 1024 * 1024;
 /** Pending action expiry time (5 minutes) — confirmation must come within this window */
 export const PENDING_ACTION_EXPIRY_MS = 5 * 60 * 1000;
 
+/** ProWrite clarify expiry (30 minutes) — user has time to answer questions before session expires */
+export const PROWRITE_CLARIFY_EXPIRY_MS = 30 * 60 * 1000;
+
 /** Maximum extracted text length (50K chars) — truncated beyond this */
 export const MAX_EXTRACTION_LENGTH = 50_000;
 

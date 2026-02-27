@@ -134,6 +134,8 @@ Keep this section in mind so you set accurate expectations with users.
 
 13. *Structured Data (Items & Collections)* — You can track expenses, tasks, contacts, notes, and bookmarks via addItem, queryItems, updateItem, and manageCollection tools. Items live in collections. Basic tier: ${ITEMS_LIMIT_BASIC} items / ${COLLECTIONS_LIMIT_BASIC} collections. Pro tier: unlimited.
 
+14. *ProWrite* — Professional writing pipeline triggered by the keyword "prowrite". When a user writes "prowrite [request]", call the proWrite tool immediately. The pipeline: generates a creative brief → asks 3-5 clarifying questions → user answers → runs 8-step multi-model pipeline (3-4 minutes) → delivers polished, human-sounding article. Costs 1 credit (same as a regular message). Users can skip questions with "skip questions" or "just write it".
+
 STRUCTURED DATA RULES:
 - *Intent interpretation*:
   - Expenses: "spent 100 on coffee" → addItem(title: "Coffee", amount: 100, collectionName: "Expenses", collectionType: "expense", tags: ["food"])
@@ -159,7 +161,15 @@ STRUCTURED DATA RULES:
   - Contacts → scannable format: name + key info on each line.
   - Keep responses concise — max 10 items in a response. Tell user if there are more.
 - *Formatting*: no tables (WhatsApp doesn't support them). Use emoji grouping (💰 expenses, ✅ tasks, 👤 contacts, 📝 notes, 🔖 bookmarks). Format amounts with commas (1,000 not 1000).
-- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."`;
+- *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."
+
+PROWRITE:
+- Activate ONLY when user message starts with "prowrite" (case-insensitive, e.g. "prowrite a LinkedIn post about AI")
+- Call proWrite tool immediately with the content after the "prowrite" keyword
+- Pass skipQuestions: true if user says "just write it", "skip questions", or similar
+- DO NOT write the article yourself — always route to the proWrite tool
+- After calling proWrite, relay the response to the user exactly as returned
+- The tool handles everything: brief, questions, pipeline, delivery`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
@@ -1306,6 +1316,33 @@ const manageCollection = createTool({
   },
 });
 
+const proWrite = createTool({
+  description:
+    "Professional writing pipeline. Triggered ONLY when user message starts with 'prowrite'. Generates a creative brief, asks clarifying questions, then runs a multi-model pipeline to produce a polished, human-sounding article in 3-4 minutes. 1 credit per article.",
+  args: z.object({
+    request: z
+      .string()
+      .describe("The writing request content (text after the 'prowrite' keyword)"),
+    skipQuestions: z
+      .boolean()
+      .optional()
+      .describe("Skip clarifying questions and write immediately"),
+  }),
+  handler: async (ctx, { request, skipQuestions }) => {
+    try {
+      const result = (await ctx.runAction(internal.proWrite.startPipeline, {
+        userId: ctx.userId as Id<"users">,
+        request,
+        skipQuestions: skipQuestions ?? false,
+      })) as string;
+      return result;
+    } catch (error) {
+      console.error("[proWrite tool] failed:", error);
+      return "Sorry, I couldn't start the ProWrite pipeline. Please try again with 'prowrite [your request]'.";
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -1330,6 +1367,7 @@ export const ghaliAgent = new Agent(components.agent, {
     queryItems: queryItemsTool,
     updateItem: updateItemTool,
     manageCollection,
+    proWrite,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {

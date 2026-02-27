@@ -146,7 +146,7 @@ export const updateUserFile = internalMutation({
   },
 });
 
-// Pending action management for clear data and admin broadcast confirmation flow
+// Pending action management for clear data, admin broadcast, and prowrite confirmation flow
 export const setPendingAction = internalMutation({
   args: {
     userId: v.id("users"),
@@ -154,7 +154,8 @@ export const setPendingAction = internalMutation({
       v.literal("clear_memory"),
       v.literal("clear_documents"),
       v.literal("clear_everything"),
-      v.literal("admin_broadcast")
+      v.literal("admin_broadcast"),
+      v.literal("prowrite_clarify")
     ),
     payload: v.optional(v.string()),
   },

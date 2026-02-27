@@ -94,7 +94,8 @@ export type PendingActionType =
   | "clear_memory"
   | "clear_documents"
   | "clear_everything"
-  | "admin_broadcast";
+  | "admin_broadcast"
+  | "prowrite_clarify";
 
 // Result from handleSystemCommand — includes optional pendingAction to set
 export interface SystemCommandResult {

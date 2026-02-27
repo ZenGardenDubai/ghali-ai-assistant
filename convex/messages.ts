@@ -8,7 +8,8 @@ import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isA
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
-import { PENDING_ACTION_EXPIRY_MS } from "./constants";
+import { PENDING_ACTION_EXPIRY_MS, PROWRITE_CLARIFY_EXPIRY_MS } from "./constants";
+import { buildPipelineStartMessage } from "./lib/proWrite";
 import { handleAdminCommand } from "./lib/adminCommands";
 import { handleOnboarding } from "./lib/onboarding";
 import {
@@ -263,10 +264,33 @@ export const generateResponse = internalAction({
 
     // Confirmation intercept — check for pending action before anything else
     if (user.pendingAction && user.pendingActionAt) {
+      const pendingAction = user.pendingAction;
       const isExpired = Date.now() - user.pendingActionAt > PENDING_ACTION_EXPIRY_MS;
 
+      // ProWrite clarify: capture any user answer (no isAffirmative required, longer expiry)
+      if (
+        pendingAction === "prowrite_clarify" &&
+        user.pendingPayload &&
+        Date.now() - user.pendingActionAt <= PROWRITE_CLARIFY_EXPIRY_MS
+      ) {
+        await ctx.runMutation(internal.users.clearPendingAction, {
+          userId: typedUserId,
+        });
+        // Acknowledge immediately with pipeline start message
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user.phone,
+          body: buildPipelineStartMessage(),
+        });
+        // Run full pipeline as background action
+        await ctx.scheduler.runAfter(0, internal.proWrite.runFullPipeline, {
+          pipelineId: user.pendingPayload as Id<"proWritePipelines">,
+          userId: typedUserId,
+          userAnswers: body,
+        });
+        return;
+      }
+
       if (!isExpired && isAffirmative(body)) {
-        const pendingAction = user.pendingAction;
 
         // Admin broadcast confirmation — re-verify admin status
         if (pendingAction === "admin_broadcast" && user.pendingPayload && user.isAdmin) {
