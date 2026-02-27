@@ -15,6 +15,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **Google Search grounding** — real-time web data (weather, news, prices, sports)
 - **Voice notes** — Whisper transcription, processed as text
 - **Image generation** — text-to-image via Gemini Pro, delivered as WhatsApp media
+- **ProWrite** — multi-LLM professional writing pipeline (Opus brief/synthesis/humanize, Kimi K2.5 draft/refine, GPT-5.2 elevate, Flash research)
 
 ### Media and Files
 - **Document processing** — PDF, images, audio, video sent directly to Gemini Flash
@@ -65,6 +66,7 @@ Background action:
     → googleSearch tool → real-time web data (if needed)
     → searchDocuments tool → user's RAG knowledge base (if needed)
     → addItem/queryItems/updateItem tools → structured data (if needed)
+    → proWriteBrief/proWriteExecute tools → multi-LLM writing pipeline (if needed)
   → Format for WhatsApp + split long messages
   → Send reply via Twilio API
 ```
@@ -92,6 +94,8 @@ Background action:
 | Primary | Gemini 3 Flash | Every message (fast, cheap) |
 | Deep reasoning | Claude Opus 4.6 | Complex tasks, coding, analysis |
 | Image generation | Gemini 3 Pro | Text-to-image requests |
+| ProWrite draft/refine | Kimi K2.5 (via OpenRouter) | Long-form writing pipeline |
+| ProWrite elevate | GPT-5.2 | Creative sharpening in writing pipeline |
 | Voice transcription | OpenAI Whisper | Voice notes |
 | Embeddings | text-embedding-3-small | RAG document storage and search |
 
@@ -148,6 +152,7 @@ Environment variables are split between two runtimes. `.env.example` lists all v
 | `INTERNAL_API_SECRET` | Shared secret for Next.js ↔ Convex API auth |
 | `CLERK_WEBHOOK_SECRET` | Clerk webhook signature secret |
 | `CLOUDCONVERT_API_KEY` | CloudConvert API key (Office file conversion) |
+| `OPENROUTER_API_KEY` | OpenRouter API key (Kimi K2.5 for ProWrite) |
 
 ## Project Structure
 
@@ -168,6 +173,7 @@ ghali-ai-assistant/
 │   ├── documents.ts        # Document processing + RAG pipeline
 │   ├── items.ts            # Structured data (items + collections + embeddings)
 │   ├── rag.ts              # RAG component setup
+│   ├── proWrite.ts         # ProWrite multi-LLM writing pipeline
 │   ├── images.ts           # Image generation (Gemini Pro)
 │   ├── voice.ts            # Voice transcription (Whisper)
 │   ├── twilio.ts           # Outbound WhatsApp messaging
@@ -236,6 +242,7 @@ cd convex && npx vitest run
 - [x] Integration testing
 - [x] Deployment and configuration
 - [x] Structured data (items, collections, embeddings, vector search)
+- [x] ProWrite (multi-LLM professional writing pipeline)
 - [ ] Post-launch hardening (monitoring, backups)
 
 ## Documentation

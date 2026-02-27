@@ -282,7 +282,7 @@ const deepReasoning = createTool({
         "The reasoning task or question to solve. Include all relevant context."
       ),
   }),
-  handler: async (_ctx, { task }) => {
+  handler: async (ctx, { task }) => {
     try {
       const result = await generateText({
         model: anthropic(MODELS.DEEP_REASONING),
@@ -296,6 +296,20 @@ Rules:
 - If the task involves code, provide working code with brief explanation`,
         prompt: task,
       });
+
+      // Track feature_used for deep reasoning
+      const userId = ctx.userId as Id<"users">;
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        phone: string; tier: string;
+      } | null;
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+          phone: user.phone,
+          feature: "deep_reasoning",
+          tier: user.tier,
+        });
+      }
+
       return result.text;
     } catch (error) {
       console.error("deepReasoning tool failed:", error);
@@ -310,13 +324,27 @@ const webSearch = createTool({
   args: z.object({
     query: z.string().describe("The search query"),
   }),
-  handler: async (_ctx, { query }) => {
+  handler: async (ctx, { query }) => {
     try {
       const result = await generateText({
         model: google(MODELS.FLASH),
         tools: { google_search: google.tools.googleSearch({}) },
         prompt: query,
       });
+
+      // Track feature_used for web search
+      const userId = ctx.userId as Id<"users">;
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        phone: string; tier: string;
+      } | null;
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+          phone: user.phone,
+          feature: "web_search",
+          tier: user.tier,
+        });
+      }
+
       return result.text;
     } catch (error) {
       console.error("webSearch tool failed:", error);
@@ -715,6 +743,18 @@ const convertFile = createTool({
       });
 
       if (result.success && result.fileUrl) {
+        // Track feature_used for document conversion
+        const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+          phone: string; tier: string;
+        } | null;
+        if (user) {
+          await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+            phone: user.phone,
+            feature: "document_conversion",
+            tier: user.tier,
+          });
+        }
+
         return JSON.stringify({
           type: "conversion",
           fileUrl: result.fileUrl,
@@ -756,9 +796,9 @@ const addItem = createTool({
   handler: async (ctx, args): Promise<string> => {
     const userId = ctx.userId as Id<"users">;
     try {
-      // Get user for timezone + credit check
+      // Get user for timezone + credit check + analytics
       const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
-        timezone: string; tier: string; credits: number;
+        phone: string; timezone: string; tier: string; credits: number;
       } | null;
       if ((user?.credits ?? 0) <= 0) {
         return JSON.stringify({ status: "error", code: "CREDIT_INSUFFICIENT", message: "No credits remaining." });
@@ -852,6 +892,15 @@ const addItem = createTool({
 
       // Schedule async embedding (non-blocking, best-effort)
       await ctx.scheduler.runAfter(0, internal.items.embedItem, { itemId, userId });
+
+      // Track feature_used for items
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+          phone: user.phone,
+          feature: "items",
+          tier: user.tier,
+        });
+      }
 
       return JSON.stringify({
         status: "success",
@@ -1337,9 +1386,16 @@ const proWriteBrief = createTool({
       });
     }
     try {
+      const userId = ctx.userId as Id<"users">;
+      // Get user for analytics pass-through
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        phone: string; tier: string;
+      } | null;
       const result = await ctx.runAction(internal.proWrite.generateBrief, {
         request,
-        userId: ctx.userId as Id<"users">,
+        userId,
+        phone: user?.phone,
+        tier: user?.tier,
       });
       return JSON.stringify({
         status: "success",
@@ -1373,11 +1429,15 @@ const proWriteExecute = createTool({
   handler: async (ctx, { answers, skipClarify }): Promise<string> => {
     const safeAnswers = answers ?? "";
     try {
-      // Get user's personality file for voice matching
+      const userId = ctx.userId as Id<"users">;
+      // Get user for personality + analytics pass-through
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        phone: string; tier: string;
+      } | null;
       let personality = "";
       try {
         const file = await ctx.runQuery(internal.users.getUserFile, {
-          userId: ctx.userId as Id<"users">,
+          userId,
           filename: "personality",
         });
         if (file) personality = file.content;
@@ -1387,9 +1447,11 @@ const proWriteExecute = createTool({
 
       const result = await ctx.runAction(internal.proWrite.executePipeline, {
         answers: safeAnswers,
-        userId: ctx.userId as Id<"users">,
+        userId,
         personality,
         skipClarify: skipClarify ?? false,
+        phone: user?.phone,
+        tier: user?.tier,
       });
 
       return formatProWriteResult(result);

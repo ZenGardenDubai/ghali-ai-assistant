@@ -199,6 +199,23 @@ export const trackFileConverted = internalAction({
   },
 });
 
+export const trackFeatureUsed = internalAction({
+  args: {
+    phone: v.string(),
+    feature: v.string(), // "prowrite" | "image_generation" | "deep_reasoning" | "document_processing" | "document_conversion" | "items" | "voice_note" | "web_search"
+    tier: v.string(),
+    properties: v.optional(v.any()),
+  },
+  handler: async (_ctx, { phone, feature, tier, properties }) => {
+    await captureEvent(phone, "feature_used", {
+      feature,
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+      ...(properties as Record<string, unknown> | undefined),
+    });
+  },
+});
+
 export const trackDocumentProcessed = internalAction({
   args: {
     phone: v.string(),

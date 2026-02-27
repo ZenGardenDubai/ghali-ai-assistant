@@ -21,12 +21,13 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 | File | Purpose |
 |---|---|
-| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 7 internal actions |
+| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 8 internal actions |
 | `convex/analyticsHelper.ts` | Scheduling mutation for agent's usageHandler (no Node.js deps) |
 | `convex/lib/analytics.ts` | `detectCountryFromPhone()` pure function |
 | `convex/agent.ts` | `usageHandler` — captures `$ai_generation` for every LLM call |
 | `convex/messages.ts` | Analytics calls at 6 instrumentation points in `generateResponse` |
 | `convex/images.ts` | Image generation tracking via scheduler |
+| `convex/proWrite.ts` | Per-step `$ai_generation` + `feature_used` on pipeline completion |
 
 ## Server Events
 
@@ -74,6 +75,7 @@ PostHog standard event for LLM calls. Shows in LLM Analytics dashboard.
 **Triggered in**:
 - `convex/agent.ts` usageHandler — every LLM call (Flash, embeddings, deep reasoning)
 - `convex/images.ts` — image generation (with estimated tokens: 1290 output)
+- `convex/proWrite.ts` — each pipeline step (BRIEF, ENRICH, RESEARCH, SYNTHESIZE, DRAFT, ELEVATE, REFINE, HUMANIZE) with providers `anthropic`, `google`, `openrouter`, `openai`
 
 ### `credit_used`
 
@@ -136,6 +138,24 @@ Document or media file processed via Gemini.
 
 **Triggered in**: `convex/messages.ts` — after successful media processing
 
+### `feature_used`
+
+Generic event for comparing feature adoption across ProWrite, image gen, items, etc.
+
+| Property | Type | Description |
+|---|---|---|
+| `feature` | string | Feature name: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search` |
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+| `steps` | number? | Pipeline steps completed (ProWrite only) |
+| `latency_ms` | number? | Total pipeline latency (ProWrite only) |
+
+**Triggered in**:
+- `convex/proWrite.ts` — on pipeline completion (`prowrite`)
+- `convex/images.ts` — on successful image generation (`image_generation`)
+- `convex/agent.ts` — `deepReasoning` tool (`deep_reasoning`), `addItem` tool (`items`), `webSearch` tool (`web_search`), `convertFile` tool (`document_conversion`)
+- `convex/messages.ts` — document processing (`document_processing`), voice note transcription (`voice_note`)
+
 ## Client Events (Landing Page)
 
 Captured via `posthog-js` on ghali.ae:
@@ -157,6 +177,24 @@ Captured via `posthog-js` on ghali.ae:
 | Image & Document Processing | Line | `image_generated` + `document_processed` per day |
 | Token Usage (Input vs Output) | Line | Sum of `$ai_input_tokens` and `$ai_output_tokens` |
 | Credits Exhausted | Line | `credits_exhausted` events per day |
+| Feature Usage | Bar | `feature_used` broken down by `feature` property (TODO: create manually — see below) |
+
+## TODO: Create "Feature Usage" Insight
+
+Not yet created in PostHog. Steps:
+
+1. Go to **Insights** → **New Insight**
+2. Type: **Trends**
+3. Event: `feature_used`, Math: **Total count**
+4. Breakdown: **By event property** → `feature`
+5. Display: **Bar chart**, enable legend
+6. Date range: **Last 30 days**
+7. Name: **"Feature Usage"**
+8. Save → Add to dashboard **"Ghali Server Analytics"** (ID `1299426`)
+
+Expected `feature` values: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`
+
+Remove this section after creation.
 
 ## Country Code Mapping
 

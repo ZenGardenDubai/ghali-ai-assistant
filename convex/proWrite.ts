@@ -28,6 +28,15 @@ import {
   parseBriefOutput,
 } from "./lib/proWrite";
 
+/** Result from a timed LLM call, including usage metadata for analytics */
+interface TimedGenerateResult {
+  text: string;
+  promptTokens: number;
+  completionTokens: number;
+  model: string;
+  provider: string;
+}
+
 /** Per-step timeout for LLM calls (60s cap per individual call) */
 const STEP_TIMEOUT_MS = 60_000;
 
@@ -142,21 +151,35 @@ export const generateBrief = internalAction({
   args: {
     request: v.string(),
     userId: v.id("users"),
+    phone: v.optional(v.string()),
+    tier: v.optional(v.string()),
   },
   returns: v.object({
     brief: v.string(),
     questions: v.array(v.string()),
   }),
-  handler: async (ctx, { request, userId }): Promise<{ brief: string; questions: string[] }> => {
+  handler: async (ctx, { request, userId, phone, tier }): Promise<{ brief: string; questions: string[] }> => {
     const prompt = buildBriefPrompt(request);
 
-    const text = await timedGenerate("BRIEF", {
+    const result = await timedGenerate("BRIEF", {
       model: anthropic(MODELS.DEEP_REASONING),
       system: prompt.system,
       prompt: prompt.user,
     });
 
-    const parsed = parseBriefOutput(text);
+    // Track LLM usage for the brief step
+    if (phone && tier) {
+      await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
+        phone,
+        model: result.model,
+        provider: result.provider,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        tier,
+      });
+    }
+
+    const parsed = parseBriefOutput(result.text);
 
     // Persist brief so executePipeline can retrieve by userId
     await ctx.runMutation(internal.proWrite.storeBrief, {
@@ -173,12 +196,21 @@ export const generateBrief = internalAction({
 // executePipeline — Runs all remaining steps after brief + user answers
 // ---------------------------------------------------------------------------
 
+/** Detect provider from model ID string */
+function detectProvider(modelId: string): string {
+  if (modelId.includes("claude") || modelId.includes("anthropic")) return "anthropic";
+  if (modelId.includes("gemini") || modelId.includes("google")) return "google";
+  if (modelId.includes("gpt") || modelId.includes("openai")) return "openai";
+  if (modelId.includes("/")) return "openrouter"; // e.g. "moonshotai/kimi-k2.5"
+  return "unknown";
+}
+
 /** Generate text with a per-step timeout, capped by global deadline. */
 async function timedGenerate(
   label: string,
   options: Parameters<typeof generateText>[0],
   deadlineMs?: number,
-): Promise<string> {
+): Promise<TimedGenerateResult> {
   if (deadlineMs) {
     const remaining = deadlineMs - Date.now();
     if (remaining <= 2_000) throw new Error(`[ProWrite] Budget exhausted before ${label}`);
@@ -196,7 +228,14 @@ async function timedGenerate(
       abortSignal: controller.signal,
     });
     done();
-    return result.text;
+    const modelId = result.response?.modelId ?? "unknown";
+    return {
+      text: result.text,
+      promptTokens: result.usage?.inputTokens ?? 0,
+      completionTokens: result.usage?.outputTokens ?? 0,
+      model: modelId,
+      provider: detectProvider(modelId),
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -208,11 +247,28 @@ export const executePipeline = internalAction({
     userId: v.id("users"),
     personality: v.string(),
     skipClarify: v.optional(v.boolean()),
+    phone: v.optional(v.string()),
+    tier: v.optional(v.string()),
   },
   returns: v.string(),
-  handler: async (ctx, { answers, userId, personality, skipClarify }) => {
+  handler: async (ctx, { answers, userId, personality, skipClarify, phone, tier }) => {
     const pipelineStart = Date.now();
     const deadlineMs = pipelineStart + PIPELINE_BUDGET_MS;
+
+    // Helper to fire $ai_generation for a pipeline step
+    const trackStep = async (result: TimedGenerateResult) => {
+      if (!phone || !tier) return;
+      await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
+        phone,
+        model: result.model,
+        provider: result.provider,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        tier,
+      });
+    };
+
+    let stepsCompleted = 0;
 
     // Load the most recent brief for this user (no ID relay through agent)
     const stored = await ctx.runQuery(internal.proWrite.getLatestBrief, { userId });
@@ -225,22 +281,28 @@ export const executePipeline = internalAction({
       let enrichedBrief = brief;
       if (!skipClarify && answers.trim()) {
         const enrichPrompt = buildEnrichPrompt(brief, answers);
-        enrichedBrief = await timedGenerate("ENRICH", {
+        const enrichResult = await timedGenerate("ENRICH", {
           model: anthropic(MODELS.DEEP_REASONING),
           system: enrichPrompt.system,
           prompt: enrichPrompt.user,
         }, deadlineMs);
+        enrichedBrief = enrichResult.text;
+        await trackStep(enrichResult);
+        stepsCompleted++;
       }
 
       // STEP 2: RESEARCH — web-grounded facts via Flash + Google Search
       let research = "";
       try {
         const researchQuery = buildResearchQuery(enrichedBrief);
-        research = await timedGenerate("RESEARCH", {
+        const researchResult = await timedGenerate("RESEARCH", {
           model: google(MODELS.FLASH),
           tools: { google_search: google.tools.googleSearch({}) },
           prompt: researchQuery,
         }, deadlineMs);
+        research = researchResult.text;
+        await trackStep(researchResult);
+        stepsCompleted++;
       } catch (error) {
         console.error("[ProWrite] RESEARCH failed:", error);
       }
@@ -260,89 +322,120 @@ export const executePipeline = internalAction({
           ),
         ]);
         console.log("[ProWrite] RAG done");
+        stepsCompleted++;
       } catch (error) {
         console.error("[ProWrite] RAG failed:", error);
       }
 
       // STEP 4: SYNTHESIZE — outline + narrative arc (Opus)
       const synthPrompt = buildSynthesizePrompt(enrichedBrief, research, ragContent);
-      const synthesis = await timedGenerate("SYNTHESIZE", {
+      const synthResult = await timedGenerate("SYNTHESIZE", {
         model: anthropic(MODELS.DEEP_REASONING),
         system: synthPrompt.system,
         prompt: synthPrompt.user,
       }, deadlineMs);
+      await trackStep(synthResult);
+      stepsCompleted++;
 
       // STEP 5: DRAFT — full article (Kimi K2.5 via OpenRouter)
-      let draft: string;
+      let draftText: string;
       try {
-        const draftPrompt = buildDraftPrompt(synthesis);
+        const draftPrompt = buildDraftPrompt(synthResult.text);
         const openrouter = getOpenRouter();
-        draft = await timedGenerate("DRAFT (Kimi)", {
+        const draftResult = await timedGenerate("DRAFT (Kimi)", {
           model: openrouter(MODELS.PROWRITE_DRAFT),
           system: draftPrompt.system,
           prompt: draftPrompt.user,
         }, deadlineMs);
+        draftText = draftResult.text;
+        await trackStep(draftResult);
       } catch (error) {
         console.error("[ProWrite] DRAFT via OpenRouter failed, falling back to Opus:", error);
-        const draftPrompt = buildDraftPrompt(synthesis);
-        draft = await timedGenerate("DRAFT (Opus fallback)", {
+        const draftPrompt = buildDraftPrompt(synthResult.text);
+        const draftResult = await timedGenerate("DRAFT (Opus fallback)", {
           model: anthropic(MODELS.DEEP_REASONING),
           system: draftPrompt.system,
           prompt: draftPrompt.user,
         }, deadlineMs);
+        draftText = draftResult.text;
+        await trackStep(draftResult);
       }
+      stepsCompleted++;
 
       // STEP 6: ELEVATE — sharpen hooks, creativity (GPT-5.2, fallback: Opus)
-      let elevated: string;
+      let elevatedText: string;
       try {
-        const elevatePrompt = buildElevatePrompt(draft);
-        elevated = await timedGenerate("ELEVATE (GPT-5.2)", {
+        const elevatePrompt = buildElevatePrompt(draftText);
+        const elevateResult = await timedGenerate("ELEVATE (GPT-5.2)", {
           model: openai(MODELS.PROWRITE_ELEVATE),
           system: elevatePrompt.system,
           prompt: elevatePrompt.user,
         }, deadlineMs);
+        elevatedText = elevateResult.text;
+        await trackStep(elevateResult);
       } catch (error) {
         console.error("[ProWrite] ELEVATE via OpenAI failed, falling back to Opus:", error);
-        const elevatePrompt = buildElevatePrompt(draft);
-        elevated = await timedGenerate("ELEVATE (Opus fallback)", {
+        const elevatePrompt = buildElevatePrompt(draftText);
+        const elevateResult = await timedGenerate("ELEVATE (Opus fallback)", {
           model: anthropic(MODELS.DEEP_REASONING),
           system: elevatePrompt.system,
           prompt: elevatePrompt.user,
         }, deadlineMs);
+        elevatedText = elevateResult.text;
+        await trackStep(elevateResult);
       }
+      stepsCompleted++;
 
       // STEP 7: REFINE — polish coherence + flow (Kimi K2.5 via OpenRouter)
-      let refined: string;
+      let refinedText: string;
       try {
-        const refinePrompt = buildRefinePrompt(elevated);
+        const refinePrompt = buildRefinePrompt(elevatedText);
         const openrouter = getOpenRouter();
-        refined = await timedGenerate("REFINE (Kimi)", {
+        const refineResult = await timedGenerate("REFINE (Kimi)", {
           model: openrouter(MODELS.PROWRITE_DRAFT),
           system: refinePrompt.system,
           prompt: refinePrompt.user,
         }, deadlineMs);
+        refinedText = refineResult.text;
+        await trackStep(refineResult);
       } catch (error) {
         console.error("[ProWrite] REFINE via OpenRouter failed, falling back to Opus:", error);
-        const refinePrompt = buildRefinePrompt(elevated);
-        refined = await timedGenerate("REFINE (Opus fallback)", {
+        const refinePrompt = buildRefinePrompt(elevatedText);
+        const refineResult = await timedGenerate("REFINE (Opus fallback)", {
           model: anthropic(MODELS.DEEP_REASONING),
           system: refinePrompt.system,
           prompt: refinePrompt.user,
         }, deadlineMs);
+        refinedText = refineResult.text;
+        await trackStep(refineResult);
       }
+      stepsCompleted++;
 
       // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus)
-      const humanizePrompt = buildHumanizePrompt(refined, personality);
-      const finalText = await timedGenerate("HUMANIZE", {
+      const humanizePrompt = buildHumanizePrompt(refinedText, personality);
+      const humanizeResult = await timedGenerate("HUMANIZE", {
         model: anthropic(MODELS.DEEP_REASONING),
         system: humanizePrompt.system,
         prompt: humanizePrompt.user,
       }, deadlineMs);
+      await trackStep(humanizeResult);
+      stepsCompleted++;
 
-      const totalSec = ((Date.now() - pipelineStart) / 1000).toFixed(1);
+      const totalMs = Date.now() - pipelineStart;
+      const totalSec = (totalMs / 1000).toFixed(1);
       console.log(`[ProWrite] Pipeline complete (${totalSec}s total)`);
 
-      return finalText;
+      // Track feature_used for the entire pipeline
+      if (phone && tier) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+          phone,
+          feature: "prowrite",
+          tier,
+          properties: { steps: stepsCompleted, latency_ms: totalMs },
+        });
+      }
+
+      return humanizeResult.text;
     } finally {
       // Always clean up stored brief — even on failure
       try {
