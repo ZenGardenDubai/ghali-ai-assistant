@@ -123,6 +123,11 @@ export const generateAndStoreImage = internalAction({
           model: MODELS.IMAGE_GENERATION,
           tier: user.tier,
         });
+        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+          phone: user.phone,
+          feature: "image_generation",
+          tier: user.tier,
+        });
       }
 
       return { success: true, imageUrl, description };

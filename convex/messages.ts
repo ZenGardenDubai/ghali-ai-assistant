@@ -476,6 +476,13 @@ export const generateResponse = internalAction({
         });
       }
 
+      // Track voice note feature usage
+      await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+        phone: user.phone,
+        feature: "voice_note",
+        tier: user.tier,
+      });
+
       // Replace body with transcript, clear media fields
       body = voiceResult.transcript;
       mediaUrl = undefined;
@@ -556,6 +563,11 @@ export const generateResponse = internalAction({
         phone: user.phone,
         media_type: mediaContentType,
         has_rag: isRagIndexable(mediaContentType),
+      });
+      await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+        phone: user.phone,
+        feature: "document_processing",
+        tier: user.tier,
       });
 
       // Store media file for future reply-to-media (first-time only, not voice notes)
