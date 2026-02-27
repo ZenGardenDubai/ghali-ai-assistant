@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.2...v0.16.3) (2026-02-27)
+
+
+### Bug Fixes
+
+* **items:** add silent dedup to createItem — prevent duplicate items on repeated saves ([#57](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/57)) ([f443260](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f4432601b3f941b13826c9308fe93c9fb06aec2a)), closes [#50](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/50)
+
 ## [0.16.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.16.1...v0.16.2) (2026-02-27)
 
 
