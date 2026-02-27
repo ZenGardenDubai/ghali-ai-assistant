@@ -118,7 +118,7 @@ const FEATURES = [
   {
     icon: "✍️",
     title: "ProWrite",
-    desc: "Professional multi-AI writing pipeline. 8 models research, draft, and polish your content.",
+    desc: "Professional multi-AI writing pipeline. 8 AI steps research, draft, and polish your content.",
     href: "/features/prowrite",
   },
   {

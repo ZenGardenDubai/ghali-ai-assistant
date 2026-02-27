@@ -90,7 +90,7 @@ export const cleanupExpiredBriefs = internalMutation({
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
     const expired = await ctx.db
       .query("proWriteBriefs")
-      .filter((q) => q.lt(q.field("createdAt"), oneDayAgo))
+      .withIndex("by_createdAt", (q) => q.lt("createdAt", oneDayAgo))
       .collect();
     for (const brief of expired) {
       await ctx.db.delete(brief._id);
@@ -197,7 +197,6 @@ export const executePipeline = internalAction({
   returns: v.string(),
   handler: async (ctx, { answers, userId, personality, skipClarify }) => {
     const pipelineStart = Date.now();
-    const openrouter = getOpenRouter();
 
     // Load the most recent brief for this user (no ID relay through agent)
     const stored = await ctx.runQuery(internal.proWrite.getLatestBrief, { userId });
@@ -205,126 +204,130 @@ export const executePipeline = internalAction({
     const brief = stored.brief;
     const storedBriefId = stored._id;
 
-    // STEP 1: ENRICH — fold user answers into brief (skip if no answers)
-    let enrichedBrief = brief;
-    if (!skipClarify && answers.trim()) {
-      const enrichPrompt = buildEnrichPrompt(brief, answers);
-      enrichedBrief = await timedGenerate("ENRICH", {
+    try {
+      // STEP 1: ENRICH — fold user answers into brief (skip if no answers)
+      let enrichedBrief = brief;
+      if (!skipClarify && answers.trim()) {
+        const enrichPrompt = buildEnrichPrompt(brief, answers);
+        enrichedBrief = await timedGenerate("ENRICH", {
+          model: anthropic(MODELS.DEEP_REASONING),
+          system: enrichPrompt.system,
+          prompt: enrichPrompt.user,
+        });
+      }
+
+      // STEP 2: RESEARCH — web-grounded facts via Flash + Google Search
+      let research = "";
+      try {
+        const researchQuery = buildResearchQuery(enrichedBrief);
+        research = await timedGenerate("RESEARCH", {
+          model: google(MODELS.FLASH),
+          tools: { google_search: google.tools.googleSearch({}) },
+          prompt: researchQuery,
+        });
+      } catch (error) {
+        console.error("[ProWrite] RESEARCH failed:", error);
+      }
+
+      // STEP 3: RAG — search user's stored documents
+      let ragContent = "";
+      try {
+        const ragQuery = buildRagQuery(enrichedBrief);
+        ragContent = await ctx.runAction(internal.rag.searchDocuments, {
+          userId: userId as string,
+          query: ragQuery,
+        });
+        console.log("[ProWrite] RAG done");
+      } catch (error) {
+        console.error("[ProWrite] RAG failed:", error);
+      }
+
+      // STEP 4: SYNTHESIZE — outline + narrative arc (Opus)
+      const synthPrompt = buildSynthesizePrompt(enrichedBrief, research, ragContent);
+      const synthesis = await timedGenerate("SYNTHESIZE", {
         model: anthropic(MODELS.DEEP_REASONING),
-        system: enrichPrompt.system,
-        prompt: enrichPrompt.user,
+        system: synthPrompt.system,
+        prompt: synthPrompt.user,
       });
-    }
 
-    // STEP 2: RESEARCH — web-grounded facts via Flash + Google Search
-    let research = "";
-    try {
-      const researchQuery = buildResearchQuery(enrichedBrief);
-      research = await timedGenerate("RESEARCH", {
-        model: google(MODELS.FLASH),
-        tools: { google_search: google.tools.googleSearch({}) },
-        prompt: researchQuery,
-      });
-    } catch (error) {
-      console.error("[ProWrite] RESEARCH failed:", error);
-    }
+      // STEP 5: DRAFT — full article (Kimi K2.5 via OpenRouter)
+      let draft: string;
+      try {
+        const draftPrompt = buildDraftPrompt(synthesis);
+        const openrouter = getOpenRouter();
+        draft = await timedGenerate("DRAFT (Kimi)", {
+          model: openrouter(MODELS.PROWRITE_DRAFT),
+          system: draftPrompt.system,
+          prompt: draftPrompt.user,
+        });
+      } catch (error) {
+        console.error("[ProWrite] DRAFT via OpenRouter failed, falling back to Opus:", error);
+        const draftPrompt = buildDraftPrompt(synthesis);
+        draft = await timedGenerate("DRAFT (Opus fallback)", {
+          model: anthropic(MODELS.DEEP_REASONING),
+          system: draftPrompt.system,
+          prompt: draftPrompt.user,
+        });
+      }
 
-    // STEP 3: RAG — search user's stored documents
-    let ragContent = "";
-    try {
-      const ragQuery = buildRagQuery(enrichedBrief);
-      ragContent = await ctx.runAction(internal.rag.searchDocuments, {
-        userId: userId as string,
-        query: ragQuery,
-      });
-      console.log("[ProWrite] RAG done");
-    } catch (error) {
-      console.error("[ProWrite] RAG failed:", error);
-    }
+      // STEP 6: ELEVATE — sharpen hooks, creativity (GPT-5.2, fallback: Opus)
+      let elevated: string;
+      try {
+        const elevatePrompt = buildElevatePrompt(draft);
+        elevated = await timedGenerate("ELEVATE (GPT-5.2)", {
+          model: openai(MODELS.PROWRITE_ELEVATE),
+          system: elevatePrompt.system,
+          prompt: elevatePrompt.user,
+        });
+      } catch (error) {
+        console.error("[ProWrite] ELEVATE via OpenAI failed, falling back to Opus:", error);
+        const elevatePrompt = buildElevatePrompt(draft);
+        elevated = await timedGenerate("ELEVATE (Opus fallback)", {
+          model: anthropic(MODELS.DEEP_REASONING),
+          system: elevatePrompt.system,
+          prompt: elevatePrompt.user,
+        });
+      }
 
-    // STEP 4: SYNTHESIZE — outline + narrative arc (Opus)
-    const synthPrompt = buildSynthesizePrompt(enrichedBrief, research, ragContent);
-    const synthesis = await timedGenerate("SYNTHESIZE", {
-      model: anthropic(MODELS.DEEP_REASONING),
-      system: synthPrompt.system,
-      prompt: synthPrompt.user,
-    });
+      // STEP 7: REFINE — polish coherence + flow (Kimi K2.5 via OpenRouter)
+      let refined: string;
+      try {
+        const refinePrompt = buildRefinePrompt(elevated);
+        const openrouter = getOpenRouter();
+        refined = await timedGenerate("REFINE (Kimi)", {
+          model: openrouter(MODELS.PROWRITE_DRAFT),
+          system: refinePrompt.system,
+          prompt: refinePrompt.user,
+        });
+      } catch (error) {
+        console.error("[ProWrite] REFINE via OpenRouter failed, falling back to Opus:", error);
+        const refinePrompt = buildRefinePrompt(elevated);
+        refined = await timedGenerate("REFINE (Opus fallback)", {
+          model: anthropic(MODELS.DEEP_REASONING),
+          system: refinePrompt.system,
+          prompt: refinePrompt.user,
+        });
+      }
 
-    // STEP 5: DRAFT — full article (Kimi K2.5 via OpenRouter)
-    let draft: string;
-    try {
-      const draftPrompt = buildDraftPrompt(synthesis);
-      draft = await timedGenerate("DRAFT (Kimi)", {
-        model: openrouter(MODELS.PROWRITE_DRAFT),
-        system: draftPrompt.system,
-        prompt: draftPrompt.user,
-      });
-    } catch (error) {
-      console.error("[ProWrite] DRAFT via OpenRouter failed, falling back to Opus:", error);
-      const draftPrompt = buildDraftPrompt(synthesis);
-      draft = await timedGenerate("DRAFT (Opus fallback)", {
+      // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus)
+      const humanizePrompt = buildHumanizePrompt(refined, personality);
+      const finalText = await timedGenerate("HUMANIZE", {
         model: anthropic(MODELS.DEEP_REASONING),
-        system: draftPrompt.system,
-        prompt: draftPrompt.user,
+        system: humanizePrompt.system,
+        prompt: humanizePrompt.user,
       });
+
+      const totalSec = ((Date.now() - pipelineStart) / 1000).toFixed(1);
+      console.log(`[ProWrite] Pipeline complete (${totalSec}s total)`);
+
+      return finalText;
+    } finally {
+      // Always clean up stored brief — even on failure
+      try {
+        await ctx.runMutation(internal.proWrite.deleteBrief, { briefId: storedBriefId });
+      } catch {
+        // Non-critical — daily cron will catch it
+      }
     }
-
-    // STEP 6: ELEVATE — sharpen hooks, creativity (GPT-5.2, fallback: Opus)
-    let elevated: string;
-    try {
-      const elevatePrompt = buildElevatePrompt(draft);
-      elevated = await timedGenerate("ELEVATE (GPT-5.2)", {
-        model: openai(MODELS.PROWRITE_ELEVATE),
-        system: elevatePrompt.system,
-        prompt: elevatePrompt.user,
-      });
-    } catch (error) {
-      console.error("[ProWrite] ELEVATE via OpenAI failed, falling back to Opus:", error);
-      const elevatePrompt = buildElevatePrompt(draft);
-      elevated = await timedGenerate("ELEVATE (Opus fallback)", {
-        model: anthropic(MODELS.DEEP_REASONING),
-        system: elevatePrompt.system,
-        prompt: elevatePrompt.user,
-      });
-    }
-
-    // STEP 7: REFINE — polish coherence + flow (Kimi K2.5 via OpenRouter)
-    let refined: string;
-    try {
-      const refinePrompt = buildRefinePrompt(elevated);
-      refined = await timedGenerate("REFINE (Kimi)", {
-        model: openrouter(MODELS.PROWRITE_DRAFT),
-        system: refinePrompt.system,
-        prompt: refinePrompt.user,
-      });
-    } catch (error) {
-      console.error("[ProWrite] REFINE via OpenRouter failed, falling back to Opus:", error);
-      const refinePrompt = buildRefinePrompt(elevated);
-      refined = await timedGenerate("REFINE (Opus fallback)", {
-        model: anthropic(MODELS.DEEP_REASONING),
-        system: refinePrompt.system,
-        prompt: refinePrompt.user,
-      });
-    }
-
-    // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus)
-    const humanizePrompt = buildHumanizePrompt(refined, personality);
-    const finalText = await timedGenerate("HUMANIZE", {
-      model: anthropic(MODELS.DEEP_REASONING),
-      system: humanizePrompt.system,
-      prompt: humanizePrompt.user,
-    });
-
-    // Clean up stored brief — no longer needed
-    try {
-      await ctx.runMutation(internal.proWrite.deleteBrief, { briefId: storedBriefId });
-    } catch {
-      // Non-critical — daily cron will catch it
-    }
-
-    const totalSec = ((Date.now() - pipelineStart) / 1000).toFixed(1);
-    console.log(`[ProWrite] Pipeline complete (${totalSec}s total)`);
-
-    return finalText;
   },
 });

@@ -117,7 +117,9 @@ export default defineSchema({
     brief: v.string(),
     questions: v.array(v.string()),
     createdAt: v.number(),
-  }).index("by_userId", ["userId"]),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_createdAt", ["createdAt"]),
 
   items: defineTable({
     userId: v.id("users"),

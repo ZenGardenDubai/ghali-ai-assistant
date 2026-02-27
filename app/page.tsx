@@ -560,7 +560,7 @@ function ExploreFeatures() {
                 There&apos;s more
               </p>
               <h2 className="mt-2 font-[family-name:var(--font-display)] text-2xl sm:text-3xl">
-                Explore all 11 features
+                Explore all features
               </h2>
               <p className="mt-2 text-white/40">
                 Deep thinking, document analysis, reminders, open source, and more.
