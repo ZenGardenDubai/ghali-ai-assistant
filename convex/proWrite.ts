@@ -28,8 +28,11 @@ import {
   parseBriefOutput,
 } from "./lib/proWrite";
 
-/** Per-step timeout for LLM calls (60s — keeps 8-step pipeline under Convex's 10-min action limit) */
+/** Per-step timeout for LLM calls (60s cap per individual call) */
 const STEP_TIMEOUT_MS = 60_000;
+
+/** Global pipeline budget (9 min) — leaves headroom under Convex's 10-min action limit */
+const PIPELINE_BUDGET_MS = 9 * 60_000;
 
 function getOpenRouter() {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -170,14 +173,23 @@ export const generateBrief = internalAction({
 // executePipeline — Runs all remaining steps after brief + user answers
 // ---------------------------------------------------------------------------
 
-/** Generate text with a per-step timeout. */
+/** Generate text with a per-step timeout, capped by global deadline. */
 async function timedGenerate(
   label: string,
   options: Parameters<typeof generateText>[0],
+  deadlineMs?: number,
 ): Promise<string> {
+  if (deadlineMs) {
+    const remaining = deadlineMs - Date.now();
+    if (remaining <= 2_000) throw new Error(`[ProWrite] Budget exhausted before ${label}`);
+  }
+  const timeoutMs = deadlineMs
+    ? Math.min(STEP_TIMEOUT_MS, deadlineMs - Date.now() - 2_000)
+    : STEP_TIMEOUT_MS;
+
   const done = stepTimer(label);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), STEP_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const result = await generateText({
       ...options,
@@ -200,6 +212,7 @@ export const executePipeline = internalAction({
   returns: v.string(),
   handler: async (ctx, { answers, userId, personality, skipClarify }) => {
     const pipelineStart = Date.now();
+    const deadlineMs = pipelineStart + PIPELINE_BUDGET_MS;
 
     // Load the most recent brief for this user (no ID relay through agent)
     const stored = await ctx.runQuery(internal.proWrite.getLatestBrief, { userId });
@@ -216,7 +229,7 @@ export const executePipeline = internalAction({
           model: anthropic(MODELS.DEEP_REASONING),
           system: enrichPrompt.system,
           prompt: enrichPrompt.user,
-        });
+        }, deadlineMs);
       }
 
       // STEP 2: RESEARCH — web-grounded facts via Flash + Google Search
@@ -227,7 +240,7 @@ export const executePipeline = internalAction({
           model: google(MODELS.FLASH),
           tools: { google_search: google.tools.googleSearch({}) },
           prompt: researchQuery,
-        });
+        }, deadlineMs);
       } catch (error) {
         console.error("[ProWrite] RESEARCH failed:", error);
       }
@@ -236,10 +249,16 @@ export const executePipeline = internalAction({
       let ragContent = "";
       try {
         const ragQuery = buildRagQuery(enrichedBrief);
-        ragContent = await ctx.runAction(internal.rag.searchDocuments, {
-          userId: userId as string,
-          query: ragQuery,
-        });
+        const ragTimeoutMs = Math.max(5_000, Math.min(STEP_TIMEOUT_MS, deadlineMs - Date.now() - 2_000));
+        ragContent = await Promise.race([
+          ctx.runAction(internal.rag.searchDocuments, {
+            userId: userId as string,
+            query: ragQuery,
+          }),
+          new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error("[ProWrite] RAG timeout")), ragTimeoutMs)
+          ),
+        ]);
         console.log("[ProWrite] RAG done");
       } catch (error) {
         console.error("[ProWrite] RAG failed:", error);
@@ -251,7 +270,7 @@ export const executePipeline = internalAction({
         model: anthropic(MODELS.DEEP_REASONING),
         system: synthPrompt.system,
         prompt: synthPrompt.user,
-      });
+      }, deadlineMs);
 
       // STEP 5: DRAFT — full article (Kimi K2.5 via OpenRouter)
       let draft: string;
@@ -262,7 +281,7 @@ export const executePipeline = internalAction({
           model: openrouter(MODELS.PROWRITE_DRAFT),
           system: draftPrompt.system,
           prompt: draftPrompt.user,
-        });
+        }, deadlineMs);
       } catch (error) {
         console.error("[ProWrite] DRAFT via OpenRouter failed, falling back to Opus:", error);
         const draftPrompt = buildDraftPrompt(synthesis);
@@ -270,7 +289,7 @@ export const executePipeline = internalAction({
           model: anthropic(MODELS.DEEP_REASONING),
           system: draftPrompt.system,
           prompt: draftPrompt.user,
-        });
+        }, deadlineMs);
       }
 
       // STEP 6: ELEVATE — sharpen hooks, creativity (GPT-5.2, fallback: Opus)
@@ -281,7 +300,7 @@ export const executePipeline = internalAction({
           model: openai(MODELS.PROWRITE_ELEVATE),
           system: elevatePrompt.system,
           prompt: elevatePrompt.user,
-        });
+        }, deadlineMs);
       } catch (error) {
         console.error("[ProWrite] ELEVATE via OpenAI failed, falling back to Opus:", error);
         const elevatePrompt = buildElevatePrompt(draft);
@@ -289,7 +308,7 @@ export const executePipeline = internalAction({
           model: anthropic(MODELS.DEEP_REASONING),
           system: elevatePrompt.system,
           prompt: elevatePrompt.user,
-        });
+        }, deadlineMs);
       }
 
       // STEP 7: REFINE — polish coherence + flow (Kimi K2.5 via OpenRouter)
@@ -301,7 +320,7 @@ export const executePipeline = internalAction({
           model: openrouter(MODELS.PROWRITE_DRAFT),
           system: refinePrompt.system,
           prompt: refinePrompt.user,
-        });
+        }, deadlineMs);
       } catch (error) {
         console.error("[ProWrite] REFINE via OpenRouter failed, falling back to Opus:", error);
         const refinePrompt = buildRefinePrompt(elevated);
@@ -309,7 +328,7 @@ export const executePipeline = internalAction({
           model: anthropic(MODELS.DEEP_REASONING),
           system: refinePrompt.system,
           prompt: refinePrompt.user,
-        });
+        }, deadlineMs);
       }
 
       // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus)
@@ -318,7 +337,7 @@ export const executePipeline = internalAction({
         model: anthropic(MODELS.DEEP_REASONING),
         system: humanizePrompt.system,
         prompt: humanizePrompt.user,
-      });
+      }, deadlineMs);
 
       const totalSec = ((Date.now() - pipelineStart) / 1000).toFixed(1);
       console.log(`[ProWrite] Pipeline complete (${totalSec}s total)`);
