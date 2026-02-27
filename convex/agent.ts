@@ -13,15 +13,19 @@ import { MEDIA_CATEGORY_PREFIX_MAP, isVoiceNote } from "./lib/media";
 import {
   AGENT_MAX_STEPS,
   AGENT_RECENT_MESSAGES,
+  COLLECTIONS_LIMIT_BASIC,
   CREDITS_BASIC,
   DEFAULT_IMAGE_ASPECT_RATIO,
   IMAGE_PROMPT_MAX_LENGTH,
+  ITEMS_LIMIT_BASIC,
   MAX_REMINDERS_PER_USER,
   PRO_FEATURES,
   PRO_PLAN_PRICE_MONTHLY_USD,
   PRO_PLAN_PRICE_ANNUAL_USD,
 } from "./constants";
 import { parseDatetimeInTimezone, getNextCronRun } from "./lib/cronParser";
+import { aggregateItems, deriveCurrency } from "./lib/items";
+import type { AggregateMode } from "./lib/items";
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
@@ -119,7 +123,27 @@ Keep this section in mind so you set accurate expectations with users.
 
 11. *Media Referencing* — When users refer to "my last image", "my last voice note", "my last video", "the document I sent", etc. without replying to a specific message, call resolveMedia to find the file by type (supports image, audio, video, document, any). Then chain into the appropriate tool: use reprocessMedia for content extraction (voice transcription, document text extraction, image description, video description), or convertFile for format conversion. For voice notes, resolveMedia may return a cached transcript — use it directly. Supports position ("second most recent image") via the position param.
 
-12. *WhatsApp File Type Limitations* — WhatsApp does not support plain text files (.txt). If a user says they sent a text file but no attachment arrived, it was blocked by WhatsApp before reaching Ghali — this is a platform limitation, not a Ghali bug. Suggest they either: (a) paste the text directly in the chat, or (b) save the file as PDF and send that instead. Supported attachment types: PDF, Word (.doc/.docx), Excel (.xlsx), PowerPoint (.pptx), images, audio, and video.`;
+12. *WhatsApp File Type Limitations* — WhatsApp does not support plain text files (.txt). If a user says they sent a text file but no attachment arrived, it was blocked by WhatsApp before reaching Ghali — this is a platform limitation, not a Ghali bug. Suggest they either: (a) paste the text directly in the chat, or (b) save the file as PDF and send that instead. Supported attachment types: PDF, Word (.doc/.docx), Excel (.xlsx), PowerPoint (.pptx), images, audio, and video.
+
+13. *Structured Data (Items & Collections)* — You can track expenses, tasks, contacts, notes, and bookmarks via addItem, queryItems, updateItem, and manageCollection tools. Items live in collections. Basic tier: ${ITEMS_LIMIT_BASIC} items / ${COLLECTIONS_LIMIT_BASIC} collections. Pro tier: unlimited.
+
+STRUCTURED DATA RULES:
+- *Intent interpretation*:
+  - Expenses: "spent 100 on coffee" → addItem(title: "Coffee", amount: 100, collectionName: "Expenses", collectionType: "expense", tags: ["food"])
+  - Tasks: "remind me to call dentist" → addItem(title: "Call dentist", collectionName: "Tasks", collectionType: "task")
+  - Contacts: "save John's number 555-1234" → addItem(title: "John", body: "555-1234", collectionName: "Contacts", collectionType: "contact")
+  - Notes: "note: meeting moved to 3pm" → addItem(title: "Meeting moved to 3pm", collectionName: "Notes", collectionType: "note")
+  - Bookmarks: "save this link https://..." → addItem(title: extracted title, body: URL, collectionName: "Bookmarks", collectionType: "bookmark")
+- *Auto-creation*: silently create collections when needed (don't ask for confirmation). Use sensible defaults for collectionType based on content.
+- *No duplicates*: before adding, consider if the user is updating an existing item (use updateItem instead).
+- *Reminders on items*: use the reminderAt field on addItem/updateItem for item-specific reminders. Confirm timezone with user if ambiguous.
+- *Query presentation*:
+  - Expenses → show totals first, then itemized list. Use aggregate: "sum" for totals.
+  - Tasks → group by priority, show due dates. Active first, then done.
+  - Contacts → scannable format: name + key info on each line.
+  - Keep responses concise — max 10 items in a response. Tell user if there are more.
+- *Formatting*: no tables (WhatsApp doesn't support them). Use emoji grouping (💰 expenses, ✅ tasks, 👤 contacts, 📝 notes, 🔖 bookmarks). Format amounts with commas (1,000 not 1000).
+- *Discoverability*: when a user sends a message that looks trackable (expense, task, etc.) for the first time, silently create the item AND briefly mention "I've saved this to your [collection] — you can ask me to track these anytime." Don't over-explain.`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
@@ -141,8 +165,12 @@ const appendToMemory = createTool({
       category,
       content,
     }) as { compactionScheduled: boolean };
-    const msg = "Memory updated.";
-    return result.compactionScheduled ? `${msg} (auto-compaction scheduled)` : msg;
+    return JSON.stringify({
+      status: "success",
+      action: "memory_appended",
+      category,
+      compactionScheduled: result.compactionScheduled,
+    });
   },
 });
 
@@ -164,9 +192,12 @@ const editMemory = createTool({
       replacement,
     }) as { found: boolean };
     if (!result.found) {
-      return "Could not find that text in memory. Check the exact wording.";
+      return JSON.stringify({ status: "error", code: "TEXT_NOT_FOUND", message: "Could not find that text in memory. Check the exact wording." });
     }
-    return replacement === "" ? "Memory entry removed." : "Memory updated.";
+    return JSON.stringify({
+      status: "success",
+      action: replacement === "" ? "memory_deleted" : "memory_edited",
+    });
   },
 });
 
@@ -180,14 +211,14 @@ const updatePersonality = createTool({
   }),
   handler: async (ctx, { content }) => {
     if (isFileTooLarge(content)) {
-      return "Error: Personality file exceeds 50KB limit. Please summarize.";
+      return JSON.stringify({ status: "error", code: "FILE_TOO_LARGE", message: "Personality file exceeds 50KB limit. Please summarize." });
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
       userId: ctx.userId as Id<"users">,
       filename: "personality",
       content,
     });
-    return "Personality updated.";
+    return JSON.stringify({ status: "success", action: "personality_updated" });
   },
 });
 
@@ -203,14 +234,14 @@ const updateHeartbeat = createTool({
   }),
   handler: async (ctx, { content }) => {
     if (isFileTooLarge(content)) {
-      return "Error: Heartbeat file exceeds 50KB limit. Please summarize.";
+      return JSON.stringify({ status: "error", code: "FILE_TOO_LARGE", message: "Heartbeat file exceeds 50KB limit. Please summarize." });
     }
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
       userId: ctx.userId as Id<"users">,
       filename: "heartbeat",
       content,
     });
-    return "Heartbeat updated.";
+    return JSON.stringify({ status: "success", action: "heartbeat_updated" });
   },
 });
 
@@ -373,7 +404,7 @@ const scheduleReminder = createTool({
       if (datetime) {
         runAt = parseDatetimeInTimezone(datetime, tz);
         if (runAt <= Date.now()) {
-          return "Error: The specified time is in the past. Please provide a future datetime.";
+          return JSON.stringify({ status: "error", code: "PAST_DATETIME", message: "The specified time is in the past. Please provide a future datetime." });
         }
       } else {
         runAt = getNextCronRun(cronExpr!, tz, new Date());
@@ -398,13 +429,17 @@ const scheduleReminder = createTool({
         hour12: true,
       });
 
-      if (cronExpr) {
-        return `Recurring reminder set! Next: ${formatted} (${tz}). Message: "${message}"`;
-      }
-      return `Reminder set for ${formatted} (${tz}): "${message}"`;
+      return JSON.stringify({
+        status: "success",
+        action: "reminder_scheduled",
+        reminderAt: formatted,
+        timezone: tz,
+        recurring: !!cronExpr,
+        message,
+      });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      return `Failed to set reminder: ${msg}`;
+      return JSON.stringify({ status: "error", code: "SCHEDULE_FAILED", message: msg });
     }
   },
 });
@@ -423,13 +458,9 @@ const listReminders = createTool({
       timezone?: string;
     }> = await ctx.runQuery(internal.reminders.listUserReminders, { userId });
 
-    if (reminders.length === 0) {
-      return "No pending reminders.";
-    }
-
-    const lines = reminders.map((r, i) => {
+    const formatted = reminders.map((r) => {
       const tz = r.timezone ?? "UTC";
-      const date = new Date(r.runAt).toLocaleString("en-US", {
+      const scheduledAt = new Date(r.runAt).toLocaleString("en-US", {
         timeZone: tz,
         weekday: "short",
         month: "short",
@@ -438,11 +469,20 @@ const listReminders = createTool({
         minute: "2-digit",
         hour12: true,
       });
-      const recurring = r.cronExpr ? " (recurring)" : "";
-      return `${i + 1}. [${r._id}] "${r.payload}" — ${date}${recurring}`;
+      return {
+        id: r._id,
+        message: r.payload,
+        scheduledAt,
+        recurring: !!r.cronExpr,
+      };
     });
 
-    return `Pending reminders:\n${lines.join("\n")}`;
+    return JSON.stringify({
+      status: "success",
+      action: "reminders_listed",
+      reminders: formatted,
+      count: formatted.length,
+    });
   },
 });
 
@@ -462,12 +502,12 @@ const cancelReminder = createTool({
         { jobId: reminderId as Id<"scheduledJobs">, userId }
       ) as { success: boolean; error?: string };
       if (result.success) {
-        return "Reminder cancelled successfully.";
+        return JSON.stringify({ status: "success", action: "reminder_cancelled" });
       }
-      return `Could not cancel reminder: ${result.error}`;
+      return JSON.stringify({ status: "error", code: "CANCEL_FAILED", message: result.error });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      return `Failed to cancel reminder: ${msg}`;
+      return JSON.stringify({ status: "error", code: "CANCEL_FAILED", message: msg });
     }
   },
 });
@@ -660,6 +700,496 @@ const convertFile = createTool({
   },
 });
 
+// ============================================================================
+// Structured Data Tools (Items & Collections)
+// ============================================================================
+
+const addItem = createTool({
+  description:
+    "Create a new structured item (expense, task, contact, note, bookmark). Automatically creates the collection if it doesn't exist.",
+  args: z.object({
+    title: z.string().describe("Item title (e.g. 'Coffee at Starbucks', 'Call dentist', 'John Smith')"),
+    body: z.string().optional().describe("Optional details or notes"),
+    collectionName: z.string().optional().describe("Collection name (e.g. 'Expenses', 'Tasks', 'Contacts'). Auto-created if doesn't exist."),
+    collectionType: z.string().optional().describe("Collection type hint: expense, task, contact, note, bookmark"),
+    status: z.enum(["active", "done", "archived"]).optional().describe("Item status. Default: active"),
+    priority: z.enum(["low", "medium", "high", "urgent"]).optional().describe("Priority level for tasks"),
+    dueDate: z.string().optional().describe("Due date as ISO string (e.g. '2026-03-01T09:00:00')"),
+    amount: z.number().optional().describe("Monetary amount for expenses"),
+    currency: z.string().optional().describe("Currency code (e.g. 'AED', 'USD'). Auto-derived from user timezone if omitted."),
+    tags: z.array(z.string()).optional().describe("Tags for categorization (e.g. ['food', 'lunch'])"),
+    metadata: z.record(z.unknown()).optional().describe("Extra key-value data"),
+    reminderAt: z.string().optional().describe("Reminder time as ISO string. Schedules a WhatsApp reminder."),
+  }),
+  handler: async (ctx, args): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    try {
+      // Get user for timezone
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        timezone: string; tier: string;
+      } | null;
+      const tz = user?.timezone ?? "UTC";
+
+      // Resolve or create collection
+      let collectionId: Id<"collections"> | undefined;
+      let collectionCreated = false;
+      if (args.collectionName) {
+        const existing = await ctx.runQuery(internal.items.getCollectionByName, {
+          userId,
+          name: args.collectionName,
+        }) as { _id: Id<"collections"> } | null;
+
+        if (existing) {
+          collectionId = existing._id;
+        } else {
+          collectionId = await ctx.runMutation(internal.items.createCollection, {
+            userId,
+            name: args.collectionName,
+            type: args.collectionType,
+          }) as Id<"collections">;
+          collectionCreated = true;
+        }
+      }
+
+      // Parse dates
+      const dueDate = args.dueDate ? parseDatetimeInTimezone(args.dueDate, tz) : undefined;
+      const reminderAt = args.reminderAt ? parseDatetimeInTimezone(args.reminderAt, tz) : undefined;
+
+      // Derive currency
+      const currency = args.amount != null
+        ? (args.currency ?? deriveCurrency(tz))
+        : undefined;
+
+      // Create item
+      const itemId = await ctx.runMutation(internal.items.createItem, {
+        userId,
+        collectionId,
+        title: args.title,
+        body: args.body,
+        status: args.status,
+        priority: args.priority,
+        dueDate,
+        amount: args.amount,
+        currency,
+        tags: args.tags,
+        metadata: args.metadata,
+        reminderAt,
+      }) as Id<"items">;
+
+      // Schedule reminder if requested
+      let reminderSet = false;
+      if (reminderAt && reminderAt > Date.now()) {
+        await ctx.runMutation(internal.reminders.createReminder, {
+          userId,
+          payload: `Reminder: ${args.title}`,
+          runAt: reminderAt,
+          timezone: tz,
+        });
+        reminderSet = true;
+      }
+
+      return JSON.stringify({
+        status: "success",
+        action: "item_created",
+        item: { id: itemId, title: args.title, collection: args.collectionName, amount: args.amount, currency },
+        collectionCreated,
+        reminderSet,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ status: "error", code: "CREATE_FAILED", message: msg });
+    }
+  },
+});
+
+const queryItemsTool = createTool({
+  description:
+    "Query and search the user's items (expenses, tasks, contacts, notes). Supports text search, filters, and aggregation (sum, count, group by tag/collection).",
+  args: z.object({
+    query: z.string().optional().describe("Text search query to find items by title/body/tags"),
+    collectionName: z.string().optional().describe("Filter by collection name"),
+    status: z.enum(["active", "done", "archived", "all"]).optional().describe("Filter by status. Default: active+done (excludes archived)"),
+    tags: z.array(z.string()).optional().describe("Filter by tags (items matching ANY tag)"),
+    dueBefore: z.string().optional().describe("ISO date — items due before this date"),
+    dueAfter: z.string().optional().describe("ISO date — items due after this date"),
+    dateFrom: z.string().optional().describe("ISO date — items created after this date"),
+    dateTo: z.string().optional().describe("ISO date — items created before this date"),
+    hasAmount: z.boolean().optional().describe("Filter to items with monetary amounts (expenses)"),
+    limit: z.number().optional().describe("Max items to return (default 20, max 50)"),
+    aggregate: z.enum(["sum", "count", "group_by_tag", "group_by_collection"]).optional().describe("Aggregate results instead of listing items"),
+  }),
+  handler: async (ctx, args): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    try {
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        timezone: string;
+      } | null;
+      const tz = user?.timezone ?? "UTC";
+
+      // Resolve collection
+      let collectionId: Id<"collections"> | undefined;
+      if (args.collectionName) {
+        const col = await ctx.runQuery(internal.items.getCollectionByName, {
+          userId,
+          name: args.collectionName,
+        }) as { _id: Id<"collections"> } | null;
+        if (!col) {
+          return JSON.stringify({ status: "success", action: "items_queried", items: [], count: 0 });
+        }
+        collectionId = col._id;
+      }
+
+      // Parse dates
+      const dueBefore = args.dueBefore ? parseDatetimeInTimezone(args.dueBefore, tz) : undefined;
+      const dueAfter = args.dueAfter ? parseDatetimeInTimezone(args.dueAfter, tz) : undefined;
+      const dateFrom = args.dateFrom ? parseDatetimeInTimezone(args.dateFrom, tz) : undefined;
+      const dateTo = args.dateTo ? parseDatetimeInTimezone(args.dateTo, tz) : undefined;
+
+      // Fetch items
+      let items: Array<{
+        _id: string; title: string; body?: string; status: string;
+        priority?: string; dueDate?: number; amount?: number; currency?: string;
+        tags?: string[]; collectionId?: string; _creationTime: number;
+        completedAt?: number; metadata?: unknown;
+      }>;
+
+      if (args.query) {
+        items = await ctx.runQuery(internal.items.findItemByText, {
+          userId,
+          query: args.query,
+          limit: args.limit ?? 20,
+        });
+      } else {
+        items = await ctx.runQuery(internal.items.queryItems, {
+          userId,
+          status: args.status,
+          collectionId,
+          tags: args.tags,
+          dueBefore,
+          dueAfter,
+          dateFrom,
+          dateTo,
+          hasAmount: args.hasAmount,
+          limit: args.limit,
+        });
+      }
+
+      // Aggregate if requested
+      if (args.aggregate) {
+        // For group_by_collection, resolve collection names
+        let collectionNames: Map<string, string> | undefined;
+        if (args.aggregate === "group_by_collection") {
+          const collections = await ctx.runQuery(internal.items.listCollections, {
+            userId,
+            includeArchived: true,
+          }) as Array<{ _id: string; name: string }>;
+          collectionNames = new Map(collections.map((c) => [c._id, c.name]));
+        }
+
+        const agg = aggregateItems(
+          items.map((i) => ({
+            title: i.title,
+            body: i.body,
+            tags: i.tags,
+            amount: i.amount,
+            currency: i.currency,
+            collectionId: i.collectionId,
+            status: i.status,
+          })),
+          args.aggregate as AggregateMode,
+          collectionNames,
+        );
+
+        return JSON.stringify({
+          status: "success",
+          action: "items_aggregated",
+          count: agg.totalCount,
+          aggregation: agg,
+        });
+      }
+
+      // Return items
+      const simplified = items.map((i) => ({
+        id: i._id,
+        title: i.title,
+        body: i.body,
+        status: i.status,
+        priority: i.priority,
+        dueDate: i.dueDate ? new Date(i.dueDate).toISOString() : undefined,
+        amount: i.amount,
+        currency: i.currency,
+        tags: i.tags,
+        createdAt: new Date(i._creationTime).toISOString(),
+      }));
+
+      return JSON.stringify({
+        status: "success",
+        action: "items_queried",
+        items: simplified,
+        count: simplified.length,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ status: "error", code: "QUERY_FAILED", message: msg });
+    }
+  },
+});
+
+const updateItemTool = createTool({
+  description:
+    "Update an existing item found by text search. Can change title, status, priority, amount, tags, collection, due date, or set/clear reminders.",
+  args: z.object({
+    itemQuery: z.string().describe("Text to find the item (searches title, body, tags)"),
+    updates: z.object({
+      title: z.string().optional(),
+      body: z.string().optional(),
+      status: z.enum(["active", "done", "archived"]).optional(),
+      priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+      dueDate: z.string().optional().describe("New due date as ISO string"),
+      amount: z.number().optional(),
+      tags: z.array(z.string()).optional(),
+      metadata: z.record(z.unknown()).optional(),
+      collectionName: z.string().optional().describe("Move to a different collection (auto-created if needed)"),
+      reminderAt: z.string().optional().describe("Set a new reminder (ISO string)"),
+      clearReminder: z.boolean().optional().describe("Cancel the item's scheduled reminder"),
+    }),
+  }),
+  handler: async (ctx, { itemQuery, updates }): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    try {
+      const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+        timezone: string;
+      } | null;
+      const tz = user?.timezone ?? "UTC";
+
+      // Find item by text
+      const matches = await ctx.runQuery(internal.items.findItemByText, {
+        userId,
+        query: itemQuery,
+        limit: 3,
+      }) as Array<{ _id: string; _score: number; title: string; status: string; reminderAt?: number; collectionId?: string }>;
+
+      if (matches.length === 0) {
+        return JSON.stringify({ status: "error", code: "NOT_FOUND", message: `No item found matching "${itemQuery}".` });
+      }
+
+      const top = matches[0]!;
+      // Ambiguity check: top score < 80 and gap to second < 20
+      if (top._score < 80 && matches.length > 1 && (top._score - matches[1]!._score) < 20) {
+        const options = matches.map((m) => m.title).join(", ");
+        return JSON.stringify({ status: "error", code: "AMBIGUOUS_MATCH", message: `Multiple items match "${itemQuery}": ${options}. Be more specific.` });
+      }
+
+      // Build patch
+      const patch: Record<string, unknown> = {};
+      const changes: string[] = [];
+
+      if (updates.title) { patch.title = updates.title; changes.push("title"); }
+      if (updates.body) { patch.body = updates.body; changes.push("body"); }
+      if (updates.status) { patch.status = updates.status; changes.push("status"); }
+      if (updates.priority) { patch.priority = updates.priority; changes.push("priority"); }
+      if (updates.amount != null) { patch.amount = updates.amount; changes.push("amount"); }
+      if (updates.tags) { patch.tags = updates.tags; changes.push("tags"); }
+      if (updates.metadata) { patch.metadata = updates.metadata; changes.push("metadata"); }
+
+      if (updates.dueDate) {
+        patch.dueDate = parseDatetimeInTimezone(updates.dueDate, tz);
+        changes.push("dueDate");
+      }
+
+      // Resolve collection move
+      if (updates.collectionName) {
+        const col = await ctx.runQuery(internal.items.getCollectionByName, {
+          userId,
+          name: updates.collectionName,
+        }) as { _id: Id<"collections"> } | null;
+
+        if (col) {
+          patch.collectionId = col._id;
+        } else {
+          const newColId = await ctx.runMutation(internal.items.createCollection, {
+            userId,
+            name: updates.collectionName,
+          }) as Id<"collections">;
+          patch.collectionId = newColId;
+        }
+        changes.push("collection");
+      }
+
+      // Handle reminders
+      if (updates.clearReminder && top.reminderAt) {
+        // Cancel the scheduled reminder job
+        try {
+          await ctx.runMutation(internal.reminders.cancelReminder, {
+            jobId: top._id as unknown as Id<"scheduledJobs">,
+            userId,
+          });
+        } catch {
+          // Reminder may already have fired — not critical
+        }
+        changes.push("reminderCleared");
+      }
+
+      if (updates.reminderAt) {
+        const reminderAt = parseDatetimeInTimezone(updates.reminderAt, tz);
+        patch.reminderAt = reminderAt;
+        if (reminderAt > Date.now()) {
+          await ctx.runMutation(internal.reminders.createReminder, {
+            userId,
+            payload: `Reminder: ${updates.title ?? top.title}`,
+            runAt: reminderAt,
+            timezone: tz,
+          });
+        }
+        changes.push("reminderSet");
+      }
+
+      // Apply update
+      await ctx.runMutation(internal.items.updateItem, {
+        itemId: top._id as Id<"items">,
+        userId,
+        updates: patch as {
+          title?: string; body?: string; status?: string; priority?: string;
+          dueDate?: number; amount?: number; currency?: string;
+          reminderAt?: number; tags?: string[]; metadata?: unknown;
+          collectionId?: Id<"collections">; reminderCronId?: string;
+          mediaStorageId?: Id<"_storage">;
+        },
+      });
+
+      return JSON.stringify({
+        status: "success",
+        action: "item_updated",
+        item: { id: top._id, title: updates.title ?? top.title },
+        changes,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ status: "error", code: "UPDATE_FAILED", message: msg });
+    }
+  },
+});
+
+const manageCollection = createTool({
+  description:
+    "Manage collections: list all, create new, rename, archive, or update description/icon/type.",
+  args: z.object({
+    action: z.enum(["list", "create", "rename", "archive", "describe"]).describe("Action to perform"),
+    name: z.string().optional().describe("Collection name (required for create/rename/archive/describe)"),
+    newName: z.string().optional().describe("New name (for rename action)"),
+    icon: z.string().optional().describe("Emoji icon for the collection"),
+    type: z.string().optional().describe("Collection type: expense, task, contact, note, bookmark"),
+    description: z.string().optional().describe("Collection description"),
+  }),
+  handler: async (ctx, args): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    try {
+      if (args.action === "list") {
+        const collections = await ctx.runQuery(internal.items.listCollections, {
+          userId,
+          includeArchived: true,
+        }) as Array<{ _id: string; name: string; icon?: string; type?: string; description?: string; archived?: boolean; itemCount: number }>;
+
+        return JSON.stringify({
+          status: "success",
+          action: "collections_listed",
+          collections: collections.map((c) => ({
+            id: c._id,
+            name: c.name,
+            icon: c.icon,
+            type: c.type,
+            description: c.description,
+            archived: c.archived ?? false,
+            itemCount: c.itemCount,
+          })),
+          count: collections.length,
+        });
+      }
+
+      if (!args.name) {
+        return JSON.stringify({ status: "error", code: "MISSING_NAME", message: "Collection name is required." });
+      }
+
+      if (args.action === "create") {
+        const colId = await ctx.runMutation(internal.items.createCollection, {
+          userId,
+          name: args.name,
+          icon: args.icon,
+          type: args.type,
+          description: args.description,
+        }) as Id<"collections">;
+
+        return JSON.stringify({
+          status: "success",
+          action: "collection_created",
+          collection: { id: colId, name: args.name },
+        });
+      }
+
+      // For rename, archive, describe — look up by name first
+      const col = await ctx.runQuery(internal.items.getCollectionByName, {
+        userId,
+        name: args.name,
+      }) as { _id: Id<"collections">; name: string } | null;
+
+      if (!col) {
+        return JSON.stringify({ status: "error", code: "NOT_FOUND", message: `Collection "${args.name}" not found.` });
+      }
+
+      if (args.action === "rename") {
+        if (!args.newName) {
+          return JSON.stringify({ status: "error", code: "MISSING_NEW_NAME", message: "New name is required for rename." });
+        }
+        await ctx.runMutation(internal.items.updateCollection, {
+          collectionId: col._id,
+          userId,
+          name: args.newName,
+        });
+        return JSON.stringify({
+          status: "success",
+          action: "collection_renamed",
+          collection: { id: col._id, oldName: col.name, newName: args.newName },
+        });
+      }
+
+      if (args.action === "archive") {
+        await ctx.runMutation(internal.items.updateCollection, {
+          collectionId: col._id,
+          userId,
+          archived: true,
+        });
+        return JSON.stringify({
+          status: "success",
+          action: "collection_archived",
+          collection: { id: col._id, name: col.name },
+        });
+      }
+
+      if (args.action === "describe") {
+        const updateFields: { collectionId: Id<"collections">; userId: Id<"users">; description?: string; icon?: string; type?: string } = {
+          collectionId: col._id,
+          userId,
+        };
+        if (args.description) updateFields.description = args.description;
+        if (args.icon) updateFields.icon = args.icon;
+        if (args.type) updateFields.type = args.type;
+
+        await ctx.runMutation(internal.items.updateCollection, updateFields);
+        return JSON.stringify({
+          status: "success",
+          action: "collection_updated",
+          collection: { id: col._id, name: col.name },
+        });
+      }
+
+      return JSON.stringify({ status: "error", code: "INVALID_ACTION", message: `Unknown action: ${args.action}` });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ status: "error", code: "COLLECTION_ERROR", message: msg });
+    }
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -680,6 +1210,10 @@ export const ghaliAgent = new Agent(components.agent, {
     scheduleReminder,
     listReminders,
     cancelReminder,
+    addItem,
+    queryItems: queryItemsTool,
+    updateItem: updateItemTool,
+    manageCollection,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {
