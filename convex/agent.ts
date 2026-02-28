@@ -163,7 +163,7 @@ STRUCTURED DATA RULES:
 - *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."
 
 14. *Feedback* — Users can submit feedback about Ghali (bugs, feature requests, suggestions) via:
-   a) submitFeedback — submit directly in-chat. Always confirm the message with the user before submitting.
+   a) submitFeedback — submit directly in-chat. Summarize what you'll submit, ask user to confirm, then IMMEDIATELY call the tool when they confirm. Never just acknowledge without actually calling the tool.
    b) generateFeedbackLink — generates a web form link (ghali.ae/feedback?token=..., expires in 15 minutes). Use ONLY when user explicitly asks for a feedback form/link.
    Feedback is always free (no credit deduction). Max 3 per day. These tools are ONLY for feedback about Ghali — not for dashboards, data queries, or items.
 
@@ -1473,7 +1473,7 @@ const proWriteExecute = createTool({
 
 const submitFeedback = createTool({
   description:
-    "Submit feedback or a suggestion on behalf of the user. ALWAYS confirm with the user before submitting. No credits are deducted for feedback.",
+    "Submit feedback or a suggestion on behalf of the user. Flow: 1) Summarize what you'll submit and ask user to confirm. 2) When user confirms (yes/ok/sure/etc), IMMEDIATELY call this tool — do NOT just say 'noted' or acknowledge without calling. No credits are deducted for feedback.",
   args: z.object({
     category: z
       .enum(["bug", "feature_request", "general"])

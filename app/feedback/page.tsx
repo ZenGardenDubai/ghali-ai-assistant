@@ -6,8 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, Suspense } from "react";
 
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "";
-
 const CATEGORIES = [
   { value: "bug", label: "Bug Report", emoji: "🐛" },
   { value: "feature_request", label: "Feature Request", emoji: "💡" },
@@ -33,16 +31,11 @@ function FeedbackForm() {
   // Validate token on load
   useEffect(() => {
     if (!token) return;
-    if (!CONVEX_SITE_URL) {
-      setTokenValid(false);
-      setTokenError("Service temporarily unavailable. Please try again later.");
-      return;
-    }
     const controller = new AbortController();
 
     async function validateToken() {
       try {
-        const res = await fetch(`${CONVEX_SITE_URL}/feedback/validate-token`, {
+        const res = await fetch("/api/feedback/validate-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
@@ -85,7 +78,7 @@ function FeedbackForm() {
 
     try {
       if (isTokenMode) {
-        const res = await fetch(`${CONVEX_SITE_URL}/feedback/submit`, {
+        const res = await fetch("/api/feedback/submit-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, category, message: message.trim() }),
