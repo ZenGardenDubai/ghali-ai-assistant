@@ -6,6 +6,7 @@ import {
   SCHEDULED_TASKS_LIMIT_BASIC,
   SCHEDULED_TASKS_LIMIT_PRO,
 } from "./constants";
+import { buildScheduledTaskPrompt, truncateForTemplate } from "./scheduledTasks";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -599,5 +600,52 @@ describe("resetCreditNotifications", () => {
     });
     expect(task1?.creditNotificationSent).toBe(false);
     expect(task2?.creditNotificationSent).toBe(false);
+  });
+});
+
+describe("buildScheduledTaskPrompt", () => {
+  it("builds prompt with user context", () => {
+    const result = buildScheduledTaskPrompt(
+      { title: "Daily joke", description: "Tell me a joke" },
+      "User context here"
+    );
+    expect(result).toContain("User context here");
+    expect(result).toContain("Daily joke");
+    expect(result).toContain("Tell me a joke");
+  });
+
+  it("builds prompt without user context", () => {
+    const result = buildScheduledTaskPrompt(
+      { title: "Joke", description: "Tell me a joke" },
+      ""
+    );
+    expect(result).toContain("<scheduled_task>");
+    expect(result).not.toContain("---");
+  });
+
+  it("includes delivery format when provided", () => {
+    const result = buildScheduledTaskPrompt(
+      { title: "News", description: "Get news", deliveryFormat: "bullet points" },
+      "context"
+    );
+    expect(result).toContain("Delivery format: bullet points");
+  });
+});
+
+describe("truncateForTemplate", () => {
+  it("returns text unchanged when under limit", () => {
+    expect(truncateForTemplate("short", 100)).toBe("short");
+  });
+
+  it("truncates with ellipsis when over limit", () => {
+    const long = "a".repeat(200);
+    const result = truncateForTemplate(long, 100);
+    expect(result).toHaveLength(100);
+    expect(result.endsWith("...")).toBe(true);
+  });
+
+  it("returns text unchanged when exactly at limit", () => {
+    const exact = "a".repeat(100);
+    expect(truncateForTemplate(exact, 100)).toBe(exact);
   });
 });

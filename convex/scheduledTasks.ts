@@ -18,6 +18,30 @@ import { buildUserContext } from "./lib/userFiles";
 import { ghaliAgent } from "./agent";
 
 /**
+ * Build the prompt for a scheduled task execution.
+ */
+export function buildScheduledTaskPrompt(
+  task: { title: string; description: string; deliveryFormat?: string },
+  userContext: string
+): string {
+  const taskPrompt = task.deliveryFormat
+    ? `${task.description}\n\nDelivery format: ${task.deliveryFormat}`
+    : task.description;
+
+  return userContext
+    ? `${userContext}\n\n---\n<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`
+    : `<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`;
+}
+
+/**
+ * Truncate a scheduled task result for template delivery.
+ */
+export function truncateForTemplate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength - 3) + "...";
+}
+
+/**
  * Validate that a timezone string is a valid IANA timezone.
  * Throws a user-friendly error if invalid.
  */
@@ -202,13 +226,7 @@ export const executeScheduledTask = internalAction({
     });
 
     // Build prompt
-    const taskPrompt = task.deliveryFormat
-      ? `${task.description}\n\nDelivery format: ${task.deliveryFormat}`
-      : task.description;
-
-    const fullPrompt = userContext
-      ? `${userContext}\n\n---\n<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`
-      : `<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`;
+    const fullPrompt = buildScheduledTaskPrompt(task, userContext);
 
     // Run agent
     let responseText: string | undefined;
@@ -276,10 +294,7 @@ export const executeScheduledTask = internalAction({
         });
       } else {
         // Out of session — use template with truncation
-        const truncated =
-          responseText.length > SCHEDULED_TASK_MAX_RESULT_LENGTH
-            ? responseText.slice(0, SCHEDULED_TASK_MAX_RESULT_LENGTH - 3) + "..."
-            : responseText;
+        const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
         await ctx.runAction(internal.twilio.sendTemplate, {
           to: user.phone,
           templateEnvVar: "TWILIO_TPL_SCHEDULED_TASK",
@@ -292,13 +307,18 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!delivered) {
-      // Delivery failed — mark error, reschedule cron, don't disable one-off
+      // Delivery failed — mark error, reschedule cron, disable one-off
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
       });
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId, task.schedule.expr, task.timezone);
+      } else {
+        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+          taskId,
+          updates: { enabled: false },
+        });
       }
       return;
     }
