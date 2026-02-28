@@ -27,6 +27,7 @@ function FeedbackForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [website, setWebsite] = useState(""); // honeypot
 
   // Validate token on load
   useEffect(() => {
@@ -71,7 +72,7 @@ function FeedbackForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !message.trim()) return;
+    if (!canSubmit || !message.trim() || website) return;
 
     setSubmitting(true);
     setError(null);
@@ -235,6 +236,20 @@ function FeedbackForm() {
             {message.length}/2000
           </span>
         </div>
+      </div>
+
+      {/* Honeypot — hidden from humans, bots fill it in */}
+      <div className="absolute opacity-0 -z-10" aria-hidden="true" tabIndex={-1}>
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
       </div>
 
       {/* Error */}
