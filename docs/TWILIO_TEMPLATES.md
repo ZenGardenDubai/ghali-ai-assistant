@@ -221,6 +221,26 @@ async function twilioTemplateCall(
 
 ---
 
+### 8. `ghali_scheduled_task` — Scheduled Task Result
+
+**Category:** Utility
+**Used by:** `convex/scheduledTasks.ts` — when a scheduled task fires outside the 24h window
+**Variables:** `{{1}}` = task result (truncated to 1400 chars)
+
+```json
+{
+  "friendly_name": "ghali_scheduled_task",
+  "language": "en",
+  "types": {
+    "twilio/text": {
+      "body": "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant."
+    }
+  }
+}
+```
+
+---
+
 ## Implementation Priority
 
 ### Phase 1 — Must-have (users actively expect these)
@@ -251,6 +271,7 @@ TWILIO_TPL_CREDITS_RESET=HXxxxxxxxxx
 TWILIO_TPL_CREDITS_LOW=HXxxxxxxxxx
 TWILIO_TPL_SUB_ACTIVE=HXxxxxxxxxx
 TWILIO_TPL_SUB_ENDED=HXxxxxxxxxx
+TWILIO_TPL_SCHEDULED_TASK=HXxxxxxxxxx
 ```
 
 These will be read by the `sendWhatsAppTemplate` function in `convex/lib/twilioSend.ts`.

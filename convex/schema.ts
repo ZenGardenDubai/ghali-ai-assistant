@@ -150,6 +150,7 @@ export default defineSchema({
     // Reminder tracking
     reminderJobId: v.optional(v.id("scheduledJobs")),
     reminderCronId: v.optional(v.string()),
+    scheduledTaskId: v.optional(v.id("scheduledTasks")),
   })
     .index("by_userId", ["userId"])
     .index("by_collectionId", ["collectionId"])
@@ -161,6 +162,32 @@ export default defineSchema({
       dimensions: 1536,
       filterFields: ["userId", "collectionId", "status"],
     }),
+
+  scheduledTasks: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    description: v.string(),
+    schedule: v.union(
+      v.object({ kind: v.literal("cron"), expr: v.string() }),
+      v.object({ kind: v.literal("once"), runAt: v.number() })
+    ),
+    timezone: v.string(),
+    deliveryFormat: v.optional(v.string()),
+    enabled: v.boolean(),
+    lastRunAt: v.optional(v.number()),
+    lastStatus: v.optional(
+      v.union(
+        v.literal("success"),
+        v.literal("skipped_no_credits"),
+        v.literal("error")
+      )
+    ),
+    creditNotificationSent: v.optional(v.boolean()),
+    schedulerJobId: v.optional(v.id("_scheduled_functions")),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_enabled", ["userId", "enabled"]),
 
   feedbackTokens: defineTable({
     token: v.string(),
