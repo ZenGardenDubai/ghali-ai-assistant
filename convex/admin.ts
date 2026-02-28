@@ -169,19 +169,19 @@ export const broadcastMessage = internalAction({
     );
 
     let sentCount = 0;
-    for (const user of activeUsers) {
+    for (const [index, user] of activeUsers.entries()) {
       try {
         await ctx.runAction(internal.twilio.sendMessage, {
           to: (user as { phone: string }).phone,
           body: message,
         });
         sentCount++;
-        // 500ms delay between sends (Twilio rate limits)
-        if (sentCount < activeUsers.length) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
       } catch (error) {
         console.error(`Broadcast failed for ${(user as { phone: string }).phone}:`, error);
+      } finally {
+        if (index < activeUsers.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
     }
 
@@ -344,7 +344,7 @@ export const sendTemplateBroadcast = internalAction({
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
 
     let sentCount = 0;
-    for (const user of allUsers) {
+    for (const [index, user] of allUsers.entries()) {
       const phone = (user as { phone: string }).phone;
       const lastMessageAt = (user as { lastMessageAt?: number }).lastMessageAt;
       const isActive = lastMessageAt && lastMessageAt >= cutoff;
@@ -365,11 +365,13 @@ export const sendTemplateBroadcast = internalAction({
           });
         }
         sentCount++;
-        if (sentCount < allUsers.length) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
       } catch (error) {
         console.error(`Template broadcast failed for ${phone}:`, error);
+      } finally {
+        // Always throttle between sends to respect Twilio rate limits
+        if (index < allUsers.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
       }
     }
 

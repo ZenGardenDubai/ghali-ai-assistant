@@ -75,6 +75,11 @@ Each message uses 1 credit.`,
     variables: ["credits", "tier", "resetDate"],
   },
 
+  credits_low_warning: {
+    template: `You have {{credits}} credits remaining this month. Need more? Send "upgrade" to learn about Pro.`,
+    variables: ["credits"],
+  },
+
   credits_exhausted_basic: {
     template: `*Credits Used Up* 😅
 

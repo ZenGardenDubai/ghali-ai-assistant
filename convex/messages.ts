@@ -669,9 +669,13 @@ export const generateResponse = internalAction({
         newCredits <= CREDITS_LOW_THRESHOLD &&
         user.credits > CREDITS_LOW_THRESHOLD
       ) {
+        const lowCreditMsg = fillTemplate(
+          TEMPLATES.credits_low_warning.template,
+          { credits: newCredits }
+        );
         await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
           to: user.phone,
-          body: `You have ${newCredits} credits remaining this month. Need more? Send "upgrade" to learn about Pro.`,
+          body: lowCreditMsg,
         });
       }
     }
