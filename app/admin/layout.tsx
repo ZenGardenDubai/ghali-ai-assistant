@@ -1,20 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, MessageSquareText, PanelLeftClose, PanelLeft } from "lucide-react";
+import { LayoutDashboard, MessageSquareText, MessageSquareHeart, PanelLeftClose, PanelLeft } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/templates", label: "Templates", icon: MessageSquareText },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquareHeart },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [newFeedbackCount, setNewFeedbackCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/admin/feedback/stats", { method: "POST" })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.new != null) setNewFeedbackCount(data.new);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-[#0a0f1e] text-white/90 overflow-hidden">
@@ -80,6 +91,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )}
                 <item.icon className="h-[18px] w-[18px] shrink-0" />
                 {item.label}
+                {item.href === "/admin/feedback" && newFeedbackCount > 0 && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#ED6B23] px-1.5 text-[10px] font-bold text-white">
+                    {newFeedbackCount}
+                  </span>
+                )}
               </Link>
             );
           })}

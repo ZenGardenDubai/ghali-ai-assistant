@@ -45,4 +45,11 @@ crons.daily(
   internal.proWrite.cleanupExpiredBriefs
 );
 
+// Daily cleanup of expired feedback tokens
+crons.daily(
+  "feedback-token-cleanup",
+  { hourUTC: 3, minuteUTC: 0 },
+  internal.feedback.cleanupExpiredTokens
+);
+
 export default crons;

@@ -173,6 +173,18 @@ Defined in `convex/lib/utils.ts` as `SYSTEM_COMMANDS`:
 | Short message threshold | 4 words | `ONBOARDING_SHORT_MESSAGE_WORDS` |
 | Long message threshold | 8 words | `ONBOARDING_LONG_MESSAGE_WORDS` |
 
+## Feedback
+
+| Rule | Value | Constant |
+|------|-------|----------|
+| Max submissions per user per day | 3 | `FEEDBACK_MAX_PER_DAY` |
+| Token expiry | 15 minutes | `FEEDBACK_TOKEN_EXPIRY_MS` |
+| Max message length | 2000 chars | `FEEDBACK_MAX_MESSAGE_LENGTH` |
+| Credit cost | 0 (always free) | — |
+| Token cleanup | Daily at 03:00 UTC | `convex/crons.ts` |
+
+Three submission channels: agent tool (in-chat), WhatsApp link (tokenized), web (Clerk auth). All free.
+
 ## Supported Languages
 
 Defined in `convex/lib/systemCommands.ts`: `en`, `ar`, `fr`, `es`, `hi`, `ur`

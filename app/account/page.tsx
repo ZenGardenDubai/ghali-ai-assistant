@@ -361,6 +361,23 @@ export default function AccountPage() {
               </Link>
             )}
 
+            {/* Give Feedback */}
+            <Link
+              href="/feedback"
+              className="group flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4.5 transition-all hover:border-white/[0.12] hover:bg-white/[0.04]"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/15 transition-colors group-hover:bg-purple-500/15">
+                <MessageHeartIcon className="h-4.5 w-4.5 text-purple-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white/90">Give Feedback</p>
+                <p className="mt-0.5 text-xs text-white/30">
+                  Share bugs, ideas, or suggestions
+                </p>
+              </div>
+              <ChevronRightIcon className="h-4 w-4 flex-shrink-0 text-white/15 transition-colors group-hover:text-white/30" />
+            </Link>
+
             {/* WhatsApp */}
             <a
               href={WHATSAPP_URL}
@@ -433,6 +450,15 @@ function ShieldIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
+function MessageHeartIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+      <path d="M15.8 9.2a2.5 2.5 0 0 0-3.5 0l-.3.4-.3-.4a2.5 2.5 0 0 0-3.5 0 2.7 2.7 0 0 0 0 3.7L12 17l3.8-4.1a2.7 2.7 0 0 0 0-3.7z" />
     </svg>
   );
 }

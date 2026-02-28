@@ -57,6 +57,7 @@ Pick one, or say *skip* — you can change this anytime.`,
 💓 Heartbeat — proactive check-ins
 📊 Track expenses, tasks, contacts, notes & more
 ✍️ ProWrite — professional multi-AI writing pipeline
+💭 Feedback — report bugs or suggest features
 
 Say *help* anytime for commands. Let's go!`,
     variables: [],
@@ -123,7 +124,9 @@ Thanks for being Pro! 💎`,
 • *clear everything* — full reset
 • *upgrade* — get Pro
 • *privacy* — how your data is handled
-• *help* — this guide`,
+• *help* — this guide
+
+💭 *Feedback* — Say "I have feedback" or "report a bug" to submit feedback directly, or ask for a feedback form link`,
     variables: [],
   },
 
