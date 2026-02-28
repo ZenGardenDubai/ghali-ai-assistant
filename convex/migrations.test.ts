@@ -226,7 +226,7 @@ describe("countPendingReminders", () => {
       });
     });
 
-    const counts = await t.mutation(
+    const counts = await t.query(
       internal.migrations.countPendingReminders,
       {}
     );

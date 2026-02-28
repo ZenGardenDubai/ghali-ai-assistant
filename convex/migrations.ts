@@ -1,4 +1,4 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getNextCronRun } from "./lib/cronParser";
 
@@ -9,8 +9,8 @@ import { getNextCronRun } from "./lib/cronParser";
  * Run manually via Convex dashboard after deployment.
  *
  * Steps per reminder:
- * 1. Create a scheduledTasks record
- * 2. Schedule the executeScheduledTask action
+ * 1. Compute schedule and runAt
+ * 2. Create a scheduledTasks record + schedule execution
  * 3. Cancel the old scheduler job
  * 4. Mark old scheduledJobs record as "cancelled"
  * 5. Update any items referencing the old reminderJobId → set scheduledTaskId
@@ -34,12 +34,7 @@ export const migrateRemindersToScheduledTasks = internalMutation({
     for (const job of allReminders) {
       const timezone = job.timezone ?? "UTC";
 
-      // Build schedule
-      const schedule = job.cronExpr
-        ? { kind: "cron" as const, expr: job.cronExpr }
-        : { kind: "once" as const, runAt: job.runAt };
-
-      // For cron tasks, compute next run from now (old runAt may be stale)
+      // Compute runAt — for cron, recompute from now (old runAt may be stale)
       let runAt = job.runAt;
       if (job.cronExpr) {
         try {
@@ -50,11 +45,16 @@ export const migrateRemindersToScheduledTasks = internalMutation({
       }
 
       // Skip stale one-off reminders (should have fired already)
-      if (!job.cronExpr && runAt <= Date.now()) {
+      if (!job.cronExpr && runAt < Date.now()) {
         await ctx.db.patch(job._id, { status: "cancelled" });
         skippedCount++;
         continue;
       }
+
+      // Build schedule object after runAt is finalized
+      const schedule = job.cronExpr
+        ? { kind: "cron" as const, expr: job.cronExpr }
+        : { kind: "once" as const, runAt };
 
       // Create scheduledTasks record
       const taskId = await ctx.db.insert("scheduledTasks", {
@@ -67,7 +67,7 @@ export const migrateRemindersToScheduledTasks = internalMutation({
         createdAt: Date.now(),
       });
 
-      // Schedule the execution
+      // Schedule the execution — delete task on failure to avoid orphans
       try {
         const schedulerJobId = await ctx.scheduler.runAt(
           runAt,
@@ -75,8 +75,11 @@ export const migrateRemindersToScheduledTasks = internalMutation({
           { taskId }
         );
         await ctx.db.patch(taskId, { schedulerJobId });
-      } catch {
-        console.error(`Failed to schedule migrated task ${taskId}`);
+      } catch (error) {
+        console.error(`Failed to schedule migrated task ${taskId}, cleaning up:`, error);
+        await ctx.db.delete(taskId);
+        skippedCount++;
+        continue;
       }
 
       // Cancel old scheduler job
@@ -117,7 +120,7 @@ export const migrateRemindersToScheduledTasks = internalMutation({
  * Dry-run: count pending reminders without modifying anything.
  * Run this first to verify before running the actual migration.
  */
-export const countPendingReminders = internalMutation({
+export const countPendingReminders = internalQuery({
   args: {},
   handler: async (ctx) => {
     const reminders = await ctx.db
@@ -132,7 +135,7 @@ export const countPendingReminders = internalMutation({
 
     const oneOff = reminders.filter((r) => !r.cronExpr);
     const recurring = reminders.filter((r) => !!r.cronExpr);
-    const stale = oneOff.filter((r) => r.runAt <= Date.now());
+    const stale = oneOff.filter((r) => r.runAt < Date.now());
 
     return {
       total: reminders.length,
