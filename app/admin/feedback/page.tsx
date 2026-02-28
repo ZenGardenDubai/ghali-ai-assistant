@@ -65,6 +65,7 @@ export default function AdminFeedbackPage() {
   const [feedbackList, setFeedbackList] = useState<Feedback[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<Status | "">("");
   const [filterCategory, setFilterCategory] = useState<Category | "">("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export default function AdminFeedbackPage() {
   const [savingNotes, setSavingNotes] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
+    setError(null);
     try {
       const [feedbackRes, statsRes] = await Promise.all([
         fetch("/api/admin/feedback/list", {
@@ -102,6 +104,7 @@ export default function AdminFeedbackPage() {
       }
     } catch (err) {
       console.error("Failed to fetch feedback:", err);
+      setError("Failed to load feedback. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -219,6 +222,19 @@ export default function AdminFeedbackPage() {
           <option value="general">General</option>
         </select>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 flex items-center justify-between">
+          <p className="text-sm text-red-400">{error}</p>
+          <button
+            onClick={() => fetchData()}
+            className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-white/50 transition-colors hover:bg-white/[0.1] hover:text-white/70"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Feedback list */}
       {loading ? (

@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, Suspense } from "react";
 
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "";
 
 const CATEGORIES = [
   { value: "bug", label: "Bug Report", emoji: "🐛" },

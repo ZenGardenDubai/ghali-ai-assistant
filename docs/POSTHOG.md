@@ -206,7 +206,7 @@ Not yet created in PostHog. Steps:
 7. Name: **"Feature Usage"**
 8. Save → Add to dashboard **"Ghali Server Analytics"** (ID `1299426`)
 
-Expected `feature` values: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`
+Expected `feature` values: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback`
 
 Remove this section after creation.
 
