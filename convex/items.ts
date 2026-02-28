@@ -228,6 +228,7 @@ export const createItem = internalMutation({
     mediaStorageId: v.optional(v.id("_storage")),
     reminderJobId: v.optional(v.id("scheduledJobs")),
     reminderCronId: v.optional(v.string()),
+    scheduledTaskId: v.optional(v.id("scheduledTasks")),
   },
   handler: async (ctx, { userId, status: statusArg, collectionId, ...fields }) => {
     const status = statusArg ?? "active";
@@ -330,6 +331,7 @@ export const updateItem = internalMutation({
       collectionId: v.optional(v.id("collections")),
       reminderJobId: v.optional(v.id("scheduledJobs")),
       reminderCronId: v.optional(v.string()),
+      scheduledTaskId: v.optional(v.id("scheduledTasks")),
       mediaStorageId: v.optional(v.id("_storage")),
       clearReminder: v.optional(v.boolean()),
     }),
@@ -390,6 +392,7 @@ export const updateItem = internalMutation({
         delete (rest as Record<string, unknown>).reminderAt;
         delete (rest as Record<string, unknown>).reminderJobId;
         delete (rest as Record<string, unknown>).reminderCronId;
+        delete (rest as Record<string, unknown>).scheduledTaskId;
       }
       await ctx.db.replace(itemId, { ...rest, ...patch });
       return await ctx.db.get(itemId);

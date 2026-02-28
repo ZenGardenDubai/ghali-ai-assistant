@@ -53,7 +53,7 @@ Pick one, or say *skip* — you can change this anytime.`,
 🖼️ Analyze photos or generate images
 🎤 Understand voice notes and video
 🧠 Remember your preferences over time
-⏰ Precise reminders — down to the minute
+⏰ Scheduled tasks — reminders, recurring reports, daily briefings
 💓 Heartbeat — proactive check-ins
 📊 Track expenses, tasks, contacts, notes & more
 ✍️ ProWrite — professional multi-AI writing pipeline
@@ -116,7 +116,7 @@ Thanks for being Pro! 💎`,
 🎤 *Voice & Video* — Send voice notes, audio, or video — I understand them
 🔄 *File conversion* — Convert between formats: PDF↔Word, images, audio (say "convert to PDF" or reply to a file)
 🧠 *Memory* — I learn your preferences over time — no need to repeat yourself
-⏰ *Reminders* — Set one-time or recurring reminders, precise to the minute
+⏰ *Scheduled tasks* — One-time or recurring AI tasks: reminders, daily briefings, reports
 💓 *Heartbeat* — Proactive check-ins based on your schedule
 📊 *Track anything* — Expenses, tasks, contacts, notes, bookmarks — just tell me and I organize it
 ✍️ *ProWrite* — Say "prowrite" for professional multi-AI writing (articles, emails, reports)

@@ -111,6 +111,11 @@ export const resetCredits = internalMutation({
           );
         }
 
+        // Reset creditNotificationSent on all user's scheduled tasks
+        await ctx.scheduler.runAfter(0, internal.scheduledTasks.resetCreditNotifications, {
+          userId: user._id,
+        });
+
         resetCount++;
       }
     }

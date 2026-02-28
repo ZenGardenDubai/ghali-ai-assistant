@@ -203,6 +203,19 @@ export const executeScheduledTask = internalAction({
         creditNotificationSent: notificationSent,
       });
 
+      // Fire analytics
+      await ctx.runAction(internal.analytics.trackScheduledTaskSkipped, {
+        phone: user.phone,
+        reason: "no_credits",
+        tier: user.tier,
+      });
+      if (notificationSent && !task.creditNotificationSent) {
+        await ctx.runAction(internal.analytics.trackScheduledTaskCreditNotification, {
+          phone: user.phone,
+          tier: user.tier,
+        });
+      }
+
       // Reschedule next run for cron tasks
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
@@ -215,6 +228,9 @@ export const executeScheduledTask = internalAction({
       }
       return;
     }
+
+    // Track execution start time
+    const executionStartMs = Date.now();
 
     // Build user context
     const userFiles = await ctx.runQuery(
@@ -334,6 +350,14 @@ export const executeScheduledTask = internalAction({
       creditNotificationSent: false,
     });
 
+    // Fire analytics
+    await ctx.runAction(internal.analytics.trackScheduledTaskExecuted, {
+      phone: user.phone,
+      schedule_kind: task.schedule.kind,
+      tier: user.tier,
+      duration_ms: Date.now() - executionStartMs,
+    });
+
     // Handle next run
     if (task.schedule.kind === "cron") {
       await rescheduleNextRun(ctx, taskId);
@@ -389,6 +413,7 @@ export const scheduleNextRun = internalMutation({
 export const updateScheduledTask = internalMutation({
   args: {
     taskId: v.id("scheduledTasks"),
+    userId: v.optional(v.id("users")),
     updates: v.object({
       title: v.optional(v.string()),
       description: v.optional(v.string()),
@@ -402,9 +427,13 @@ export const updateScheduledTask = internalMutation({
       deliveryFormat: v.optional(v.string()),
     }),
   },
-  handler: async (ctx, { taskId, updates }) => {
+  handler: async (ctx, { taskId, userId, updates }) => {
     const task = await ctx.db.get(taskId);
     if (!task) throw new Error("Task not found");
+
+    if (userId && task.userId !== userId) {
+      throw new Error("Task not found");
+    }
 
     const patch: Record<string, unknown> = {};
     if (updates.title !== undefined) patch.title = updates.title;
