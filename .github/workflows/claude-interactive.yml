@@ -51,7 +51,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         timeout-minutes: 25
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
           max_turns: "25"
