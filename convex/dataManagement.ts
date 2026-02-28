@@ -83,8 +83,13 @@ export const clearEverything = internalAction({
       userId,
     });
 
-    // Cancel all pending reminders
+    // Cancel all pending reminders (legacy)
     await ctx.runMutation(internal.reminders.cancelAllUserReminders, {
+      userId,
+    });
+
+    // Cancel all scheduled tasks
+    await ctx.runMutation(internal.scheduledTasks.cancelAllUserScheduledTasks, {
       userId,
     });
 

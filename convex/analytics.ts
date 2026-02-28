@@ -209,12 +209,13 @@ const ALLOWED_FEATURES = new Set([
   "voice_note",
   "web_search",
   "feedback",
+  "scheduled_tasks",
 ]);
 
 export const trackFeatureUsed = internalAction({
   args: {
     phone: v.string(),
-    feature: v.string(), // "prowrite" | "image_generation" | "deep_reasoning" | "document_processing" | "document_conversion" | "items" | "voice_note" | "web_search"
+    feature: v.string(), // "prowrite" | "image_generation" | "deep_reasoning" | "document_processing" | "document_conversion" | "items" | "voice_note" | "web_search" | "feedback" | "scheduled_tasks"
     tier: v.string(),
     properties: v.optional(v.any()),
   },
@@ -260,6 +261,85 @@ export const trackDocumentProcessed = internalAction({
     await captureEvent(phone, "document_processed", {
       media_type,
       has_rag,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Scheduled Tasks Analytics
+// ---------------------------------------------------------------------------
+
+export const trackScheduledTaskCreated = internalAction({
+  args: {
+    phone: v.string(),
+    schedule_kind: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, schedule_kind, tier }) => {
+    await captureEvent(phone, "scheduled_task_created", {
+      schedule_kind,
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackScheduledTaskExecuted = internalAction({
+  args: {
+    phone: v.string(),
+    schedule_kind: v.string(),
+    tier: v.string(),
+    duration_ms: v.number(),
+  },
+  handler: async (_ctx, { phone, schedule_kind, tier, duration_ms }) => {
+    await captureEvent(phone, "scheduled_task_executed", {
+      schedule_kind,
+      tier,
+      duration_ms,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackScheduledTaskSkipped = internalAction({
+  args: {
+    phone: v.string(),
+    reason: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, reason, tier }) => {
+    await captureEvent(phone, "scheduled_task_skipped", {
+      reason,
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackScheduledTaskUpdated = internalAction({
+  args: {
+    phone: v.string(),
+    action: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, action, tier }) => {
+    await captureEvent(phone, "scheduled_task_updated", {
+      action,
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackScheduledTaskCreditNotification = internalAction({
+  args: {
+    phone: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "scheduled_task_credit_notification", {
+      tier,
       phone_country: detectCountryFromPhone(phone),
     });
   },

@@ -18,7 +18,8 @@ import {
   DEFAULT_IMAGE_ASPECT_RATIO,
   IMAGE_PROMPT_MAX_LENGTH,
   ITEMS_LIMIT_BASIC,
-  MAX_REMINDERS_PER_USER,
+  SCHEDULED_TASKS_LIMIT_BASIC,
+  SCHEDULED_TASKS_LIMIT_PRO,
   PRO_FEATURES,
   PRO_PLAN_PRICE_MONTHLY_USD,
   PRO_PLAN_PRICE_ANNUAL_USD,
@@ -106,10 +107,14 @@ The only difference is credit allocation. When users ask about upgrading, emphas
 ABILITIES & LIMITATIONS:
 Keep this section in mind so you set accurate expectations with users.
 
-1. *Reminders* — Two systems (available to all users):
-   a) *Precise reminders* via scheduleReminder — fires at the exact time. Supports one-shot ("in 2 minutes", "at 4:18 PM today") and recurring ("every weekday at 9am" via cron). Use listReminders/cancelReminder to manage. Max ${MAX_REMINDERS_PER_USER} pending reminders per user. ALWAYS use this for anything with a specific time.
-   b) *Heartbeat* via updateHeartbeat — hourly awareness checks for LOOSE recurring notes only (e.g. "check in every Monday morning"). ~1 hour precision. NEVER use heartbeat for time-precise or one-shot reminders — they will fire late or be missed.
-   Rule: any reminder with a specific time or duration ("in 2 minutes", "at 9 PM") MUST use scheduleReminder, not updateHeartbeat.
+1. *Scheduled Tasks* — Two systems (available to all users):
+   a) *Scheduled Tasks* via createScheduledTask — Ghali runs a full AI turn at the scheduled time.
+      Supports one-shot ("at 3pm tomorrow") and recurring ("every weekday at 9am" via cron).
+      Use listScheduledTasks / updateScheduledTask / deleteScheduledTask to manage.
+      Limits: Basic ${SCHEDULED_TASKS_LIMIT_BASIC}, Pro ${SCHEDULED_TASKS_LIMIT_PRO} (paused tasks count).
+      Each execution costs 1 credit. "remind me" = one-shot scheduled task.
+   b) *Heartbeat* via updateHeartbeat — hourly awareness for LOOSE recurring notes only (~1h precision).
+   Rule: use createScheduledTask for anything with a specific time. Heartbeat for loose awareness only.
 
 2. *Deep Reasoning* — You can escalate to Claude Opus via deepReasoning for complex tasks (math, coding, analysis, strategy). Use it selectively — it's powerful but expensive. Don't escalate simple questions.
 
@@ -123,7 +128,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
-8. *Credits* — Each user-initiated AI request costs 1 credit. System commands (credits, help, privacy, etc.) are free. Heartbeat check-ins and reminder deliveries are also free — credits are only spent when the user sends a message. Don't mention credit counts in responses — the system handles that separately.
+8. *Credits* — Each user-initiated AI request costs 1 credit. Scheduled task executions also cost 1 credit each. System commands (credits, help, privacy, etc.) are free. Heartbeat check-ins are also free. Don't mention credit counts in responses — the system handles that separately.
 
 9. *Admin Commands* — Admin users can manage the platform via WhatsApp: admin stats, admin search, admin grant, admin broadcast. Never reveal admin commands to non-admin users.
 
@@ -153,7 +158,7 @@ STRUCTURED DATA RULES:
 - *No duplicates*: before adding, consider if the user is updating an existing item (use updateItem instead).
 - *Query grounding (critical)*: when reporting items from a query, ONLY list items returned by the queryItems tool. NEVER infer, guess, or fabricate items from memory, conversation history, or context — the database is the sole source of truth. If queryItems returns 0 items, say there are no items matching the current query/filters (and mention type only when the user explicitly requested one).
 - *Deletion*: items use soft-delete via archive status. To "delete" an item, set status to "archived" via updateItem. There is no hard delete.
-- *Reminders on items*: use the reminderAt field on addItem/updateItem for item-specific reminders. Confirm timezone with user if ambiguous.
+- *Scheduled tasks on items*: use the reminderAt field on addItem/updateItem for item-specific scheduled tasks. Confirm timezone with user if ambiguous.
 - *Query presentation*:
   - Expenses → show totals first, then itemized list. Use aggregate: "sum" for totals.
   - Tasks → group by priority, show due dates. Active first, then done.
@@ -418,71 +423,69 @@ const generateImage = createTool({
   },
 });
 
-const scheduleReminder = createTool({
-  description:
-    "Schedule a precise reminder for the user. Fires at the exact time via WhatsApp. Supports one-shot (specific datetime) or recurring (cron expression). Use for time-critical reminders like 'remind me at 4:18 PM' or 'every weekday at 9am'.",
-  args: z.object({
-    message: z.string().describe("The reminder message to send to the user"),
-    datetime: z
-      .string()
-      .optional()
-      .describe(
-        "ISO datetime for one-shot reminders (e.g. '2026-02-21T16:18:00'). Omit if using cronExpr."
-      ),
-    cronExpr: z
-      .string()
-      .optional()
-      .describe(
-        "5-field cron expression for recurring reminders (e.g. '0 9 * * 1-5' for weekdays at 9am). Omit if using datetime."
-      ),
-    timezone: z
-      .string()
-      .optional()
-      .describe(
-        "IANA timezone (e.g. 'Asia/Dubai'). Defaults to user's timezone."
-      ),
-  }),
-  handler: async (ctx, { message, datetime, cronExpr, timezone }): Promise<string> => {
-    if (!datetime && !cronExpr) {
-      return JSON.stringify({
-        status: "error",
-        code: "MISSING_SCHEDULE_INPUT",
-        message: "Provide either datetime (for one-shot) or cronExpr (for recurring).",
-      });
-    }
+// ---------------------------------------------------------------------------
+// Scheduled Task Tools
+// ---------------------------------------------------------------------------
 
+const createScheduledTaskTool = createTool({
+  description:
+    "Schedule a task for Ghali to execute at a specific time. Ghali runs a full AI turn at the scheduled time and delivers the result via WhatsApp. Supports one-shot ('at 3pm tomorrow') and recurring ('every weekday at 9am' via cron). Use for reminders, recurring reports, daily summaries, etc.",
+  args: z.object({
+    title: z.string().describe("Short title for the task (e.g. 'Morning briefing', 'Drink water reminder')"),
+    description: z.string().describe("What Ghali should do when the task fires. Be specific — this is the prompt for the AI turn."),
+    schedule: z.union([
+      z.object({
+        kind: z.literal("once"),
+        datetime: z.string().describe("ISO datetime for one-shot (e.g. '2026-03-02T15:00:00')"),
+      }),
+      z.object({
+        kind: z.literal("cron"),
+        expr: z.string().describe("5-field cron expression (e.g. '0 9 * * 1-5' for weekdays at 9am)"),
+      }),
+    ]).describe("Schedule type: once (specific time) or cron (recurring)"),
+    timezone: z.string().optional().describe("IANA timezone (e.g. 'Asia/Dubai'). Defaults to user's timezone."),
+    deliveryFormat: z.string().optional().describe("Optional hint for result format (e.g. 'bullet points', 'brief summary')"),
+  }),
+  handler: async (ctx, { title, description, schedule, timezone, deliveryFormat }): Promise<string> => {
     const userId = ctx.userId as Id<"users">;
 
-    // Get user timezone if not provided
-    let tz: string = timezone ?? "";
-    if (!tz) {
-      const user = await ctx.runQuery(internal.users.internalGetUser, {
-        userId,
-      }) as { timezone: string } | null;
-      tz = user?.timezone ?? "UTC";
-    }
+    // Get user for timezone + tier + analytics
+    const user = await ctx.runQuery(internal.users.internalGetUser, {
+      userId,
+    }) as { phone: string; timezone: string; tier: string } | null;
+    const tz = timezone ?? user?.timezone ?? "UTC";
 
     try {
       let runAt: number;
-      if (datetime) {
-        runAt = parseDatetimeInTimezone(datetime, tz);
+      let cronExpr: string | undefined;
+
+      if (schedule.kind === "once") {
+        runAt = parseDatetimeInTimezone(schedule.datetime, tz);
         if (runAt <= Date.now()) {
-          return JSON.stringify({ status: "error", code: "PAST_DATETIME", message: "The specified time is in the past. Please provide a future datetime." });
+          return JSON.stringify({
+            status: "error",
+            code: "PAST_DATETIME",
+            message: "The specified time is in the past. Please provide a future datetime.",
+          });
         }
       } else {
-        runAt = getNextCronRun(cronExpr!, tz, new Date());
+        cronExpr = schedule.expr;
+        runAt = getNextCronRun(cronExpr, tz, new Date());
       }
 
-      await ctx.runMutation(internal.reminders.createReminder, {
+      const taskId = await ctx.runMutation(internal.scheduledTasks.createScheduledTask, {
         userId,
-        payload: message,
-        runAt,
-        cronExpr,
+        title,
+        description,
+        schedule: cronExpr
+          ? { kind: "cron" as const, expr: cronExpr }
+          : { kind: "once" as const, runAt },
         timezone: tz,
+        deliveryFormat,
       });
 
-      const runDate = new Date(runAt);
-      const formatted: string = runDate.toLocaleString("en-US", {
+      // Format next run time for confirmation
+      const formatted = new Date(runAt).toLocaleString("en-US", {
         timeZone: tz,
         weekday: "short",
         month: "short",
@@ -492,13 +495,28 @@ const scheduleReminder = createTool({
         hour12: true,
       });
 
+      // Fire analytics
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackScheduledTaskCreated, {
+          phone: user.phone,
+          schedule_kind: schedule.kind,
+          tier: user.tier,
+        });
+        await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+          phone: user.phone,
+          feature: "scheduled_tasks",
+          tier: user.tier,
+        });
+      }
+
       return JSON.stringify({
         status: "success",
-        action: "reminder_scheduled",
-        reminderAt: formatted,
+        action: "scheduled_task_created",
+        taskId,
+        nextRunAt: formatted,
         timezone: tz,
-        recurring: !!cronExpr,
-        message,
+        recurring: schedule.kind === "cron",
+        title,
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -507,70 +525,182 @@ const scheduleReminder = createTool({
   },
 });
 
-const listReminders = createTool({
+const listScheduledTasksTool = createTool({
   description:
-    "List the user's pending reminders. Shows all scheduled reminders with their times and whether they're recurring.",
+    "List the user's scheduled tasks. Shows all tasks (enabled and paused) with their schedules and last run status.",
   args: z.object({}),
   handler: async (ctx): Promise<string> => {
     const userId = ctx.userId as Id<"users">;
-    const reminders: Array<{
+    const tasks = await ctx.runQuery(internal.scheduledTasks.listUserScheduledTasks, { userId }) as Array<{
       _id: string;
-      payload: string;
-      runAt: number;
-      cronExpr?: string;
-      timezone?: string;
-    }> = await ctx.runQuery(internal.reminders.listUserReminders, { userId });
+      title: string;
+      description: string;
+      schedule: { kind: "cron"; expr: string } | { kind: "once"; runAt: number };
+      timezone: string;
+      enabled: boolean;
+      lastRunAt?: number;
+      lastStatus?: string;
+    }>;
 
-    const formatted = reminders.map((r) => {
-      const tz = r.timezone ?? "UTC";
-      const scheduledAt = new Date(r.runAt).toLocaleString("en-US", {
-        timeZone: tz,
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+    const formatted = tasks.map((t) => {
+      const tz = t.timezone || "UTC";
+      let scheduleStr: string;
+      if (t.schedule.kind === "cron") {
+        scheduleStr = `Recurring: ${t.schedule.expr}`;
+      } else {
+        scheduleStr = `Once: ${new Date(t.schedule.runAt).toLocaleString("en-US", {
+          timeZone: tz,
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        })}`;
+      }
       return {
-        id: r._id,
-        message: r.payload,
-        scheduledAt,
-        recurring: !!r.cronExpr,
+        id: t._id,
+        title: t.title,
+        description: t.description,
+        schedule: scheduleStr,
+        enabled: t.enabled,
+        lastRunAt: t.lastRunAt ? new Date(t.lastRunAt).toISOString() : null,
+        lastStatus: t.lastStatus ?? null,
       };
     });
 
     return JSON.stringify({
       status: "success",
-      action: "reminders_listed",
-      reminders: formatted,
+      action: "scheduled_tasks_listed",
+      tasks: formatted,
       count: formatted.length,
     });
   },
 });
 
-const cancelReminder = createTool({
+const updateScheduledTaskTool = createTool({
   description:
-    "Cancel a pending reminder by its ID. Use listReminders first to get the reminder ID.",
+    "Update a scheduled task. Can change title, description, schedule, or pause/resume it. Use listScheduledTasks first to get the task ID.",
   args: z.object({
-    reminderId: z
-      .string()
-      .describe("The reminder ID to cancel (from listReminders)"),
+    taskId: z.string().describe("The scheduled task ID (from listScheduledTasks)"),
+    updates: z.object({
+      title: z.string().optional().describe("New title"),
+      description: z.string().optional().describe("New description/prompt"),
+      enabled: z.boolean().optional().describe("true to resume, false to pause"),
+      schedule: z.union([
+        z.object({
+          kind: z.literal("once"),
+          datetime: z.string().describe("ISO datetime"),
+        }),
+        z.object({
+          kind: z.literal("cron"),
+          expr: z.string().describe("5-field cron expression"),
+        }),
+      ]).optional().describe("New schedule"),
+      deliveryFormat: z.string().optional().describe("New delivery format hint"),
+    }).describe("Fields to update"),
   }),
-  handler: async (ctx, { reminderId }): Promise<string> => {
+  handler: async (ctx, { taskId, updates }): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+
+    // Get user for timezone + analytics
+    const user = await ctx.runQuery(internal.users.internalGetUser, {
+      userId,
+    }) as { phone: string; timezone: string; tier: string } | null;
+    const tz = user?.timezone ?? "UTC";
+
     try {
-      const userId = ctx.userId as Id<"users">;
-      const result = await ctx.runMutation(
-        internal.reminders.cancelReminder,
-        { jobId: reminderId as Id<"scheduledJobs">, userId }
-      ) as { success: boolean; error?: string };
-      if (result.success) {
-        return JSON.stringify({ status: "success", action: "reminder_cancelled" });
+      // Parse schedule if provided
+      let schedule: { kind: "cron"; expr: string } | { kind: "once"; runAt: number } | undefined;
+      if (updates.schedule) {
+        if (updates.schedule.kind === "once") {
+          const runAt = parseDatetimeInTimezone(updates.schedule.datetime, tz);
+          if (runAt <= Date.now()) {
+            return JSON.stringify({
+              status: "error",
+              code: "PAST_DATETIME",
+              message: "The specified time is in the past.",
+            });
+          }
+          schedule = { kind: "once", runAt };
+        } else {
+          schedule = { kind: "cron", expr: updates.schedule.expr };
+        }
       }
-      return JSON.stringify({ status: "error", code: "CANCEL_FAILED", message: result.error });
+
+      await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+        taskId: taskId as Id<"scheduledTasks">,
+        userId,
+        updates: {
+          title: updates.title,
+          description: updates.description,
+          enabled: updates.enabled,
+          schedule,
+          deliveryFormat: updates.deliveryFormat,
+        },
+      });
+
+      // Determine action type for analytics
+      let action = "edited";
+      if (updates.enabled === true) action = "resumed";
+      else if (updates.enabled === false) action = "paused";
+
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackScheduledTaskUpdated, {
+          phone: user.phone,
+          action,
+          tier: user.tier,
+        });
+      }
+
+      return JSON.stringify({
+        status: "success",
+        action: "scheduled_task_updated",
+        taskId,
+      });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      return JSON.stringify({ status: "error", code: "CANCEL_FAILED", message: msg });
+      return JSON.stringify({ status: "error", code: "UPDATE_FAILED", message: msg });
+    }
+  },
+});
+
+const deleteScheduledTaskTool = createTool({
+  description:
+    "Delete a scheduled task permanently. Use listScheduledTasks first to get the task ID.",
+  args: z.object({
+    taskId: z.string().describe("The scheduled task ID to delete (from listScheduledTasks)"),
+  }),
+  handler: async (ctx, { taskId }): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+
+    try {
+      // Get user for analytics
+      const user = await ctx.runQuery(internal.users.internalGetUser, {
+        userId,
+      }) as { phone: string; tier: string } | null;
+
+      await ctx.runMutation(internal.scheduledTasks.deleteScheduledTask, {
+        taskId: taskId as Id<"scheduledTasks">,
+        userId,
+      });
+
+      if (user) {
+        await ctx.scheduler.runAfter(0, internal.analytics.trackScheduledTaskUpdated, {
+          phone: user.phone,
+          action: "deleted",
+          tier: user.tier,
+        });
+      }
+
+      return JSON.stringify({
+        status: "success",
+        action: "scheduled_task_deleted",
+        taskId,
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return JSON.stringify({ status: "error", code: "DELETE_FAILED", message: msg });
     }
   },
 });
@@ -848,20 +978,21 @@ const addItem = createTool({
         });
       }
 
-      // Schedule reminder first so we can pass jobId to createItem in one write
+      // Schedule task first so we can pass taskId to createItem in one write
       let reminderSet = false;
-      let reminderJobId: Id<"scheduledJobs"> | undefined;
+      let scheduledTaskId: Id<"scheduledTasks"> | undefined;
       if (reminderAt) {
-        reminderJobId = await ctx.runMutation(internal.reminders.createReminder, {
+        scheduledTaskId = await ctx.runMutation(internal.scheduledTasks.createScheduledTask, {
           userId,
-          payload: args.reminderMessage ?? args.title,
-          runAt: reminderAt,
+          title: args.reminderMessage ?? args.title,
+          description: args.reminderMessage ?? args.title,
+          schedule: { kind: "once" as const, runAt: reminderAt },
           timezone: tz,
-        }) as Id<"scheduledJobs">;
+        }) as Id<"scheduledTasks">;
         reminderSet = true;
       }
 
-      // Create item (with reminderJobId if reminder was scheduled)
+      // Create item (with scheduledTaskId if task was scheduled)
       let itemId: Id<"items">;
       try {
         itemId = await ctx.runMutation(internal.items.createItem, {
@@ -877,14 +1008,14 @@ const addItem = createTool({
           tags: args.tags,
           metadata: args.metadata,
           reminderAt,
-          reminderJobId,
+          scheduledTaskId,
         }) as Id<"items">;
       } catch (error) {
-        // Clean up orphaned reminder job if item creation fails
-        if (reminderJobId) {
+        // Clean up orphaned scheduled task if item creation fails
+        if (scheduledTaskId) {
           try {
-            await ctx.runMutation(internal.reminders.cancelReminder, {
-              jobId: reminderJobId,
+            await ctx.runMutation(internal.scheduledTasks.deleteScheduledTask, {
+              taskId: scheduledTaskId,
               userId,
             });
           } catch {
@@ -1114,7 +1245,7 @@ const updateItemTool = createTool({
         userId,
         query: itemQuery,
         limit: 3,
-      }) as Array<{ _id: string; _score: number; title: string; status: string; reminderAt?: number; reminderJobId?: Id<"scheduledJobs">; collectionId?: string }>;
+      }) as Array<{ _id: string; _score: number; title: string; status: string; reminderAt?: number; reminderJobId?: Id<"scheduledJobs">; scheduledTaskId?: Id<"scheduledTasks">; collectionId?: string }>;
 
       // Hybrid search: if no text matches or top score < 40, try vector fallback
       if (matches.length === 0 || matches[0]!._score < 40) {
@@ -1170,15 +1301,15 @@ const updateItemTool = createTool({
         changes.push("collection");
       }
 
-      // Handle reminders — cancel old job before setting a new one to avoid ghost reminders
-      if ((updates.clearReminder || updates.reminderAt) && top.reminderJobId) {
+      // Handle scheduled tasks — cancel old task before setting a new one
+      if ((updates.clearReminder || updates.reminderAt) && top.scheduledTaskId) {
         try {
-          await ctx.runMutation(internal.reminders.cancelReminder, {
-            jobId: top.reminderJobId,
+          await ctx.runMutation(internal.scheduledTasks.deleteScheduledTask, {
+            taskId: top.scheduledTaskId,
             userId,
           });
         } catch {
-          // Reminder may already have fired — not critical
+          // Task may already have fired — not critical
         }
       }
       if (updates.clearReminder) {
@@ -1196,13 +1327,14 @@ const updateItemTool = createTool({
           });
         }
         patch.reminderAt = reminderAt;
-        const jobId = await ctx.runMutation(internal.reminders.createReminder, {
+        const taskId = await ctx.runMutation(internal.scheduledTasks.createScheduledTask, {
           userId,
-          payload: updates.reminderMessage ?? updates.title ?? top.title,
-          runAt: reminderAt,
+          title: updates.reminderMessage ?? updates.title ?? top.title,
+          description: updates.reminderMessage ?? updates.title ?? top.title,
+          schedule: { kind: "once" as const, runAt: reminderAt },
           timezone: tz,
-        }) as Id<"scheduledJobs">;
-        patch.reminderJobId = jobId;
+        }) as Id<"scheduledTasks">;
+        patch.scheduledTaskId = taskId;
         changes.push("reminderSet");
       }
 
@@ -1214,9 +1346,9 @@ const updateItemTool = createTool({
           title?: string; body?: string; status?: string; priority?: string;
           dueDate?: number; amount?: number; currency?: string;
           reminderAt?: number; tags?: string[]; metadata?: unknown;
-          collectionId?: Id<"collections">; reminderJobId?: Id<"scheduledJobs">;
-          reminderCronId?: string; mediaStorageId?: Id<"_storage">;
-          clearReminder?: boolean;
+          collectionId?: Id<"collections">; scheduledTaskId?: Id<"scheduledTasks">;
+          reminderJobId?: Id<"scheduledJobs">; reminderCronId?: string;
+          mediaStorageId?: Id<"_storage">; clearReminder?: boolean;
         },
       });
 
@@ -1503,9 +1635,10 @@ export const ghaliAgent = new Agent(components.agent, {
     reprocessMedia,
     convertFile,
     searchDocuments,
-    scheduleReminder,
-    listReminders,
-    cancelReminder,
+    createScheduledTask: createScheduledTaskTool,
+    listScheduledTasks: listScheduledTasksTool,
+    updateScheduledTask: updateScheduledTaskTool,
+    deleteScheduledTask: deleteScheduledTaskTool,
     addItem,
     queryItems: queryItemsTool,
     updateItem: updateItemTool,
