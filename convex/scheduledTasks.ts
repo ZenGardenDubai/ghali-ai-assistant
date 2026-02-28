@@ -157,6 +157,10 @@ export const executeScheduledTask = internalAction({
         taskId,
         lastStatus: "error",
       });
+      await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+        taskId,
+        updates: { enabled: false },
+      });
       return;
     }
 
@@ -201,7 +205,7 @@ export const executeScheduledTask = internalAction({
 
       // Reschedule next run for cron tasks
       if (task.schedule.kind === "cron") {
-        await rescheduleNextRun(ctx, taskId, task.schedule.expr, task.timezone);
+        await rescheduleNextRun(ctx, taskId);
       } else {
         // One-off task: disable since it can't run
         await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
@@ -265,7 +269,7 @@ export const executeScheduledTask = internalAction({
 
       // Reschedule cron even on error
       if (task.schedule.kind === "cron") {
-        await rescheduleNextRun(ctx, taskId, task.schedule.expr, task.timezone);
+        await rescheduleNextRun(ctx, taskId);
       } else {
         await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
           taskId,
@@ -313,7 +317,7 @@ export const executeScheduledTask = internalAction({
         lastStatus: "error",
       });
       if (task.schedule.kind === "cron") {
-        await rescheduleNextRun(ctx, taskId, task.schedule.expr, task.timezone);
+        await rescheduleNextRun(ctx, taskId);
       } else {
         await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
           taskId,
@@ -332,7 +336,7 @@ export const executeScheduledTask = internalAction({
 
     // Handle next run
     if (task.schedule.kind === "cron") {
-      await rescheduleNextRun(ctx, taskId, task.schedule.expr, task.timezone);
+      await rescheduleNextRun(ctx, taskId);
     } else {
       // One-off: disable after execution
       await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
@@ -345,33 +349,29 @@ export const executeScheduledTask = internalAction({
 
 /**
  * Helper: reschedule a cron task's next run (called from action context).
- * Uses a generic ctx type to avoid complex Convex type signatures.
+ * Delegates to scheduleNextRun mutation which reads fresh task data.
  */
 async function rescheduleNextRun(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ctx: { runMutation: (...args: any[]) => Promise<any> },
-  taskId: Id<"scheduledTasks">,
-  cronExpr: string,
-  timezone: string
+  taskId: Id<"scheduledTasks">
 ) {
-  const nextRunAt = getNextCronRun(cronExpr, timezone, new Date());
-  await ctx.runMutation(internal.scheduledTasks.scheduleNextRun, {
-    taskId,
-    runAt: nextRunAt,
-  });
+  await ctx.runMutation(internal.scheduledTasks.scheduleNextRun, { taskId });
 }
 
 /**
- * Schedule the next run for a cron task (called from action context).
+ * Schedule the next run for a cron task. Reads fresh task data to avoid
+ * stale schedule/timezone from the action's earlier snapshot.
  */
 export const scheduleNextRun = internalMutation({
   args: {
     taskId: v.id("scheduledTasks"),
-    runAt: v.number(),
   },
-  handler: async (ctx, { taskId, runAt }) => {
+  handler: async (ctx, { taskId }) => {
     const task = await ctx.db.get(taskId);
-    if (!task || !task.enabled) return;
+    if (!task || !task.enabled || task.schedule.kind !== "cron") return;
+
+    const runAt = getNextCronRun(task.schedule.expr, task.timezone, new Date());
 
     const schedulerJobId = await ctx.scheduler.runAt(
       runAt,
