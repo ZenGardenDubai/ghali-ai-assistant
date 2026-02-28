@@ -162,7 +162,12 @@ STRUCTURED DATA RULES:
 - *Formatting*: no tables (WhatsApp doesn't support them). Use emoji grouping (💰 expenses, ✅ tasks, 👤 contacts, 📝 notes, 🔖 bookmarks). Format amounts with commas (1,000 not 1000).
 - *Discoverability*: only auto-create items when the user has clear, explicit tracking intent — actionable phrases like "I spent X on Y", "add a task to...", "save this note", "track this expense". Do NOT auto-create from incidental mentions (e.g. "maybe I should check my email", "I might buy groceries"). When in doubt, do not auto-create. When you do auto-create, briefly mention it: "I've saved this to your [collection]."
 
-14. *ProWrite* — Professional multi-AI writing pipeline for high-quality content (LinkedIn posts, emails, articles, reports).
+14. *Feedback* — Users can submit feedback about Ghali (bugs, feature requests, suggestions) via:
+   a) submitFeedback — submit directly in-chat. Always confirm the message with the user before submitting.
+   b) generateFeedbackLink — generates a web form link (ghali.ae/feedback?token=..., expires in 15 minutes). Use ONLY when user explicitly asks for a feedback form/link.
+   Feedback is always free (no credit deduction). Max 3 per day. These tools are ONLY for feedback about Ghali — not for dashboards, data queries, or items.
+
+15. *ProWrite* — Professional multi-AI writing pipeline for high-quality content (LinkedIn posts, emails, articles, reports).
    - Trigger: "prowrite ..." → call proWriteBrief immediately with the request
    - Suggestion: "write me a ..." (without "prowrite") → suggest ProWrite and explain briefly: "I can write that directly, or I can use *ProWrite* — an 8-step multi-AI pipeline that researches, drafts, and polishes professional content. Say *prowrite* to activate it."
    - Flow: proWriteBrief → show numbered questions (1. 2. 3.) → user answers → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute
@@ -1462,6 +1467,75 @@ const proWriteExecute = createTool({
   },
 });
 
+// ============================================================================
+// Feedback Tools
+// ============================================================================
+
+const submitFeedback = createTool({
+  description:
+    "Submit feedback or a suggestion on behalf of the user. ALWAYS confirm with the user before submitting. No credits are deducted for feedback.",
+  args: z.object({
+    category: z
+      .enum(["bug", "feature_request", "general"])
+      .describe("Category: bug (something broken), feature_request (new idea), general (anything else)"),
+    message: z
+      .string()
+      .describe("The feedback message from the user. Max 2000 characters."),
+  }),
+  handler: async (ctx, { category, message }) => {
+    const userId = ctx.userId as Id<"users">;
+    const result = await ctx.runMutation(internal.feedback.submitFeedback, {
+      userId,
+      category,
+      message,
+      source: "agent_tool",
+    });
+
+    if (!result.success) {
+      if (result.error === "rate_limited") {
+        return JSON.stringify({ status: "error", code: "RATE_LIMITED", message: "You've already submitted 3 feedbacks today. Try again tomorrow." });
+      }
+      return JSON.stringify({ status: "error", code: "SUBMIT_FAILED", message: "Failed to submit feedback." });
+    }
+
+    // Track analytics (fire-and-forget)
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+      phone: string; tier: string;
+    } | null;
+    if (user) {
+      await ctx.scheduler.runAfter(0, internal.analytics.trackFeedbackSubmitted, {
+        phone: user.phone,
+        category,
+        source: "agent_tool",
+        tier: user.tier,
+      });
+      await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
+        phone: user.phone,
+        feature: "feedback",
+        tier: user.tier,
+      });
+    }
+
+    return JSON.stringify({ status: "success", message: "Feedback submitted. Thank you!" });
+  },
+});
+
+const generateFeedbackLink = createTool({
+  description:
+    "Generate a feedback form link for the user. The link expires in 15 minutes. Use ONLY when the user explicitly asks for a feedback or suggestion form link. Do NOT use for dashboards, data, or items. After calling, reply ONLY with the link — do not call any other tools.",
+  args: z.object({}),
+  handler: async (ctx): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    const result: { token: string; url: string } = await ctx.runMutation(internal.feedback.generateFeedbackToken, {
+      userId,
+    });
+    return JSON.stringify({
+      status: "success",
+      url: result.url,
+    });
+  },
+});
+
 export const ghaliAgent = new Agent(components.agent, {
   name: "Ghali",
   languageModel: google(MODELS.FLASH),
@@ -1488,6 +1562,8 @@ export const ghaliAgent = new Agent(components.agent, {
     manageCollection,
     proWriteBrief,
     proWriteExecute,
+    submitFeedback,
+    generateFeedbackLink,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {

@@ -208,6 +208,7 @@ const ALLOWED_FEATURES = new Set([
   "items",
   "voice_note",
   "web_search",
+  "feedback",
 ]);
 
 export const trackFeatureUsed = internalAction({
@@ -226,6 +227,23 @@ export const trackFeatureUsed = internalAction({
       // Spread extra properties first so reserved keys cannot be overridden
       ...(properties as Record<string, unknown> | undefined),
       feature,
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackFeedbackSubmitted = internalAction({
+  args: {
+    phone: v.string(),
+    category: v.string(),
+    source: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, category, source, tier }) => {
+    await captureEvent(phone, "feedback_submitted", {
+      category,
+      source,
       tier,
       phone_country: detectCountryFromPhone(phone),
     });

@@ -161,4 +161,42 @@ export default defineSchema({
       dimensions: 1536,
       filterFields: ["userId", "collectionId", "status"],
     }),
+
+  feedbackTokens: defineTable({
+    token: v.string(),
+    phone: v.string(),
+    expiresAt: v.number(),
+    used: v.boolean(),
+  })
+    .index("by_token", ["token"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  feedback: defineTable({
+    userId: v.id("users"),
+    phone: v.string(),
+    category: v.union(
+      v.literal("bug"),
+      v.literal("feature_request"),
+      v.literal("general")
+    ),
+    message: v.string(),
+    source: v.union(
+      v.literal("whatsapp_link"),
+      v.literal("web"),
+      v.literal("agent_tool")
+    ),
+    status: v.union(
+      v.literal("new"),
+      v.literal("read"),
+      v.literal("in_progress"),
+      v.literal("resolved"),
+      v.literal("archived")
+    ),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_userId", ["userId"])
+    .index("by_createdAt", ["createdAt"]),
 });

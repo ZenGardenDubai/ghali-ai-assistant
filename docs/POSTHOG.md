@@ -144,7 +144,7 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 
 | Property | Type | Description |
 |---|---|---|
-| `feature` | string | Feature name: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search` |
+| `feature` | string | Feature name: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback` |
 | `tier` | string | `basic` or `pro` |
 | `phone_country` | string | ISO country code |
 | `steps` | number? | Pipeline steps completed (ProWrite only) |
@@ -155,6 +155,20 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 - `convex/images.ts` — on successful image generation (`image_generation`)
 - `convex/agent.ts` — `deepReasoning` tool (`deep_reasoning`), `addItem` tool (`items`), `webSearch` tool (`web_search`), `convertFile` tool (`document_conversion`)
 - `convex/messages.ts` — document processing (`document_processing`), voice note transcription (`voice_note`)
+- `convex/agent.ts` — `submitFeedback` tool (`feedback`)
+
+### `feedback_submitted`
+
+Fired when a user submits feedback via any channel.
+
+| Property | Type | Description |
+|---|---|---|
+| `category` | string | `bug`, `feature_request`, `general` |
+| `source` | string | `whatsapp_link`, `web`, `agent_tool` |
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/agent.ts` — `submitFeedback` tool (agent_tool source). Web and WhatsApp link sources fire via `convex/feedback.ts` mutations with scheduler.
 
 ## Client Events (Landing Page)
 
@@ -192,7 +206,7 @@ Not yet created in PostHog. Steps:
 7. Name: **"Feature Usage"**
 8. Save → Add to dashboard **"Ghali Server Analytics"** (ID `1299426`)
 
-Expected `feature` values: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`
+Expected `feature` values: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback`
 
 Remove this section after creation.
 

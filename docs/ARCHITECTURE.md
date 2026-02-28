@@ -108,7 +108,20 @@ Uses `@convex-dev/rag` with pre-computed embeddings via `ai@5` to avoid version 
 | `usage` | Per-message tracking: model, tokens, cost |
 | `scheduledJobs` | Heartbeat, reminders, follow-ups |
 
+| `feedback` | User feedback, bug reports, feature requests |
+| `feedbackTokens` | Short-lived tokens for WhatsApp feedback links |
+
 Threads and messages managed by `@convex-dev/agent`. RAG documents managed by `@convex-dev/rag`.
+
+## Feedback System
+
+Three entry points, all free (no credit deduction):
+
+1. **Agent tool** — user says "I have feedback" → agent confirms → `submitFeedback` tool
+2. **WhatsApp link** — agent generates tokenized link → user opens `/feedback?token=xxx` → web form
+3. **Web** — signed-in user on `/account` → "Give Feedback" → `/feedback` with Clerk auth
+
+Token-based links expire in 15 minutes and are single-use. Rate limit: 3 feedbacks/day per user. Admin panel at `/admin/feedback` for viewing, filtering, status management, notes, and WhatsApp replies.
 
 ## Template Messages
 

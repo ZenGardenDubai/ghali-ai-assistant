@@ -200,6 +200,19 @@ export const MAX_MESSAGE_LENGTH = 10_000;
 export const WEBHOOK_DEDUP_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ============================================================================
+// Feedback
+// ============================================================================
+
+/** Feedback token expiry (15 minutes) */
+export const FEEDBACK_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
+
+/** Max feedback submissions per user per day */
+export const FEEDBACK_MAX_PER_DAY = 3;
+
+/** Max feedback message length (characters) */
+export const FEEDBACK_MAX_MESSAGE_LENGTH = 2000;
+
+// ============================================================================
 // Geography & Localization
 // ============================================================================
 
