@@ -45,6 +45,7 @@ import type * as lib_voice from "../lib/voice.js";
 import type * as mediaStorage from "../mediaStorage.js";
 import type * as memoryCompaction from "../memoryCompaction.js";
 import type * as messages from "../messages.js";
+import type * as migrations from "../migrations.js";
 import type * as models from "../models.js";
 import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
@@ -101,6 +102,7 @@ declare const fullApi: ApiFromModules<{
   mediaStorage: typeof mediaStorage;
   memoryCompaction: typeof memoryCompaction;
   messages: typeof messages;
+  migrations: typeof migrations;
   models: typeof models;
   proWrite: typeof proWrite;
   rag: typeof rag;
