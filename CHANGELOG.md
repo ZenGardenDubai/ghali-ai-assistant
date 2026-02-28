@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.21.0...v0.22.0) (2026-02-28)
+
+
+### Features
+
+* add migration script for reminders to scheduled tasks ([#78](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/78)) ([f31960e](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f31960e55b836bbf451f249467b0cd407f2b2904))
+
 ## [0.21.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.20.0...v0.21.0) (2026-02-28)
 
 
