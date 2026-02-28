@@ -26,10 +26,6 @@ Issues, improvements, and tech debt to revisit after MVP completion.
 
 - **Sanitize PostHog pageview URLs** — `PostHogPageView` component captures the full URL including query params. Strip sensitive params (phone, tokens) before sending to PostHog, or configure PostHog property filtering to redact them server-side.
 
-## Broadcast Scalability
-
-- **Batched fan-out for broadcast sends** — Currently `sendTemplateBroadcast` and `broadcastMessage` iterate sequentially over all users with a 500ms throttle between each send. Runtime grows linearly with audience size (e.g. 100 users = ~50s, 1000 users = ~8min) and risks timing out or partially completing under larger loads. Refactor to chunk users into batches (e.g. 50 per batch) and dispatch a separate scheduled/background action per chunk, so each execution stays bounded while preserving per-recipient error isolation and retryability.
-
 ## Heartbeat
 
 - **WhatsApp template fallback for heartbeat** — Currently heartbeat messages are skipped if the user hasn't messaged within 24 hours (WhatsApp session window). Create a pre-approved Twilio Content Template (utility category) for heartbeat reminders so they can be delivered outside the 24h window. Template example: `"Hi {{1}}, here's your reminder: {{2}}"`. Requires Twilio Content Template approval. Then update `processUserHeartbeat` to fall back to the template when outside the session window instead of skipping.

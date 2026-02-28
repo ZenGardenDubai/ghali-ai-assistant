@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel";
 import { validateTwilioSignature, parseTwilioMessage } from "./lib/twilio";
 import { isBlockedCountryCode } from "./lib/utils";
 import { validateClerkWebhook } from "./lib/clerk";
-import { MAX_MESSAGE_LENGTH } from "./constants";
+import { MAX_MESSAGE_LENGTH, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
 /** Constant-time string comparison to prevent timing attacks on secret tokens. */
 async function timingSafeEqual(a: string, b: string): Promise<boolean> {
@@ -630,10 +630,9 @@ http.route({
     const user = await ctx.runQuery(internal.admin.searchUser, {
       phone: feedback.phone,
     });
-    const WHATSAPP_WINDOW_MS = 24 * 60 * 60 * 1000;
     const withinWindow =
       user?.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_WINDOW_MS;
+      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
       await ctx.runAction(internal.twilio.sendMessage, {

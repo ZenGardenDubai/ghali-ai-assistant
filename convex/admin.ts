@@ -4,6 +4,37 @@ import { internal } from "./_generated/api";
 import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 import { getDubaiMidnightMs, getDubaiWeekStartMs, getDubaiMonthStartMs } from "./lib/dateUtils";
 
+/** Number of users to send to concurrently in each broadcast batch */
+const BROADCAST_BATCH_SIZE = 50;
+
+/**
+ * Send messages in parallel batches with throttling between batches.
+ * Returns the number of successfully sent messages.
+ */
+async function sendInBatches(
+  users: Array<{ phone: string; lastMessageAt?: number }>,
+  sendFn: (phone: string) => Promise<unknown>,
+): Promise<number> {
+  let sentCount = 0;
+  for (let i = 0; i < users.length; i += BROADCAST_BATCH_SIZE) {
+    const batch = users.slice(i, i + BROADCAST_BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((user) => sendFn(user.phone)),
+    );
+    sentCount += results.filter((r) => r.status === "fulfilled").length;
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("Broadcast send failed:", r.reason);
+      }
+    }
+    // Throttle between batches
+    if (i + BROADCAST_BATCH_SIZE < users.length) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
+  return sentCount;
+}
+
 /** Template definitions with env var names and variable schemas */
 export const TEMPLATE_DEFINITIONS = [
   { key: "TWILIO_TPL_REMINDER", name: "ghali_reminder", description: "Scheduled Reminder", variables: ["reminder_text"], preview: "Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant." },
@@ -156,7 +187,7 @@ export const getBroadcastCounts = internalQuery({
 
 /**
  * Broadcast a message to all users active within 24h.
- * Uses 500ms delay between sends to respect Twilio rate limits.
+ * Sends in parallel batches of BROADCAST_BATCH_SIZE with 500ms between batches.
  */
 export const broadcastMessage = internalAction({
   args: { message: v.string() },
@@ -164,26 +195,13 @@ export const broadcastMessage = internalAction({
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
     const activeUsers = allUsers.filter(
-      (u: { lastMessageAt?: number }) =>
+      (u: { lastMessageAt?: number; phone: string }) =>
         u.lastMessageAt && u.lastMessageAt >= cutoff
-    );
+    ) as Array<{ phone: string; lastMessageAt?: number }>;
 
-    let sentCount = 0;
-    for (const [index, user] of activeUsers.entries()) {
-      try {
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: (user as { phone: string }).phone,
-          body: message,
-        });
-        sentCount++;
-      } catch (error) {
-        console.error(`Broadcast failed for ${(user as { phone: string }).phone}:`, error);
-      } finally {
-        if (index < activeUsers.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-      }
-    }
+    const sentCount = await sendInBatches(activeUsers, (phone) =>
+      ctx.runAction(internal.twilio.sendMessage, { to: phone, body: message }),
+    );
 
     return { sentCount };
   },
@@ -332,6 +350,7 @@ export const sendTemplateToUser = internalAction({
 /**
  * Broadcast a template to ALL users.
  * Users active within 24h get a normal message; others get a template message.
+ * Sends in parallel batches of BROADCAST_BATCH_SIZE with 500ms between batches.
  */
 export const sendTemplateBroadcast = internalAction({
   args: {
@@ -341,39 +360,29 @@ export const sendTemplateBroadcast = internalAction({
   },
   handler: async (ctx, { templateEnvVar, variables, messageBody }) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
-    const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
+    const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
+      phone: string;
+      lastMessageAt?: number;
+    }>;
 
-    let sentCount = 0;
-    for (const [index, user] of allUsers.entries()) {
-      const phone = (user as { phone: string }).phone;
-      const lastMessageAt = (user as { lastMessageAt?: number }).lastMessageAt;
-      const isActive = lastMessageAt && lastMessageAt >= cutoff;
+    const userByPhone = new Map(allUsers.map((u) => [u.phone, u]));
 
-      try {
-        if (isActive && messageBody) {
-          // Within 24h session window — send as normal message (cheaper)
-          await ctx.runAction(internal.twilio.sendMessage, {
-            to: phone,
-            body: messageBody,
-          });
-        } else {
-          // Outside session window — must use template
-          await ctx.runAction(internal.twilio.sendTemplate, {
-            to: phone,
-            templateEnvVar,
-            variables,
-          });
-        }
-        sentCount++;
-      } catch (error) {
-        console.error(`Template broadcast failed for ${phone}:`, error);
-      } finally {
-        // Always throttle between sends to respect Twilio rate limits
-        if (index < allUsers.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
+    const sentCount = await sendInBatches(allUsers, (phone) => {
+      const user = userByPhone.get(phone)!;
+      const isActive = user.lastMessageAt && user.lastMessageAt >= cutoff;
+
+      if (isActive && messageBody) {
+        return ctx.runAction(internal.twilio.sendMessage, {
+          to: phone,
+          body: messageBody,
+        });
       }
-    }
+      return ctx.runAction(internal.twilio.sendTemplate, {
+        to: phone,
+        templateEnvVar,
+        variables,
+      });
+    });
 
     return { sentCount };
   },
