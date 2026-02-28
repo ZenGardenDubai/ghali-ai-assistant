@@ -93,12 +93,18 @@ export const createScheduledTask = internalMutation({
       createdAt: Date.now(),
     });
 
-    // Schedule execution
-    const schedulerJobId = await ctx.scheduler.runAt(
-      runAt,
-      internal.scheduledTasks.executeScheduledTask,
-      { taskId }
-    );
+    // Schedule execution — clean up task if scheduler registration fails
+    let schedulerJobId;
+    try {
+      schedulerJobId = await ctx.scheduler.runAt(
+        runAt,
+        internal.scheduledTasks.executeScheduledTask,
+        { taskId }
+      );
+    } catch (error) {
+      await ctx.db.delete(taskId);
+      throw error;
+    }
 
     await ctx.db.patch(taskId, { schedulerJobId });
 
@@ -138,7 +144,8 @@ export const executeScheduledTask = internalAction({
 
     if (creditCheck.status === "exhausted") {
       // Send one notification per credit cycle
-      if (!task.creditNotificationSent) {
+      let notificationSent = task.creditNotificationSent === true;
+      if (!notificationSent) {
         const withinWindow =
           user.lastMessageAt &&
           Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
@@ -156,6 +163,7 @@ export const executeScheduledTask = internalAction({
               variables: { "1": "0" },
             });
           }
+          notificationSent = true;
         } catch (error) {
           console.error(`Failed to send credit notification for task ${taskId}:`, error);
         }
@@ -164,7 +172,7 @@ export const executeScheduledTask = internalAction({
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "skipped_no_credits",
-        creditNotificationSent: true,
+        creditNotificationSent: notificationSent,
       });
 
       // Reschedule next run for cron tasks
@@ -259,6 +267,7 @@ export const executeScheduledTask = internalAction({
       user.lastMessageAt &&
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
+    let delivered = false;
     try {
       if (withinWindow) {
         await ctx.runAction(internal.twilio.sendMessage, {
@@ -277,8 +286,21 @@ export const executeScheduledTask = internalAction({
           variables: { "1": truncated },
         });
       }
+      delivered = true;
     } catch (error) {
       console.error(`Failed to deliver scheduled task ${taskId}:`, error);
+    }
+
+    if (!delivered) {
+      // Delivery failed — mark error, reschedule cron, don't disable one-off
+      await ctx.runMutation(internal.scheduledTasks.markLastRun, {
+        taskId,
+        lastStatus: "error",
+      });
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId, task.schedule.expr, task.timezone);
+      }
+      return;
     }
 
     // Mark success + clear credit notification flag
@@ -396,7 +418,9 @@ export const updateScheduledTask = internalMutation({
       let runAt: number;
       if (schedule.kind === "once") {
         runAt = schedule.runAt;
-        if (runAt <= Date.now()) return; // Past — don't reschedule
+        if (runAt <= Date.now()) {
+          throw new Error("Scheduled time must be in the future.");
+        }
       } else {
         runAt = getNextCronRun(schedule.expr, timezone);
       }
