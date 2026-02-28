@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.19.2...v0.20.0) (2026-02-28)
+
+
+### Features
+
+* add scheduled tasks foundation — schema, core logic, tests ([#74](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/74)) ([14d49b6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/14d49b67c2b4dbe7a495549b2106bfc499f1fcbb))
+
 ## [0.19.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.19.1...v0.19.2) (2026-02-28)
 
 
