@@ -22,11 +22,11 @@ async function sendInBatches(
       batch.map((user) => sendFn(user.phone)),
     );
     sentCount += results.filter((r) => r.status === "fulfilled").length;
-    for (const r of results) {
+    results.forEach((r, index) => {
       if (r.status === "rejected") {
-        console.error("Broadcast send failed:", r.reason);
+        console.error(`Broadcast send failed for ${batch[index].phone}:`, r.reason);
       }
-    }
+    });
     // Throttle between batches
     if (i + BROADCAST_BATCH_SIZE < users.length) {
       await new Promise((resolve) => setTimeout(resolve, 500));
