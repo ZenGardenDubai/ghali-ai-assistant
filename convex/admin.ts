@@ -140,16 +140,17 @@ export const grantCredits = internalMutation({
 });
 
 /**
- * Count users active within the WhatsApp 24h session window.
+ * Count users for broadcast: total users and those active within 24h session window.
  */
-export const getActiveUserCount = internalQuery({
+export const getBroadcastCounts = internalQuery({
   args: {},
   handler: async (ctx) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.db.query("users").collect();
-    return allUsers.filter(
+    const activeCount = allUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= cutoff
     ).length;
+    return { totalUsers: allUsers.length, activeUsers: activeCount };
   },
 });
 
@@ -329,35 +330,46 @@ export const sendTemplateToUser = internalAction({
 });
 
 /**
- * Broadcast a template to all active users within the 24h session window.
+ * Broadcast a template to ALL users.
+ * Users active within 24h get a normal message; others get a template message.
  */
 export const sendTemplateBroadcast = internalAction({
   args: {
     templateEnvVar: v.string(),
     variables: v.record(v.string(), v.string()),
+    messageBody: v.optional(v.string()),
   },
-  handler: async (ctx, { templateEnvVar, variables }) => {
+  handler: async (ctx, { templateEnvVar, variables, messageBody }) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
-    const activeUsers = allUsers.filter(
-      (u: { lastMessageAt?: number }) =>
-        u.lastMessageAt && u.lastMessageAt >= cutoff
-    );
 
     let sentCount = 0;
-    for (const user of activeUsers) {
+    for (const user of allUsers) {
+      const phone = (user as { phone: string }).phone;
+      const lastMessageAt = (user as { lastMessageAt?: number }).lastMessageAt;
+      const isActive = lastMessageAt && lastMessageAt >= cutoff;
+
       try {
-        await ctx.runAction(internal.twilio.sendTemplate, {
-          to: (user as { phone: string }).phone,
-          templateEnvVar,
-          variables,
-        });
+        if (isActive && messageBody) {
+          // Within 24h session window — send as normal message (cheaper)
+          await ctx.runAction(internal.twilio.sendMessage, {
+            to: phone,
+            body: messageBody,
+          });
+        } else {
+          // Outside session window — must use template
+          await ctx.runAction(internal.twilio.sendTemplate, {
+            to: phone,
+            templateEnvVar,
+            variables,
+          });
+        }
         sentCount++;
-        if (sentCount < activeUsers.length) {
+        if (sentCount < allUsers.length) {
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } catch (error) {
-        console.error(`Template broadcast failed for ${(user as { phone: string }).phone}:`, error);
+        console.error(`Template broadcast failed for ${phone}:`, error);
       }
     }
 

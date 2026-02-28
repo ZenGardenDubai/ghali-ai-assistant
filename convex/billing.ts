@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
-import { CREDITS_BASIC, CREDITS_PRO } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
 // ============================================================================
 // Phone-Based Account Linking
@@ -91,12 +91,23 @@ export const handleSubscriptionActive = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user via WhatsApp (template works outside 24h window)
-    await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
-      to: user.phone,
-      templateEnvVar: "TWILIO_TPL_SUB_ACTIVE",
-      variables: { "1": String(CREDITS_PRO) },
-    });
+    // Notify user via WhatsApp — normal message if within 24h, template otherwise
+    const withinWindow =
+      user.lastMessageAt &&
+      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+    if (withinWindow) {
+      await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
+        to: user.phone,
+        body: `Your Ghali Pro plan is now active. You have ${CREDITS_PRO} credits this month.`,
+      });
+    } else {
+      await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+        to: user.phone,
+        templateEnvVar: "TWILIO_TPL_SUB_ACTIVE",
+        variables: { "1": String(CREDITS_PRO) },
+      });
+    }
   },
 });
 
@@ -147,11 +158,22 @@ export const handleSubscriptionEnded = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user via WhatsApp (template works outside 24h window)
-    await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
-      to: user.phone,
-      templateEnvVar: "TWILIO_TPL_SUB_ENDED",
-      variables: { "1": String(CREDITS_BASIC) },
-    });
+    // Notify user via WhatsApp — normal message if within 24h, template otherwise
+    const withinWindow =
+      user.lastMessageAt &&
+      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+    if (withinWindow) {
+      await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
+        to: user.phone,
+        body: `Your Pro plan has ended. You're now on the Basic plan with ${CREDITS_BASIC} credits/month.`,
+      });
+    } else {
+      await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+        to: user.phone,
+        templateEnvVar: "TWILIO_TPL_SUB_ENDED",
+        variables: { "1": String(CREDITS_BASIC) },
+      });
+    }
   },
 });

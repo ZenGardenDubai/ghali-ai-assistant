@@ -6,5 +6,6 @@ export async function POST(req: NextRequest) {
   return adminConvexFetch("/admin/send-template-broadcast", {
     templateEnvVar: body.templateEnvVar,
     variables: body.variables,
+    messageBody: body.messageBody,
   });
 }

@@ -231,10 +231,11 @@ export async function handleAdminCommand(
         return { response: "Usage: admin broadcast Your message here" };
       }
 
-      const activeCount = (await ctx.runQuery(
-        internal.admin.getActiveUserCount,
+      const counts = (await ctx.runQuery(
+        internal.admin.getBroadcastCounts,
         {}
-      )) as number;
+      )) as { totalUsers: number; activeUsers: number };
+      const activeCount = counts.activeUsers;
 
       return {
         response: await renderSystemMessage(
