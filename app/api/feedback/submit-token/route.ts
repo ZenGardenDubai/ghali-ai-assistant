@@ -11,16 +11,16 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ success: false, error: "Invalid JSON" }, { status: 400 });
   }
 
   if (!body.token || !body.category || !body.message) {
-    return NextResponse.json({ error: "Missing token, category, or message" }, { status: 400 });
+    return NextResponse.json({ success: false, error: "Missing token, category, or message" }, { status: 400 });
   }
 
   const VALID_CATEGORIES = ["bug", "feature_request", "general"];
   if (!VALID_CATEGORIES.includes(body.category)) {
-    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+    return NextResponse.json({ success: false, error: "Invalid category" }, { status: 400 });
   }
 
   try {

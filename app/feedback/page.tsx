@@ -239,7 +239,7 @@ function FeedbackForm() {
       </div>
 
       {/* Honeypot — hidden from humans, bots fill it in */}
-      <div className="absolute opacity-0 -z-10" aria-hidden="true" tabIndex={-1}>
+      <div className="absolute -left-[9999px]" aria-hidden="true" tabIndex={-1}>
         <label htmlFor="website">Website</label>
         <input
           id="website"
