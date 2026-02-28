@@ -44,6 +44,7 @@ export const TEMPLATE_DEFINITIONS = [
   { key: "TWILIO_TPL_CREDITS_LOW", name: "ghali_credits_low", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro." },
   { key: "TWILIO_TPL_SUB_ACTIVE", name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
   { key: "TWILIO_TPL_SUB_ENDED", name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },
+  { key: "TWILIO_TPL_SCHEDULED_TASK", name: "ghali_scheduled_task", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant." },
 ] as const;
 
 /**

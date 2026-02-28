@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { TEMPLATE_DEFINITIONS } from "./admin";
 
 describe("TEMPLATE_DEFINITIONS", () => {
-  it("contains 7 templates", () => {
-    expect(TEMPLATE_DEFINITIONS).toHaveLength(7);
+  it("contains 8 templates", () => {
+    expect(TEMPLATE_DEFINITIONS).toHaveLength(8);
   });
 
   it("every template has required fields", () => {

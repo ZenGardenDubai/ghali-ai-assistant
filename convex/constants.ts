@@ -186,6 +186,19 @@ export const ITEMS_QUERY_MAX_LIMIT = 50;
 /** Maximum pending reminders per user (legacy — use tier-based limits for items) */
 export const MAX_REMINDERS_PER_USER = 25;
 
+// ============================================================================
+// Scheduled Tasks
+// ============================================================================
+
+/** Max scheduled tasks for basic tier (paused tasks count toward limit) */
+export const SCHEDULED_TASKS_LIMIT_BASIC = 3;
+
+/** Max scheduled tasks for pro tier (paused tasks count toward limit) */
+export const SCHEDULED_TASKS_LIMIT_PRO = 24;
+
+/** Max result length for template delivery (out-of-session truncation) */
+export const SCHEDULED_TASK_MAX_RESULT_LENGTH = 1400;
+
 /** Credit threshold for low-credit warning (fires once when balance crosses below) */
 export const CREDITS_LOW_THRESHOLD = 10;
 

@@ -50,6 +50,7 @@ import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
 import type * as rateLimiting from "../rateLimiting.js";
 import type * as reminders from "../reminders.js";
+import type * as scheduledTasks from "../scheduledTasks.js";
 import type * as templates from "../templates.js";
 import type * as twilio from "../twilio.js";
 import type * as users from "../users.js";
@@ -105,6 +106,7 @@ declare const fullApi: ApiFromModules<{
   rag: typeof rag;
   rateLimiting: typeof rateLimiting;
   reminders: typeof reminders;
+  scheduledTasks: typeof scheduledTasks;
   templates: typeof templates;
   twilio: typeof twilio;
   users: typeof users;
