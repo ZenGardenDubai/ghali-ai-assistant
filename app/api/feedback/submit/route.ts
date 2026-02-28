@@ -26,6 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing category or message" }, { status: 400 });
   }
 
+  const VALID_CATEGORIES = ["bug", "feature_request", "general"];
+  if (!VALID_CATEGORIES.includes(body.category)) {
+    return NextResponse.json({ error: "Invalid category" }, { status: 400 });
+  }
+
   // Get phone from Clerk
   const clerk = await clerkClient();
   const clerkUser = await clerk.users.getUser(clerkUserId);
@@ -55,7 +60,15 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const result = await response.json();
+    let result;
+    try {
+      result = await response.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Upstream service error" },
+        { status: response.status >= 400 ? response.status : 502 }
+      );
+    }
     return NextResponse.json(result, { status: response.status });
   } catch (err) {
     console.error("Feedback submit error:", err);

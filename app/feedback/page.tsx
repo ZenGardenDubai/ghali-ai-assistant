@@ -33,6 +33,12 @@ function FeedbackForm() {
   // Validate token on load
   useEffect(() => {
     if (!token) return;
+    if (!CONVEX_SITE_URL) {
+      setTokenValid(false);
+      setTokenError("Service temporarily unavailable. Please try again later.");
+      return;
+    }
+    const controller = new AbortController();
 
     async function validateToken() {
       try {
@@ -40,6 +46,7 @@ function FeedbackForm() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
+          signal: controller.signal,
         });
         const data = await res.json();
         if (data.valid) {
@@ -54,13 +61,15 @@ function FeedbackForm() {
           };
           setTokenError(reasons[data.reason] ?? "Invalid link.");
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         setTokenValid(false);
         setTokenError("Failed to validate link. Please try again.");
       }
     }
 
     validateToken();
+    return () => controller.abort();
   }, [token]);
 
   const isTokenMode = !!token;
