@@ -6,6 +6,7 @@ import {
   CREDITS_BASIC,
   CREDITS_PRO,
   CREDIT_RESET_PERIOD_MS,
+  WHATSAPP_SESSION_WINDOW_MS,
 } from "./constants";
 
 /**
@@ -80,19 +81,35 @@ export const resetCredits = internalMutation({
           creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
         });
 
-        // Notify user about credit refresh via WhatsApp template
-        await ctx.scheduler.runAfter(
-          resetCount * 500, // stagger sends to respect Twilio rate limits
-          internal.twilio.sendTemplate,
-          {
-            to: user.phone,
-            templateEnvVar: "TWILIO_TPL_CREDITS_RESET",
-            variables: {
-              "1": String(tierCredits),
-              "2": user.tier === "pro" ? "Pro" : "Basic",
-            },
-          }
-        );
+        // Notify user — normal message if within 24h, template otherwise
+        const withinWindow =
+          user.lastMessageAt &&
+          now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+        const tierLabel = user.tier === "pro" ? "Pro" : "Basic";
+
+        if (withinWindow) {
+          await ctx.scheduler.runAfter(
+            resetCount * 500,
+            internal.twilio.sendMessage,
+            {
+              to: user.phone,
+              body: `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`,
+            }
+          );
+        } else {
+          await ctx.scheduler.runAfter(
+            resetCount * 500,
+            internal.twilio.sendTemplate,
+            {
+              to: user.phone,
+              templateEnvVar: "TWILIO_TPL_CREDITS_RESET",
+              variables: {
+                "1": String(tierCredits),
+                "2": tierLabel,
+              },
+            }
+          );
+        }
 
         resetCount++;
       }

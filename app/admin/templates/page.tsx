@@ -52,6 +52,7 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<TemplateInfo[] | null>(null);
   const [selected, setSelected] = useState<string>("");
   const [variables, setVariables] = useState<Record<string, string>>({});
+  const [totalUserCount, setTotalUserCount] = useState<number>(0);
   const [activeUserCount, setActiveUserCount] = useState<number>(0);
 
   // Send state
@@ -69,22 +70,19 @@ export default function TemplatesPage() {
     }
   }, [selected]);
 
-  const fetchActiveCount = useCallback(async () => {
-    const res = await fetch("/api/admin/stats", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ period: "today" }),
-    });
+  const fetchBroadcastCounts = useCallback(async () => {
+    const res = await fetch("/api/admin/broadcast-counts", { method: "POST" });
     if (res.ok) {
       const data = await res.json();
+      setTotalUserCount(data.totalUsers ?? 0);
       setActiveUserCount(data.activeUsers ?? 0);
     }
   }, []);
 
   useEffect(() => {
     fetchTemplates();
-    fetchActiveCount();
-  }, [fetchTemplates, fetchActiveCount]);
+    fetchBroadcastCounts();
+  }, [fetchTemplates, fetchBroadcastCounts]);
 
   const selectedTemplate = templates?.find((t) => t.key === selected);
 
@@ -128,7 +126,7 @@ export default function TemplatesPage() {
         break;
       case "broadcast":
         endpoint = "/api/admin/send-template-broadcast";
-        body = { templateEnvVar: selected, variables: contentVars };
+        body = { templateEnvVar: selected, variables: contentVars, messageBody: preview };
         break;
     }
 
@@ -297,7 +295,7 @@ export default function TemplatesPage() {
                   {/* Broadcast */}
                   <div className="space-y-3">
                     <Label className="text-xs font-medium text-white/40 uppercase tracking-wider">
-                      Broadcast to All Active Users
+                      Broadcast to All Users
                     </Label>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -306,16 +304,18 @@ export default function TemplatesPage() {
                           className="w-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 disabled:opacity-40"
                         >
                           <Radio className="mr-2 h-4 w-4" />
-                          Broadcast to {activeUserCount} Active Users
+                          Broadcast to {totalUserCount} Users
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="border-white/[0.1] bg-[#131a32]">
                         <AlertDialogHeader>
                           <AlertDialogTitle className="text-white">Confirm Broadcast</AlertDialogTitle>
                           <AlertDialogDescription className="text-white/50">
-                            This will send the template &quot;{selectedTemplate.description}&quot; to{" "}
-                            <strong className="text-white/80">{activeUserCount}</strong> users who were
-                            active in the last 24 hours. This action cannot be undone.
+                            This will send &quot;{selectedTemplate.description}&quot; to all{" "}
+                            <strong className="text-white/80">{totalUserCount}</strong> users.{" "}
+                            {activeUserCount} active users (last 24h) will get a normal message;{" "}
+                            {totalUserCount - activeUserCount} inactive users will get a template message.
+                            This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

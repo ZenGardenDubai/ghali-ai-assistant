@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel";
 import { validateTwilioSignature, parseTwilioMessage } from "./lib/twilio";
 import { isBlockedCountryCode } from "./lib/utils";
 import { validateClerkWebhook } from "./lib/clerk";
-import { MAX_MESSAGE_LENGTH } from "./constants";
+import { MAX_MESSAGE_LENGTH, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
 /** Constant-time string comparison to prevent timing attacks on secret tokens. */
 async function timingSafeEqual(a: string, b: string): Promise<boolean> {
@@ -311,6 +311,18 @@ http.route({
 });
 
 http.route({
+  path: "/admin/broadcast-counts",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx) => {
+    const result = await ctx.runQuery(internal.admin.getBroadcastCounts);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/admin/template-status",
   method: "POST",
   handler: adminAuthHandler(async (ctx) => {
@@ -374,9 +386,10 @@ http.route({
   path: "/admin/send-template-broadcast",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { templateEnvVar, variables } = body as {
+    const { templateEnvVar, variables, messageBody } = body as {
       templateEnvVar: string;
       variables: Record<string, string>;
+      messageBody?: string;
     };
     if (!templateEnvVar || !variables) {
       return new Response("Missing templateEnvVar or variables", { status: 400 });
@@ -384,6 +397,7 @@ http.route({
     const result = await ctx.runAction(internal.admin.sendTemplateBroadcast, {
       templateEnvVar,
       variables,
+      messageBody,
     });
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -612,11 +626,27 @@ http.route({
       });
     }
 
-    // Send WhatsApp reply via Twilio
-    await ctx.runAction(internal.twilio.sendMessage, {
-      to: feedback.phone,
-      body: message,
+    // Check if user is within 24h WhatsApp session window
+    const user = await ctx.runQuery(internal.admin.searchUser, {
+      phone: feedback.phone,
     });
+    const withinWindow =
+      user?.lastMessageAt &&
+      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+    if (withinWindow) {
+      await ctx.runAction(internal.twilio.sendMessage, {
+        to: feedback.phone,
+        body: message,
+      });
+    } else {
+      // Outside 24h window — use broadcast template as fallback
+      await ctx.runAction(internal.twilio.sendTemplate, {
+        to: feedback.phone,
+        templateEnvVar: "TWILIO_TPL_BROADCAST",
+        variables: { "1": message },
+      });
+    }
 
     return new Response(JSON.stringify({ success: true }), {
       status: 200,

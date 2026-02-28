@@ -663,15 +663,19 @@ export const generateResponse = internalAction({
         tools_used: toolsUsed.length > 0 ? toolsUsed : undefined,
       });
 
-      // Low-credit warning — fires once when balance crosses below the threshold
+      // Low-credit warning — fires once when balance crosses below the threshold.
+      // User just messaged so we're within the 24h session window — use normal message.
       if (
         newCredits <= CREDITS_LOW_THRESHOLD &&
         user.credits > CREDITS_LOW_THRESHOLD
       ) {
-        await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+        const lowCreditMsg = fillTemplate(
+          TEMPLATES.credits_low_warning.template,
+          { credits: newCredits }
+        );
+        await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
           to: user.phone,
-          templateEnvVar: "TWILIO_TPL_CREDITS_LOW",
-          variables: { "1": String(newCredits) },
+          body: lowCreditMsg,
         });
       }
     }
