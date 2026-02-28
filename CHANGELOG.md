@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.18.0...v0.18.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* use PAT for Claude workflow to trigger CI on PRs ([#65](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/65)) ([0dc88fe](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/0dc88fe8801297f16de4a57c4d75011719927f1c))
+
 ## [0.18.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.17.0...v0.18.0) (2026-02-27)
 
 
