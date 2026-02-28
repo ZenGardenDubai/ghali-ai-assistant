@@ -6,8 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, Suspense } from "react";
 
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL ?? "";
-
 const CATEGORIES = [
   { value: "bug", label: "Bug Report", emoji: "🐛" },
   { value: "feature_request", label: "Feature Request", emoji: "💡" },
@@ -29,20 +27,16 @@ function FeedbackForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [website, setWebsite] = useState(""); // honeypot
 
   // Validate token on load
   useEffect(() => {
     if (!token) return;
-    if (!CONVEX_SITE_URL) {
-      setTokenValid(false);
-      setTokenError("Service temporarily unavailable. Please try again later.");
-      return;
-    }
     const controller = new AbortController();
 
     async function validateToken() {
       try {
-        const res = await fetch(`${CONVEX_SITE_URL}/feedback/validate-token`, {
+        const res = await fetch("/api/feedback/validate-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
@@ -78,14 +72,14 @@ function FeedbackForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || !message.trim()) return;
+    if (!canSubmit || !message.trim() || website) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
       if (isTokenMode) {
-        const res = await fetch(`${CONVEX_SITE_URL}/feedback/submit`, {
+        const res = await fetch("/api/feedback/submit-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, category, message: message.trim() }),
@@ -242,6 +236,20 @@ function FeedbackForm() {
             {message.length}/2000
           </span>
         </div>
+      </div>
+
+      {/* Honeypot — hidden from humans, bots fill it in */}
+      <div className="absolute -left-[9999px]" aria-hidden="true" tabIndex={-1}>
+        <label htmlFor="website">Website</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+        />
       </div>
 
       {/* Error */}

@@ -204,7 +204,7 @@ export default function AdminFeedbackPage() {
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as Status | "")}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/70 outline-none"
+          className="rounded-lg border border-white/[0.08] bg-[#0f1525] px-3 py-2 text-xs text-white/70 outline-none focus-visible:ring-2 focus-visible:ring-[#ED6B23] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0f1525] [&>option]:bg-[#0f1525] [&>option]:text-white/70"
         >
           <option value="">All Statuses</option>
           {STATUS_OPTIONS.map((s) => (
@@ -214,7 +214,7 @@ export default function AdminFeedbackPage() {
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value as Category | "")}
-          className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/70 outline-none"
+          className="rounded-lg border border-white/[0.08] bg-[#0f1525] px-3 py-2 text-xs text-white/70 outline-none focus-visible:ring-2 focus-visible:ring-[#ED6B23] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0f1525] [&>option]:bg-[#0f1525] [&>option]:text-white/70"
         >
           <option value="">All Categories</option>
           <option value="bug">Bug</option>
@@ -317,7 +317,7 @@ export default function AdminFeedbackPage() {
                       <select
                         value={fb.status}
                         onChange={(e) => handleStatusChange(fb._id, e.target.value as Status)}
-                        className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-white/70 outline-none"
+                        className="rounded-lg border border-white/[0.08] bg-[#0f1525] px-3 py-2 text-xs text-white/70 outline-none focus-visible:ring-2 focus-visible:ring-[#ED6B23] focus-visible:ring-offset-1 focus-visible:ring-offset-[#0f1525] [&>option]:bg-[#0f1525] [&>option]:text-white/70"
                       >
                         {STATUS_OPTIONS.map((s) => (
                           <option key={s.value} value={s.value}>{s.label}</option>

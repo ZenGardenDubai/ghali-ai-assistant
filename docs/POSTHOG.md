@@ -155,7 +155,7 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 - `convex/images.ts` — on successful image generation (`image_generation`)
 - `convex/agent.ts` — `deepReasoning` tool (`deep_reasoning`), `addItem` tool (`items`), `webSearch` tool (`web_search`), `convertFile` tool (`document_conversion`)
 - `convex/messages.ts` — document processing (`document_processing`), voice note transcription (`voice_note`)
-- `convex/agent.ts` — `submitFeedback` tool (`feedback`)
+- `convex/feedback.ts` — feedback submission (`feedback`)
 
 ### `feedback_submitted`
 
@@ -168,7 +168,7 @@ Fired when a user submits feedback via any channel.
 | `tier` | string | `basic` or `pro` |
 | `phone_country` | string | ISO country code |
 
-**Triggered in**: `convex/agent.ts` — `submitFeedback` tool (agent_tool source). Web and WhatsApp link sources fire via `convex/feedback.ts` mutations with scheduler.
+**Triggered in**: `convex/feedback.ts` — feedback submission mutations (all sources: whatsapp_link, web, agent_tool) fire via scheduler.
 
 ## Client Events (Landing Page)
 
@@ -191,24 +191,7 @@ Captured via `posthog-js` on ghali.ae:
 | Image & Document Processing | Line | `image_generated` + `document_processed` per day |
 | Token Usage (Input vs Output) | Line | Sum of `$ai_input_tokens` and `$ai_output_tokens` |
 | Credits Exhausted | Line | `credits_exhausted` events per day |
-| Feature Usage | Bar | `feature_used` broken down by `feature` property (TODO: create manually — see below) |
-
-## TODO: Create "Feature Usage" Insight ([#63](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/63))
-
-Not yet created in PostHog. Steps:
-
-1. Go to **Insights** → **New Insight**
-2. Type: **Trends**
-3. Event: `feature_used`, Math: **Total count**
-4. Breakdown: **By event property** → `feature`
-5. Display: **Bar chart**, enable legend
-6. Date range: **Last 30 days**
-7. Name: **"Feature Usage"**
-8. Save → Add to dashboard **"Ghali Server Analytics"** (ID `1299426`)
-
-Expected `feature` values: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback`
-
-Remove this section after creation.
+| Feature Usage | Bar | `feature_used` broken down by `feature` property (insight ID `7113417`) |
 
 ## Country Code Mapping
 
