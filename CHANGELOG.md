@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.19.1...v0.19.2) (2026-02-28)
+
+
+### Bug Fixes
+
+* enforce WhatsApp 24h session window for all message types ([#72](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/72)) ([a6e6a37](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/a6e6a37840bab57e087b4ac416fc9ebbf25612a4))
+
 ## [0.19.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.19.0...v0.19.1) (2026-02-28)
 
 
