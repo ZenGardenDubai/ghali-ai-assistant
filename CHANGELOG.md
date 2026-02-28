@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.19.0...v0.19.1) (2026-02-28)
+
+
+### Bug Fixes
+
+* resolve feedback CORS issue and improve agent tool reliability ([#69](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/69)) ([360aceb](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/360aceb5466a511db5fa9a1bdfadd8ca66329053))
+
 ## [0.19.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.18.1...v0.19.0) (2026-02-28)
 
 
