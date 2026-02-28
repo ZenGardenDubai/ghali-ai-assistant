@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.18.1...v0.19.0) (2026-02-28)
+
+
+### Features
+
+* add feedback & suggestions system ([#66](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/66)) ([36da98f](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/36da98f42722d596218f0cf2a45021c89bf3cdfb))
+
 ## [0.18.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.18.0...v0.18.1) (2026-02-28)
 
 
