@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.1...v0.26.2) (2026-03-01)
+
+
+### Bug Fixes
+
+* update body/metadata on createItem duplicate title ([#100](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/100)) ([796210b](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/796210b094c2279f000410c67942bd9855c3368f))
+
 ## [0.26.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.0...v0.26.1) (2026-03-01)
 
 
