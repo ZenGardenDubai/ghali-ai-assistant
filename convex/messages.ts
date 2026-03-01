@@ -603,7 +603,9 @@ export const generateResponse = internalAction({
       prompt = `[User sent an unsupported file type: ${mediaContentType}]`;
     }
 
-    // Get or create thread for this user
+    // Get or create thread for this user.
+    // Thread scoping (one thread per userId) is enforced by @convex-dev/agent.
+    // We pass userId explicitly so the library can scope the thread correctly.
     const { threadId } = await ghaliAgent.createThread(ctx, {
       userId,
     });

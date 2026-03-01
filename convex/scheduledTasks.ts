@@ -250,7 +250,9 @@ export const executeScheduledTask = internalAction({
     const { date, time, tz } = getCurrentDateTime(user.timezone);
     const userContext = buildUserContext(userFiles, { date, time, tz });
 
-    // Get/create thread
+    // Get/create thread for this user.
+    // Thread scoping (one thread per userId) is enforced by @convex-dev/agent.
+    // We pass userId explicitly so the library can scope the thread correctly.
     const { threadId } = await ghaliAgent.createThread(ctx, {
       userId: task.userId as string,
     });
@@ -419,6 +421,11 @@ export const scheduleNextRun = internalMutation({
 
 /**
  * Update a scheduled task. Reschedules if schedule changes or task is re-enabled.
+ *
+ * userId is optional by design: agent tools pass it for user-initiated updates
+ * (ownership verified via the `if (userId && task.userId !== userId)` guard),
+ * while internal system operations (e.g. credit exhaustion, error recovery) omit
+ * it to operate without user context.
  */
 export const updateScheduledTask = internalMutation({
   args: {
@@ -496,6 +503,11 @@ export const updateScheduledTask = internalMutation({
 
 /**
  * Delete a scheduled task. Cancels any pending scheduler job.
+ *
+ * userId is optional by design: agent tools pass it for user-initiated deletes
+ * (ownership verified via the `if (userId && task.userId !== userId)` guard),
+ * while internal system operations (e.g. clearEverything, error recovery) omit
+ * it to operate without user context.
  */
 export const deleteScheduledTask = internalMutation({
   args: {

@@ -66,12 +66,15 @@ export const convertAndStore = internalAction({
       };
     }
 
-    // Download source file from Convex storage
-    const sourceUrl = await ctx.storage.getUrl(storageId);
+    // Download source file from Convex storage — verify ownership before access
+    const sourceUrl = await ctx.runQuery(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId,
+    });
     if (!sourceUrl) {
       return {
         success: false as const,
-        error: "Source file not found in storage",
+        error: "File not found or access denied",
       };
     }
 
