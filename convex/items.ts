@@ -8,6 +8,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
 import { openai } from "@ai-sdk/openai";
 import { embed } from "ai";
 import {
@@ -713,7 +714,7 @@ export const vectorSearchItems = internalAction({
     const docs = await ctx.runQuery(internal.items.getItemsByIds, {
       itemIds: searchResults.map((r) => r._id),
       userId,
-    });
+    }) as Doc<"items">[];
 
     // Merge scores with full docs and apply in-memory filters
     const scoreMap = new Map(searchResults.map((r) => [r._id.toString(), r._score]));

@@ -155,7 +155,7 @@ describe("getRecentUserMedia", () => {
     });
 
     expect(files).toHaveLength(2);
-    expect(files.every((f) => f.mediaType.startsWith("audio/"))).toBe(true);
+    expect(files.every((f: { mediaType: string }) => f.mediaType.startsWith("audio/"))).toBe(true);
   });
 
   it("filters to application/* documents when mediaTypePrefixes is ['application/']", async () => {
@@ -229,7 +229,7 @@ describe("getRecentUserMedia", () => {
     });
 
     expect(files).toHaveLength(2);
-    const types = files.map((f) => f.mediaType);
+    const types = files.map((f: { mediaType: string }) => f.mediaType);
     expect(types).toContain("application/pdf");
     expect(types).toContain("text/plain");
   });

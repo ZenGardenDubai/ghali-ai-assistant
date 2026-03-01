@@ -266,7 +266,7 @@ export const generateResponse = internalAction({
       const isExpired = Date.now() - user.pendingActionAt > PENDING_ACTION_EXPIRY_MS;
 
       if (!isExpired && isAffirmative(body)) {
-        const pendingAction = user.pendingAction;
+        const pendingAction = user.pendingAction as "admin_broadcast" | "clear_memory" | "clear_documents" | "clear_schedules" | "clear_everything";
 
         // Admin broadcast confirmation — re-verify admin status
         if (pendingAction === "admin_broadcast" && user.pendingPayload && user.isAdmin) {
@@ -603,7 +603,9 @@ export const generateResponse = internalAction({
       prompt = `[User sent an unsupported file type: ${mediaContentType}]`;
     }
 
-    // Get or create thread for this user
+    // Get or create thread for this user.
+    // Thread scoping (one thread per userId) is enforced by @convex-dev/agent.
+    // We pass userId explicitly so the library can scope the thread correctly.
     const { threadId } = await ghaliAgent.createThread(ctx, {
       userId,
     });

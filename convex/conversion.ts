@@ -36,7 +36,10 @@ export const convertAndStore = internalAction({
       error: v.string(),
     })
   ),
-  handler: async (ctx, { userId, storageId, sourceMediaType, outputFormat }) => {
+  handler: async (ctx, { userId, storageId, sourceMediaType, outputFormat }): Promise<
+    | { success: true; fileUrl: string; outputFormat: string; outputMime: string }
+    | { success: false; error: string }
+  > => {
     const startTime = Date.now();
 
     // Resolve input format from MIME
@@ -66,12 +69,15 @@ export const convertAndStore = internalAction({
       };
     }
 
-    // Download source file from Convex storage
-    const sourceUrl = await ctx.storage.getUrl(storageId);
+    // Download source file from Convex storage — verify ownership before access
+    const sourceUrl: string | null = await ctx.runQuery(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId,
+    });
     if (!sourceUrl) {
       return {
         success: false as const,
-        error: "Source file not found in storage",
+        error: "File not found or access denied",
       };
     }
 
