@@ -83,8 +83,12 @@ const iconMap = {
 
 export type IconKey = keyof typeof iconMap;
 
+function isIconKey(name: string): name is IconKey {
+  return Object.prototype.hasOwnProperty.call(iconMap, name);
+}
+
 export function IconByKey({ name }: { name: string }) {
-  const Icon = iconMap[name as IconKey];
-  if (!Icon) return <span>{name}</span>;
+  if (!isIconKey(name)) return <span>{name}</span>;
+  const Icon = iconMap[name];
   return <Icon />;
 }
