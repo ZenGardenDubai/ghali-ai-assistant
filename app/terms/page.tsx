@@ -8,12 +8,18 @@ export const metadata: Metadata = {
     "Terms of Service for ghali.ae — your rights, usage guidelines, credit system, and acceptable use policy.",
   alternates: {
     canonical: "https://ghali.ae/terms",
+    languages: {
+      en: "https://ghali.ae/terms",
+      ar: "https://ghali.ae/ar/terms",
+      "x-default": "https://ghali.ae/terms",
+    },
   },
   openGraph: {
     title: "Terms of Service — Ghali",
     description:
       "Terms of Service for ghali.ae — your rights, usage guidelines, credit system, and acceptable use policy.",
     url: "https://ghali.ae/terms",
+    locale: "en_AE",
     images: [
       {
         url: "/ghali-logo-with-bg.png",

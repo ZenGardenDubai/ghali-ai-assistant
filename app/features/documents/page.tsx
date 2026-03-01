@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Document Analysis & Knowledge Base",
+  title: "AI Document Analysis on WhatsApp — PDF, Word, Excel",
   description:
     "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
   alternates: {
     canonical: "https://ghali.ae/features/documents",
-    languages: { en: "https://ghali.ae/features/documents", ar: "https://ghali.ae/ar/features/documents" },
+    languages: {
+      en: "https://ghali.ae/features/documents",
+      ar: "https://ghali.ae/ar/features/documents",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Document Analysis & Knowledge Base — Ghali",
+    title: "AI Document Analysis on WhatsApp — PDF, Word, Excel",
     description:
       "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
     url: "https://ghali.ae/features/documents",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Document Analysis on WhatsApp — PDF, Word, Excel",
+    description: "Send PDFs, Word docs, and spreadsheets. Ghali reads them and answers your questions instantly.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

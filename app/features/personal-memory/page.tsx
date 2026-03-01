@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Personal Memory",
+  title: "AI That Remembers You — Personal Memory on WhatsApp",
   description:
     "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
   alternates: {
     canonical: "https://ghali.ae/features/personal-memory",
-    languages: { en: "https://ghali.ae/features/personal-memory", ar: "https://ghali.ae/ar/features/personal-memory" },
+    languages: {
+      en: "https://ghali.ae/features/personal-memory",
+      ar: "https://ghali.ae/ar/features/personal-memory",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Personal Memory — Ghali",
+    title: "AI That Remembers You — Personal Memory on WhatsApp",
     description:
       "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
     url: "https://ghali.ae/features/personal-memory",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI That Remembers You — Personal Memory on WhatsApp",
+    description: "Ghali learns your preferences and context over time. No more repeating yourself.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

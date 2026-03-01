@@ -2,19 +2,31 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Powered by the Best AI",
+  title: "Best AI Models — Google Gemini, Claude & OpenAI on WhatsApp",
   description:
     "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
   alternates: {
     canonical: "https://ghali.ae/features/smart-ai",
-    languages: { en: "https://ghali.ae/features/smart-ai", ar: "https://ghali.ae/ar/features/smart-ai" },
+    languages: {
+      en: "https://ghali.ae/features/smart-ai",
+      ar: "https://ghali.ae/ar/features/smart-ai",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Powered by the Best AI — Ghali",
+    title: "Best AI Models — Google Gemini, Claude & OpenAI on WhatsApp",
     description:
       "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
     url: "https://ghali.ae/features/smart-ai",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Best AI Models — Google Gemini, Claude & OpenAI on WhatsApp",
+    description:
+      "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Open Source",
+  title: "Open Source AI Assistant — Ghali on GitHub",
   description:
     "Ghali's code is public. See exactly how your data is handled. No black boxes.",
   alternates: {
     canonical: "https://ghali.ae/features/open-source",
-    languages: { en: "https://ghali.ae/features/open-source", ar: "https://ghali.ae/ar/features/open-source" },
+    languages: {
+      en: "https://ghali.ae/features/open-source",
+      ar: "https://ghali.ae/ar/features/open-source",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Open Source — Ghali",
+    title: "Open Source AI Assistant — Ghali on GitHub",
     description:
       "Ghali's code is public. See exactly how your data is handled. No black boxes.",
     url: "https://ghali.ae/features/open-source",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Open Source AI Assistant — Ghali on GitHub",
+    description: "Ghali is open source under Apache 2.0. Read every line of code on GitHub.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

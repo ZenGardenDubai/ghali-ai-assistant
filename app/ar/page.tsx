@@ -19,8 +19,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://ghali.ae/ar",
     languages: {
-      "en": "https://ghali.ae",
-      "ar": "https://ghali.ae/ar",
+      en: "https://ghali.ae",
+      ar: "https://ghali.ae/ar",
+      "x-default": "https://ghali.ae",
     },
   },
   openGraph: {

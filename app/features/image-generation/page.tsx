@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Image Generation",
+  title: "AI Image Generation on WhatsApp — Create Images with Ghali",
   description:
     "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
   alternates: {
     canonical: "https://ghali.ae/features/image-generation",
-    languages: { en: "https://ghali.ae/features/image-generation", ar: "https://ghali.ae/ar/features/image-generation" },
+    languages: {
+      en: "https://ghali.ae/features/image-generation",
+      ar: "https://ghali.ae/ar/features/image-generation",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Image Generation — Ghali",
+    title: "AI Image Generation on WhatsApp — Create Images with Ghali",
     description:
       "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
     url: "https://ghali.ae/features/image-generation",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Image Generation on WhatsApp — Create Images with Ghali",
+    description: "Describe what you want and get a stunning image in seconds. All from a WhatsApp message.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

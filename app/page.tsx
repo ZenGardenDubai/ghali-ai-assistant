@@ -19,8 +19,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "https://ghali.ae",
     languages: {
-      "en": "https://ghali.ae",
-      "ar": "https://ghali.ae/ar",
+      en: "https://ghali.ae",
+      ar: "https://ghali.ae/ar",
+      "x-default": "https://ghali.ae",
     },
   },
   openGraph: {
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
     description:
       "No app to install. No account to create. Just message Ghali on WhatsApp and get things done.",
     url: "https://ghali.ae",
+    locale: "en_AE",
     images: [
       {
         url: "/ghali-logo-with-bg.png",

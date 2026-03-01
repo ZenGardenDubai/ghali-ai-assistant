@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "ProWrite",
+  title: "ProWrite — AI Writing Assistant with 8 AI Models",
   description:
     "Professional multi-AI writing pipeline. 8 models research, draft, and polish your content — articles, emails, reports, and more.",
   alternates: {
     canonical: "https://ghali.ae/features/prowrite",
-    languages: { en: "https://ghali.ae/features/prowrite", ar: "https://ghali.ae/ar/features/prowrite" },
+    languages: {
+      en: "https://ghali.ae/features/prowrite",
+      ar: "https://ghali.ae/ar/features/prowrite",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "ProWrite — Ghali",
+    title: "ProWrite — AI Writing Assistant with 8 AI Models",
     description:
       "Professional multi-AI writing pipeline. 8 models research, draft, and polish your content — articles, emails, reports, and more.",
     url: "https://ghali.ae/features/prowrite",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ProWrite — AI Writing Assistant with 8 AI Models",
+    description: "Say 'prowrite' and Ghali orchestrates 8 AI models to research, draft, and polish your content.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Privacy & Your Data",
+  title: "Privacy First AI — Your Data Stays Yours",
   description:
     "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
   alternates: {
     canonical: "https://ghali.ae/features/privacy",
-    languages: { en: "https://ghali.ae/features/privacy", ar: "https://ghali.ae/ar/features/privacy" },
+    languages: {
+      en: "https://ghali.ae/features/privacy",
+      ar: "https://ghali.ae/ar/features/privacy",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Privacy & Your Data — Ghali",
+    title: "Privacy First AI — Your Data Stays Yours",
     description:
       "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
     url: "https://ghali.ae/features/privacy",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy First AI — Your Data Stays Yours",
+    description: "Ghali never sells your data. Full transparency, delete anytime, no model training.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

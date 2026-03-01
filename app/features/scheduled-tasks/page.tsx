@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Scheduled Tasks",
+  title: "AI Scheduled Tasks & Reminders on WhatsApp",
   description:
     "Schedule AI-powered tasks that run automatically — reminders, daily briefings, recurring reports, and more.",
   alternates: {
     canonical: "https://ghali.ae/features/scheduled-tasks",
-    languages: { en: "https://ghali.ae/features/scheduled-tasks", ar: "https://ghali.ae/ar/features/scheduled-tasks" },
+    languages: {
+      en: "https://ghali.ae/features/scheduled-tasks",
+      ar: "https://ghali.ae/ar/features/scheduled-tasks",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Scheduled Tasks — Ghali",
+    title: "AI Scheduled Tasks & Reminders on WhatsApp",
     description:
       "Schedule AI-powered tasks that run automatically — reminders, daily briefings, recurring reports, and more.",
     url: "https://ghali.ae/features/scheduled-tasks",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Scheduled Tasks & Reminders on WhatsApp",
+    description: "Schedule tasks and Ghali runs them automatically — reminders, briefings, and recurring reports.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

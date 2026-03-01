@@ -15,6 +15,8 @@ const READY_TEXT = { en: "Ready to try", ar: "\u062C\u0627\u0647\u0632 \u062A\u0
 const NO_APP_TEXT = { en: "No app. No signup. Just send a message.", ar: "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642. \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644. \u0628\u0633 \u0627\u0631\u0633\u0644 \u0631\u0633\u0627\u0644\u0629." } as const;
 const PRIVACY_TEXT = { en: "Privacy Policy", ar: "\u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629" } as const;
 const TERMS_TEXT = { en: "Terms of Service", ar: "\u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629" } as const;
+const EXPLORE_FEATURES_TEXT = { en: "Explore all features", ar: "\u0627\u0643\u062A\u0634\u0641 \u0643\u0644 \u0627\u0644\u0645\u0632\u0627\u064A\u0627" } as const;
+const EXPLORE_FEATURES_HREF = { en: "/features", ar: "/ar/features" } as const;
 
 export function FeaturePage({
   badge,
@@ -80,8 +82,19 @@ export function FeaturePage({
       </section>
 
       {/* Content */}
-      <div className="mx-auto max-w-3xl px-6 pb-24">
+      <div className="mx-auto max-w-3xl px-6 pb-8">
         {children}
+      </div>
+
+      {/* Related Features link */}
+      <div className="mx-auto max-w-3xl px-6 pb-16">
+        <Link
+          href={EXPLORE_FEATURES_HREF[locale]}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-6 py-4 text-sm text-white/50 transition-all hover:border-[#ED6B23]/30 hover:text-white/80"
+        >
+          {EXPLORE_FEATURES_TEXT[locale]}
+          <span className="text-[#ED6B23] rtl:rotate-180">&rarr;</span>
+        </Link>
       </div>
 
       {/* CTA */}

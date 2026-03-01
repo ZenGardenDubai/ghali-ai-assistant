@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Zero Friction",
+  title: "No App Needed — AI Assistant on WhatsApp",
   description:
     "No app to install. No account to create. Just open WhatsApp and start chatting with Ghali.",
   alternates: {
     canonical: "https://ghali.ae/features/zero-friction",
-    languages: { en: "https://ghali.ae/features/zero-friction", ar: "https://ghali.ae/ar/features/zero-friction" },
+    languages: {
+      en: "https://ghali.ae/features/zero-friction",
+      ar: "https://ghali.ae/ar/features/zero-friction",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Zero Friction — Ghali",
+    title: "No App Needed — AI Assistant on WhatsApp",
     description:
       "No app to install. No account to create. Just open WhatsApp and start chatting with Ghali.",
     url: "https://ghali.ae/features/zero-friction",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "No App Needed — AI Assistant on WhatsApp",
+    description: "No app to install, no account to create. Open WhatsApp and start chatting with Ghali.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

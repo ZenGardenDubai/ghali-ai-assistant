@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Understand Anything",
+  title: "Understand Images, Voice & Video with AI on WhatsApp",
   description:
     "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
   alternates: {
     canonical: "https://ghali.ae/features/understand-anything",
-    languages: { en: "https://ghali.ae/features/understand-anything", ar: "https://ghali.ae/ar/features/understand-anything" },
+    languages: {
+      en: "https://ghali.ae/features/understand-anything",
+      ar: "https://ghali.ae/ar/features/understand-anything",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Understand Anything — Ghali",
+    title: "Understand Images, Voice & Video with AI on WhatsApp",
     description:
       "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
     url: "https://ghali.ae/features/understand-anything",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Understand Images, Voice & Video with AI on WhatsApp",
+    description: "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

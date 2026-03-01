@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif, Noto_Sans_Arabic } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { headers } from "next/headers";
 import "./globals.css";
 import { PostHogProvider } from "./providers/posthog";
 import { GtmScript } from "./gtm/gtm-script";
@@ -52,7 +53,7 @@ export const metadata: Metadata = {
   publisher: "SAHEM DATA TECHNOLOGY",
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_AE",
     url: "https://ghali.ae",
     siteName: "Ghali",
     title: "Ghali — Your AI Assistant on WhatsApp",
@@ -69,7 +70,7 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Ghali — Your AI Assistant on WhatsApp",
     description:
       "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more.",
@@ -97,19 +98,32 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
   alternates: {
     canonical: "https://ghali.ae",
+    languages: {
+      en: "https://ghali.ae",
+      ar: "https://ghali.ae/ar",
+      "x-default": "https://ghali.ae",
+    },
   },
   other: {
     "msapplication-TileColor": "#ED6B23",
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Read the pathname forwarded by middleware to set lang server-side.
+  // This ensures Google crawlers see the correct lang attribute (fixes C1).
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "/";
+  const isArabic = pathname.startsWith("/ar");
+  const lang = isArabic ? "ar" : "en";
+  const dir = isArabic ? "rtl" : undefined;
+
   return (
-    <html lang="en">
+    <html lang={lang} dir={dir}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${notoSansArabic.variable} antialiased`}
       >

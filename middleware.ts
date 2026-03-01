@@ -5,6 +5,11 @@ const isProtectedRoute = createRouteMatcher(["/api/link-phone(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Forward pathname as a request header so server layouts can read it.
+  // Used by root layout to set <html lang> correctly for Arabic routes server-side.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
+
   if (isAdminRoute(req)) {
     const { userId, sessionClaims } = await auth();
 
@@ -18,13 +23,13 @@ export default clerkMiddleware(async (auth, req) => {
     if (!isAdmin) {
       return NextResponse.redirect(new URL("/", req.url));
     }
-
-    return;
   }
 
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
+
+  return NextResponse.next({ request: { headers: requestHeaders } });
 });
 
 export const config = {

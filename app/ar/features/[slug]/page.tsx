@@ -25,6 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         en: `https://ghali.ae/features/${slug}`,
         ar: `https://ghali.ae/ar/features/${slug}`,
+        "x-default": "https://ghali.ae",
       },
     },
     openGraph: {

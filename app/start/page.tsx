@@ -9,7 +9,24 @@ export const metadata: Metadata = {
   description: "Your AI assistant on WhatsApp. Free, no signup, 60 messages/month.",
   alternates: {
     canonical: "https://ghali.ae/start",
-    languages: { en: "https://ghali.ae/start", ar: "https://ghali.ae/ar/start" },
+    languages: {
+      en: "https://ghali.ae/start",
+      ar: "https://ghali.ae/ar/start",
+      "x-default": "https://ghali.ae/start",
+    },
+  },
+  openGraph: {
+    title: "Start Chatting with Ghali",
+    description: "Your AI assistant on WhatsApp. Free to start, no signup required.",
+    url: "https://ghali.ae/start",
+    locale: "en_AE",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Start Chatting with Ghali",
+    description: "Your AI assistant on WhatsApp. Free to start, no signup required.",
+    images: ["/ghali-logo-with-bg.png"],
   },
   robots: { index: true, follow: true },
 };

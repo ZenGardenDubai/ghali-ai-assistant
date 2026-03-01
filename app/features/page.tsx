@@ -3,18 +3,23 @@ import Link from "next/link";
 import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "Features",
+  title: "Ghali Features — AI Image Generation, Documents, Writing & More",
   description:
     "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
   alternates: {
     canonical: "https://ghali.ae/features",
-    languages: { en: "https://ghali.ae/features", ar: "https://ghali.ae/ar/features" },
+    languages: {
+      en: "https://ghali.ae/features",
+      ar: "https://ghali.ae/ar/features",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Features — Ghali",
+    title: "Ghali Features — AI Image Generation, Documents, Writing & More",
     description:
       "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
     url: "https://ghali.ae/features",
+    locale: "en_AE",
     images: [
       {
         url: "/ghali-logo-with-bg.png",
@@ -23,6 +28,12 @@ export const metadata: Metadata = {
         alt: "Ghali — AI Assistant on WhatsApp",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ghali Features — AI Image Generation, Documents, Writing & More",
+    description: "Image generation, document analysis, scheduling, memory, and more — all on WhatsApp.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 

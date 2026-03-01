@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   description: "\u0643\u0644 \u0634\u064A \u063A\u0627\u0644\u064A \u064A\u0642\u062F\u0631 \u064A\u0633\u0648\u064A\u0647. \u0625\u0646\u0634\u0627\u0621 \u0635\u0648\u0631\u060C \u062A\u062D\u0644\u064A\u0644 \u0645\u0633\u062A\u0646\u062F\u0627\u062A\u060C \u062A\u0641\u0643\u064A\u0631 \u0639\u0645\u064A\u0642\u060C \u0630\u0627\u0643\u0631\u0629 \u0634\u062E\u0635\u064A\u0629\u060C \u0648\u0627\u0644\u0645\u0632\u064A\u062F.",
   alternates: {
     canonical: "https://ghali.ae/ar/features",
-    languages: { en: "https://ghali.ae/features", ar: "https://ghali.ae/ar/features" },
+    languages: {
+      en: "https://ghali.ae/features",
+      ar: "https://ghali.ae/ar/features",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
     title: "\u0627\u0644\u0645\u0632\u0627\u064A\u0627 \u2014 \u063A\u0627\u0644\u064A",

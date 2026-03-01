@@ -8,12 +8,18 @@ export const metadata: Metadata = {
     "How Ghali handles your data. Your privacy matters to us. Learn about data collection, AI processing, and your rights.",
   alternates: {
     canonical: "https://ghali.ae/privacy",
+    languages: {
+      en: "https://ghali.ae/privacy",
+      ar: "https://ghali.ae/ar/privacy",
+      "x-default": "https://ghali.ae/privacy",
+    },
   },
   openGraph: {
     title: "Privacy Policy — Ghali",
     description:
       "How Ghali handles your data. Your privacy matters to us. Learn about data collection, AI processing, and your rights.",
     url: "https://ghali.ae/privacy",
+    locale: "en_AE",
     images: [
       {
         url: "/ghali-logo-with-bg.png",

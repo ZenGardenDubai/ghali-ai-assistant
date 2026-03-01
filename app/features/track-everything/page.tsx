@@ -2,19 +2,30 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Track Everything",
+  title: "Track Expenses, Tasks & More with AI on WhatsApp",
   description:
     "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through WhatsApp.",
   alternates: {
     canonical: "https://ghali.ae/features/track-everything",
-    languages: { en: "https://ghali.ae/features/track-everything", ar: "https://ghali.ae/ar/features/track-everything" },
+    languages: {
+      en: "https://ghali.ae/features/track-everything",
+      ar: "https://ghali.ae/ar/features/track-everything",
+      "x-default": "https://ghali.ae",
+    },
   },
   openGraph: {
-    title: "Track Everything — Ghali",
+    title: "Track Expenses, Tasks & More with AI on WhatsApp",
     description:
       "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through WhatsApp.",
     url: "https://ghali.ae/features/track-everything",
+    locale: "en_AE",
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Track Expenses, Tasks & More with AI on WhatsApp",
+    description: "Just tell Ghali and it organizes your expenses, tasks, contacts, and notes automatically.",
+    images: ["/ghali-logo-with-bg.png"],
   },
 };
 
