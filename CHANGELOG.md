@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.2...v0.26.3) (2026-03-01)
+
+
+### Bug Fixes
+
+* **items:** sort queryItems results newest-first ([#99](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/99)) ([dda0852](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/dda0852fe2a97206239f2d5e0dba0c452b72e2cf))
+
 ## [0.26.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.1...v0.26.2) (2026-03-01)
 
 
