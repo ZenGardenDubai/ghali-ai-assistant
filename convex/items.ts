@@ -485,7 +485,10 @@ export const queryItems = internalQuery({
       items = items.filter((i) => i._creationTime <= dateTo);
     }
 
-    return items.slice(0, queryLimit);
+    // Return newest items first so recently added items are always visible
+    return items
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, queryLimit);
   },
 });
 

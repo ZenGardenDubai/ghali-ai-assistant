@@ -795,6 +795,35 @@ describe("queryItems", () => {
     });
     expect(limited).toHaveLength(3);
   });
+
+  it("returns items newest-first", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    await t.mutation(internal.items.createItem, { userId, title: "Old note" });
+    await t.mutation(internal.items.createItem, { userId, title: "Middle note" });
+    await t.mutation(internal.items.createItem, { userId, title: "New note" });
+
+    const items = await t.query(internal.items.queryItems, { userId });
+    expect(items[0].title).toBe("New note");
+    expect(items[items.length - 1].title).toBe("Old note");
+  });
+
+  it("newest item is not lost when limit is applied", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    // Create items up to the limit
+    for (let i = 0; i < 3; i++) {
+      await t.mutation(internal.items.createItem, { userId, title: `Old item ${i}` });
+    }
+    // Add one more (newest)
+    await t.mutation(internal.items.createItem, { userId, title: "Just added note" });
+
+    // Fetch with limit=3 — newest should still appear
+    const items = await t.query(internal.items.queryItems, { userId, limit: 3 });
+    expect(items[0].title).toBe("Just added note");
+  });
 });
 
 describe("findItemByText", () => {
