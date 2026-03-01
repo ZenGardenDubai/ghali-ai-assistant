@@ -306,7 +306,7 @@ Rules:
         prompt: task,
       });
 
-      // Track feature_used for deep reasoning
+      // Track feature_used + $ai_generation for deep reasoning
       const userId = ctx.userId as Id<"users">;
       const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
         phone: string; tier: string;
@@ -315,6 +315,14 @@ Rules:
         await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
           phone: user.phone,
           feature: "deep_reasoning",
+          tier: user.tier,
+        });
+        await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, {
+          phone: user.phone,
+          model: MODELS.DEEP_REASONING,
+          provider: "anthropic",
+          promptTokens: result.usage?.inputTokens ?? 0,
+          completionTokens: result.usage?.outputTokens ?? 0,
           tier: user.tier,
         });
       }
