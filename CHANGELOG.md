@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.23.1...v0.24.0) (2026-03-01)
+
+
+### Features
+
+* add 'clear schedules' system command ([#85](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/85)) ([3e8a087](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/3e8a08770b0cff5ce15085456e60f55027bf6752))
+
 ## [0.23.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.23.0...v0.23.1) (2026-03-01)
 
 
