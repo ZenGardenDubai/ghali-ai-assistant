@@ -266,7 +266,7 @@ export const generateResponse = internalAction({
       const isExpired = Date.now() - user.pendingActionAt > PENDING_ACTION_EXPIRY_MS;
 
       if (!isExpired && isAffirmative(body)) {
-        const pendingAction = user.pendingAction;
+        const pendingAction = user.pendingAction as "admin_broadcast" | "clear_memory" | "clear_documents" | "clear_schedules" | "clear_everything";
 
         // Admin broadcast confirmation — re-verify admin status
         if (pendingAction === "admin_broadcast" && user.pendingPayload && user.isAdmin) {

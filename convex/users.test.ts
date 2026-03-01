@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -70,10 +71,10 @@ describe("findOrCreateUser", () => {
 
     const [uae, uk, us, fr] = await t.run(async (ctx) => {
       return await Promise.all([
-        ctx.db.get(uaeId),
-        ctx.db.get(ukId),
-        ctx.db.get(usId),
-        ctx.db.get(frId),
+        ctx.db.get(uaeId) as Promise<Doc<"users"> | null>,
+        ctx.db.get(ukId) as Promise<Doc<"users"> | null>,
+        ctx.db.get(usId) as Promise<Doc<"users"> | null>,
+        ctx.db.get(frId) as Promise<Doc<"users"> | null>,
       ]);
     });
 
@@ -94,12 +95,12 @@ describe("findOrCreateUser", () => {
     const files = await t.query(internal.users.getUserFiles, { userId });
 
     expect(files).toHaveLength(3);
-    expect(files.map((f) => f.filename).sort()).toEqual([
+    expect(files.map((f: { filename: string }) => f.filename).sort()).toEqual([
       "heartbeat",
       "memory",
       "personality",
     ]);
-    expect(files.every((f) => f.content === "")).toBe(true);
+    expect(files.every((f: { content: string }) => f.content === "")).toBe(true);
   });
 });
 

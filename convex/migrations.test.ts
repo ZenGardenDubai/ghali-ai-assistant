@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
@@ -183,7 +184,7 @@ describe("migrateRemindersToScheduledTasks", () => {
 
     // Item should now have scheduledTaskId set
     const item = await t.run(async (ctx) => {
-      return await ctx.db.get(itemId);
+      return await ctx.db.get(itemId) as Doc<"items"> | null;
     });
     expect(item?.scheduledTaskId).toBeTruthy();
   });

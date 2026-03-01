@@ -67,7 +67,7 @@ export const convertAndStore = internalAction({
     }
 
     // Download source file from Convex storage — verify ownership before access
-    const sourceUrl = await ctx.runQuery(internal.mediaStorage.getStorageUrl, {
+    const sourceUrl: string | null = await ctx.runQuery(internal.mediaStorage.getStorageUrl, {
       storageId,
       userId,
     });

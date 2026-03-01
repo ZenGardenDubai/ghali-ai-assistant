@@ -59,7 +59,7 @@ export const processUserHeartbeat = internalAction({
     });
 
     // Race condition guard: verify heartbeat has content
-    const heartbeatFile = userFiles.find((f) => f.filename === "heartbeat");
+    const heartbeatFile = (userFiles as Array<{ filename: string; content: string }>).find((f) => f.filename === "heartbeat");
     if (!heartbeatFile?.content?.trim()) return;
 
     // Build context
