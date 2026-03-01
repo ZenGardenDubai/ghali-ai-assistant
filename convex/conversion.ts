@@ -36,7 +36,10 @@ export const convertAndStore = internalAction({
       error: v.string(),
     })
   ),
-  handler: async (ctx, { userId, storageId, sourceMediaType, outputFormat }) => {
+  handler: async (ctx, { userId, storageId, sourceMediaType, outputFormat }): Promise<
+    | { success: true; fileUrl: string; outputFormat: string; outputMime: string }
+    | { success: false; error: string }
+  > => {
     const startTime = Date.now();
 
     // Resolve input format from MIME
