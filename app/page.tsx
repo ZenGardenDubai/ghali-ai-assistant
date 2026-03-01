@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaqAccordion } from "./components/landing/faq";
 import { CtaButton } from "./components/landing/cta-button";
+import { StickyWhatsAppCta } from "./components/landing/sticky-whatsapp-cta";
 
 export const metadata: Metadata = {
   title: "Ghali — Your AI Assistant on WhatsApp",
@@ -10,6 +11,10 @@ export const metadata: Metadata = {
     "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
   alternates: {
     canonical: "https://ghali.ae",
+    languages: {
+      en: "https://ghali.ae",
+      ar: "https://ghali.ae/ar",
+    },
   },
   openGraph: {
     title: "Ghali — Your AI Assistant on WhatsApp",
@@ -177,6 +182,7 @@ export default function Home() {
       <FaqSection />
       <FinalCta />
       <Footer />
+      <StickyWhatsAppCta />
     </div>
   );
 }
@@ -199,6 +205,9 @@ function Nav() {
         <div className="flex items-center gap-4">
           <Link href="/features" className="hidden text-sm text-white/40 transition-colors hover:text-white sm:block">
             Features
+          </Link>
+          <Link href="/ar" className="hidden text-sm text-white/40 transition-colors hover:text-white sm:block" lang="ar">
+            عربي
           </Link>
           <a
             href="https://github.com/ZenGardenDubai/ghali-ai-assistant"
@@ -656,8 +665,11 @@ function Pricing() {
               </span>
               <span className="text-white/40">/month</span>
             </div>
+            <p className="mt-1 text-sm text-[#ED6B23]/70">
+              AED 36.99/month
+            </p>
             <p className="mt-1 text-sm text-white/40">
-              or $99.48/year (save 17%)
+              or $99.48/year · AED 365/year (save 17%)
             </p>
             <ul className="mt-8 space-y-3 text-white/60">
               <PricingItem highlight>600 messages per month (10x Basic)</PricingItem>

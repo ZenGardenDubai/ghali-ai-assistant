@@ -22,6 +22,13 @@ export function CtaButton({ href, location, children, className }: CtaButtonProp
       location,
       href,
     });
+    if (typeof window !== "undefined") {
+      (window as Window & { dataLayer?: unknown[] }).dataLayer?.push({
+        event: "whatsapp_cta_clicked",
+        cta_location: location,
+        cta_href: href,
+      });
+    }
   }, [posthog, location, href]);
 
   return (
