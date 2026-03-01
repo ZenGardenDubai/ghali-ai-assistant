@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif, Noto_Sans_Arabic } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { PostHogProvider } from "./providers/posthog";
+import { GtmScript } from "./gtm/gtm-script";
+import { GtmNoScript } from "./gtm/gtm-noscript";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +20,12 @@ const instrumentSerif = Instrument_Serif({
   weight: "400",
   subsets: ["latin"],
   variable: "--font-display",
+});
+
+const notoSansArabic = Noto_Sans_Arabic({
+  weight: ["400", "700"],
+  subsets: ["arabic"],
+  variable: "--font-arabic",
 });
 
 export const metadata: Metadata = {
@@ -103,8 +111,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${notoSansArabic.variable} antialiased`}
       >
+        <GtmScript />
+        <GtmNoScript />
         <ClerkProvider>
           <PostHogProvider>{children}</PostHogProvider>
         </ClerkProvider>

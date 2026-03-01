@@ -1,7 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Locale } from "@/app/lib/i18n/types";
+import { StickyWhatsAppCta } from "./sticky-whatsapp-cta";
+import { en, ar } from "@/app/lib/i18n/translations";
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
+const WHATSAPP_URLS = {
+  en: "https://wa.me/971582896090?text=Hi%20Ghali",
+  ar: "https://wa.me/971582896090?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A",
+} as const;
+
+const CTA_TEXT = { en: "Start Chatting", ar: "\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629" } as const;
+const READY_TEXT = { en: "Ready to try", ar: "\u062C\u0627\u0647\u0632 \u062A\u062C\u0631\u0628" } as const;
+const NO_APP_TEXT = { en: "No app. No signup. Just send a message.", ar: "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642. \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644. \u0628\u0633 \u0627\u0631\u0633\u0644 \u0631\u0633\u0627\u0644\u0629." } as const;
+const PRIVACY_TEXT = { en: "Privacy Policy", ar: "\u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629" } as const;
+const TERMS_TEXT = { en: "Terms of Service", ar: "\u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629" } as const;
 
 export function FeaturePage({
   badge,
@@ -9,13 +21,19 @@ export function FeaturePage({
   subtitle,
   children,
   jsonLd,
+  locale = "en",
 }: {
   badge: string;
   title: React.ReactNode;
   subtitle: string;
   children: React.ReactNode;
   jsonLd?: Record<string, unknown>;
+  locale?: Locale;
 }) {
+  const whatsappUrl = WHATSAPP_URLS[locale];
+  const homeHref = locale === "ar" ? "/ar" : "/";
+  const t = locale === "ar" ? ar : en;
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0f1e] text-white">
       {jsonLd && (
@@ -29,18 +47,18 @@ export function FeaturePage({
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/5 bg-[#0a0f1e]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href={homeHref} className="flex items-center gap-3">
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={36} height={36} />
             <span className="text-xl font-semibold tracking-tight">Ghali</span>
           </Link>
           <a
-            href={WHATSAPP_URL}
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
           >
             <WhatsAppIcon className="h-4 w-4" />
-            Start Chatting
+            {CTA_TEXT[locale]}
           </a>
         </div>
       </nav>
@@ -72,20 +90,20 @@ export function FeaturePage({
         <div className="pointer-events-none absolute bottom-0 left-1/2 h-[300px] w-[500px] -translate-x-1/2 rounded-full bg-[#ED6B23]/10 blur-[120px]" />
         <div className="relative z-10 mx-auto max-w-2xl text-center">
           <h2 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">
-            Ready to try <span className="text-[#ED6B23]">Ghali</span>?
+            {READY_TEXT[locale]} <span className="text-[#ED6B23]">{locale === "ar" ? "\u063A\u0627\u0644\u064A" : "Ghali"}</span>?
           </h2>
           <p className="mt-4 text-white/50">
-            No app. No signup. Just send a message.
+            {NO_APP_TEXT[locale]}
           </p>
           <a
-            href={WHATSAPP_URL}
+            href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="group mt-8 inline-flex items-center gap-3 rounded-full bg-[#ED6B23] px-8 py-4 text-lg font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-xl hover:shadow-[#ED6B23]/25"
           >
             <WhatsAppIcon className="h-5 w-5" />
-            Start Chatting
-            <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
+            {CTA_TEXT[locale]}
+            <span className="transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 rtl:rotate-180">&rarr;</span>
           </a>
         </div>
       </section>
@@ -93,21 +111,23 @@ export function FeaturePage({
       {/* Footer */}
       <footer className="border-t border-white/5 px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 py-6 text-sm text-white/40 sm:flex-row">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href={homeHref} className="flex items-center gap-3">
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={20} height={20} />
             <span className="font-semibold text-white">ghali.ae</span>
           </Link>
           <nav className="flex items-center gap-6">
-            <Link href="/privacy" className="transition-colors hover:text-white">Privacy Policy</Link>
-            <Link href="/terms" className="transition-colors hover:text-white">Terms of Service</Link>
+            <Link href="/privacy" className="transition-colors hover:text-white">{PRIVACY_TEXT[locale]}</Link>
+            <Link href="/terms" className="transition-colors hover:text-white">{TERMS_TEXT[locale]}</Link>
           </nav>
         </div>
         <div className="mx-auto max-w-6xl py-8 text-center text-sm text-white/30 space-y-2">
-          <p>&copy; 2026 SAHEM DATA TECHNOLOGY. All rights reserved.</p>
-          <p>ghali.ae is a product of SAHEM DATA TECHNOLOGY, Dubai, UAE</p>
-          <p>Made with ❤️ in the UAE 🇦🇪</p>
+          <p>{t.footer.copyright}</p>
+          <p>{t.footer.tagline}</p>
+          <p>{t.footer.madeWith}</p>
         </div>
       </footer>
+
+      <StickyWhatsAppCta t={t} />
     </div>
   );
 }

@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Scheduled Tasks",
   description:
     "Schedule AI-powered tasks that run automatically — reminders, daily briefings, recurring reports, and more.",
-  alternates: { canonical: "https://ghali.ae/features/scheduled-tasks" },
+  alternates: {
+    canonical: "https://ghali.ae/features/scheduled-tasks",
+    languages: { en: "https://ghali.ae/features/scheduled-tasks", ar: "https://ghali.ae/ar/features/scheduled-tasks" },
+  },
   openGraph: {
     title: "Scheduled Tasks — Ghali",
     description:

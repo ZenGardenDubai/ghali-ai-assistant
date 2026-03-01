@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Track Everything",
   description:
     "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through WhatsApp.",
-  alternates: { canonical: "https://ghali.ae/features/track-everything" },
+  alternates: {
+    canonical: "https://ghali.ae/features/track-everything",
+    languages: { en: "https://ghali.ae/features/track-everything", ar: "https://ghali.ae/ar/features/track-everything" },
+  },
   openGraph: {
     title: "Track Everything — Ghali",
     description:

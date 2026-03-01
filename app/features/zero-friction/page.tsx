@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Zero Friction",
   description:
     "No app to install. No account to create. Just open WhatsApp and start chatting with Ghali.",
-  alternates: { canonical: "https://ghali.ae/features/zero-friction" },
+  alternates: {
+    canonical: "https://ghali.ae/features/zero-friction",
+    languages: { en: "https://ghali.ae/features/zero-friction", ar: "https://ghali.ae/ar/features/zero-friction" },
+  },
   openGraph: {
     title: "Zero Friction — Ghali",
     description:

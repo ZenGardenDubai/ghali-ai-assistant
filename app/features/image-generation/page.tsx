@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Image Generation",
   description:
     "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
-  alternates: { canonical: "https://ghali.ae/features/image-generation" },
+  alternates: {
+    canonical: "https://ghali.ae/features/image-generation",
+    languages: { en: "https://ghali.ae/features/image-generation", ar: "https://ghali.ae/ar/features/image-generation" },
+  },
   openGraph: {
     title: "Image Generation — Ghali",
     description:

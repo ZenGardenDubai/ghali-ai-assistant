@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Powered by the Best AI",
   description:
     "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
-  alternates: { canonical: "https://ghali.ae/features/smart-ai" },
+  alternates: {
+    canonical: "https://ghali.ae/features/smart-ai",
+    languages: { en: "https://ghali.ae/features/smart-ai", ar: "https://ghali.ae/ar/features/smart-ai" },
+  },
   openGraph: {
     title: "Powered by the Best AI — Ghali",
     description:
