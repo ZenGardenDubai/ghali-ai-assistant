@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Document Analysis & Knowledge Base",
   description:
     "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
-  alternates: { canonical: "https://ghali.ae/features/documents" },
+  alternates: {
+    canonical: "https://ghali.ae/features/documents",
+    languages: { en: "https://ghali.ae/features/documents", ar: "https://ghali.ae/ar/features/documents" },
+  },
   openGraph: {
     title: "Document Analysis & Knowledge Base — Ghali",
     description:

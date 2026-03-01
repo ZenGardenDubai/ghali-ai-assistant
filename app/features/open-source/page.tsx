@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Open Source",
   description:
     "Ghali's code is public. See exactly how your data is handled. No black boxes.",
-  alternates: { canonical: "https://ghali.ae/features/open-source" },
+  alternates: {
+    canonical: "https://ghali.ae/features/open-source",
+    languages: { en: "https://ghali.ae/features/open-source", ar: "https://ghali.ae/ar/features/open-source" },
+  },
   openGraph: {
     title: "Open Source — Ghali",
     description:

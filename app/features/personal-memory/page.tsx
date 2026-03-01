@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Personal Memory",
   description:
     "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
-  alternates: { canonical: "https://ghali.ae/features/personal-memory" },
+  alternates: {
+    canonical: "https://ghali.ae/features/personal-memory",
+    languages: { en: "https://ghali.ae/features/personal-memory", ar: "https://ghali.ae/ar/features/personal-memory" },
+  },
   openGraph: {
     title: "Personal Memory — Ghali",
     description:

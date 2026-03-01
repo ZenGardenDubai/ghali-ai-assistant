@@ -6,7 +6,10 @@ export const metadata: Metadata = {
   title: "Features",
   description:
     "Everything Ghali can do. Image generation, document analysis, deep thinking, personal memory, and more.",
-  alternates: { canonical: "https://ghali.ae/features" },
+  alternates: {
+    canonical: "https://ghali.ae/features",
+    languages: { en: "https://ghali.ae/features", ar: "https://ghali.ae/ar/features" },
+  },
   openGraph: {
     title: "Features — Ghali",
     description:

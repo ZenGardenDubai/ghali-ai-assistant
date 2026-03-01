@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "ProWrite",
   description:
     "Professional multi-AI writing pipeline. 8 models research, draft, and polish your content — articles, emails, reports, and more.",
-  alternates: { canonical: "https://ghali.ae/features/prowrite" },
+  alternates: {
+    canonical: "https://ghali.ae/features/prowrite",
+    languages: { en: "https://ghali.ae/features/prowrite", ar: "https://ghali.ae/ar/features/prowrite" },
+  },
   openGraph: {
     title: "ProWrite — Ghali",
     description:

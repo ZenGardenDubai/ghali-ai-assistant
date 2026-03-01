@@ -22,6 +22,11 @@ export function CtaButton({ href, location, children, className }: CtaButtonProp
       location,
       href,
     });
+    window.dataLayer?.push({
+      event: "cta_clicked",
+      cta_location: location,
+      cta_href: href,
+    });
   }, [posthog, location, href]);
 
   return (

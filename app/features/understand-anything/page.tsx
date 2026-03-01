@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Understand Anything",
   description:
     "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
-  alternates: { canonical: "https://ghali.ae/features/understand-anything" },
+  alternates: {
+    canonical: "https://ghali.ae/features/understand-anything",
+    languages: { en: "https://ghali.ae/features/understand-anything", ar: "https://ghali.ae/ar/features/understand-anything" },
+  },
   openGraph: {
     title: "Understand Anything — Ghali",
     description:

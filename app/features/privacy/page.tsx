@@ -5,7 +5,10 @@ export const metadata: Metadata = {
   title: "Privacy & Your Data",
   description:
     "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
-  alternates: { canonical: "https://ghali.ae/features/privacy" },
+  alternates: {
+    canonical: "https://ghali.ae/features/privacy",
+    languages: { en: "https://ghali.ae/features/privacy", ar: "https://ghali.ae/ar/features/privacy" },
+  },
   openGraph: {
     title: "Privacy & Your Data — Ghali",
     description:
