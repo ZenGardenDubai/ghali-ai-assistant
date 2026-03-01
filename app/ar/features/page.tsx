@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { StickyWhatsAppCta } from "@/app/components/landing/sticky-whatsapp-cta";
 import { Footer } from "@/app/components/landing/footer";
+import { CtaButton } from "@/app/components/landing/cta-button";
 import { ar } from "@/app/lib/i18n/translations";
 
 export const metadata: Metadata = {
@@ -20,8 +21,6 @@ export const metadata: Metadata = {
     images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "\u063A\u0627\u0644\u064A" }],
   },
 };
-
-const WHATSAPP_URL_AR = "https://wa.me/971582896090?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A";
 
 const FEATURES = [
   { icon: "\uD83D\uDCF1", title: "\u0628\u062F\u0648\u0646 \u062A\u0639\u0642\u064A\u062F", desc: "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642\u060C \u0628\u062F\u0648\u0646 \u062D\u0633\u0627\u0628\u060C \u0628\u062F\u0648\u0646 \u0643\u0644\u0645\u0629 \u0633\u0631. \u0628\u0633 \u0627\u0641\u062A\u062D \u0648\u0627\u062A\u0633\u0627\u0628 \u0648\u0627\u0628\u062F\u0623.", href: "/ar/features/zero-friction" },
@@ -46,14 +45,13 @@ export default function ArFeaturesPage() {
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={36} height={36} />
             <span className="text-xl font-semibold tracking-tight">Ghali</span>
           </Link>
-          <a
-            href={WHATSAPP_URL_AR}
-            target="_blank"
-            rel="noopener noreferrer"
+          <CtaButton
+            href={ar.whatsappUrl}
+            location="features_nav_ar"
             className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
           >
             {"\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629"}
-          </a>
+          </CtaButton>
         </div>
       </nav>
 

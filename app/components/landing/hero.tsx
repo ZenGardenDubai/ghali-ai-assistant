@@ -13,7 +13,7 @@ export function Hero({ t }: { t: TranslationDict }) {
         <div className="animate-fade-up animate-float mx-auto mb-10 w-fit">
           <Image
             src="/ghali-logo-no-bg.svg"
-            alt="Ghali mascot"
+            alt={t.locale === "ar" ? "تميمة غالي" : "Ghali mascot"}
             width={120}
             height={120}
             priority

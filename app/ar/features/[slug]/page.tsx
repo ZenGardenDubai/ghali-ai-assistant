@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
-import { featurePages, ALL_FEATURE_SLUGS } from "@/app/lib/i18n/feature-translations";
+import { featurePages, ALL_FEATURE_SLUGS, type FeatureSlug, type FeaturePageContent } from "@/app/lib/i18n/feature-translations";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -13,9 +13,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const page = featurePages[slug];
+  const page = featurePages[slug as FeatureSlug];
   if (!page) return {};
-  const content = page.ar;
+  const content: FeaturePageContent = page.ar;
 
   return {
     title: content.metaTitle,
@@ -39,10 +39,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArFeaturePage({ params }: Props) {
   const { slug } = await params;
-  const page = featurePages[slug];
+  const page = featurePages[slug as FeatureSlug];
   if (!page) notFound();
 
-  const content = page.ar;
+  const content: FeaturePageContent = page.ar;
 
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Locale } from "@/app/lib/i18n/types";
 import { StickyWhatsAppCta } from "./sticky-whatsapp-cta";
+import { CtaButton } from "./cta-button";
 import { en, ar } from "@/app/lib/i18n/translations";
 
 const WHATSAPP_URLS = {
@@ -51,15 +52,14 @@ export function FeaturePage({
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={36} height={36} />
             <span className="text-xl font-semibold tracking-tight">Ghali</span>
           </Link>
-          <a
+          <CtaButton
             href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            location={`feature_nav_${locale}`}
             className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
           >
             <WhatsAppIcon className="h-4 w-4" />
             {CTA_TEXT[locale]}
-          </a>
+          </CtaButton>
         </div>
       </nav>
 
@@ -95,16 +95,15 @@ export function FeaturePage({
           <p className="mt-4 text-white/50">
             {NO_APP_TEXT[locale]}
           </p>
-          <a
+          <CtaButton
             href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            location={`feature_cta_${locale}`}
             className="group mt-8 inline-flex items-center gap-3 rounded-full bg-[#ED6B23] px-8 py-4 text-lg font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-xl hover:shadow-[#ED6B23]/25"
           >
             <WhatsAppIcon className="h-5 w-5" />
             {CTA_TEXT[locale]}
             <span className="transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 rtl:rotate-180">&rarr;</span>
-          </a>
+          </CtaButton>
         </div>
       </section>
 
@@ -116,8 +115,8 @@ export function FeaturePage({
             <span className="font-semibold text-white">ghali.ae</span>
           </Link>
           <nav className="flex items-center gap-6">
-            <Link href="/privacy" className="transition-colors hover:text-white">{PRIVACY_TEXT[locale]}</Link>
-            <Link href="/terms" className="transition-colors hover:text-white">{TERMS_TEXT[locale]}</Link>
+            <Link href={t.footer.privacyHref} className="transition-colors hover:text-white">{PRIVACY_TEXT[locale]}</Link>
+            <Link href={t.footer.termsHref} className="transition-colors hover:text-white">{TERMS_TEXT[locale]}</Link>
           </nav>
         </div>
         <div className="mx-auto max-w-6xl py-8 text-center text-sm text-white/30 space-y-2">

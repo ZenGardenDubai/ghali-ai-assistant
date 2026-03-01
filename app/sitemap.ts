@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { ALL_FEATURE_SLUGS } from "./lib/i18n/feature-translations";
 
-const TODAY = "2026-03-01";
+const BUILD_DATE = new Date();
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const featureSlugs = ALL_FEATURE_SLUGS;
@@ -10,25 +10,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // EN pages
     {
       url: "https://ghali.ae",
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
       url: "https://ghali.ae/start",
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: "https://ghali.ae/features",
-      lastModified: "2026-02-22",
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     ...featureSlugs.map((slug) => ({
       url: `https://ghali.ae/features/${slug}`,
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
@@ -36,25 +36,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // AR pages
     {
       url: "https://ghali.ae/ar",
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
       url: "https://ghali.ae/ar/start",
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: "https://ghali.ae/ar/features",
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     ...featureSlugs.map((slug) => ({
       url: `https://ghali.ae/ar/features/${slug}`,
-      lastModified: TODAY,
+      lastModified: BUILD_DATE,
       changeFrequency: "monthly" as const,
       priority: 0.7,
     })),
@@ -62,13 +62,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // Static pages
     {
       url: "https://ghali.ae/privacy",
-      lastModified: "2026-02-22",
+      lastModified: BUILD_DATE,
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: "https://ghali.ae/terms",
-      lastModified: "2026-02-22",
+      lastModified: BUILD_DATE,
       changeFrequency: "yearly",
       priority: 0.3,
     },

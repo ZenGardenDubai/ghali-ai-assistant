@@ -41,10 +41,9 @@ export const ALL_FEATURE_SLUGS = [
   "open-source",
 ] as const;
 
-export const featurePages: Record<
-  string,
-  { en: FeaturePageContent; ar: FeaturePageContent }
-> = {
+export type FeatureSlug = (typeof ALL_FEATURE_SLUGS)[number];
+
+export const featurePages = {
   "smart-ai": {
     en: {
       slug: "smart-ai",
@@ -1593,4 +1592,4 @@ export const featurePages: Record<
       ],
     },
   },
-};
+} satisfies Record<FeatureSlug, { en: FeaturePageContent; ar: FeaturePageContent }>;
