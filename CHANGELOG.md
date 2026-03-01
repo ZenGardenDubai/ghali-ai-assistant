@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.22.0...v0.23.0) (2026-03-01)
+
+
+### Features
+
+* add scheduled tasks frontend and documentation ([#80](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/80)) ([a642475](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/a642475239ce4e4255ee30e2ec39e27400f334de))
+
 ## [0.22.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.21.0...v0.22.0) (2026-02-28)
 
 
