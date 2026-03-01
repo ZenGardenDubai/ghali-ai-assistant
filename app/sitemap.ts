@@ -57,8 +57,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: "https://ghali.ae/features/reminders",
-      lastModified: "2026-02-22",
+      url: "https://ghali.ae/features/scheduled-tasks",
+      lastModified: "2026-03-01",
       changeFrequency: "monthly",
       priority: 0.7,
     },

@@ -82,7 +82,8 @@ Queries use both text scoring and vector similarity:
 
 - All features available to all users — Pro = more credits
 - 1 credit per user-initiated request regardless of model
-- System commands, heartbeat check-ins, and reminder deliveries are free
+- System commands and heartbeat check-ins are free
+- Scheduled task executions cost 1 credit each
 - Basic: 60/month free, Pro: 600/month ($9.99/mo or $99.48/year)
 - Monthly reset via Convex cron job
 
@@ -106,12 +107,33 @@ Uses `@convex-dev/rag` with pre-computed embeddings via `ai@5` to avoid version 
 | `collections` | Named groups for organizing items |
 | `itemEmbeddings` | Vector embeddings for semantic item search |
 | `usage` | Per-message tracking: model, tokens, cost |
-| `scheduledJobs` | Heartbeat, reminders, follow-ups |
-
+| `scheduledTasks` | AI-powered scheduled tasks (one-time & recurring) |
+| `scheduledJobs` | Heartbeat and legacy reminders |
 | `feedback` | User feedback, bug reports, feature requests |
 | `feedbackTokens` | Short-lived tokens for WhatsApp feedback links |
 
 Threads and messages managed by `@convex-dev/agent`. RAG documents managed by `@convex-dev/rag`.
+
+## Scheduled Agent Tasks
+
+Scheduled tasks replace the old reminders system. Each task triggers a full agent turn at the scheduled time.
+
+```text
+Task fires (ctx.scheduler.runAt)
+  → Load task + user
+  → Check credits (skip if exhausted, send one notification per cycle)
+  → Build user context (memory, personality)
+  → Get/create thread
+  → Run agent (ghaliAgent.generateText with task description as prompt)
+  → Deduct 1 credit
+  → Deliver result via WhatsApp:
+    → In-session (24h window): free-form message
+    → Out-of-session: template message (truncated to 1400 chars)
+  → If cron: compute next run → reschedule
+  → If once: set enabled = false
+```
+
+Limits: 3 tasks (Basic), 24 tasks (Pro). Paused tasks count toward limit.
 
 ## Feedback System
 

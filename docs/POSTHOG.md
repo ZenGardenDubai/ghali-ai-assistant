@@ -21,10 +21,11 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 | File | Purpose |
 |---|---|
-| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 10 internal actions |
+| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 15 internal actions |
 | `convex/analyticsHelper.ts` | Scheduling mutation for agent's usageHandler (no Node.js deps) |
 | `convex/lib/analytics.ts` | `detectCountryFromPhone()` pure function |
-| `convex/agent.ts` | `usageHandler` — captures `$ai_generation` for every LLM call |
+| `convex/agent.ts` | `usageHandler` — captures `$ai_generation` for every LLM call; scheduled task tool analytics |
+| `convex/scheduledTasks.ts` | Scheduled task execution analytics (executed, skipped, credit notification) |
 | `convex/messages.ts` | Analytics calls at 6 instrumentation points in `generateResponse` |
 | `convex/images.ts` | Image generation tracking via scheduler |
 | `convex/proWrite.ts` | Per-step `$ai_generation` + `feature_used` on pipeline completion |
@@ -144,7 +145,7 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 
 | Property | Type | Description |
 |---|---|---|
-| `feature` | string | Feature name: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback` |
+| `feature` | string | Feature name: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback`, `scheduled_tasks` |
 | `tier` | string | `basic` or `pro` |
 | `phone_country` | string | ISO country code |
 | `steps` | number? | Pipeline steps completed (ProWrite only) |
@@ -156,6 +157,66 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 - `convex/agent.ts` — `deepReasoning` tool (`deep_reasoning`), `addItem` tool (`items`), `webSearch` tool (`web_search`), `convertFile` tool (`document_conversion`)
 - `convex/messages.ts` — document processing (`document_processing`), voice note transcription (`voice_note`)
 - `convex/feedback.ts` — feedback submission (`feedback`)
+
+### `scheduled_task_created`
+
+A scheduled task was created by the user.
+
+| Property | Type | Description |
+|---|---|---|
+| `schedule_kind` | string | `once` or `cron` |
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/agent.ts` — `createScheduledTask` tool
+
+### `scheduled_task_executed`
+
+A scheduled task fired and completed successfully.
+
+| Property | Type | Description |
+|---|---|---|
+| `schedule_kind` | string | `once` or `cron` |
+| `tier` | string | `basic` or `pro` |
+| `duration_ms` | number | Execution time in milliseconds |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/scheduledTasks.ts` — `executeScheduledTask`
+
+### `scheduled_task_skipped`
+
+A scheduled task was skipped due to insufficient credits.
+
+| Property | Type | Description |
+|---|---|---|
+| `reason` | string | `no_credits` |
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/scheduledTasks.ts` — `executeScheduledTask` (credit check fails)
+
+### `scheduled_task_updated`
+
+A scheduled task was edited, paused, resumed, or deleted.
+
+| Property | Type | Description |
+|---|---|---|
+| `action` | string | `edited`, `paused`, `resumed`, or `deleted` |
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/agent.ts` — `updateScheduledTask` and `deleteScheduledTask` tools
+
+### `scheduled_task_credit_notification`
+
+A credit exhaustion notification was sent for a scheduled task.
+
+| Property | Type | Description |
+|---|---|---|
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/scheduledTasks.ts` — `executeScheduledTask` (first skip per credit cycle)
 
 ### `feedback_submitted`
 

@@ -42,7 +42,7 @@ const featuresJsonLd = {
         { "@type": "WebPage", url: "https://ghali.ae/features/understand-anything", name: "Understand Anything" },
         { "@type": "WebPage", url: "https://ghali.ae/features/image-generation", name: "Image Generation" },
         { "@type": "WebPage", url: "https://ghali.ae/features/documents", name: "Documents & Knowledge Base" },
-        { "@type": "WebPage", url: "https://ghali.ae/features/reminders", name: "Reminders & Scheduling" },
+        { "@type": "WebPage", url: "https://ghali.ae/features/scheduled-tasks", name: "Scheduled Tasks" },
         { "@type": "WebPage", url: "https://ghali.ae/features/track-everything", name: "Track Everything" },
         { "@type": "WebPage", url: "https://ghali.ae/features/prowrite", name: "ProWrite" },
         { "@type": "WebPage", url: "https://ghali.ae/features/open-source", name: "Open Source" },
@@ -105,9 +105,9 @@ const FEATURES = [
   },
   {
     icon: "⏰",
-    title: "Reminders & Scheduling",
-    desc: "Precise reminders, recurring schedules, and proactive check-ins.",
-    href: "/features/reminders",
+    title: "Scheduled Tasks",
+    desc: "AI-powered tasks that run on schedule — reminders, briefings, recurring reports.",
+    href: "/features/scheduled-tasks",
   },
   {
     icon: "📊",
