@@ -21,16 +21,16 @@ export function Nav({ t }: { t: TranslationDict }) {
         </Link>
         <div className="flex items-center gap-4">
           <Link
+            href={t.locale === "ar" ? "/" : "/ar"}
+            className="rounded-full border border-white/10 px-3 py-1.5 text-sm text-white/60 transition-colors hover:border-white/20 hover:text-white"
+          >
+            {t.locale === "ar" ? "EN" : "عربي"}
+          </Link>
+          <Link
             href={t.footer.featuresHref}
             className="hidden text-sm text-white/40 transition-colors hover:text-white sm:block"
           >
             {t.nav.features}
-          </Link>
-          <Link
-            href={t.locale === "ar" ? "/" : "/ar"}
-            className="text-sm text-white/40 transition-colors hover:text-white"
-          >
-            {t.locale === "ar" ? "EN" : "عربي"}
           </Link>
           <a
             href="https://github.com/ZenGardenDubai/ghali-ai-assistant"

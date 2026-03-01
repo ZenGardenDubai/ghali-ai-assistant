@@ -159,7 +159,7 @@ export default function FeaturesPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/ar/features"
-              className="text-sm text-white/40 transition-colors hover:text-white"
+              className="rounded-full border border-white/10 px-3 py-1.5 text-sm text-white/60 transition-colors hover:border-white/20 hover:text-white"
             >
               عربي
             </Link>
