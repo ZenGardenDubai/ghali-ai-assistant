@@ -153,6 +153,7 @@ export const setPendingAction = internalMutation({
     action: v.union(
       v.literal("clear_memory"),
       v.literal("clear_documents"),
+      v.literal("clear_schedules"),
       v.literal("clear_everything"),
       v.literal("admin_broadcast")
     ),
