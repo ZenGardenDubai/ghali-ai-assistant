@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.25.0...v0.26.0) (2026-03-01)
+
+
+### Features
+
+* comprehensive SEO improvements ([#92](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/92)) ([#93](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/93)) ([804585a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/804585a0fc93393c536edd6e77f9dfc1b7f70ba0))
+
 ## [0.25.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.24.0...v0.25.0) (2026-03-01)
 
 
