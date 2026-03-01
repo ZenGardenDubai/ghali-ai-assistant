@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.0...v0.26.1) (2026-03-01)
+
+
+### Bug Fixes
+
+* track deep reasoning (Opus) calls as $ai_generation events ([#95](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/95)) ([3e124fc](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/3e124fc1e7a7cf89436df38f2d82471dc7672423))
+
 ## [0.26.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.25.0...v0.26.0) (2026-03-01)
 
 
