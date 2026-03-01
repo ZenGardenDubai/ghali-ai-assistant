@@ -371,6 +371,76 @@ describe("createItem", () => {
     expect(items).toHaveLength(1);
   });
 
+  it("updates body when duplicate title found with new body (contact phone fix)", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const collId = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Contacts",
+    });
+
+    // Create initial contact with wrong phone
+    const id1 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Test User",
+      body: "Phone: 050-111-2222",
+    });
+
+    // Re-save contact with correct phone (same title, different body)
+    const id2 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Test User",
+      body: "Phone: +971501234567\nEmail: testuser@example.com",
+    });
+
+    // Same item returned (no duplicate)
+    expect(id1).toBe(id2);
+
+    // Only one item should exist
+    const items = await t.query(internal.items.queryItems, { userId });
+    expect(items).toHaveLength(1);
+
+    // Body should be updated to the new phone number
+    const item = await t.query(internal.items.getItem, { itemId: id1, userId });
+    expect(item!.body).toBe("Phone: +971501234567\nEmail: testuser@example.com");
+  });
+
+  it("merges metadata when duplicate title found with new metadata", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t);
+
+    const collId = await t.mutation(internal.items.createCollection, {
+      userId,
+      name: "Contacts",
+    });
+
+    const id1 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Ahmed",
+      metadata: { phone: "+97150000", company: "Emirates" },
+    });
+
+    // Re-save with new metadata field (email added)
+    const id2 = await t.mutation(internal.items.createItem, {
+      userId,
+      collectionId: collId,
+      title: "Ahmed",
+      metadata: { phone: "+97150001", email: "ahmed@emirates.com" },
+    });
+
+    expect(id1).toBe(id2);
+
+    const item = await t.query(internal.items.getItem, { itemId: id1, userId });
+    // Shallow merge: phone updated, company preserved, email added
+    expect((item!.metadata as Record<string, string>).phone).toBe("+97150001");
+    expect((item!.metadata as Record<string, string>).company).toBe("Emirates");
+    expect((item!.metadata as Record<string, string>).email).toBe("ahmed@emirates.com");
+  });
+
   it("deduplicates items case-insensitively", async () => {
     const t = convexTest(schema, modules);
     const userId = await createUser(t);

@@ -263,13 +263,28 @@ export const createItem = internalMutation({
         )
         .collect();
 
-      // Dedup: return existing ID if same title (case-insensitive) in same collection
+      // Dedup: return existing ID if same title (case-insensitive) in same collection.
+      // If new body or metadata differ from stored values, update before returning
+      // so that re-saving a contact with a new phone number actually persists it.
       const duplicate = activeAndDone.find(
         (i) =>
           i.title.toLowerCase() === fields.title.toLowerCase() &&
           (i.collectionId ?? null) === (collectionId ?? null)
       );
       if (duplicate) {
+        const patch: Record<string, unknown> = {};
+        if (fields.body !== undefined && fields.body !== duplicate.body) {
+          patch.body = fields.body;
+        }
+        if (fields.metadata !== undefined) {
+          // Shallow merge metadata (consistent with updateItem behaviour)
+          patch.metadata = duplicate.metadata
+            ? { ...(duplicate.metadata as Record<string, unknown>), ...(fields.metadata as Record<string, unknown>) }
+            : fields.metadata;
+        }
+        if (Object.keys(patch).length > 0) {
+          await ctx.db.patch(duplicate._id, patch);
+        }
         return duplicate._id;
       }
 
