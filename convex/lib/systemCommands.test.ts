@@ -221,6 +221,19 @@ describe("handleSystemCommand", () => {
     expect(result!.pendingAction).toBe("clear_documents");
   });
 
+  it("routes 'clear schedules' to confirmation template with pendingAction", async () => {
+    const result = await handleSystemCommand(
+      "clear schedules",
+      makeUser(),
+      [],
+      "clear schedules"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*Clear Schedules?*");
+    expect(result!.response).toContain("yes");
+    expect(result!.pendingAction).toBe("clear_schedules");
+  });
+
   it("routes 'clear everything' to confirmation template with pendingAction", async () => {
     const result = await handleSystemCommand(
       "clear everything",

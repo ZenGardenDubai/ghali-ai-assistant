@@ -294,6 +294,7 @@ export const generateResponse = internalAction({
         if (
           pendingAction === "clear_memory" ||
           pendingAction === "clear_documents" ||
+          pendingAction === "clear_schedules" ||
           pendingAction === "clear_everything"
         ) {
           // Get doc count for the "done" template (before deletion)
@@ -308,6 +309,7 @@ export const generateResponse = internalAction({
           const clearActionMap = {
             clear_memory: internal.dataManagement.clearMemory,
             clear_documents: internal.dataManagement.clearDocuments,
+            clear_schedules: internal.dataManagement.clearSchedules,
             clear_everything: internal.dataManagement.clearEverything,
           } as const;
           await ctx.runAction(clearActionMap[pendingAction], { userId: typedUserId });
@@ -316,6 +318,7 @@ export const generateResponse = internalAction({
           const doneTemplateMap = {
             clear_memory: "clear_memory_done",
             clear_documents: "clear_documents_done",
+            clear_schedules: "clear_schedules_done",
             clear_everything: "clear_everything_done",
           } as const;
           const doneVars: Record<string, string | number> =

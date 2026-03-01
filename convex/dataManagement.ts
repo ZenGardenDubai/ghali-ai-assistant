@@ -55,6 +55,23 @@ export const clearDocuments = internalAction({
 });
 
 /**
+ * Clear all scheduled tasks for a user.
+ */
+export const clearSchedules = internalAction({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.runMutation(internal.scheduledTasks.cancelAllUserScheduledTasks, {
+      userId,
+    });
+
+    // Clear pending action
+    await ctx.runMutation(internal.users.clearPendingAction, { userId });
+
+    console.log(`[dataManagement] cleared schedules for user ${userId}`);
+  },
+});
+
+/**
  * Clear everything: memory + personality + heartbeat files, threads, RAG, media.
  */
 export const clearEverything = internalAction({

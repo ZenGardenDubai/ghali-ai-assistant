@@ -93,6 +93,7 @@ export async function renderSystemMessage(
 export type PendingActionType =
   | "clear_memory"
   | "clear_documents"
+  | "clear_schedules"
   | "clear_everything"
   | "admin_broadcast";
 
@@ -209,6 +210,12 @@ export async function handleSystemCommand(
           userMessage
         ),
         pendingAction: "clear_documents",
+      };
+
+    case "clear schedules":
+      return {
+        response: await renderSystemMessage("clear_schedules_confirm", {}, userMessage),
+        pendingAction: "clear_schedules",
       };
 
     case "clear everything":
