@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/upgrade", "/api/"],
+        disallow: ["/api/", "/dashboard/", "/sign-in/", "/sign-up/", "/upgrade", "/account/", "/admin/"],
       },
     ],
     sitemap: "https://ghali.ae/sitemap.xml",

@@ -1,0 +1,112 @@
+import type { Metadata } from "next";
+import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
+
+export const metadata: Metadata = {
+  title: "AI Document Analysis on WhatsApp — PDF, Word, Excel",
+  description:
+    "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
+  alternates: {
+    canonical: "https://ghali.ae/features/documents",
+    languages: { en: "https://ghali.ae/features/documents", ar: "https://ghali.ae/ar/features/documents", "x-default": "https://ghali.ae/features/documents" },
+  },
+  openGraph: {
+    title: "Document Analysis & Knowledge Base — Ghali",
+    description:
+      "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
+    url: "https://ghali.ae/features/documents",
+    locale: "en_AE",
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Document Analysis & Knowledge Base — Ghali",
+    description:
+      "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
+    images: ["/ghali-logo-with-bg.png"],
+  },
+};
+
+const pageJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: "https://ghali.ae" },
+    { "@type": "ListItem", position: 2, name: "Features", item: "https://ghali.ae/features" },
+    { "@type": "ListItem", position: 3, name: "Document Analysis & Knowledge Base", item: "https://ghali.ae/features/documents" },
+  ],
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: [
+    { "@type": "Question", name: "What file formats does Ghali support?", acceptedAnswer: { "@type": "Answer", text: "Ghali directly processes PDFs and images. Word documents (DOCX), PowerPoint (PPTX), and Excel (XLSX) files are automatically converted to PDF first, then analyzed." } },
+    { "@type": "Question", name: "Does Ghali remember my documents?", acceptedAnswer: { "@type": "Answer", text: "Yes. Documents are stored in your personal knowledge base. You can ask questions about previously uploaded files at any time." } },
+    { "@type": "Question", name: "Can I ask questions about a document I sent earlier?", acceptedAnswer: { "@type": "Answer", text: "Yes. Ghali stores your documents and can search through them to answer follow-up questions, even days or weeks later." } },
+      ],
+    },
+  ],
+};
+
+export default function DocumentsPage() {
+  return (
+    <FeaturePage
+      jsonLd={pageJsonLd}
+      slug="documents"
+      alternateLocaleHref="/ar/features/documents"
+      badge="Documents & Knowledge"
+      title={<>Send a File. <span className="text-[#ED6B23]">Get Answers.</span></>}
+      subtitle="Drop a PDF, Word doc, or spreadsheet into WhatsApp. Ghali reads it, answers your questions about it, and stores it in your personal knowledge base for later."
+    >
+      <FeatureSection title="Instant document analysis">
+        <p>
+          Got a 50-page report and need the key takeaways? A contract you need to understand? A spreadsheet full of data? Just send it to Ghali and ask your question.
+        </p>
+        <p>
+          Ghali reads the entire document, understands the content, and gives you exactly what you asked for — no need to read through it all yourself.
+        </p>
+      </FeatureSection>
+
+      <FeatureSection title="Supported formats">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <FeatureCard
+            icon="📄"
+            title="PDFs"
+            description="Reports, contracts, papers, invoices — sent directly through WhatsApp."
+          />
+          <FeatureCard
+            icon="📝"
+            title="Word & PowerPoint"
+            description="DOCX, PPTX files are converted and analyzed automatically."
+          />
+          <FeatureCard
+            icon="📊"
+            title="Spreadsheets"
+            description="XLSX files with data — Ghali reads the numbers and answers your questions."
+          />
+        </div>
+      </FeatureSection>
+
+      <FeatureSection title="Your personal knowledge base">
+        <p>
+          Here&apos;s where it gets powerful. Every document you send is stored in your personal knowledge base. That means you can ask about it days, weeks, or months later.
+        </p>
+        <p>
+          &quot;What were the payment terms in that contract I sent last week?&quot; — Ghali searches your knowledge base and pulls up the answer, even if it&apos;s been a while.
+        </p>
+      </FeatureSection>
+
+      <FeatureSection title="Reply-to-media">
+        <p>
+          Sent a document earlier and want to ask a follow-up? Just reply to the original message in WhatsApp. Ghali pulls up the document and re-analyzes it with your new question. Natural and effortless.
+        </p>
+      </FeatureSection>
+
+      <FeatureSection title="You're in control">
+        <p>
+          Your documents are stored per-user — no one else can access them. Want to clear your knowledge base? Say &quot;clear documents&quot; and it&apos;s gone. Media files are automatically cleaned up after 90 days.
+        </p>
+      </FeatureSection>
+    </FeaturePage>
+  );
+}
