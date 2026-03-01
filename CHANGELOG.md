@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.23.0...v0.23.1) (2026-03-01)
+
+
+### Bug Fixes
+
+* improve scheduled task execution prompt ([#82](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/82)) ([2e13bc2](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2e13bc2ed74d9b95fa682a8b1467575985ca1a76))
+
 ## [0.23.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.22.0...v0.23.0) (2026-03-01)
 
 
