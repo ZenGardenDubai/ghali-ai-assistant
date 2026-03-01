@@ -126,6 +126,7 @@ Thanks for being Pro! 💎`,
 • *my memory* — what I know about you
 • *clear memory* — forget our conversations
 • *clear documents* — delete stored files
+• *clear schedules* — delete all scheduled tasks
 • *clear everything* — full reset
 • *upgrade* — get Pro
 • *privacy* — how your data is handled
@@ -228,6 +229,15 @@ Say *yes* to confirm.`,
     variables: ["docCount"],
   },
 
+  clear_schedules_confirm: {
+    template: `*Clear Schedules?* ⏰
+
+This will delete all your scheduled tasks (recurring and one-off).
+
+Say *yes* to confirm.`,
+    variables: [],
+  },
+
   clear_everything_confirm: {
     template: `*Clear Everything?* ⚠️
 
@@ -258,6 +268,13 @@ All {{docCount}} stored documents have been deleted.
 
 Your memory and conversations are untouched.`,
     variables: ["docCount"],
+  },
+
+  clear_schedules_done: {
+    template: `*Schedules Cleared* ✅
+
+All scheduled tasks have been deleted.`,
+    variables: [],
   },
 
   clear_everything_done: {
