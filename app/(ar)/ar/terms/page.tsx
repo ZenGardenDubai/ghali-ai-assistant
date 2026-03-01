@@ -69,12 +69,20 @@ export default function ArTermsPage() {
               />
               <span className="text-xl font-semibold tracking-tight">غالي</span>
             </Link>
-            <Link
-              href="/ar"
-              className="text-sm text-white/40 transition-colors hover:text-white"
-            >
-              العودة للرئيسية &rarr;
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/terms"
+                className="text-sm text-white/40 transition-colors hover:text-white"
+              >
+                EN
+              </Link>
+              <Link
+                href="/ar"
+                className="text-sm text-white/40 transition-colors hover:text-white"
+              >
+                العودة للرئيسية &rarr;
+              </Link>
+            </div>
           </div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">
             شروط الخدمة

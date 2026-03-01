@@ -26,6 +26,12 @@ export function Nav({ t }: { t: TranslationDict }) {
           >
             {t.nav.features}
           </Link>
+          <Link
+            href={t.locale === "ar" ? "/" : "/ar"}
+            className="text-sm text-white/40 transition-colors hover:text-white"
+          >
+            {t.locale === "ar" ? "EN" : "عربي"}
+          </Link>
           <a
             href="https://github.com/ZenGardenDubai/ghali-ai-assistant"
             target="_blank"

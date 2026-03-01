@@ -69,12 +69,20 @@ export default function PrivacyPage() {
               />
               <span className="text-xl font-semibold tracking-tight">Ghali</span>
             </Link>
-            <Link
-              href="/"
-              className="text-sm text-white/40 transition-colors hover:text-white"
-            >
-              &larr; Back to home
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                href="/ar/privacy"
+                className="text-sm text-white/40 transition-colors hover:text-white"
+              >
+                عربي
+              </Link>
+              <Link
+                href="/"
+                className="text-sm text-white/40 transition-colors hover:text-white"
+              >
+                &larr; Back to home
+              </Link>
+            </div>
           </div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl sm:text-4xl">
             Privacy Policy

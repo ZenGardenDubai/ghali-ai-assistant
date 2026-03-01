@@ -156,14 +156,22 @@ export default function FeaturesPage() {
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={36} height={36} />
             <span className="text-xl font-semibold tracking-tight">Ghali</span>
           </Link>
-          <a
-            href={WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
-          >
-            Start Chatting
-          </a>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/ar/features"
+              className="text-sm text-white/40 transition-colors hover:text-white"
+            >
+              عربي
+            </Link>
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
+            >
+              Start Chatting
+            </a>
+          </div>
         </div>
       </nav>
 

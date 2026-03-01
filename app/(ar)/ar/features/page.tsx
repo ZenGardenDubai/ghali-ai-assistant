@@ -51,13 +51,21 @@ export default function ArFeaturesPage() {
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={36} height={36} />
             <span className="text-xl font-semibold tracking-tight">Ghali</span>
           </Link>
-          <CtaButton
-            href={ar.whatsappUrl}
-            location="features_nav_ar"
-            className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
-          >
-            {"\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629"}
-          </CtaButton>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/features"
+              className="text-sm text-white/40 transition-colors hover:text-white"
+            >
+              EN
+            </Link>
+            <CtaButton
+              href={ar.whatsappUrl}
+              location="features_nav_ar"
+              className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
+            >
+              {"\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629"}
+            </CtaButton>
+          </div>
         </div>
       </nav>
 
