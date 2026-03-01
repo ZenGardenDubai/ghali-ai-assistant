@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.24.0...v0.25.0) (2026-03-01)
+
+
+### Features
+
+* Arabic landing pages, dual pricing, sticky WhatsApp CTA, /start page, GTM ([#90](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/90)) ([758e642](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/758e6423f31f0035715b96309f18dd30e52097e8))
+
 ## [0.24.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.23.1...v0.24.0) (2026-03-01)
 
 
