@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Locale } from "@/app/lib/i18n/types";
+import type { FeatureSlug } from "@/app/lib/i18n/feature-translations";
 import { StickyWhatsAppCta } from "./sticky-whatsapp-cta";
 import { CtaButton } from "./cta-button";
 import { en, ar } from "@/app/lib/i18n/translations";
@@ -15,6 +16,80 @@ const READY_TEXT = { en: "Ready to try", ar: "\u062C\u0627\u0647\u0632 \u062A\u0
 const NO_APP_TEXT = { en: "No app. No signup. Just send a message.", ar: "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642. \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644. \u0628\u0633 \u0627\u0631\u0633\u0644 \u0631\u0633\u0627\u0644\u0629." } as const;
 const PRIVACY_TEXT = { en: "Privacy Policy", ar: "\u0633\u064A\u0627\u0633\u0629 \u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629" } as const;
 const TERMS_TEXT = { en: "Terms of Service", ar: "\u0634\u0631\u0648\u0637 \u0627\u0644\u062E\u062F\u0645\u0629" } as const;
+const RELATED_HEADING = { en: "Related Features", ar: "\u0645\u0632\u0627\u064A\u0627 \u0630\u0627\u062A \u0635\u0644\u0629" } as const;
+const LEARN_MORE = { en: "Learn more", ar: "\u0627\u0639\u0631\u0641 \u0623\u0643\u062B\u0631" } as const;
+
+const RELATED_FEATURES: Record<string, FeatureSlug[]> = {
+  "smart-ai": ["prowrite", "documents", "understand-anything"],
+  "zero-friction": ["smart-ai", "privacy", "personal-memory"],
+  "personal-memory": ["privacy", "smart-ai", "track-everything"],
+  "privacy": ["personal-memory", "open-source", "zero-friction"],
+  "understand-anything": ["image-generation", "documents", "smart-ai"],
+  "image-generation": ["understand-anything", "prowrite", "smart-ai"],
+  "documents": ["smart-ai", "track-everything", "understand-anything"],
+  "scheduled-tasks": ["track-everything", "personal-memory", "smart-ai"],
+  "track-everything": ["scheduled-tasks", "documents", "personal-memory"],
+  "prowrite": ["smart-ai", "documents", "image-generation"],
+  "open-source": ["privacy", "smart-ai", "zero-friction"],
+};
+
+const FEATURE_DISPLAY: Record<FeatureSlug, { icon: string; en: { title: string; desc: string }; ar: { title: string; desc: string } }> = {
+  "smart-ai": {
+    icon: "\u26A1",
+    en: { title: "Powered by the Best AI", desc: "Google Gemini, Claude, and OpenAI \u2014 the right model for every task." },
+    ar: { title: "\u0645\u062F\u0639\u0648\u0645 \u0628\u0623\u0641\u0636\u0644 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064A", desc: "Google Gemini \u0648Claude \u0648OpenAI \u2014 \u0627\u0644\u0646\u0645\u0648\u0630\u062C \u0627\u0644\u0645\u0646\u0627\u0633\u0628 \u0644\u0643\u0644 \u0645\u0647\u0645\u0629." },
+  },
+  "zero-friction": {
+    icon: "\uD83D\uDCF1",
+    en: { title: "Zero Friction", desc: "No app, no account. Just open WhatsApp and start chatting." },
+    ar: { title: "\u0628\u062F\u0648\u0646 \u062A\u0639\u0642\u064A\u062F", desc: "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642\u060C \u0628\u062F\u0648\u0646 \u062D\u0633\u0627\u0628. \u0628\u0633 \u0627\u0641\u062A\u062D \u0648\u0627\u062A\u0633\u0627\u0628 \u0648\u0627\u0628\u062F\u0623." },
+  },
+  "personal-memory": {
+    icon: "\uD83E\uDDE0",
+    en: { title: "Personal Memory", desc: "Ghali remembers your preferences and style over time." },
+    ar: { title: "\u0630\u0627\u0643\u0631\u0629 \u0634\u062E\u0635\u064A\u0629", desc: "\u063A\u0627\u0644\u064A \u064A\u062A\u0630\u0643\u0631 \u062A\u0641\u0636\u064A\u0644\u0627\u062A\u0643 \u0648\u0623\u0633\u0644\u0648\u0628\u0643 \u0645\u0639 \u0627\u0644\u0648\u0642\u062A." },
+  },
+  "privacy": {
+    icon: "\uD83D\uDD12",
+    en: { title: "Privacy First", desc: "Your data is yours. See it, delete it, control it." },
+    ar: { title: "\u0627\u0644\u062E\u0635\u0648\u0635\u064A\u0629 \u0623\u0648\u0644\u0627\u064B", desc: "\u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u0645\u0644\u0643\u0643. \u0634\u0648\u0641\u0647\u0627\u060C \u0627\u0645\u0633\u062D\u0647\u0627\u060C \u062A\u062D\u0643\u0645 \u0641\u064A\u0647\u0627." },
+  },
+  "understand-anything": {
+    icon: "\uD83D\uDC41\uFE0F",
+    en: { title: "Understand Anything", desc: "Photos, voice notes, video \u2014 Ghali sees and hears it all." },
+    ar: { title: "\u064A\u0641\u0647\u0645 \u0623\u064A \u0634\u064A", desc: "\u0635\u0648\u0631\u060C \u0631\u0633\u0627\u0626\u0644 \u0635\u0648\u062A\u064A\u0629\u060C \u0641\u064A\u062F\u064A\u0648 \u2014 \u063A\u0627\u0644\u064A \u064A\u0634\u0648\u0641 \u0648\u064A\u0633\u0645\u0639 \u0643\u0644 \u0634\u064A." },
+  },
+  "image-generation": {
+    icon: "\uD83C\uDFA8",
+    en: { title: "Image Generation", desc: "Describe what you want and get a stunning image in seconds." },
+    ar: { title: "\u0625\u0646\u0634\u0627\u0621 \u0635\u0648\u0631", desc: "\u0648\u0635\u0651\u0641 \u0627\u0644\u0644\u064A \u062A\u0628\u064A\u0647 \u0648\u0627\u062D\u0635\u0644 \u0639\u0644\u0649 \u0635\u0648\u0631\u0629 \u0645\u0630\u0647\u0644\u0629 \u062E\u0644\u0627\u0644 \u062B\u0648\u0627\u0646\u064A." },
+  },
+  "documents": {
+    icon: "\uD83D\uDCC4",
+    en: { title: "Documents & Knowledge", desc: "Send PDFs and files. Ghali reads, answers, and remembers." },
+    ar: { title: "\u0645\u0633\u062A\u0646\u062F\u0627\u062A \u0648\u0645\u0639\u0631\u0641\u0629", desc: "\u0627\u0631\u0633\u0644 PDF \u0648\u0645\u0644\u0641\u0627\u062A. \u063A\u0627\u0644\u064A \u064A\u0642\u0631\u0623\u0647\u0627 \u0648\u064A\u062C\u0627\u0648\u0628 \u0648\u064A\u062A\u0630\u0643\u0631." },
+  },
+  "scheduled-tasks": {
+    icon: "\u23F0",
+    en: { title: "Scheduled Tasks", desc: "Reminders, briefings, and recurring reports on autopilot." },
+    ar: { title: "\u0645\u0647\u0627\u0645 \u0645\u062C\u062F\u0648\u0644\u0629", desc: "\u062A\u0630\u0643\u064A\u0631\u0627\u062A\u060C \u0645\u0644\u062E\u0635\u0627\u062A\u060C \u0648\u062A\u0642\u0627\u0631\u064A\u0631 \u062F\u0648\u0631\u064A\u0629 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B." },
+  },
+  "track-everything": {
+    icon: "\uD83D\uDCCA",
+    en: { title: "Track Everything", desc: "Expenses, tasks, contacts, notes \u2014 all organized." },
+    ar: { title: "\u062A\u0627\u0628\u0639 \u0643\u0644 \u0634\u064A", desc: "\u0645\u0635\u0627\u0631\u064A\u0641\u060C \u0645\u0647\u0627\u0645\u060C \u062C\u0647\u0627\u062A \u0627\u062A\u0635\u0627\u0644\u060C \u0645\u0644\u0627\u062D\u0638\u0627\u062A \u2014 \u0643\u0644\u0647\u0627 \u0645\u0646\u0638\u0645\u0629." },
+  },
+  "prowrite": {
+    icon: "\u270D\uFE0F",
+    en: { title: "ProWrite", desc: "Multi-AI writing pipeline. 8 models research, draft, and polish." },
+    ar: { title: "ProWrite", desc: "\u062E\u0637 \u0625\u0646\u062A\u0627\u062C \u0643\u062A\u0627\u0628\u0629 \u0645\u062A\u0639\u062F\u062F \u0627\u0644\u0646\u0645\u0627\u0630\u062C. 8 \u062E\u0637\u0648\u0627\u062A \u062A\u0628\u062D\u062B \u0648\u062A\u0643\u062A\u0628 \u0648\u062A\u0635\u0642\u0644." },
+  },
+  "open-source": {
+    icon: "\uD83D\uDD13",
+    en: { title: "Open Source", desc: "Our code is public. See how your data is handled." },
+    ar: { title: "\u0645\u0641\u062A\u0648\u062D \u0627\u0644\u0645\u0635\u062F\u0631", desc: "\u0643\u0648\u062F\u0646\u0627 \u0639\u0627\u0645. \u0634\u0648\u0641 \u0643\u064A\u0641 \u0628\u064A\u0627\u0646\u0627\u062A\u0643 \u062A\u064F\u0639\u0627\u0644\u062C." },
+  },
+};
 
 export function FeaturePage({
   badge,
@@ -23,6 +98,8 @@ export function FeaturePage({
   children,
   jsonLd,
   locale = "en",
+  slug,
+  alternateLocaleHref,
 }: {
   badge: string;
   title: React.ReactNode;
@@ -30,10 +107,13 @@ export function FeaturePage({
   children: React.ReactNode;
   jsonLd?: Record<string, unknown>;
   locale?: Locale;
+  slug?: string;
+  alternateLocaleHref?: string;
 }) {
   const whatsappUrl = WHATSAPP_URLS[locale];
   const homeHref = locale === "ar" ? "/ar" : "/";
   const t = locale === "ar" ? ar : en;
+  const related = slug ? RELATED_FEATURES[slug] : undefined;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0f1e] text-white">
@@ -52,14 +132,24 @@ export function FeaturePage({
             <Image src="/ghali-logo-no-bg.svg" alt="Ghali" width={36} height={36} />
             <span className="text-xl font-semibold tracking-tight">Ghali</span>
           </Link>
-          <CtaButton
-            href={whatsappUrl}
-            location={`feature_nav_${locale}`}
-            className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
-          >
-            <WhatsAppIcon className="h-4 w-4" />
-            {CTA_TEXT[locale]}
-          </CtaButton>
+          <div className="flex items-center gap-3">
+            {alternateLocaleHref && (
+              <Link
+                href={alternateLocaleHref}
+                className="rounded-full border border-white/10 px-3 py-1.5 text-sm text-white/60 transition-colors hover:border-white/20 hover:text-white"
+              >
+                {locale === "ar" ? "EN" : "\u0639\u0631\u0628\u064A"}
+              </Link>
+            )}
+            <CtaButton
+              href={whatsappUrl}
+              location={`feature_nav_${locale}`}
+              className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
+            >
+              <WhatsAppIcon className="h-4 w-4" />
+              {CTA_TEXT[locale]}
+            </CtaButton>
+          </div>
         </div>
       </nav>
 
@@ -83,6 +173,36 @@ export function FeaturePage({
       <div className="mx-auto max-w-3xl px-6 pb-24">
         {children}
       </div>
+
+      {/* Related Features */}
+      {related && related.length > 0 && (
+        <section className="border-t border-white/5 px-6 py-16">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="mb-8 text-center text-2xl font-semibold">{RELATED_HEADING[locale]}</h2>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {related.map((relSlug) => {
+                const feature = FEATURE_DISPLAY[relSlug];
+                const href = locale === "ar" ? `/ar/features/${relSlug}` : `/features/${relSlug}`;
+                const display = feature[locale];
+                return (
+                  <Link
+                    key={relSlug}
+                    href={href}
+                    className="group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all hover:border-[#ED6B23]/20 hover:bg-white/[0.04]"
+                  >
+                    <div className="mb-3 text-2xl">{feature.icon}</div>
+                    <h3 className="font-semibold text-white">{display.title}</h3>
+                    <p className="mt-2 text-sm text-white/50">{display.desc}</p>
+                    <span className="mt-3 inline-block text-sm text-[#ED6B23] transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1">
+                      {LEARN_MORE[locale]} {locale === "ar" ? "\u2190" : "\u2192"}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA */}
       <section className="relative px-6 py-24">
