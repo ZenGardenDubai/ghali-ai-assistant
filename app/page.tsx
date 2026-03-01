@@ -353,7 +353,26 @@ function Strengths() {
             </p>
           </Link>
 
-          {/* Card 6 — One Assistant (full width, with use cases) */}
+          {/* Card 6 — Scheduled Tasks (full width, horizontal layout) */}
+          <Link href="/features/scheduled-tasks" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] md:col-span-2 lg:col-span-3">
+            <div className="flex items-start gap-6">
+              <div className="shrink-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
+                  <CalendarClockIcon />
+                </div>
+              </div>
+              <div>
+                <h3 className="font-[family-name:var(--font-display)] text-2xl">
+                  AI That Works on Your Schedule
+                </h3>
+                <p className="mt-3 text-white/50 leading-relaxed">
+                  Set tasks and Ghali runs them automatically &mdash; morning briefings, reminders, recurring reports, all delivered to WhatsApp.
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 7 — One Assistant (full width, with use cases) */}
           <Link href="/features/smart-ai" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] lg:col-span-3">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
               <SparklesIcon />
@@ -501,6 +520,12 @@ function Capabilities() {
       href: "/features/track-everything",
     },
     {
+      icon: "⏰",
+      title: "Scheduled tasks",
+      desc: "Reminders, briefings, and recurring AI tasks",
+      href: "/features/scheduled-tasks",
+    },
+    {
       icon: "✍️",
       title: "Professional writing",
       desc: "Multi-AI pipeline for polished content",
@@ -563,7 +588,7 @@ function ExploreFeatures() {
                 Explore all features
               </h2>
               <p className="mt-2 text-white/40">
-                Deep thinking, document analysis, reminders, open source, and more.
+                Deep thinking, document analysis, scheduled tasks, open source, and more.
               </p>
             </div>
             <span className="shrink-0 flex items-center gap-2 rounded-full border border-white/10 px-6 py-3 text-sm font-medium transition-all group-hover:border-[#ED6B23]/40 group-hover:bg-[#ED6B23]/10 group-hover:text-[#ED6B23]">
@@ -603,7 +628,7 @@ function Pricing() {
               <PricingItem>Document analysis &amp; knowledge base</PricingItem>
               <PricingItem>Track expenses, tasks &amp; more</PricingItem>
               <PricingItem>Deep thinking for tough questions</PricingItem>
-              <PricingItem>Precise reminders &amp; scheduling</PricingItem>
+              <PricingItem>Scheduled AI tasks &amp; reminders</PricingItem>
               <PricingItem>Proactive check-ins (heartbeat)</PricingItem>
               <PricingItem>Learns your style &amp; preferences</PricingItem>
               <PricingItem>No credit card required</PricingItem>
@@ -827,6 +852,14 @@ function ClipboardIcon() {
   return (
     <svg className="h-6 w-6 text-[#ED6B23]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+    </svg>
+  );
+}
+
+function CalendarClockIcon() {
+  return (
+    <svg className="h-6 w-6 text-[#ED6B23]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v4.5m-9-4.5h.008v.008H12V7.5zm0 3h.008v.008H12v-.008zm0 3h.008v.008H12v-.008zm-3-6h.008v.008H9V7.5zm0 3h.008v.008H9v-.008zm0 3h.008v.008H9v-.008zm9.75 3a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zm-2.25-.75l-.75.75" />
     </svg>
   );
 }

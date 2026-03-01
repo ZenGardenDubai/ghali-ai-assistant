@@ -12,7 +12,8 @@ Model identifiers are in `convex/models.ts`. Cost tracking is handled by PostHog
 | Credits per user-initiated AI request | 1 | `CREDITS_PER_REQUEST` |
 | System commands cost | 0 (free) | — |
 | Heartbeat check-ins | 0 (free) | — |
-| Reminder deliveries | 0 (free) | — |
+| Scheduled task executions | 1 | `CREDITS_PER_REQUEST` |
+| Reminder deliveries (legacy) | 0 (free) | — |
 | Reset period | 30 days | `CREDIT_RESET_PERIOD_MS` |
 | Reset cron | Daily at 00:00 UTC | `convex/crons.ts` |
 
@@ -153,6 +154,24 @@ Item types: `expense`, `task`, `contact`, `note`, `bookmark`, `habit`, `other`
 Item statuses: `active`, `done`, `archived`
 
 Limits count `active` + `done` items only — archived items don't count toward the limit.
+
+## Scheduled Agent Tasks
+
+| Rule | Value | Constant |
+|------|-------|----------|
+| Basic tier max tasks | 3 | `SCHEDULED_TASKS_LIMIT_BASIC` |
+| Pro tier max tasks | 24 | `SCHEDULED_TASKS_LIMIT_PRO` |
+| Max result length (template) | 1400 chars | `SCHEDULED_TASK_MAX_RESULT_LENGTH` |
+| Credit cost per execution | 1 | `CREDITS_PER_REQUEST` |
+
+Key behaviors:
+
+- **Paused tasks count toward limit.** Users cannot bypass limits by pausing tasks — all tasks (enabled + disabled) count.
+- **Each execution costs 1 credit.** Scheduled tasks trigger a full agent turn (web search, analysis, etc.), so each execution deducts 1 credit.
+- **Out-of-credits behavior.** If a user has no credits when a task fires, it skips execution. One notification is sent per credit cycle (with upgrade link). The `creditNotificationSent` flag prevents repeated notifications until credits reset.
+- **Cron tasks reschedule automatically.** After execution, recurring tasks compute the next run time and reschedule via `ctx.scheduler.runAt`.
+- **One-time tasks disable after execution.** Tasks with `schedule.kind === "once"` set `enabled: false` after firing.
+- **Heartbeat stays separate.** Heartbeat check-ins use the existing `scheduledJobs` system and are always free.
 
 ## Country Code Blocking
 

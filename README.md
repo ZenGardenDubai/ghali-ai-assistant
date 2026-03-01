@@ -26,7 +26,8 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 ### User Experience
 - **Per-user memory** — learns facts, preferences, and history organically through conversation
 - **Adaptive personality** — two-layer system: immutable core DNA + editable user preferences
-- **Heartbeat** — per-user checklist for proactive reminders and follow-ups (hourly precision, all users)
+- **Scheduled Tasks** — AI-powered tasks that run on schedule (one-time or recurring), each triggering a full agent turn
+- **Heartbeat** — per-user checklist for proactive check-ins and follow-ups (hourly precision, all users)
 - **3-step onboarding** — name, language, style preference (skippable)
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
 
@@ -35,7 +36,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **Hybrid search** — text scoring + semantic vector search (OpenAI embeddings)
 - **Smart aggregation** — sum, count, group by tag or collection
 - **Collections** — organize items into named groups with emoji and descriptions
-- **Reminders** — attach due dates and reminders to any item
+- **Item reminders** — attach due dates and scheduled tasks to any item
 
 ### System
 - **Credit system** — 60/month free, 600/month Pro ($9.99/mo or $99.48/year). 1 credit per request.
@@ -179,6 +180,7 @@ ghali-ai-assistant/
 │   ├── twilio.ts           # Outbound WhatsApp messaging
 │   ├── credits.ts          # Credit system
 │   ├── billing.ts          # Subscription management (Clerk)
+│   ├── scheduledTasks.ts    # Scheduled agent tasks (one-time & recurring)
 │   ├── heartbeat.ts        # Proactive check-ins (all users)
 │   ├── rateLimiting.ts     # Per-user rate limiting
 │   ├── admin.ts            # Admin commands + broadcasting
@@ -243,6 +245,7 @@ cd convex && npx vitest run
 - [x] Deployment and configuration
 - [x] Structured data (items, collections, embeddings, vector search)
 - [x] ProWrite (multi-LLM professional writing pipeline)
+- [x] Scheduled agent tasks (one-time & recurring AI tasks)
 - [ ] Post-launch hardening (monitoring, backups)
 
 ## Documentation

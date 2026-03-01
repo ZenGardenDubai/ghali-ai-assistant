@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  async redirects() {
+    return [
+      {
+        source: "/features/reminders",
+        destination: "/features/scheduled-tasks",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
