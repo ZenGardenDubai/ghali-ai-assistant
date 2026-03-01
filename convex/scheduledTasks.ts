@@ -28,9 +28,19 @@ export function buildScheduledTaskPrompt(
     ? `${task.description}\n\nDelivery format: ${task.deliveryFormat}`
     : task.description;
 
+  const instructions = `\n<scheduled_task_instructions>
+You are executing a scheduled task. RULES:
+- Focus ONLY on this task. Do NOT call listScheduledTasks or manage other tasks.
+- Do NOT mention other scheduled tasks the user has.
+- Deliver the task result directly — no preamble like "Here's your scheduled task result".
+- If this is a reminder, deliver a short, friendly reminder message.
+- If this is a briefing/report, deliver the content directly.
+- Respond in the user's preferred language (from their personality/memory above).
+</scheduled_task_instructions>`;
+
   return userContext
-    ? `${userContext}\n\n---\n<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`
-    : `<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`;
+    ? `${userContext}\n\n---${instructions}\n<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`
+    : `${instructions}\n<scheduled_task>\nTitle: ${task.title}\n${taskPrompt}\n</scheduled_task>`;
 }
 
 /**
@@ -245,7 +255,7 @@ export const executeScheduledTask = internalAction({
       userId: task.userId as string,
     });
 
-    // Build prompt
+    // Build prompt (personality/memory language preferences are in userContext)
     const fullPrompt = buildScheduledTaskPrompt(task, userContext);
 
     // Run agent

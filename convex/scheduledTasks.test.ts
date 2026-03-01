@@ -612,6 +612,8 @@ describe("buildScheduledTaskPrompt", () => {
     expect(result).toContain("User context here");
     expect(result).toContain("Daily joke");
     expect(result).toContain("Tell me a joke");
+    expect(result).toContain("<scheduled_task_instructions>");
+    expect(result).toContain("Focus ONLY on this task");
   });
 
   it("builds prompt without user context", () => {
@@ -620,6 +622,7 @@ describe("buildScheduledTaskPrompt", () => {
       ""
     );
     expect(result).toContain("<scheduled_task>");
+    expect(result).toContain("<scheduled_task_instructions>");
     expect(result).not.toContain("---");
   });
 
@@ -629,6 +632,14 @@ describe("buildScheduledTaskPrompt", () => {
       "context"
     );
     expect(result).toContain("Delivery format: bullet points");
+  });
+
+  it("instructs agent to use language from user files", () => {
+    const result = buildScheduledTaskPrompt(
+      { title: "News", description: "Get news" },
+      "context"
+    );
+    expect(result).toContain("Respond in the user's preferred language");
   });
 });
 
@@ -649,3 +660,4 @@ describe("truncateForTemplate", () => {
     expect(truncateForTemplate(exact, 100)).toBe(exact);
   });
 });
+
