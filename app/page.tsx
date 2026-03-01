@@ -354,7 +354,7 @@ function Strengths() {
           </Link>
 
           {/* Card 6 — Scheduled Tasks (full width, horizontal layout) */}
-          <Link href="/features/scheduled-tasks" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] lg:col-span-3">
+          <Link href="/features/scheduled-tasks" className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.02] p-8 transition-all hover:border-[#ED6B23]/30 hover:bg-white/[0.04] md:col-span-2 lg:col-span-3">
             <div className="flex items-start gap-6">
               <div className="shrink-0">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ED6B23]/10 text-2xl">
