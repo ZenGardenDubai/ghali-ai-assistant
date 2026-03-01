@@ -65,8 +65,9 @@ describe("pending action expiry logic", () => {
   });
 
   it("action exactly at 5 minutes is not expired", () => {
-    const pendingActionAt = Date.now() - PENDING_ACTION_EXPIRY_MS;
-    const isExpired = Date.now() - pendingActionAt > PENDING_ACTION_EXPIRY_MS;
+    const now = Date.now();
+    const pendingActionAt = now - PENDING_ACTION_EXPIRY_MS;
+    const isExpired = now - pendingActionAt > PENDING_ACTION_EXPIRY_MS;
     expect(isExpired).toBe(false);
   });
 });
