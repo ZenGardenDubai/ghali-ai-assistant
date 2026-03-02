@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.3...v0.26.4) (2026-03-02)
+
+
+### Bug Fixes
+
+* remove chat-based feedback submission, link-only ([#104](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/104)) ([e823fe6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/e823fe6ae0c2d5aa254ebbcb945d0006f66e65ed))
+
 ## [0.26.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.2...v0.26.3) (2026-03-01)
 
 
