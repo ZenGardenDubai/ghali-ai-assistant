@@ -42,5 +42,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# google ads setup (private)
-docs/GOOGLE-ADS-SETUP.md
+# private docs (not tracked)
+docs/private/
