@@ -137,11 +137,10 @@ Limits: 3 tasks (Basic), 24 tasks (Pro). Paused tasks count toward limit.
 
 ## Feedback System
 
-Three entry points, all free (no credit deduction):
+Two entry points, both free (no credit deduction):
 
-1. **Agent tool** — user says "I have feedback" → agent confirms → `submitFeedback` tool
-2. **WhatsApp link** — agent generates tokenized link → user opens `/feedback?token=xxx` → web form
-3. **Web** — signed-in user on `/account` → "Give Feedback" → `/feedback` with Clerk auth
+1. **WhatsApp link** — user says "I have feedback" → agent generates tokenized link → user opens `/feedback?token=xxx` → web form
+2. **Web** — signed-in user on `/account` → "Give Feedback" → `/feedback` with Clerk auth
 
 Token-based links expire in 15 minutes and are single-use. Rate limit: 3 feedbacks/day per user. Admin panel at `/admin/feedback` for viewing, filtering, status management, notes, and WhatsApp replies.
 

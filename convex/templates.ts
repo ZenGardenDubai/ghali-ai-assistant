@@ -132,7 +132,7 @@ Thanks for being Pro! 💎`,
 • *privacy* — how your data is handled
 • *help* — this guide
 
-💭 *Feedback* — Say "I have feedback" or "report a bug" to submit feedback directly, or ask for a feedback form link`,
+💭 *Feedback* — Say "I have feedback" or "report a bug" to get a feedback form link`,
     variables: [],
   },
 
