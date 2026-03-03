@@ -147,7 +147,7 @@ If a user has no skills enabled, they get exactly today's prompt — identical b
 
 Every `enabledSkills[].promptFragment` must be a self-contained block that `assembleInstructions` appends under the `--- SKILLS ---` divider. Follow this structure so the ABILITIES & LIMITATIONS section stays parsable by tooling and the agent can reason about each skill consistently:
 
-```
+```text
 SKILL: <slug>
 
 ABILITIES
@@ -175,7 +175,7 @@ CONFIG (optional)
 
 **Example — Currency Conversion skill:**
 
-```
+```text
 SKILL: currency-converter
 
 ABILITIES
@@ -192,7 +192,7 @@ When the user asks to convert currencies, compare prices across currencies, or a
 
 ### 3.5 Data Flow
 
-```
+```text
 Message arrives
   → Load user
   → Load user's enabled skills (query userSkills + skills tables)
@@ -255,7 +255,7 @@ Every new capability gets built as a skill from day one. Here's the roadmap:
 User says: **"my skills"**, **"/skills"**, or **"what skills do I have"**
 
 Response shows only add-on skills (since built-in features are always-on):
-```
+```text
 🛠️ *Your Skills*
 
 Ghali comes with 10 built-in features — always on, free for everyone.
@@ -280,7 +280,7 @@ User says: **"enable weather"** or **"disable news digest"**
 ### 6.3 Onboarding Integration
 
 During onboarding step 4 (after name + timezone):
-```
+```text
 You have *10 built-in features* ready to go — memory, image generation, web search, and more.
 
 As new skills become available, say "my skills" to browse and toggle them.
@@ -378,7 +378,7 @@ Every phase is independently reversible:
 ## 10. Landing Page Impact
 
 ### Before (Features)
-```
+```text
 ✨ Features
 - AI-powered memory
 - Image generation
@@ -388,7 +388,7 @@ Every phase is independently reversible:
 ```
 
 ### After (Built-in + Skills)
-```
+```text
 🚀 10 Built-in Features. Free for Everyone.
 
 Memory • Image Generation • ProWrite • Scheduler • Collections
