@@ -47,6 +47,38 @@ describe("recordApiError", () => {
     expect(user!.errorBackoffUntil!).toBeLessThanOrEqual(before + ERROR_BACKOFF_MS + 2000);
   });
 
+  it("re-arms backoff after previous backoff expires", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Trip the circuit breaker
+    for (let i = 0; i < ERROR_CIRCUIT_BREAKER_THRESHOLD; i++) {
+      await t.mutation(internal.users.recordApiError, { userId });
+    }
+
+    const userAfterTrip = await t.query(internal.users.getUser, { userId });
+    const originalBackoff = userAfterTrip!.errorBackoffUntil!;
+    expect(originalBackoff).toBeDefined();
+
+    // Simulate backoff expiring by setting errorBackoffUntil to the past
+    await t.run(async (ctx) => {
+      await ctx.db.patch(userId, { errorBackoffUntil: Date.now() - 1000 });
+    });
+
+    // One more error should re-arm since count >= threshold and backoff expired
+    const before = Date.now();
+    const result = await t.mutation(internal.users.recordApiError, { userId });
+    expect(result.tripped).toBe(true);
+
+    const userReArmed = await t.query(internal.users.getUser, { userId });
+    expect(userReArmed!.errorBackoffUntil).toBeDefined();
+    expect(userReArmed!.errorBackoffUntil!).toBeGreaterThanOrEqual(before + ERROR_BACKOFF_MS - 2000);
+    expect(userReArmed!.errorBackoffUntil!).not.toBe(originalBackoff);
+  });
+
   it("does not overwrite errorBackoffUntil on errors beyond threshold", async () => {
     const t = convexTest(schema, modules);
 

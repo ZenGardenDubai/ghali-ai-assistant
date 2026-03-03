@@ -309,10 +309,12 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!aiSucceeded || !responseText) {
-      // Only notify user if not in error backoff (avoid spam during outages)
+      // Only notify on the FIRST consecutive AI failure (same discipline as messages.ts).
+      // Suppresses notification during backoff AND on 2nd+ pre-breaker failures.
       const freshUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
-      const inBackoff = freshUser?.errorBackoffUntil && Date.now() < freshUser.errorBackoffUntil;
-      if (!inBackoff) {
+      const inBackoff = !!(freshUser?.errorBackoffUntil && Date.now() < freshUser.errorBackoffUntil);
+      const isFirstFailure = (freshUser?.consecutiveErrors ?? 0) === 1;
+      if (!inBackoff && isFirstFailure) {
         try {
           const withinErrorWindow =
             user.lastMessageAt &&
