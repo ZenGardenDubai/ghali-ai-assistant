@@ -39,7 +39,7 @@ async function captureEvent(
     posthog.capture({ distinctId, event, properties });
     await posthog.flush();
   } catch (error) {
-    console.error("[PostHog] Failed to capture event:", error);
+    console.error(`[PostHog] Failed to flush event "${event}" for ${distinctId}:`, error);
   }
 }
 
@@ -56,6 +56,56 @@ export const trackUserNew = internalAction({
     await captureEvent(phone, "user_new", {
       phone_country: detectCountryFromPhone(phone),
       timezone,
+    });
+  },
+});
+
+/**
+ * PostHog $identify — creates/updates the user profile from day 1.
+ * Fired at account creation so the user appears in PostHog even if they
+ * never complete onboarding or never send a second message.
+ */
+export const identifyUser = internalAction({
+  args: {
+    phone: v.string(),
+    timezone: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, timezone, tier }) => {
+    try {
+      const posthog = getPostHogClient();
+      if (!posthog) return;
+      posthog.identify({
+        distinctId: phone,
+        properties: {
+          phone,
+          country: detectCountryFromPhone(phone),
+          tier,
+          timezone,
+        },
+      });
+      await posthog.flush();
+    } catch (error) {
+      console.error(`[PostHog] Failed to identify user ${phone}:`, error);
+    }
+  },
+});
+
+/**
+ * Fired for every AI-processed message (after successful generation + credit deduction).
+ * Provides message-volume tracking separate from session tracking.
+ */
+export const trackMessageSent = internalAction({
+  args: {
+    phone: v.string(),
+    tier: v.string(),
+    is_new_session: v.boolean(),
+  },
+  handler: async (_ctx, { phone, tier, is_new_session }) => {
+    await captureEvent(phone, "message_sent", {
+      tier,
+      is_new_session,
+      phone_country: detectCountryFromPhone(phone),
     });
   },
 });

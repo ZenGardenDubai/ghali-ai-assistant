@@ -219,6 +219,13 @@ export const ERROR_CIRCUIT_BREAKER_THRESHOLD = 3;
 export const ERROR_BACKOFF_MS = 30 * 60 * 1000;
 
 // ============================================================================
+// Analytics
+// ============================================================================
+
+/** Session gap for user_returning event: gaps longer than this are new sessions (4 hours) */
+export const SESSION_GAP_MS = 4 * 60 * 60 * 1000;
+
+// ============================================================================
 // Feedback
 // ============================================================================
 

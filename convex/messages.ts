@@ -16,7 +16,8 @@ import {
   isRagIndexable,
   isVoiceNote,
 } from "./lib/media";
-import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
+import { isNewSession } from "./lib/analytics";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -127,6 +128,10 @@ export const saveIncoming = internalMutation({
     ctx,
     { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid }
   ) => {
+    // Capture previous lastMessageAt before updating — needed for session detection
+    const user = await ctx.db.get(userId);
+    const previousLastMessageAt = user?.lastMessageAt;
+
     // Track last message time for WhatsApp 24h session window
     await ctx.db.patch(userId, { lastMessageAt: Date.now() });
 
@@ -138,6 +143,7 @@ export const saveIncoming = internalMutation({
       mediaContentType,
       messageSid,
       originalRepliedMessageSid,
+      previousLastMessageAt,
     });
   },
 });
@@ -154,9 +160,10 @@ export const generateResponse = internalAction({
     mediaContentType: v.optional(v.string()),
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
+    previousLastMessageAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { userId, messageSid, originalRepliedMessageSid } = args;
+    const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt } = args;
     let { body, mediaUrl, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
 
@@ -180,15 +187,12 @@ export const generateResponse = internalAction({
       return;
     }
 
-    // Track new vs returning user (fire-and-forget)
-    // onboardingStep === 1 means first message ever (set at creation, cleared after onboarding)
+    // Track session-start for returning users (fire-and-forget).
+    // user_returning fires only when the gap since their last message exceeds SESSION_GAP_MS.
+    // trackUserNew was moved to findOrCreateUser so new users appear in PostHog at creation time.
     const isNewUser = user.onboardingStep === 1;
-    if (isNewUser) {
-      await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
-        phone: user.phone,
-        timezone: user.timezone,
-      });
-    } else {
+    const sessionStarted = isNewSession(previousLastMessageAt, Date.now(), SESSION_GAP_MS);
+    if (!isNewUser && sessionStarted) {
       await ctx.scheduler.runAfter(0, internal.analytics.trackUserReturning, {
         phone: user.phone,
         tier: user.tier,
@@ -691,6 +695,12 @@ export const generateResponse = internalAction({
             ? MODELS.IMAGE_GENERATION
             : MODELS.FLASH,
         tools_used: toolsUsed.length > 0 ? toolsUsed : undefined,
+      });
+      // Track message volume separately from session tracking
+      await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
+        phone: user.phone,
+        tier: user.tier,
+        is_new_session: sessionStarted,
       });
 
       // Low-credit warning — fires once when balance crosses below the threshold.
