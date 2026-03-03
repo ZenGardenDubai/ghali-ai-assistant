@@ -59,6 +59,16 @@ http.route({
     // Parse the message
     const message = parseTwilioMessage(params);
 
+    // Ignore messages from Ghali's own number — outbound delivery echoes or status
+    // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
+    const ghaliNumber = process.env.TWILIO_WHATSAPP_NUMBER?.replace("whatsapp:", "") ?? "";
+    if (ghaliNumber && message.from === ghaliNumber) {
+      return new Response("<Response></Response>", {
+        status: 200,
+        headers: { "Content-Type": "text/xml" },
+      });
+    }
+
     // Country code blocking
     if (isBlockedCountryCode(message.from)) {
       console.log(`Blocked message from ${message.from}`);

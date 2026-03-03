@@ -25,6 +25,8 @@ export default defineSchema({
     pendingActionAt: v.optional(v.number()),
     pendingPayload: v.optional(v.string()),
     lastMessageAt: v.optional(v.number()),
+    consecutiveErrors: v.optional(v.number()),
+    errorBackoffUntil: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])

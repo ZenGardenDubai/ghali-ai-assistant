@@ -212,6 +212,12 @@ export const MAX_MESSAGE_LENGTH = 10_000;
 /** TTL for processed webhook dedup entries (24 hours) */
 export const WEBHOOK_DEDUP_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Number of consecutive AI API errors before the circuit breaker trips */
+export const ERROR_CIRCUIT_BREAKER_THRESHOLD = 3;
+
+/** Backoff duration after circuit breaker trips (30 minutes) */
+export const ERROR_BACKOFF_MS = 30 * 60 * 1000;
+
 // ============================================================================
 // Feedback
 // ============================================================================
