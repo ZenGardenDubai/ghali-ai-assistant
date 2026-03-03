@@ -176,7 +176,7 @@ CONFIG (optional)
 **Example — Currency Conversion skill:**
 
 ```
-SKILL: currency-conversion
+SKILL: currency-converter
 
 ABILITIES
 - Convert between any two currencies using live exchange rates
@@ -426,11 +426,21 @@ Coming soon: Pro skills for power users.
   category: "utility",
   tier: "basic",
   tools: ["convertCurrency"],
-  promptFragment: `CURRENCY CONVERTER:
-- When the user asks to convert currency, use the convertCurrency tool.
-- Support natural language: "how much is 100 USD in AED", "convert 50 euros to dollars"
-- Always show the exchange rate and timestamp.
-- Default source: European Central Bank (free, no API key).`,
+  promptFragment: `SKILL: currency-converter
+
+ABILITIES
+- Convert between 170+ fiat currencies
+- Return exchange rate, converted amount, and timestamp
+
+LIMITATIONS
+- Rates may be delayed by provider refresh windows
+- Crypto pairs are not supported
+
+USAGE
+Use convertCurrency when users ask to convert amounts between currencies or compare values across currencies.
+
+CONFIG
+- Default source: European Central Bank (free, no API key)`,
   defaultEnabled: true,
   sortOrder: 1,
 }
