@@ -143,6 +143,53 @@ export function assembleInstructions(
 
 If a user has no skills enabled, they get exactly today's prompt — identical behavior.
 
+#### Prompt Fragment Format
+
+Every `enabledSkills[].promptFragment` must be a self-contained block that `assembleInstructions` appends under the `--- SKILLS ---` divider. Follow this structure so the ABILITIES & LIMITATIONS section stays parsable by tooling and the agent can reason about each skill consistently:
+
+```
+SKILL: <slug>
+
+ABILITIES
+- <capability one>
+- <capability two>
+
+LIMITATIONS
+- <explicit operational limit>
+- <another limit>
+
+USAGE
+<when and how the agent should invoke this skill's tools>
+
+CONFIG (optional)
+<any configurable parameters or defaults>
+```
+
+**Rules:**
+- Start with a single-line header: `SKILL: <slug>` (must match the skill's slug in the `skills` table)
+- **ABILITIES** — bullet list of what the skill can do (maps to the agent's self-awareness)
+- **LIMITATIONS** — explicit operational limits the agent must respect (e.g., "hourly precision only", "max 5 results per query")
+- **USAGE** — describes when/how the skill should be invoked, including tool names
+- **CONFIG** — optional block for parameters the agent should know about (e.g., default units, API rate limits)
+- Keep fragments concise — they're injected into the prompt on every turn for users who have the skill enabled
+
+**Example — Currency Conversion skill:**
+
+```
+SKILL: currency-conversion
+
+ABILITIES
+- Convert between any two currencies using live exchange rates
+- Show conversion rate and converted amount
+
+LIMITATIONS
+- Rates refresh every 15 minutes (not real-time)
+- Only fiat currencies supported (no crypto)
+
+USAGE
+When the user asks to convert currencies, compare prices across currencies, or asks "how much is X in Y", use the convertCurrency tool.
+```
+
 ### 3.5 Data Flow
 
 ```
