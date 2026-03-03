@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { detectTimezone } from "./lib/utils";
-import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
 import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
 
@@ -388,5 +388,51 @@ export const getAllUsers = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("users").collect();
+  },
+});
+
+// ============================================================================
+// Circuit Breaker — API Error Tracking
+// ============================================================================
+
+/**
+ * Record a consecutive API error for a user.
+ * Increments the error counter and trips the circuit breaker (sets errorBackoffUntil)
+ * once the threshold is reached.
+ * Returns the new consecutive error count and whether the circuit breaker just tripped.
+ */
+export const recordApiError = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }): Promise<{ consecutiveErrors: number; tripped: boolean }> => {
+    const user = await ctx.db.get(userId);
+    if (!user) return { consecutiveErrors: 0, tripped: false };
+
+    const newCount = (user.consecutiveErrors ?? 0) + 1;
+    // Trip (or re-arm) the circuit breaker when we hit the threshold.
+    // Don't overwrite errorBackoffUntil while it's still in the future —
+    // but if it's missing or expired and we're at/above threshold, set a fresh one.
+    const backoffActive = user.errorBackoffUntil && user.errorBackoffUntil > Date.now();
+    const tripped =
+      newCount >= ERROR_CIRCUIT_BREAKER_THRESHOLD && !backoffActive;
+    const updates: Record<string, unknown> = { consecutiveErrors: newCount };
+    if (tripped) {
+      updates.errorBackoffUntil = Date.now() + ERROR_BACKOFF_MS;
+    }
+    await ctx.db.patch(userId, updates);
+    return { consecutiveErrors: newCount, tripped };
+  },
+});
+
+/**
+ * Reset the consecutive error counter after a successful AI response.
+ * Clears both the error count and the backoff timestamp.
+ */
+export const resetApiErrors = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    await ctx.db.patch(userId, {
+      consecutiveErrors: 0,
+      errorBackoffUntil: undefined,
+    });
   },
 });

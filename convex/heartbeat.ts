@@ -48,6 +48,12 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
+    // Circuit breaker: skip if user is in error backoff
+    if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
+      console.log(`[circuit-breaker] Heartbeat skipped for user ${userId} — in error backoff`);
+      return;
+    }
+
     // Check WhatsApp 24h session window
     const withinWindow =
       user.lastMessageAt &&
@@ -89,17 +95,21 @@ ${SYSTEM_BLOCK}
 - Keep it concise and actionable
 - After sending a one-shot reminder (not recurring), call updateHeartbeat to remove it from the list. Keep all recurring items.`;
 
+    // AI call — circuit breaker scope (only AI errors count)
+    let responseText: string | undefined;
     try {
-      const result = await ghaliAgent.generateText(
-        ctx,
-        { threadId },
-        { prompt }
-      );
+      const result = await ghaliAgent.generateText(ctx, { threadId }, { prompt });
+      responseText = result.text;
+      await ctx.runMutation(internal.users.resetApiErrors, { userId });
+    } catch (error) {
+      console.error(`Heartbeat AI failed for user ${userId}:`, error);
+      await ctx.runMutation(internal.users.recordApiError, { userId });
+      return;
+    }
 
-      const responseText = result.text;
-
-      // Only send if the agent has something to say
-      if (responseText && !responseText.includes("__SKIP__")) {
+    // Delivery — Twilio failures don't trip the circuit breaker
+    if (responseText && !responseText.includes("__SKIP__")) {
+      try {
         if (withinWindow) {
           await ctx.runAction(internal.twilio.sendMessage, {
             to: user.phone,
@@ -113,9 +123,9 @@ ${SYSTEM_BLOCK}
             variables: { "1": responseText },
           });
         }
+      } catch (error) {
+        console.error(`Heartbeat delivery failed for user ${userId}:`, error);
       }
-    } catch (error) {
-      console.error(`Heartbeat failed for user ${userId}:`, error);
     }
   },
 });

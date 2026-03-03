@@ -170,6 +170,16 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Circuit breaker: if the user hit repeated API errors, back off silently
+    // until the backoff window expires. Prevents response loops during outages.
+    if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
+      console.log(
+        `[circuit-breaker] User ${userId} in error backoff until ` +
+          `${new Date(user.errorBackoffUntil).toISOString()}, skipping`
+      );
+      return;
+    }
+
     // Track new vs returning user (fire-and-forget)
     // onboardingStep === 1 means first message ever (set at creation, cleared after onboarding)
     const isNewUser = user.onboardingStep === 1;
@@ -628,6 +638,8 @@ export const generateResponse = internalAction({
       );
       responseText = result.text;
       aiSucceeded = true;
+      // Reset the circuit breaker on a successful response
+      await ctx.runMutation(internal.users.resetApiErrors, { userId: typedUserId });
 
       // Extract tools used across all steps
       toolsUsed = [
@@ -647,7 +659,20 @@ export const generateResponse = internalAction({
       }
     } catch (error) {
       console.error("Agent generateText failed:", error);
-      responseText = "Sorry, I ran into an issue processing your message. Please try again.";
+      // Record the error — increments consecutive error count and trips circuit
+      // breaker (sets errorBackoffUntil) once the threshold is reached.
+      const errorState = await ctx.runMutation(internal.users.recordApiError, {
+        userId: typedUserId,
+      });
+      // Only send ONE error notification per error sequence (on the first failure).
+      // For the 2nd+ consecutive failures, go silent — sending any message risks
+      // re-triggering the loop if outbound messages echo back through the webhook.
+      if (errorState.consecutiveErrors === 1) {
+        responseText = "Sorry, I ran into an issue processing your message. Please try again.";
+      } else {
+        // Silent failure — short-circuit to avoid unnecessary work downstream
+        return;
+      }
     }
 
     // Only deduct credit after successful AI response

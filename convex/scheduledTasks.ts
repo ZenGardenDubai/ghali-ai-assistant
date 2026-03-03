@@ -18,6 +18,19 @@ import { buildUserContext } from "./lib/userFiles";
 import { ghaliAgent } from "./agent";
 
 /**
+ * Pure helper: determine if a failure notification should be sent.
+ * Only notifies on the first consecutive AI failure and not during backoff.
+ */
+export function shouldNotifyOnFailure(
+  user: { errorBackoffUntil?: number; consecutiveErrors?: number } | null,
+  now: number = Date.now()
+): boolean {
+  if (!user) return false;
+  const inBackoff = !!(user.errorBackoffUntil && now < user.errorBackoffUntil);
+  return !inBackoff && (user.consecutiveErrors ?? 0) === 1;
+}
+
+/**
  * Build the prompt for a scheduled task execution.
  */
 export function buildScheduledTaskPrompt(
@@ -174,6 +187,32 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
+    // Circuit breaker: skip if user is in error backoff (API outage protection)
+    if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
+      console.log(
+        `[circuit-breaker] Scheduled task ${taskId} skipped for user ${task.userId} — in error backoff`
+      );
+      if (task.schedule.kind === "cron") {
+        // Reschedule next cron tick after backoff expires (not from now)
+        await ctx.runMutation(internal.scheduledTasks.scheduleNextRunAfter, {
+          taskId,
+          afterMs: user.errorBackoffUntil,
+        });
+      } else {
+        // One-off: reschedule to run after backoff expires (otherwise it never runs again)
+        const schedulerJobId = await ctx.scheduler.runAt(
+          user.errorBackoffUntil,
+          internal.scheduledTasks.executeScheduledTask,
+          { taskId }
+        );
+        await ctx.runMutation(internal.scheduledTasks.updateSchedulerJobId, {
+          taskId,
+          schedulerJobId,
+        });
+      }
+      return;
+    }
+
     // Check credits (pass "__scheduled__" to skip system command check)
     const creditCheck = await ctx.runQuery(internal.credits.checkCredit, {
       userId: task.userId,
@@ -271,8 +310,11 @@ export const executeScheduledTask = internalAction({
       );
       responseText = result.text;
       aiSucceeded = true;
+      // Reset circuit breaker on success
+      await ctx.runMutation(internal.users.resetApiErrors, { userId: task.userId });
     } catch (error) {
       console.error(`Scheduled task agent failed for ${taskId}:`, error);
+      await ctx.runMutation(internal.users.recordApiError, { userId: task.userId });
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
@@ -280,19 +322,23 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!aiSucceeded || !responseText) {
-      // Notify user about the failure
-      try {
-        const withinErrorWindow =
-          user.lastMessageAt &&
-          Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-        if (withinErrorWindow) {
-          await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
-            body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
-          });
+      // Only notify on the FIRST consecutive AI failure (same discipline as messages.ts).
+      // Suppresses notification during backoff AND on 2nd+ pre-breaker failures.
+      const freshUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
+      if (shouldNotifyOnFailure(freshUser)) {
+        try {
+          const withinErrorWindow =
+            user.lastMessageAt &&
+            Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+          if (withinErrorWindow) {
+            await ctx.runAction(internal.twilio.sendMessage, {
+              to: user.phone,
+              body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
+            });
+          }
+        } catch {
+          // Best-effort notification
         }
-      } catch {
-        // Best-effort notification
       }
 
       // Reschedule cron even on error
@@ -395,6 +441,27 @@ async function rescheduleNextRun(
   await ctx.runMutation(internal.scheduledTasks.scheduleNextRun, { taskId });
 }
 
+/** Shared helper: compute next cron run, schedule it, and patch the task. */
+async function scheduleCronRun(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  taskId: Id<"scheduledTasks">,
+  after?: Date
+) {
+  const task = await ctx.db.get(taskId);
+  if (!task || !task.enabled || task.schedule.kind !== "cron") return;
+
+  const runAt = getNextCronRun(task.schedule.expr, task.timezone, after ?? new Date());
+
+  const schedulerJobId = await ctx.scheduler.runAt(
+    runAt,
+    internal.scheduledTasks.executeScheduledTask,
+    { taskId }
+  );
+
+  await ctx.db.patch(taskId, { schedulerJobId });
+}
+
 /**
  * Schedule the next run for a cron task. Reads fresh task data to avoid
  * stale schedule/timezone from the action's earlier snapshot.
@@ -404,17 +471,34 @@ export const scheduleNextRun = internalMutation({
     taskId: v.id("scheduledTasks"),
   },
   handler: async (ctx, { taskId }) => {
-    const task = await ctx.db.get(taskId);
-    if (!task || !task.enabled || task.schedule.kind !== "cron") return;
+    await scheduleCronRun(ctx, taskId);
+  },
+});
 
-    const runAt = getNextCronRun(task.schedule.expr, task.timezone, new Date());
+/**
+ * Schedule the next cron run after a given timestamp (used by circuit breaker
+ * to push the next tick past the backoff window).
+ */
+export const scheduleNextRunAfter = internalMutation({
+  args: {
+    taskId: v.id("scheduledTasks"),
+    afterMs: v.number(),
+  },
+  handler: async (ctx, { taskId, afterMs }) => {
+    await scheduleCronRun(ctx, taskId, new Date(Math.max(Date.now(), afterMs)));
+  },
+});
 
-    const schedulerJobId = await ctx.scheduler.runAt(
-      runAt,
-      internal.scheduledTasks.executeScheduledTask,
-      { taskId }
-    );
-
+/**
+ * Update only the schedulerJobId on a task (used when rescheduling one-off
+ * tasks during circuit breaker backoff).
+ */
+export const updateSchedulerJobId = internalMutation({
+  args: {
+    taskId: v.id("scheduledTasks"),
+    schedulerJobId: v.id("_scheduled_functions"),
+  },
+  handler: async (ctx, { taskId, schedulerJobId }) => {
     await ctx.db.patch(taskId, { schedulerJobId });
   },
 });

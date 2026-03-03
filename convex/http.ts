@@ -23,6 +23,13 @@ async function timingSafeEqual(a: string, b: string): Promise<boolean> {
 
 const VALID_PERIODS = new Set(["today", "yesterday", "7d", "30d"]);
 
+/** Normalize a WhatsApp number by stripping prefix and trimming whitespace. */
+function normalizeWhatsappNumber(n: string | undefined): string {
+  return (n ?? "").trim().replace(/^whatsapp:/, "");
+}
+
+let warnedMissingTwilioWhatsappNumber = false;
+
 const http = httpRouter();
 
 http.route({
@@ -58,6 +65,20 @@ http.route({
 
     // Parse the message
     const message = parseTwilioMessage(params);
+
+    // Ignore messages from Ghali's own number — outbound delivery echoes or status
+    // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
+    const ghaliNumber = normalizeWhatsappNumber(process.env.TWILIO_WHATSAPP_NUMBER);
+    if (!ghaliNumber && !warnedMissingTwilioWhatsappNumber) {
+      warnedMissingTwilioWhatsappNumber = true;
+      console.warn("TWILIO_WHATSAPP_NUMBER not set — self-message filter disabled");
+    }
+    if (ghaliNumber && normalizeWhatsappNumber(message.from) === ghaliNumber) {
+      return new Response("<Response></Response>", {
+        status: 200,
+        headers: { "Content-Type": "text/xml" },
+      });
+    }
 
     // Country code blocking
     if (isBlockedCountryCode(message.from)) {
