@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.7](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.6...v0.26.7) (2026-03-03)
+
+
+### Bug Fixes
+
+* ProWrite 'skip' produces no output and silent failure on Opus overload ([#113](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/113)) ([#115](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/115)) ([69cd258](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/69cd258460601df4b58d38e1c268dbc620f29b6c))
+
 ## [0.26.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.5...v0.26.6) (2026-03-03)
 
 
