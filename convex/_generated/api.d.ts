@@ -49,6 +49,7 @@ import type * as migrations from "../migrations.js";
 import type * as models from "../models.js";
 import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
+import type * as loopDetection from "../loopDetection.js";
 import type * as rateLimiting from "../rateLimiting.js";
 import type * as reminders from "../reminders.js";
 import type * as scheduledTasks from "../scheduledTasks.js";
@@ -106,6 +107,7 @@ declare const fullApi: ApiFromModules<{
   models: typeof models;
   proWrite: typeof proWrite;
   rag: typeof rag;
+  loopDetection: typeof loopDetection;
   rateLimiting: typeof rateLimiting;
   reminders: typeof reminders;
   scheduledTasks: typeof scheduledTasks;
