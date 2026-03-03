@@ -78,6 +78,15 @@ export default defineSchema({
     .index("by_messageSid", ["messageSid"])
     .index("by_processedAt", ["processedAt"]),
 
+  outboundMessageLog: defineTable({
+    userId: v.id("users"),
+    /** Normalized (lowercased, trimmed) body for echo comparison */
+    body: v.string(),
+    sentAt: v.number(),
+  })
+    .index("by_userId_sentAt", ["userId", "sentAt"])
+    .index("by_sentAt", ["sentAt"]),
+
   scheduledJobs: defineTable({
     userId: v.id("users"),
     kind: v.union(

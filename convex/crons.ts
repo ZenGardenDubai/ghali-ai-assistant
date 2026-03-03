@@ -52,4 +52,11 @@ crons.daily(
   internal.feedback.cleanupExpiredTokens
 );
 
+// Hourly cleanup of expired outbound message log entries (loop detection)
+crons.cron(
+  "outbound-log-cleanup",
+  "45 * * * *",
+  internal.loopDetection.cleanupExpiredLogs
+);
+
 export default crons;

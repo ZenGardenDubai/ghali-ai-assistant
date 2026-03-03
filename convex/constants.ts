@@ -212,6 +212,15 @@ export const MAX_MESSAGE_LENGTH = 10_000;
 /** TTL for processed webhook dedup entries (24 hours) */
 export const WEBHOOK_DEDUP_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Window for outbound echo detection (5 minutes) */
+export const OUTBOUND_ECHO_WINDOW_MS = 5 * 60 * 1000;
+
+/** Time window for loop detection response rate limiting (5 minutes) */
+export const LOOP_DETECTION_WINDOW_MS = 5 * 60 * 1000;
+
+/** Max agent responses to a user within LOOP_DETECTION_WINDOW_MS before silently stopping */
+export const LOOP_DETECTION_MAX_RESPONSES = 15;
+
 // ============================================================================
 // Feedback
 // ============================================================================

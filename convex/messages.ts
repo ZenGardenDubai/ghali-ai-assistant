@@ -8,7 +8,7 @@ import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isA
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
-import { PENDING_ACTION_EXPIRY_MS } from "./constants";
+import { PENDING_ACTION_EXPIRY_MS, LOOP_DETECTION_MAX_RESPONSES } from "./constants";
 import { handleAdminCommand } from "./lib/adminCommands";
 import { handleOnboarding } from "./lib/onboarding";
 import {
@@ -167,6 +167,28 @@ export const generateResponse = internalAction({
 
     if (!user) {
       console.error(`User not found: ${userId}`);
+      return;
+    }
+
+    // Echo detection — drop messages that match our own recent outbound (prevents relay feedback loops)
+    const isEcho = await ctx.runQuery(internal.loopDetection.isEchoMessage, {
+      userId: typedUserId,
+      body,
+    });
+    if (isEcho) {
+      console.warn(`[loopDetection] Echo detected for user ${userId}, dropping message`);
+      return;
+    }
+
+    // Response rate limit — stop silently if the agent has been sending too many messages
+    const recentResponseCount = await ctx.runQuery(
+      internal.loopDetection.countRecentResponses,
+      { userId: typedUserId }
+    );
+    if (recentResponseCount >= LOOP_DETECTION_MAX_RESPONSES) {
+      console.warn(
+        `[loopDetection] Response rate limit hit for user ${userId}: ${recentResponseCount} responses in window`
+      );
       return;
     }
 
@@ -700,6 +722,10 @@ export const generateResponse = internalAction({
           body: convertedResult.caption,
         });
       }
+      await ctx.runMutation(internal.loopDetection.logOutboundMessage, {
+        userId: typedUserId,
+        body: convertedResult.caption,
+      });
     } else if (imageResult) {
       // Image analytics tracked in images.ts (with latency + model detail)
       // Send generated image as WhatsApp media, fall back to text if media fails
@@ -716,9 +742,17 @@ export const generateResponse = internalAction({
           body: imageResult.caption,
         });
       }
+      await ctx.runMutation(internal.loopDetection.logOutboundMessage, {
+        userId: typedUserId,
+        body: imageResult.caption,
+      });
     } else if (responseText) {
       await ctx.runAction(internal.twilio.sendMessage, {
         to: user.phone,
+        body: responseText,
+      });
+      await ctx.runMutation(internal.loopDetection.logOutboundMessage, {
+        userId: typedUserId,
         body: responseText,
       });
     }
