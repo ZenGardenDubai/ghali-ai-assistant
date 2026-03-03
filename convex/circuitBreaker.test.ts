@@ -1,12 +1,23 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { internal } from "./_generated/api";
 import schema from "./schema";
 import { ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
 
 const modules = import.meta.glob("./**/*.ts");
 
+const FIXED_NOW = new Date("2026-03-03T12:00:00Z").getTime();
+
 describe("recordApiError", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("increments consecutiveErrors on each call", async () => {
     const t = convexTest(schema, modules);
 
@@ -30,8 +41,6 @@ describe("recordApiError", () => {
       phone: "+971501234567",
     });
 
-    const before = Date.now();
-
     for (let i = 1; i < ERROR_CIRCUIT_BREAKER_THRESHOLD; i++) {
       const r = await t.mutation(internal.users.recordApiError, { userId });
       expect(r.tripped).toBe(false);
@@ -42,9 +51,7 @@ describe("recordApiError", () => {
     expect(trippingResult.tripped).toBe(true);
 
     const user = await t.query(internal.users.getUser, { userId });
-    expect(user!.errorBackoffUntil).toBeDefined();
-    expect(user!.errorBackoffUntil!).toBeGreaterThanOrEqual(before + ERROR_BACKOFF_MS - 2000);
-    expect(user!.errorBackoffUntil!).toBeLessThanOrEqual(before + ERROR_BACKOFF_MS + 2000);
+    expect(user!.errorBackoffUntil).toBe(FIXED_NOW + ERROR_BACKOFF_MS);
   });
 
   it("re-arms backoff after previous backoff expires", async () => {
@@ -63,20 +70,16 @@ describe("recordApiError", () => {
     const originalBackoff = userAfterTrip!.errorBackoffUntil!;
     expect(originalBackoff).toBeDefined();
 
-    // Simulate backoff expiring by setting errorBackoffUntil to the past
-    await t.run(async (ctx) => {
-      await ctx.db.patch(userId, { errorBackoffUntil: Date.now() - 1000 });
-    });
+    // Simulate backoff expiring by advancing time past the backoff window
+    vi.setSystemTime(FIXED_NOW + ERROR_BACKOFF_MS + 1000);
 
     // One more error should re-arm since count >= threshold and backoff expired
-    const before = Date.now();
     const result = await t.mutation(internal.users.recordApiError, { userId });
     expect(result.tripped).toBe(true);
 
     const userReArmed = await t.query(internal.users.getUser, { userId });
-    expect(userReArmed!.errorBackoffUntil).toBeDefined();
-    expect(userReArmed!.errorBackoffUntil!).toBeGreaterThanOrEqual(before + ERROR_BACKOFF_MS - 2000);
-    expect(userReArmed!.errorBackoffUntil!).not.toBe(originalBackoff);
+    expect(userReArmed!.errorBackoffUntil).toBe(FIXED_NOW + ERROR_BACKOFF_MS + 1000 + ERROR_BACKOFF_MS);
+    expect(userReArmed!.errorBackoffUntil).not.toBe(originalBackoff);
   });
 
   it("does not overwrite errorBackoffUntil on errors beyond threshold", async () => {
@@ -102,6 +105,15 @@ describe("recordApiError", () => {
 });
 
 describe("resetApiErrors", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("clears consecutiveErrors and errorBackoffUntil", async () => {
     const t = convexTest(schema, modules);
 

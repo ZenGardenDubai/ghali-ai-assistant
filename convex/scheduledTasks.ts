@@ -18,6 +18,19 @@ import { buildUserContext } from "./lib/userFiles";
 import { ghaliAgent } from "./agent";
 
 /**
+ * Pure helper: determine if a failure notification should be sent.
+ * Only notifies on the first consecutive AI failure and not during backoff.
+ */
+export function shouldNotifyOnFailure(
+  user: { errorBackoffUntil?: number; consecutiveErrors?: number } | null,
+  now: number = Date.now()
+): boolean {
+  if (!user) return false;
+  const inBackoff = !!(user.errorBackoffUntil && now < user.errorBackoffUntil);
+  return !inBackoff && (user.consecutiveErrors ?? 0) === 1;
+}
+
+/**
  * Build the prompt for a scheduled task execution.
  */
 export function buildScheduledTaskPrompt(
@@ -312,9 +325,7 @@ export const executeScheduledTask = internalAction({
       // Only notify on the FIRST consecutive AI failure (same discipline as messages.ts).
       // Suppresses notification during backoff AND on 2nd+ pre-breaker failures.
       const freshUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
-      const inBackoff = !!(freshUser?.errorBackoffUntil && Date.now() < freshUser.errorBackoffUntil);
-      const isFirstFailure = (freshUser?.consecutiveErrors ?? 0) === 1;
-      if (!inBackoff && isFirstFailure) {
+      if (shouldNotifyOnFailure(freshUser)) {
         try {
           const withinErrorWindow =
             user.lastMessageAt &&
@@ -430,6 +441,27 @@ async function rescheduleNextRun(
   await ctx.runMutation(internal.scheduledTasks.scheduleNextRun, { taskId });
 }
 
+/** Shared helper: compute next cron run, schedule it, and patch the task. */
+async function scheduleCronRun(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  taskId: Id<"scheduledTasks">,
+  after?: Date
+) {
+  const task = await ctx.db.get(taskId);
+  if (!task || !task.enabled || task.schedule.kind !== "cron") return;
+
+  const runAt = getNextCronRun(task.schedule.expr, task.timezone, after ?? new Date());
+
+  const schedulerJobId = await ctx.scheduler.runAt(
+    runAt,
+    internal.scheduledTasks.executeScheduledTask,
+    { taskId }
+  );
+
+  await ctx.db.patch(taskId, { schedulerJobId });
+}
+
 /**
  * Schedule the next run for a cron task. Reads fresh task data to avoid
  * stale schedule/timezone from the action's earlier snapshot.
@@ -439,18 +471,7 @@ export const scheduleNextRun = internalMutation({
     taskId: v.id("scheduledTasks"),
   },
   handler: async (ctx, { taskId }) => {
-    const task = await ctx.db.get(taskId);
-    if (!task || !task.enabled || task.schedule.kind !== "cron") return;
-
-    const runAt = getNextCronRun(task.schedule.expr, task.timezone, new Date());
-
-    const schedulerJobId = await ctx.scheduler.runAt(
-      runAt,
-      internal.scheduledTasks.executeScheduledTask,
-      { taskId }
-    );
-
-    await ctx.db.patch(taskId, { schedulerJobId });
+    await scheduleCronRun(ctx, taskId);
   },
 });
 
@@ -464,22 +485,7 @@ export const scheduleNextRunAfter = internalMutation({
     afterMs: v.number(),
   },
   handler: async (ctx, { taskId, afterMs }) => {
-    const task = await ctx.db.get(taskId);
-    if (!task || !task.enabled || task.schedule.kind !== "cron") return;
-
-    const runAt = getNextCronRun(
-      task.schedule.expr,
-      task.timezone,
-      new Date(Math.max(Date.now(), afterMs))
-    );
-
-    const schedulerJobId = await ctx.scheduler.runAt(
-      runAt,
-      internal.scheduledTasks.executeScheduledTask,
-      { taskId }
-    );
-
-    await ctx.db.patch(taskId, { schedulerJobId });
+    await scheduleCronRun(ctx, taskId, new Date(Math.max(Date.now(), afterMs)));
   },
 });
 
