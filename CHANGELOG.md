@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.4...v0.26.5) (2026-03-03)
+
+
+### Bug Fixes
+
+* **agent:** add conversational focus rule for ambiguous follow-ups ([#111](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/111)) ([272dbd4](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/272dbd499a35ea851002946c9183412311219d1a))
+
 ## [0.26.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.3...v0.26.4) (2026-03-02)
 
 
