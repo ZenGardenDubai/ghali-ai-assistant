@@ -33,7 +33,7 @@ import {
   buildSimpleItemPatch,
   normalizeFilterDate,
 } from "./lib/items";
-import { formatProWriteResult } from "./lib/proWrite";
+import { formatProWriteResult, isOpusOverloaded } from "./lib/proWrite";
 import type { AggregateMode, QueryItem } from "./lib/items";
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
@@ -177,7 +177,7 @@ STRUCTURED DATA RULES:
    - Suggestion: "write me a ..." (without "prowrite") → suggest ProWrite and explain briefly: "I can write that directly, or I can use *ProWrite* — an 8-step multi-AI pipeline that researches, drafts, and polishes professional content. Say *prowrite* to activate it."
    - Flow: proWriteBrief → show numbered questions (1. 2. 3.) → user answers → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute
    - Questions format: ALWAYS show clarifying questions as a numbered list (1. ... 2. ... 3. ...), never as bullet points or inline.
-   - Skip mode: if user says "skip", "skip questions", "just write it", "go ahead", "no questions", or any short dismissal after being shown questions → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute with skipClarify=true immediately. Do NOT ask "skip what?" — in ProWrite context, "skip" always means skip the clarifying questions.
+   - Skip mode: if user says "skip", "skip questions", "just write it", "go ahead", "no questions", "no", "just do it", "proceed", "continue", "yes", "yep", "yeah", or any short dismissal after being shown questions → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute with skipClarify=true immediately. Do NOT ask "skip what?" — in ProWrite context, "skip" always means skip the clarifying questions. If the previous assistant message showed numbered ProWrite clarifying questions and the user's reply is a single word or a short phrase (under 10 words) that doesn't directly answer any of the questions, treat it as a skip signal.
    - The brief is stored server-side automatically. proWriteExecute only needs the user's answers (or empty string if skipped). No IDs or references to pass.
    - Output may be long — WhatsApp auto-splits. This is expected.
    - Cost: 1 credit (same as any message)`;
@@ -1550,10 +1550,10 @@ const proWriteBrief = createTool({
       });
     } catch (error) {
       console.error("proWriteBrief tool failed:", error);
-      return JSON.stringify({
-        status: "error",
-        message: "ProWrite pipeline failed to start. Please try again.",
-      });
+      const message = isOpusOverloaded(error)
+        ? "Our writing engine is temporarily slow — please try again in a moment."
+        : "ProWrite pipeline failed to start. Please try again.";
+      return JSON.stringify({ status: "error", message });
     }
   },
 });
@@ -1602,6 +1602,9 @@ const proWriteExecute = createTool({
       return formatProWriteResult(result);
     } catch (error) {
       console.error("proWriteExecute tool failed:", error);
+      if (isOpusOverloaded(error)) {
+        return "Our writing engine is temporarily overloaded — retrying didn't help this time. Please try again in a few minutes with 'prowrite ...'.";
+      }
       return "The ProWrite pipeline encountered an error. Please try again with 'prowrite'.";
     }
   },

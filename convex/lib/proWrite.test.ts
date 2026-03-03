@@ -11,6 +11,7 @@ import {
   buildHumanizePrompt,
   parseBriefOutput,
   formatProWriteResult,
+  isOpusOverloaded,
 } from "./proWrite";
 
 // ---------------------------------------------------------------------------
@@ -192,5 +193,47 @@ describe("formatProWriteResult", () => {
     const result = formatProWriteResult("  text  ");
     expect(result).toContain("text");
     expect(result).not.toContain("  text  ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isOpusOverloaded
+// ---------------------------------------------------------------------------
+
+describe("isOpusOverloaded", () => {
+  it("returns true for Error with 'overloaded' in message", () => {
+    expect(isOpusOverloaded(new Error("Anthropic: overloaded_error"))).toBe(true);
+  });
+
+  it("returns true for Error with '529' in message", () => {
+    expect(isOpusOverloaded(new Error("Request failed with status 529"))).toBe(true);
+  });
+
+  it("returns true for Error with 'overload_error' in message", () => {
+    expect(isOpusOverloaded(new Error("overload_error from upstream"))).toBe(true);
+  });
+
+  it("returns true for object with status 529", () => {
+    expect(isOpusOverloaded({ status: 529 })).toBe(true);
+  });
+
+  it("returns true for object with overloaded type field", () => {
+    expect(isOpusOverloaded({ type: "overloaded_error" })).toBe(true);
+  });
+
+  it("returns true when nested cause contains overloaded error", () => {
+    expect(isOpusOverloaded({ cause: new Error("overloaded") })).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isOpusOverloaded(new Error("Network timeout"))).toBe(false);
+    expect(isOpusOverloaded(new Error("Invalid API key"))).toBe(false);
+    expect(isOpusOverloaded({ status: 500 })).toBe(false);
+  });
+
+  it("returns false for null and non-error values", () => {
+    expect(isOpusOverloaded(null)).toBe(false);
+    expect(isOpusOverloaded(undefined)).toBe(false);
+    expect(isOpusOverloaded("overloaded")).toBe(false);
   });
 });

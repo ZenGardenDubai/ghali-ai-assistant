@@ -282,3 +282,27 @@ export function parseBriefOutput(raw: string): BriefOutput {
 export function formatProWriteResult(text: string): string {
   return `✍️ *ProWrite Result*\n\n${text.trim()}`;
 }
+
+// ---------------------------------------------------------------------------
+// Opus overload detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true if an error indicates the Anthropic Claude Opus API is
+ * temporarily overloaded (HTTP 529 / overloaded_error). Used to decide
+ * whether a retry or Flash fallback is appropriate.
+ */
+export function isOpusOverloaded(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return msg.includes("overloaded") || msg.includes("overload_error") || msg.includes("529");
+  }
+  if (typeof error === "object" && error !== null) {
+    const e = error as Record<string, unknown>;
+    if (e["status"] === 529) return true;
+    if (typeof e["type"] === "string" && e["type"].toLowerCase().includes("overload")) return true;
+    // Anthropic SDK wraps the error body; check nested cause
+    if (e["cause"] != null) return isOpusOverloaded(e["cause"]);
+  }
+  return false;
+}
