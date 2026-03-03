@@ -1,39 +1,39 @@
 # Skills System — Architecture & Specification
 
-> **Status:** Proposal  
-> **Date:** 2026-03-02  
+> **Status:** Proposal (v2)  
+> **Date:** 2026-03-03  
 > **Author:** Ghali Team
 
 ---
 
 ## 1. Overview
 
-Ghali currently has 23 hardcoded tools in `convex/agent.ts` with a monolithic `AGENT_INSTRUCTIONS` string (~4KB). Every user gets every tool and every instruction block, regardless of whether they use or want them.
+Ghali has **10 built-in features** powered by 23 hardcoded tools in `convex/agent.ts`, with a monolithic `AGENT_INSTRUCTIONS` string (~4KB). These features are **always-on for everyone** — they work today, users love them, and we're not touching them.
 
-**The Skills System** turns features into pluggable, user-controllable "skills." Each skill bundles:
+**The Skills System is for new additions only.** When we build the next capability — currency conversion, weather, fitness tracking — it gets built as a skill from day one. Skills are pluggable, user-controllable modules that bundle:
 - One or more tools
 - A prompt fragment (injected only when enabled)
 - Metadata (name, icon, category, tier)
 
 **Why:**
-- **User control** — users can enable/disable features ("I don't need image generation")
-- **Cleaner prompts** — only inject instructions for enabled skills → fewer tokens, less confusion
+- **User control** — users can enable/disable *new* features ("I don't need weather alerts")
+- **Cleaner prompts** — only inject instructions for skills the user has enabled → fewer tokens
 - **Extensibility** — add new skills without touching the core agent
-- **Marketing clarity** — "10 skills included, more coming" is better than a feature list
+- **Marketing clarity** — "10 built-in features free for everyone, plus a growing library of skills you can add"
 - **Future monetization** — pro-only skills become natural upsell
 
-**Constraint:** All existing features become default-on basic-tier skills. Nobody loses anything. Zero breaking changes.
+**Key constraint:** Existing features stay hardcoded, always-on, available to everyone. Zero changes to what works today. The skills system is purely additive — a framework for everything that comes next.
 
 ---
 
 ## 2. Design Principles
 
-1. **Backward-compatible** — existing users experience zero change on day one
-2. **Additive only** — new tables, new code paths; no schema migrations on existing tables
-3. **Graceful degradation** — if skill check fails, tool still works (fail-open, not fail-closed)
-4. **Thin guard layer** — tools check skill status but the guard is a simple function call, not middleware
+1. **Don't fix what works** — existing 10 features and 23 tools are untouched
+2. **Additive only** — new tables and code paths; no changes to existing schema or tools
+3. **Skills for new things** — every future capability is a skill from day one
+4. **Graceful degradation** — if skill check fails, tool still works (fail-open, not fail-closed)
 5. **Convention over configuration** — sensible defaults; users only configure if they want to
-6. **Prompt efficiency** — only assemble prompt fragments for enabled skills
+6. **Prompt efficiency** — skill fragments are appended to the existing instruction block
 
 ---
 
@@ -41,18 +41,18 @@ Ghali currently has 23 hardcoded tools in `convex/agent.ts` with a monolithic `A
 
 ### 3.1 Skills Registry (`skills` table)
 
-A system-level table seeded on deployment. Not user-editable.
+A system-level table for **new skills only**. Seeded on deployment. Not user-editable.
 
 ```typescript
 // convex/schema.ts — new table
 skills: defineTable({
-  name: v.string(),          // "Memory"
-  slug: v.string(),          // "memory"
-  description: v.string(),   // "Remember facts about you across conversations"
-  icon: v.string(),          // "🧠"
-  category: v.string(),      // "core", "productivity", "creative", "utility"
+  name: v.string(),          // "Currency Converter"
+  slug: v.string(),          // "currency-converter"
+  description: v.string(),   // "Convert between currencies in real-time"
+  icon: v.string(),          // "💱"
+  category: v.string(),      // "utility", "productivity", "creative", "lifestyle"
   tier: v.union(v.literal("basic"), v.literal("pro")),
-  tools: v.array(v.string()), // ["appendToMemory", "editMemory", "updatePersonality"]
+  tools: v.array(v.string()), // ["convertCurrency"]
   promptFragment: v.string(), // Instruction text injected when skill is enabled
   defaultEnabled: v.boolean(),
   sortOrder: v.number(),     // Display ordering
@@ -64,7 +64,7 @@ skills: defineTable({
 
 ### 3.2 User Skills (`userSkills` table)
 
-Per-user overrides. If no row exists for a (userId, skillId) pair, the skill's `defaultEnabled` applies.
+Per-user overrides for skills. If no row exists for a (userId, skillId) pair, the skill's `defaultEnabled` applies.
 
 ```typescript
 // convex/schema.ts — new table
@@ -78,9 +78,9 @@ userSkills: defineTable({
   .index("by_userId_skillId", ["userId", "skillId"])
 ```
 
-### 3.3 Tool Guards (Option B — per-tool check)
+### 3.3 Skill Tool Guards (New Skills Only)
 
-Each tool calls a shared `checkSkill` helper at the top of its handler. If the skill is disabled, it returns a helpful message instead of executing.
+New skill tools include a guard check. **Existing tools are NOT modified** — no guards, no wrappers, no changes whatsoever.
 
 ```typescript
 // convex/lib/skills.ts
@@ -89,11 +89,9 @@ export async function isSkillEnabled(
   ctx: ToolCtx,
   toolName: string
 ): Promise<{ enabled: boolean; skillName?: string }> {
-  // Look up which skill owns this tool
   const skill = await ctx.runQuery(internal.skills.getSkillByTool, { toolName });
   if (!skill) return { enabled: true }; // Unknown tool → allow (fail-open)
 
-  // Check user override
   const override = await ctx.runQuery(internal.skills.getUserSkillOverride, {
     userId: ctx.userId as Id<"users">,
     skillId: skill._id,
@@ -112,24 +110,20 @@ export function skillDisabledMessage(skillName: string): string {
 }
 ```
 
-**Tool integration** (example for `generateImage`):
+When building a **new** skill tool, include the guard:
 
 ```typescript
-handler: async (ctx, { prompt, aspectRatio }) => {
-  const check = await isSkillEnabled(ctx, "generateImage");
+// Example: new convertCurrency tool
+handler: async (ctx, { from, to, amount }) => {
+  const check = await isSkillEnabled(ctx, "convertCurrency");
   if (!check.enabled) return skillDisabledMessage(check.skillName!);
-  // ... existing logic unchanged
+  // ... tool logic
 }
 ```
 
-This is ~2 lines added per tool. No structural changes to existing handlers.
-
 ### 3.4 Dynamic Prompt Assembly
 
-Currently `AGENT_INSTRUCTIONS` is a single giant string. We split it into:
-
-1. **Core block** — always included (identity, formatting, credit rules, safety)
-2. **Per-skill fragments** — only included when that skill is enabled for the user
+The existing `AGENT_INSTRUCTIONS` stays as-is — it's the core instruction block that always gets included. New skill prompt fragments are **appended** to it.
 
 ```typescript
 // convex/agent.ts
@@ -137,15 +131,17 @@ Currently `AGENT_INSTRUCTIONS` is a single giant string. We split it into:
 export function assembleInstructions(
   enabledSkills: Array<{ slug: string; promptFragment: string }>
 ): string {
+  if (enabledSkills.length === 0) return AGENT_INSTRUCTIONS;
+
   const skillFragments = enabledSkills
     .map(s => s.promptFragment)
     .join("\n\n");
 
-  return `${CORE_INSTRUCTIONS}\n\n${skillFragments}`;
+  return `${AGENT_INSTRUCTIONS}\n\n--- SKILLS ---\n\n${skillFragments}`;
 }
 ```
 
-The agent builder calls this per-turn with the user's enabled skills. If all 10 default skills are enabled, the assembled prompt is identical to today's monolithic one.
+If a user has no skills enabled, they get exactly today's prompt — identical behavior.
 
 ### 3.5 Data Flow
 
@@ -153,46 +149,38 @@ The agent builder calls this per-turn with the user's enabled skills. If all 10 
 Message arrives
   → Load user
   → Load user's enabled skills (query userSkills + skills tables)
-  → Assemble instructions (core + enabled skill fragments)
+  → Assemble instructions (existing AGENT_INSTRUCTIONS + enabled skill fragments)
   → Create agent turn with assembled instructions
-  → Tool executes → guard checks skill → proceed or return disabled message
+  → Tool executes → new skill tools check guard → proceed or return disabled message
   → Response delivered
 ```
 
 ---
 
-## 4. Default Skills (Existing Features)
+## 4. Built-in Features (Unchanged)
 
-All 10 skills are **basic tier, default enabled**. Existing users get them automatically via `defaultEnabled: true` — no data backfill needed.
+These 10 features with 23 tools remain **hardcoded, always-on, available to every user**. They are NOT being converted to skills. They work today and will continue to work exactly as they do now.
 
-| # | Skill | Icon | Tools | Category | Tier |
-|---|-------|------|-------|----------|------|
-| 1 | Memory | 🧠 | `appendToMemory`, `editMemory`, `updatePersonality` | core | basic |
-| 2 | Image Generation | 🎨 | `generateImage` | creative | basic |
-| 3 | ProWrite | ✍️ | `proWriteBrief`, `proWriteExecute` | creative | basic |
-| 4 | Scheduler | 📅 | `createScheduledTask`, `listScheduledTasks`, `updateScheduledTask`, `deleteScheduledTask` | productivity | basic |
-| 5 | Collections | 📦 | `addItem`, `queryItems`, `updateItem`, `manageCollection` | productivity | basic |
-| 6 | Search | 🔍 | `webSearch`, `searchDocuments` | utility | basic |
-| 7 | Media | 📎 | `resolveMedia`, `reprocessMedia`, `convertFile` | utility | basic |
-| 8 | Deep Reasoning | 🤔 | `deepReasoning` | core | basic |
-| 9 | Feedback | 💬 | `generateFeedbackLink` | utility | basic |
-| 10 | Heartbeat | 💓 | `updateHeartbeat` | core | basic |
+| # | Feature | Icon | Tools | Category |
+|---|---------|------|-------|----------|
+| 1 | Memory | 🧠 | `appendToMemory`, `editMemory`, `updatePersonality` | core |
+| 2 | Image Generation | 🎨 | `generateImage` | creative |
+| 3 | ProWrite | ✍️ | `proWriteBrief`, `proWriteExecute` | creative |
+| 4 | Scheduler | 📅 | `createScheduledTask`, `listScheduledTasks`, `updateScheduledTask`, `deleteScheduledTask` | productivity |
+| 5 | Collections | 📦 | `addItem`, `queryItems`, `updateItem`, `manageCollection` | productivity |
+| 6 | Search | 🔍 | `webSearch`, `searchDocuments` | utility |
+| 7 | Media | 📎 | `resolveMedia`, `reprocessMedia`, `convertFile` | utility |
+| 8 | Deep Reasoning | 🤔 | `deepReasoning` | core |
+| 9 | Feedback | 💬 | `generateFeedbackLink` | utility |
+| 10 | Heartbeat | 💓 | `updateHeartbeat` | core |
 
-### Prompt Fragment Example (Memory Skill)
-
-```
-MEMORY RULES (critical):
-- You have a memory file for this user. It's loaded in your context above.
-- After EVERY response, reflect: did you learn anything new about this user?
-  - Name, age, birthday, location, timezone → appendToMemory(personal)
-  ...
-```
-
-Each fragment is extracted verbatim from today's `AGENT_INSTRUCTIONS` — just split into sections.
+These are part of the core agent and are referenced directly in `AGENT_INSTRUCTIONS`. No prompt splitting, no skill wrappers, no tool guards.
 
 ---
 
-## 5. Future Skill Ideas
+## 5. Future Skills (New Additions)
+
+Every new capability gets built as a skill from day one. Here's the roadmap:
 
 | Skill | Description | Tier | Priority |
 |-------|-------------|------|----------|
@@ -209,7 +197,7 @@ Each fragment is extracted verbatim from today's `AGENT_INSTRUCTIONS` — just s
 | 🧮 Calculator | Advanced math and unit conversion | basic | high |
 | 📊 Weekly Summary | Auto-generated weekly recap | pro | medium |
 
-**New skills follow the same pattern:** define in `skills` table, implement tools, write prompt fragment. No core changes needed.
+**Each new skill follows the same pattern:** define in `skills` table, implement tool(s) with guard, write prompt fragment. No core changes needed.
 
 ---
 
@@ -217,48 +205,38 @@ Each fragment is extracted verbatim from today's `AGENT_INSTRUCTIONS` — just s
 
 ### 6.1 View Skills
 
-User says: **"my skills"**, **"/skills"**, **"what can you do"**, or **"skills"**
+User says: **"my skills"**, **"/skills"**, or **"what skills do I have"**
 
-Response:
+Response shows only add-on skills (since built-in features are always-on):
 ```
-🛠️ *Your Skills (8/10 enabled)*
+🛠️ *Your Skills*
 
-*Core*
-🧠 Memory — ✅ enabled
-🤔 Deep Reasoning — ✅ enabled
-💓 Heartbeat — ✅ enabled
+Ghali comes with 10 built-in features — always on, free for everyone.
 
-*Productivity*
-📅 Scheduler — ✅ enabled
-📦 Collections — ✅ enabled
+*Add-on Skills (2/3 enabled):*
+💱 Currency Converter — ✅ enabled
+🌤️ Weather — ✅ enabled
+📰 News Digest — ❌ disabled
 
-*Creative*
-🎨 Image Generation — ❌ disabled
-✍️ ProWrite — ✅ enabled
-
-*Utility*
-🔍 Search — ✅ enabled
-📎 Media — ✅ enabled
-💬 Feedback — ✅ enabled
-
-Say "enable image generation" or "disable scheduler" to change.
+Say "enable news digest" or "disable weather" to change.
+More skills coming soon!
 ```
 
 ### 6.2 Enable / Disable
 
-User says: **"enable image generation"** or **"disable scheduler"**
+User says: **"enable weather"** or **"disable news digest"**
 
 - Fuzzy match on skill name/slug
 - Upsert into `userSkills` table
-- Confirm: "✅ Image Generation enabled" / "⏸️ Scheduler disabled"
+- Confirm: "✅ Weather enabled" / "⏸️ News Digest disabled"
 
 ### 6.3 Onboarding Integration
 
 During onboarding step 4 (after name + timezone):
 ```
-You have *10 skills* ready to go — memory, image generation, web search, and more.
+You have *10 built-in features* ready to go — memory, image generation, web search, and more.
 
-Say "my skills" anytime to see what's available or toggle them on/off.
+As new skills become available, say "my skills" to browse and toggle them.
 ```
 
 ---
@@ -298,44 +276,38 @@ userSkills: defineTable({
 
 ### No Changes to Existing Tables
 
-The `users`, `userFiles`, `items`, `collections`, and all other existing tables remain unchanged.
+The `users`, `userFiles`, `items`, `collections`, and all other existing tables remain unchanged. The existing `AGENT_INSTRUCTIONS` string remains unchanged.
 
 ---
 
-## 8. Migration Plan
+## 8. Implementation Plan
 
-### Phase 1: Schema + Seed (Day 1)
+### Phase 1: Schema + Infrastructure (Day 1)
 1. Add `skills` and `userSkills` tables to schema
-2. Create seed script (`convex/skills/seed.ts`) that populates 10 default skills
-3. Run seed on deployment — idempotent (checks slug before inserting)
-4. **Zero impact on existing users** — no `userSkills` rows needed; `defaultEnabled: true` means everyone gets everything
+2. Implement `isSkillEnabled()` helper and `assembleInstructions()` function
+3. Wire up prompt assembly in agent turn (appends skill fragments after existing instructions)
+4. **Zero impact on existing users** — no skills exist yet, so assembled prompt = current prompt
 
-### Phase 2: Prompt Split (Day 2-3)
-1. Extract `AGENT_INSTRUCTIONS` into core block + 10 skill prompt fragments
-2. Implement `assembleInstructions()` function
-3. Load enabled skills per-user before each agent turn
-4. **Verification:** assembled prompt for a user with all defaults = identical to current monolithic prompt
-
-### Phase 3: Tool Guards (Day 3-4)
-1. Implement `isSkillEnabled()` + `skillDisabledMessage()`
-2. Add 2-line guard to each tool handler (23 tools across 10 skills)
-3. **Verification:** all tools still work identically (all skills default-enabled)
-
-### Phase 4: User Commands (Day 4-5)
+### Phase 2: User Commands (Day 2)
 1. Add "my skills" / "enable X" / "disable X" to system command handling
 2. These are free commands (no credit deduction) — add to `SYSTEM_COMMANDS` set
 3. Update onboarding flow to mention skills
 
-### Phase 5: Landing Page (Day 6)
-1. Replace "Features" section with "Skills" on marketing site
-2. Show skill cards with icons, descriptions, and tier badges
+### Phase 3: First Skill (Day 3)
+1. Build the first real skill (e.g., Currency Converter) using the full pattern
+2. Validate the entire flow end-to-end: registry → guard → prompt fragment → user toggle
+3. This proves the architecture works before building more skills
+
+### Phase 4: Landing Page (Day 4)
+1. Update marketing site to reflect "10 built-in features + growing skills library"
+2. Show skill cards for available add-on skills
 
 ### Rollback
 Every phase is independently reversible:
 - Phase 1: Tables exist but are unused → no impact
-- Phase 2: Revert to monolithic prompt string
-- Phase 3: Remove guard calls → tools work as before
-- Phase 4: Remove command handlers
+- Phase 2: Remove command handlers
+- Phase 3: Remove skill entry + tool → back to baseline
+- Phase 4: Revert marketing copy
 
 ---
 
@@ -343,17 +315,16 @@ Every phase is independently reversible:
 
 | Component | Effort | Notes |
 |-----------|--------|-------|
-| Schema + seed script | 2h | Two tables + seed data |
-| Prompt splitting | 3h | Extract 10 fragments from monolith, verify equivalence |
-| `isSkillEnabled` helper | 1h | Query + cache logic |
-| Tool guards (23 tools) | 2h | ~5 min per tool, mechanical |
-| `assembleInstructions` | 1h | String concatenation + query |
-| Agent turn integration | 2h | Load skills, pass to assembler |
+| Schema + seed infrastructure | 2h | Two tables + query functions |
+| `isSkillEnabled` helper | 1h | Query + fail-open logic |
+| `assembleInstructions` | 1h | Append skill fragments to existing instructions |
+| Agent turn integration | 1h | Load skills, pass to assembler |
 | User commands (my skills, enable, disable) | 3h | Fuzzy matching, upsert, formatting |
-| Onboarding update | 1h | Add skills mention to step 4 |
-| Landing page update | 3h | New skills section with cards |
-| Testing & QA | 4h | Verify all tools, prompt equivalence, edge cases |
-| **Total** | **~22h** | **~3 dev-days** |
+| Onboarding update | 0.5h | Mention skills in step 4 |
+| First skill (Currency Converter) | 3h | Tool + guard + prompt fragment + API |
+| Landing page update | 2h | Updated messaging + skill cards |
+| Testing & QA | 2h | Verify skill toggle, prompt assembly, guard |
+| **Total** | **~15.5h** | **~2 dev-days** |
 
 ---
 
@@ -369,142 +340,51 @@ Every phase is independently reversible:
 - ...long list...
 ```
 
-### After (Skills)
+### After (Built-in + Skills)
 ```
-🛠️ 10 Skills. Your AI, Your Way.
+🚀 10 Built-in Features. Free for Everyone.
 
-Each skill is a superpower you can toggle on or off.
+Memory • Image Generation • ProWrite • Scheduler • Collections
+Search • Media • Deep Reasoning • Feedback • Heartbeat
 
-[🧠 Memory] [🎨 Images] [✍️ ProWrite] [📅 Scheduler]
-[📦 Collections] [🔍 Search] [📎 Media] [🤔 Deep Think]
-[💬 Feedback] [💓 Heartbeat]
+All included. Always on. No setup needed.
 
-All included free. More skills coming soon.
+🛠️ Plus a Growing Library of Skills
+
+Add new capabilities as they launch:
+[💱 Currency] [🌤️ Weather] [📰 News] [🔗 Summarizer] ...
+
+Toggle skills on and off. Your AI, your way.
+Coming soon: Pro skills for power users.
 ```
 
-**Key messaging shifts:**
-- "Features" → "Skills" (more tangible, game-like)
-- Static list → interactive skill cards with icons
-- "What Ghali can do" → "What *you* can customize"
-- Future pro skills create natural upgrade path: "Unlock 5 more skills with Pro"
+**Key messaging:**
+- Lead with what's free and included (10 features)
+- Skills are the expansion layer — exciting additions, not paywalled basics
+- Pro tier feels like an upgrade, not a gate
+- "Ghali comes with 10 built-in features — free for everyone. Plus a growing library of skills you can add."
 
 ---
 
-## Appendix: Skill Seed Data
+## Appendix: Example Skill Definition
 
 ```typescript
-// convex/skills/seed.ts — initial skill definitions
+// Example: first skill to be built
 
-export const DEFAULT_SKILLS = [
-  {
-    name: "Memory",
-    slug: "memory",
-    description: "Remember facts, preferences, and context across conversations",
-    icon: "🧠",
-    category: "core",
-    tier: "basic",
-    tools: ["appendToMemory", "editMemory", "updatePersonality"],
-    defaultEnabled: true,
-    sortOrder: 1,
-  },
-  {
-    name: "Image Generation",
-    slug: "image-generation",
-    description: "Create images from text descriptions using AI",
-    icon: "🎨",
-    category: "creative",
-    tier: "basic",
-    tools: ["generateImage"],
-    defaultEnabled: true,
-    sortOrder: 2,
-  },
-  {
-    name: "ProWrite",
-    slug: "prowrite",
-    description: "Professional multi-AI writing pipeline for polished content",
-    icon: "✍️",
-    category: "creative",
-    tier: "basic",
-    tools: ["proWriteBrief", "proWriteExecute"],
-    defaultEnabled: true,
-    sortOrder: 3,
-  },
-  {
-    name: "Scheduler",
-    slug: "scheduler",
-    description: "Schedule tasks, reminders, and recurring AI actions",
-    icon: "📅",
-    category: "productivity",
-    tier: "basic",
-    tools: ["createScheduledTask", "listScheduledTasks", "updateScheduledTask", "deleteScheduledTask"],
-    defaultEnabled: true,
-    sortOrder: 4,
-  },
-  {
-    name: "Collections",
-    slug: "collections",
-    description: "Track expenses, tasks, contacts, notes, and bookmarks",
-    icon: "📦",
-    category: "productivity",
-    tier: "basic",
-    tools: ["addItem", "queryItems", "updateItem", "manageCollection"],
-    defaultEnabled: true,
-    sortOrder: 5,
-  },
-  {
-    name: "Search",
-    slug: "search",
-    description: "Search the web and your uploaded documents",
-    icon: "🔍",
-    category: "utility",
-    tier: "basic",
-    tools: ["webSearch", "searchDocuments"],
-    defaultEnabled: true,
-    sortOrder: 6,
-  },
-  {
-    name: "Media",
-    slug: "media",
-    description: "Find, reprocess, and convert your media files",
-    icon: "📎",
-    category: "utility",
-    tier: "basic",
-    tools: ["resolveMedia", "reprocessMedia", "convertFile"],
-    defaultEnabled: true,
-    sortOrder: 7,
-  },
-  {
-    name: "Deep Reasoning",
-    slug: "deep-reasoning",
-    description: "Escalate complex problems to advanced AI for thorough analysis",
-    icon: "🤔",
-    category: "core",
-    tier: "basic",
-    tools: ["deepReasoning"],
-    defaultEnabled: true,
-    sortOrder: 8,
-  },
-  {
-    name: "Feedback",
-    slug: "feedback",
-    description: "Submit feedback, bug reports, and feature requests",
-    icon: "💬",
-    category: "utility",
-    tier: "basic",
-    tools: ["generateFeedbackLink"],
-    defaultEnabled: true,
-    sortOrder: 9,
-  },
-  {
-    name: "Heartbeat",
-    slug: "heartbeat",
-    description: "Loose recurring awareness and proactive check-ins",
-    icon: "💓",
-    category: "core",
-    tier: "basic",
-    tools: ["updateHeartbeat"],
-    defaultEnabled: true,
-    sortOrder: 10,
-  },
-];
+{
+  name: "Currency Converter",
+  slug: "currency-converter",
+  description: "Convert between 170+ currencies with real-time exchange rates",
+  icon: "💱",
+  category: "utility",
+  tier: "basic",
+  tools: ["convertCurrency"],
+  promptFragment: `CURRENCY CONVERTER:
+- When the user asks to convert currency, use the convertCurrency tool.
+- Support natural language: "how much is 100 USD in AED", "convert 50 euros to dollars"
+- Always show the exchange rate and timestamp.
+- Default source: European Central Bank (free, no API key).`,
+  defaultEnabled: true,
+  sortOrder: 1,
+}
 ```
