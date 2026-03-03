@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.5...v0.26.6) (2026-03-03)
+
+
+### Bug Fixes
+
+* prevent agent retry/response loop during upstream API outages ([#109](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/109)) ([375f27b](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/375f27b59f38715480e3ae40dece50c946a22913))
+
 ## [0.26.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.4...v0.26.5) (2026-03-03)
 
 
