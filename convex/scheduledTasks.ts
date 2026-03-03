@@ -174,6 +174,18 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
+    // Circuit breaker: skip if user is in error backoff (API outage protection)
+    if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
+      console.log(
+        `[circuit-breaker] Scheduled task ${taskId} skipped for user ${task.userId} — in error backoff`
+      );
+      // Reschedule cron tasks so they run after backoff expires
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      }
+      return;
+    }
+
     // Check credits (pass "__scheduled__" to skip system command check)
     const creditCheck = await ctx.runQuery(internal.credits.checkCredit, {
       userId: task.userId,
@@ -271,8 +283,11 @@ export const executeScheduledTask = internalAction({
       );
       responseText = result.text;
       aiSucceeded = true;
+      // Reset circuit breaker on success
+      await ctx.runMutation(internal.users.resetApiErrors, { userId: task.userId });
     } catch (error) {
       console.error(`Scheduled task agent failed for ${taskId}:`, error);
+      await ctx.runMutation(internal.users.recordApiError, { userId: task.userId });
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
@@ -280,19 +295,23 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!aiSucceeded || !responseText) {
-      // Notify user about the failure
-      try {
-        const withinErrorWindow =
-          user.lastMessageAt &&
-          Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-        if (withinErrorWindow) {
-          await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
-            body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
-          });
+      // Only notify user if not in error backoff (avoid spam during outages)
+      const freshUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
+      const inBackoff = freshUser?.errorBackoffUntil && Date.now() < freshUser.errorBackoffUntil;
+      if (!inBackoff) {
+        try {
+          const withinErrorWindow =
+            user.lastMessageAt &&
+            Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+          if (withinErrorWindow) {
+            await ctx.runAction(internal.twilio.sendMessage, {
+              to: user.phone,
+              body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
+            });
+          }
+        } catch {
+          // Best-effort notification
         }
-      } catch {
-        // Best-effort notification
       }
 
       // Reschedule cron even on error

@@ -669,6 +669,9 @@ export const generateResponse = internalAction({
       // re-triggering the loop if outbound messages echo back through the webhook.
       if (errorState.consecutiveErrors === 1) {
         responseText = "Sorry, I ran into an issue processing your message. Please try again.";
+      } else {
+        // Silent failure — short-circuit to avoid unnecessary work downstream
+        return;
       }
     }
 

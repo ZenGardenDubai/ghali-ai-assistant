@@ -48,6 +48,12 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
+    // Circuit breaker: skip if user is in error backoff
+    if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
+      console.log(`[circuit-breaker] Heartbeat skipped for user ${userId} — in error backoff`);
+      return;
+    }
+
     // Check WhatsApp 24h session window
     const withinWindow =
       user.lastMessageAt &&
@@ -96,6 +102,9 @@ ${SYSTEM_BLOCK}
         { prompt }
       );
 
+      // Reset circuit breaker on success
+      await ctx.runMutation(internal.users.resetApiErrors, { userId });
+
       const responseText = result.text;
 
       // Only send if the agent has something to say
@@ -116,6 +125,7 @@ ${SYSTEM_BLOCK}
       }
     } catch (error) {
       console.error(`Heartbeat failed for user ${userId}:`, error);
+      await ctx.runMutation(internal.users.recordApiError, { userId });
     }
   },
 });

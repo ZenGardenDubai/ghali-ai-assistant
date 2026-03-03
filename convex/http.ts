@@ -62,6 +62,9 @@ http.route({
     // Ignore messages from Ghali's own number — outbound delivery echoes or status
     // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
     const ghaliNumber = process.env.TWILIO_WHATSAPP_NUMBER?.replace("whatsapp:", "") ?? "";
+    if (!ghaliNumber) {
+      console.warn("TWILIO_WHATSAPP_NUMBER not set — self-message filter disabled");
+    }
     if (ghaliNumber && message.from === ghaliNumber) {
       return new Response("<Response></Response>", {
         status: 200,
