@@ -315,6 +315,12 @@ New: {{newTodayDubai}} | Active: {{activeTodayDubai}}
 *Last 24 Hours (rolling)*
 New: {{newToday}} | Active: {{activeToday}}
 
+*Last 7 Days (rolling)*
+Active: {{activeWeek}}
+
+*Last 30 Days (rolling)*
+Active: {{activeMonth}}
+
 *This Week (Dubai, starts Sun)*
 Active: {{activeWeekDubai}}
 
@@ -328,6 +334,8 @@ Total: {{totalUsers}} | Pro: {{proUsers}}`,
       "activeTodayDubai",
       "newToday",
       "activeToday",
+      "activeWeek",
+      "activeMonth",
       "activeWeekDubai",
       "activeMonthDubai",
       "totalUsers",
