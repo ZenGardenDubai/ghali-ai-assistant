@@ -179,9 +179,23 @@ export const executeScheduledTask = internalAction({
       console.log(
         `[circuit-breaker] Scheduled task ${taskId} skipped for user ${task.userId} — in error backoff`
       );
-      // Reschedule cron tasks so they run after backoff expires
       if (task.schedule.kind === "cron") {
-        await rescheduleNextRun(ctx, taskId);
+        // Reschedule next cron tick after backoff expires (not from now)
+        await ctx.runMutation(internal.scheduledTasks.scheduleNextRunAfter, {
+          taskId,
+          afterMs: user.errorBackoffUntil,
+        });
+      } else {
+        // One-off: reschedule to run after backoff expires (otherwise it never runs again)
+        const schedulerJobId = await ctx.scheduler.runAt(
+          user.errorBackoffUntil,
+          internal.scheduledTasks.executeScheduledTask,
+          { taskId }
+        );
+        await ctx.runMutation(internal.scheduledTasks.updateSchedulerJobId, {
+          taskId,
+          schedulerJobId,
+        });
       }
       return;
     }
@@ -434,6 +448,49 @@ export const scheduleNextRun = internalMutation({
       { taskId }
     );
 
+    await ctx.db.patch(taskId, { schedulerJobId });
+  },
+});
+
+/**
+ * Schedule the next cron run after a given timestamp (used by circuit breaker
+ * to push the next tick past the backoff window).
+ */
+export const scheduleNextRunAfter = internalMutation({
+  args: {
+    taskId: v.id("scheduledTasks"),
+    afterMs: v.number(),
+  },
+  handler: async (ctx, { taskId, afterMs }) => {
+    const task = await ctx.db.get(taskId);
+    if (!task || !task.enabled || task.schedule.kind !== "cron") return;
+
+    const runAt = getNextCronRun(
+      task.schedule.expr,
+      task.timezone,
+      new Date(Math.max(Date.now(), afterMs))
+    );
+
+    const schedulerJobId = await ctx.scheduler.runAt(
+      runAt,
+      internal.scheduledTasks.executeScheduledTask,
+      { taskId }
+    );
+
+    await ctx.db.patch(taskId, { schedulerJobId });
+  },
+});
+
+/**
+ * Update only the schedulerJobId on a task (used when rescheduling one-off
+ * tasks during circuit breaker backoff).
+ */
+export const updateSchedulerJobId = internalMutation({
+  args: {
+    taskId: v.id("scheduledTasks"),
+    schedulerJobId: v.id("_scheduled_functions"),
+  },
+  handler: async (ctx, { taskId, schedulerJobId }) => {
     await ctx.db.patch(taskId, { schedulerJobId });
   },
 });

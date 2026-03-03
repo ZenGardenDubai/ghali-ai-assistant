@@ -408,9 +408,12 @@ export const recordApiError = internalMutation({
     if (!user) return { consecutiveErrors: 0, tripped: false };
 
     const newCount = (user.consecutiveErrors ?? 0) + 1;
-    // Trip the circuit breaker exactly at the threshold — don't keep resetting
-    // errorBackoffUntil on subsequent errors (the backoff window should be stable).
-    const tripped = newCount === ERROR_CIRCUIT_BREAKER_THRESHOLD;
+    // Trip (or re-arm) the circuit breaker when we hit the threshold.
+    // Don't overwrite errorBackoffUntil while it's still in the future —
+    // but if it's missing or expired and we're at/above threshold, set a fresh one.
+    const backoffActive = user.errorBackoffUntil && user.errorBackoffUntil > Date.now();
+    const tripped =
+      newCount >= ERROR_CIRCUIT_BREAKER_THRESHOLD && !backoffActive;
     const updates: Record<string, unknown> = { consecutiveErrors: newCount };
     if (tripped) {
       updates.errorBackoffUntil = Date.now() + ERROR_BACKOFF_MS;

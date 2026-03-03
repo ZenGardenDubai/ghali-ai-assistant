@@ -43,7 +43,8 @@ describe("recordApiError", () => {
 
     const user = await t.query(internal.users.getUser, { userId });
     expect(user!.errorBackoffUntil).toBeDefined();
-    expect(user!.errorBackoffUntil!).toBeGreaterThanOrEqual(before + ERROR_BACKOFF_MS - 100);
+    expect(user!.errorBackoffUntil!).toBeGreaterThanOrEqual(before + ERROR_BACKOFF_MS - 2000);
+    expect(user!.errorBackoffUntil!).toBeLessThanOrEqual(before + ERROR_BACKOFF_MS + 2000);
   });
 
   it("does not overwrite errorBackoffUntil on errors beyond threshold", async () => {
