@@ -26,7 +26,7 @@ import {
   buildRefinePrompt,
   buildHumanizePrompt,
   parseBriefOutput,
-  isOpusOverloaded,
+  withOpusRetry,
 } from "./lib/proWrite";
 
 /** Result from a timed LLM call, including usage metadata for analytics */
@@ -59,32 +59,21 @@ function stepTimer(label: string) {
 }
 
 /**
- * Retries an Opus call up to `maxRetries` times when the API is overloaded,
- * with exponential backoff (1s, 2s). Throws the last error if all retries fail.
+ * Attempts an Opus call with retry, falling back to Gemini Flash on persistent overload.
  */
-async function withOpusRetry<T>(
+async function opusWithFlashFallback(
   label: string,
-  fn: () => Promise<T>,
-  maxRetries = 2,
-): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (isOpusOverloaded(error) && attempt < maxRetries) {
-        const delayMs = Math.pow(2, attempt) * 1_000;
-        console.warn(
-          `[ProWrite] ${label}: Opus overloaded, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
-        );
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
-        lastError = error;
-      } else {
-        throw error;
-      }
-    }
+  opts: { system: string; prompt: string },
+  deadlineMs?: number,
+): Promise<TimedGenerateResult> {
+  try {
+    return await withOpusRetry(label, () =>
+      timedGenerate(label, { model: anthropic(MODELS.DEEP_REASONING), ...opts }, deadlineMs),
+    );
+  } catch (error) {
+    console.warn(`[ProWrite] Opus unavailable for ${label}, falling back to Gemini Flash:`, error);
+    return timedGenerate(`${label} (Flash fallback)`, { model: google(MODELS.FLASH), ...opts }, deadlineMs);
   }
-  throw lastError;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,23 +180,10 @@ export const generateBrief = internalAction({
   handler: async (ctx, { request, userId, phone, tier }): Promise<{ brief: string; questions: string[] }> => {
     const prompt = buildBriefPrompt(request);
 
-    let result: TimedGenerateResult;
-    try {
-      result = await withOpusRetry("BRIEF", () =>
-        timedGenerate("BRIEF", {
-          model: anthropic(MODELS.DEEP_REASONING),
-          system: prompt.system,
-          prompt: prompt.user,
-        }),
-      );
-    } catch (error) {
-      console.warn("[ProWrite] Opus unavailable for BRIEF, falling back to Gemini Flash:", error);
-      result = await timedGenerate("BRIEF (Flash fallback)", {
-        model: google(MODELS.FLASH),
-        system: prompt.system,
-        prompt: prompt.user,
-      });
-    }
+    const result = await opusWithFlashFallback("BRIEF", {
+      system: prompt.system,
+      prompt: prompt.user,
+    });
 
     // Track LLM usage for the brief step (fire-and-forget — never fail the brief)
     if (phone && tier) {
@@ -332,23 +308,10 @@ export const executePipeline = internalAction({
       let enrichedBrief = brief;
       if (!skipClarify && answers.trim()) {
         const enrichPrompt = buildEnrichPrompt(brief, answers);
-        let enrichResult: TimedGenerateResult;
-        try {
-          enrichResult = await withOpusRetry("ENRICH", () =>
-            timedGenerate("ENRICH", {
-              model: anthropic(MODELS.DEEP_REASONING),
-              system: enrichPrompt.system,
-              prompt: enrichPrompt.user,
-            }, deadlineMs),
-          );
-        } catch (error) {
-          console.warn("[ProWrite] Opus unavailable for ENRICH, falling back to Gemini Flash:", error);
-          enrichResult = await timedGenerate("ENRICH (Flash fallback)", {
-            model: google(MODELS.FLASH),
-            system: enrichPrompt.system,
-            prompt: enrichPrompt.user,
-          }, deadlineMs);
-        }
+        const enrichResult = await opusWithFlashFallback("ENRICH", {
+          system: enrichPrompt.system,
+          prompt: enrichPrompt.user,
+        }, deadlineMs);
         enrichedBrief = enrichResult.text;
         await trackStep(enrichResult);
         stepsCompleted++;
@@ -392,23 +355,10 @@ export const executePipeline = internalAction({
 
       // STEP 4: SYNTHESIZE — outline + narrative arc (Opus, fallback: Flash)
       const synthPrompt = buildSynthesizePrompt(enrichedBrief, research, ragContent);
-      let synthResult: TimedGenerateResult;
-      try {
-        synthResult = await withOpusRetry("SYNTHESIZE", () =>
-          timedGenerate("SYNTHESIZE", {
-            model: anthropic(MODELS.DEEP_REASONING),
-            system: synthPrompt.system,
-            prompt: synthPrompt.user,
-          }, deadlineMs),
-        );
-      } catch (error) {
-        console.warn("[ProWrite] Opus unavailable for SYNTHESIZE, falling back to Gemini Flash:", error);
-        synthResult = await timedGenerate("SYNTHESIZE (Flash fallback)", {
-          model: google(MODELS.FLASH),
-          system: synthPrompt.system,
-          prompt: synthPrompt.user,
-        }, deadlineMs);
-      }
+      const synthResult = await opusWithFlashFallback("SYNTHESIZE", {
+        system: synthPrompt.system,
+        prompt: synthPrompt.user,
+      }, deadlineMs);
       await trackStep(synthResult);
       stepsCompleted++;
 
@@ -488,23 +438,10 @@ export const executePipeline = internalAction({
 
       // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus, fallback: Flash)
       const humanizePrompt = buildHumanizePrompt(refinedText, personality);
-      let humanizeResult: TimedGenerateResult;
-      try {
-        humanizeResult = await withOpusRetry("HUMANIZE", () =>
-          timedGenerate("HUMANIZE", {
-            model: anthropic(MODELS.DEEP_REASONING),
-            system: humanizePrompt.system,
-            prompt: humanizePrompt.user,
-          }, deadlineMs),
-        );
-      } catch (error) {
-        console.warn("[ProWrite] Opus unavailable for HUMANIZE, falling back to Gemini Flash:", error);
-        humanizeResult = await timedGenerate("HUMANIZE (Flash fallback)", {
-          model: google(MODELS.FLASH),
-          system: humanizePrompt.system,
-          prompt: humanizePrompt.user,
-        }, deadlineMs);
-      }
+      const humanizeResult = await opusWithFlashFallback("HUMANIZE", {
+        system: humanizePrompt.system,
+        prompt: humanizePrompt.user,
+      }, deadlineMs);
       await trackStep(humanizeResult);
       stepsCompleted++;
 

@@ -288,21 +288,54 @@ export function formatProWriteResult(text: string): string {
 // ---------------------------------------------------------------------------
 
 /**
+ * Retries an async function up to `maxRetries` times when the error is an
+ * Opus overload, with exponential backoff + ±20% jitter. Non-overload
+ * errors are rethrown immediately.
+ */
+export async function withOpusRetry<T>(
+  label: string,
+  fn: () => Promise<T>,
+  maxRetries = 2,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (isOpusOverloaded(error) && attempt < maxRetries) {
+        const base = Math.pow(2, attempt) * 1_000;
+        const jitter = base * (0.8 + Math.random() * 0.4); // ±20% jitter
+        const delayMs = Math.round(jitter);
+        console.warn(
+          `[ProWrite] ${label}: Opus overloaded, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`,
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        lastError = error;
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Returns true if an error indicates the Anthropic Claude Opus API is
  * temporarily overloaded (HTTP 529 / overloaded_error). Used to decide
  * whether a retry or Flash fallback is appropriate.
  */
-export function isOpusOverloaded(error: unknown): boolean {
+export function isOpusOverloaded(error: unknown, _depth = 0): boolean {
+  if (_depth > 5) return false;
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
-    return msg.includes("overloaded") || msg.includes("overload_error") || msg.includes("529");
+    return msg.includes("overloaded") || msg.includes("overload_error") || /\b529\b/.test(msg);
   }
   if (typeof error === "object" && error !== null) {
     const e = error as Record<string, unknown>;
     if (e["status"] === 529) return true;
     if (typeof e["type"] === "string" && e["type"].toLowerCase().includes("overload")) return true;
     // Anthropic SDK wraps the error body; check nested cause
-    if (e["cause"] != null) return isOpusOverloaded(e["cause"]);
+    if (e["cause"] != null) return isOpusOverloaded(e["cause"], _depth + 1);
   }
   return false;
 }
