@@ -26,6 +26,7 @@ import {
   buildRefinePrompt,
   buildHumanizePrompt,
   parseBriefOutput,
+  withOpusRetry,
 } from "./lib/proWrite";
 
 /** Result from a timed LLM call, including usage metadata for analytics */
@@ -55,6 +56,24 @@ function stepTimer(label: string) {
     const elapsed = ((Date.now() - start) / 1000).toFixed(1);
     console.log(`[ProWrite] ${label} done (${elapsed}s)`);
   };
+}
+
+/**
+ * Attempts an Opus call with retry, falling back to Gemini Flash on persistent overload.
+ */
+async function opusWithFlashFallback(
+  label: string,
+  opts: { system: string; prompt: string },
+  deadlineMs?: number,
+): Promise<TimedGenerateResult> {
+  try {
+    return await withOpusRetry(label, () =>
+      timedGenerate(label, { model: anthropic(MODELS.DEEP_REASONING), ...opts }, deadlineMs),
+    );
+  } catch (error) {
+    console.warn(`[ProWrite] Opus unavailable for ${label}, falling back to Gemini Flash:`, error);
+    return timedGenerate(`${label} (Flash fallback)`, { model: google(MODELS.FLASH), ...opts }, deadlineMs);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -161,8 +180,7 @@ export const generateBrief = internalAction({
   handler: async (ctx, { request, userId, phone, tier }): Promise<{ brief: string; questions: string[] }> => {
     const prompt = buildBriefPrompt(request);
 
-    const result = await timedGenerate("BRIEF", {
-      model: anthropic(MODELS.DEEP_REASONING),
+    const result = await opusWithFlashFallback("BRIEF", {
       system: prompt.system,
       prompt: prompt.user,
     });
@@ -290,8 +308,7 @@ export const executePipeline = internalAction({
       let enrichedBrief = brief;
       if (!skipClarify && answers.trim()) {
         const enrichPrompt = buildEnrichPrompt(brief, answers);
-        const enrichResult = await timedGenerate("ENRICH", {
-          model: anthropic(MODELS.DEEP_REASONING),
+        const enrichResult = await opusWithFlashFallback("ENRICH", {
           system: enrichPrompt.system,
           prompt: enrichPrompt.user,
         }, deadlineMs);
@@ -336,10 +353,9 @@ export const executePipeline = internalAction({
         console.error("[ProWrite] RAG failed:", error);
       }
 
-      // STEP 4: SYNTHESIZE — outline + narrative arc (Opus)
+      // STEP 4: SYNTHESIZE — outline + narrative arc (Opus, fallback: Flash)
       const synthPrompt = buildSynthesizePrompt(enrichedBrief, research, ragContent);
-      const synthResult = await timedGenerate("SYNTHESIZE", {
-        model: anthropic(MODELS.DEEP_REASONING),
+      const synthResult = await opusWithFlashFallback("SYNTHESIZE", {
         system: synthPrompt.system,
         prompt: synthPrompt.user,
       }, deadlineMs);
@@ -420,10 +436,9 @@ export const executePipeline = internalAction({
       }
       stepsCompleted++;
 
-      // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus)
+      // STEP 8: HUMANIZE — strip AI artifacts, match user voice (Opus, fallback: Flash)
       const humanizePrompt = buildHumanizePrompt(refinedText, personality);
-      const humanizeResult = await timedGenerate("HUMANIZE", {
-        model: anthropic(MODELS.DEEP_REASONING),
+      const humanizeResult = await opusWithFlashFallback("HUMANIZE", {
         system: humanizePrompt.system,
         prompt: humanizePrompt.user,
       }, deadlineMs);

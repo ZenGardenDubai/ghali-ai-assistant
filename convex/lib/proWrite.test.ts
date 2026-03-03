@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   buildBriefPrompt,
   buildEnrichPrompt,
@@ -11,6 +11,8 @@ import {
   buildHumanizePrompt,
   parseBriefOutput,
   formatProWriteResult,
+  isOpusOverloaded,
+  withOpusRetry,
 } from "./proWrite";
 
 // ---------------------------------------------------------------------------
@@ -192,5 +194,114 @@ describe("formatProWriteResult", () => {
     const result = formatProWriteResult("  text  ");
     expect(result).toContain("text");
     expect(result).not.toContain("  text  ");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isOpusOverloaded
+// ---------------------------------------------------------------------------
+
+describe("isOpusOverloaded", () => {
+  it("returns true for Error with 'overloaded' in message", () => {
+    expect(isOpusOverloaded(new Error("Anthropic: overloaded_error"))).toBe(true);
+  });
+
+  it("returns true for Error with '529' in message", () => {
+    expect(isOpusOverloaded(new Error("Request failed with status 529"))).toBe(true);
+  });
+
+  it("returns true for Error with 'overload_error' in message", () => {
+    expect(isOpusOverloaded(new Error("overload_error from upstream"))).toBe(true);
+  });
+
+  it("returns true for object with status 529", () => {
+    expect(isOpusOverloaded({ status: 529 })).toBe(true);
+  });
+
+  it("returns true for object with overloaded type field", () => {
+    expect(isOpusOverloaded({ type: "overloaded_error" })).toBe(true);
+  });
+
+  it("returns true when nested cause contains overloaded error", () => {
+    expect(isOpusOverloaded({ cause: new Error("overloaded") })).toBe(true);
+  });
+
+  it("returns false for unrelated errors", () => {
+    expect(isOpusOverloaded(new Error("Network timeout"))).toBe(false);
+    expect(isOpusOverloaded(new Error("Invalid API key"))).toBe(false);
+    expect(isOpusOverloaded({ status: 500 })).toBe(false);
+  });
+
+  it("returns false for null and non-error values", () => {
+    expect(isOpusOverloaded(null)).toBe(false);
+    expect(isOpusOverloaded(undefined)).toBe(false);
+    expect(isOpusOverloaded("overloaded")).toBe(false);
+  });
+
+  it("does not false-positive on '529' appearing as substring", () => {
+    expect(isOpusOverloaded(new Error("token limit 1529 exceeded"))).toBe(false);
+    expect(isOpusOverloaded(new Error("request id abc529def"))).toBe(false);
+  });
+
+  it("matches standalone 529 status codes in messages", () => {
+    expect(isOpusOverloaded(new Error("status 529"))).toBe(true);
+    expect(isOpusOverloaded(new Error("HTTP 529 overloaded"))).toBe(true);
+  });
+
+  it("traverses deeply nested cause chains", () => {
+    const deep = { cause: { cause: { cause: new Error("overloaded") } } };
+    expect(isOpusOverloaded(deep)).toBe(true);
+  });
+
+  it("stops recursion at depth limit and returns false", () => {
+    // Build a cause chain deeper than 5
+    let obj: Record<string, unknown> = { type: "overloaded_error" };
+    for (let i = 0; i < 7; i++) {
+      obj = { cause: obj };
+    }
+    expect(isOpusOverloaded(obj)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// withOpusRetry
+// ---------------------------------------------------------------------------
+
+describe("withOpusRetry", () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("returns immediately on success (no retry)", async () => {
+    const fn = vi.fn().mockResolvedValue("ok");
+    const result = await withOpusRetry("TEST", fn);
+    expect(result).toBe("ok");
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries on overload error and eventually succeeds", async () => {
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error("overloaded"))
+      .mockResolvedValue("recovered");
+    const promise = withOpusRetry("TEST", fn, 2);
+    await vi.advanceTimersByTimeAsync(2_000);
+    const result = await promise;
+    expect(result).toBe("recovered");
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws after exhausting all retries on overload", async () => {
+    const fn = vi.fn().mockRejectedValue(new Error("overloaded"));
+    const promise = withOpusRetry("TEST", fn, 2).catch((e: Error) => e);
+    await vi.advanceTimersByTimeAsync(5_000);
+    const result = await promise;
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).message).toBe("overloaded");
+    expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
+  });
+
+  it("throws immediately on non-overload errors (no retry)", async () => {
+    const fn = vi.fn().mockRejectedValue(new Error("Invalid API key"));
+    await expect(withOpusRetry("TEST", fn, 2)).rejects.toThrow("Invalid API key");
+    expect(fn).toHaveBeenCalledTimes(1);
   });
 });
