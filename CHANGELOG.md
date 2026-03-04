@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.9](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.8...v0.26.9) (2026-03-04)
+
+
+### Bug Fixes
+
+* **analytics:** close user_new gap and fix user_returning session semantics ([#120](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/120)) ([65df80a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/65df80aba553b41c8d96f4fe19ea3d9aab8a31a0))
+
 ## [0.26.8](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.7...v0.26.8) (2026-03-04)
 
 
