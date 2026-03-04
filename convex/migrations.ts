@@ -146,3 +146,17 @@ export const countPendingReminders = internalQuery({
     };
   },
 });
+
+// ---------------------------------------------------------------------------
+// PostHog Backfill Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Return all users (for use by backfillUsersToPostHog action via ctx.runQuery).
+ */
+export const getAllUsers = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("users").collect();
+  },
+});

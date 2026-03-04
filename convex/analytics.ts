@@ -2,6 +2,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { PostHog } from "posthog-node";
 import { detectCountryFromPhone } from "./lib/analytics";
 
@@ -397,5 +398,71 @@ export const trackScheduledTaskCreditNotification = internalAction({
       tier,
       phone_country: detectCountryFromPhone(phone),
     });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// One-time backfill: sync all existing users to PostHog
+// ---------------------------------------------------------------------------
+
+const BACKFILL_BATCH_SIZE = 10;
+
+/**
+ * Backfill all existing Convex users into PostHog.
+ * For each user, sends an `identify` call (person profile) and a `user_new` event.
+ * Flushes every BACKFILL_BATCH_SIZE users to avoid action timeout.
+ *
+ * Run once from the Convex dashboard after deployment.
+ */
+export const backfillUsersToPostHog = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const posthog = getPostHogClient();
+    if (!posthog) {
+      console.warn("[Backfill] PostHog client unavailable — aborting");
+      return { backfilledCount: 0 };
+    }
+
+    const users = await ctx.runQuery(internal.migrations.getAllUsers);
+    let backfilledCount = 0;
+
+    for (const user of users) {
+      const phone = user.phone;
+      const country = detectCountryFromPhone(phone);
+
+      posthog.identify({
+        distinctId: phone,
+        properties: {
+          phone,
+          country,
+          tier: user.tier ?? "basic",
+          timezone: user.timezone ?? "UTC",
+          name: user.name,
+        },
+      });
+
+      posthog.capture({
+        distinctId: phone,
+        event: "user_new",
+        properties: {
+          phone_country: country,
+          timezone: user.timezone ?? "UTC",
+          backfill: true,
+        },
+      });
+
+      backfilledCount++;
+
+      if (backfilledCount % BACKFILL_BATCH_SIZE === 0) {
+        await posthog.flush();
+        console.log(`[Backfill] Flushed ${backfilledCount}/${users.length} users`);
+      }
+    }
+
+    // Final flush for remaining users
+    await posthog.flush();
+    console.log(`[Backfill] Complete: ${backfilledCount} users backfilled to PostHog`);
+
+    return { backfilledCount };
   },
 });
