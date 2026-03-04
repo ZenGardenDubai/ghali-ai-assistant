@@ -28,6 +28,11 @@ function getPostHogClient(): PostHog | null {
   return cachedClient;
 }
 
+function redactId(id: string): string {
+  if (id.length <= 4) return "***";
+  return `${id.slice(0, 2)}***${id.slice(-2)}`;
+}
+
 async function captureEvent(
   distinctId: string,
   event: string,
@@ -39,7 +44,7 @@ async function captureEvent(
     posthog.capture({ distinctId, event, properties });
     await posthog.flush();
   } catch (error) {
-    console.error(`[PostHog] Failed to flush event "${event}" for ${distinctId}:`, error);
+    console.error(`[PostHog] Failed to flush event "${event}" for ${redactId(distinctId)}:`, error);
   }
 }
 
@@ -86,7 +91,7 @@ export const identifyUser = internalAction({
       });
       await posthog.flush();
     } catch (error) {
-      console.error(`[PostHog] Failed to identify user ${phone}:`, error);
+      console.error(`[PostHog] Failed to identify user ${redactId(phone)}:`, error);
     }
   },
 });

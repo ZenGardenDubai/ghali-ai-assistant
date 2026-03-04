@@ -15,7 +15,7 @@ describe("isNewSession", () => {
     expect(isNewSession(fiveHoursAgo, now, SESSION_GAP_MS)).toBe(true);
   });
 
-  it("returns true when gap is exactly equal to session threshold", () => {
+  it("returns false when gap is exactly equal to session threshold", () => {
     const now = Date.now();
     const exactlyFourHoursAgo = now - SESSION_GAP_MS;
     // gap === SESSION_GAP_MS → NOT strictly greater, so false
