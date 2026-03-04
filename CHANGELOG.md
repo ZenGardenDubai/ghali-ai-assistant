@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.8](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.7...v0.26.8) (2026-03-04)
+
+
+### Bug Fixes
+
+* **admin:** show rolling 7d/30d stats and consolidate duplicate queries ([#119](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/119)) ([5d2ee22](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5d2ee22b86bf45d410afd9d4c719a5136397f050)), closes [#117](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/117)
+
 ## [0.26.7](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.6...v0.26.7) (2026-03-03)
 
 
