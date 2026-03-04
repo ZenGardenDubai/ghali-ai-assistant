@@ -61,15 +61,23 @@ export async function handleAdminCommand(
     case "stats": {
       const stats = (await ctx.runQuery(internal.admin.getStats, {})) as {
         totalUsers: number;
+        proUsers: number;
+        basicUsers: number;
+        // Rolling windows: from (now - X) to now
         activeToday: number;
         activeWeek: number;
         activeMonth: number;
-        newToday: number;
-        activeTodayDubai: number;
+        newToday: number; // rolling 24h — different from newTodayDubai (calendar day)
+        newWeek: number;
+        newMonth: number;
+        // Yesterday window: from (now - 48h) to (now - 24h)
+        activeYesterday: number;
+        newYesterday: number;
+        // Dubai calendar-day stats: anchored to Dubai midnight/week-start/month-start (UTC+4)
+        activeTodayDubai: number; // since Dubai midnight — different from activeToday (rolling 24h)
         activeWeekDubai: number;
         activeMonthDubai: number;
-        newTodayDubai: number;
-        proUsers: number;
+        newTodayDubai: number; // since Dubai midnight — different from newToday (rolling 24h)
       };
       return {
         response: await renderSystemMessage(

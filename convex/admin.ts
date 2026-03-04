@@ -49,16 +49,23 @@ export const TEMPLATE_DEFINITIONS = [
 
 /**
  * Get platform-wide stats for admin dashboard.
+ * Used by both the WhatsApp `admin stats` command and the HTTP `/admin/stats` endpoint.
+ *
+ * Rolling windows: from (now - X) to now, regardless of calendar day.
+ * Dubai calendar windows: from the start of the current Dubai day/week/month (UTC+4).
+ * Yesterday window: from (now - 48h) to (now - 24h), for period-specific comparisons.
  */
 export const getStats = internalQuery({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
 
-    // Rolling windows
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
+    // Rolling windows (from now - X to now)
+    const oneDayAgo = now - DAY;
+    const twoDaysAgo = now - 2 * DAY;
+    const oneWeekAgo = now - 7 * DAY;
+    const oneMonthAgo = now - 30 * DAY;
 
     // Dubai-anchored boundaries (UTC+4, week starts Sunday, month starts 1st)
     const dubaiDayStart = getDubaiMidnightMs(now);
@@ -68,8 +75,10 @@ export const getStats = internalQuery({
     const allUsers = await ctx.db.query("users").collect();
 
     const totalUsers = allUsers.length;
+    const proUsers = allUsers.filter((u) => u.tier === "pro").length;
+    const basicUsers = allUsers.filter((u) => u.tier === "basic").length;
 
-    // Rolling window stats
+    // Rolling window active stats (users who sent a message in the last X hours/days)
     const activeToday = allUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= oneDayAgo
     ).length;
@@ -79,11 +88,21 @@ export const getStats = internalQuery({
     const activeMonth = allUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= oneMonthAgo
     ).length;
-    const newToday = allUsers.filter(
-      (u) => u.createdAt >= oneDayAgo
+
+    // Rolling new users (accounts created in the last X hours/days)
+    const newToday = allUsers.filter((u) => u.createdAt >= oneDayAgo).length;
+    const newWeek = allUsers.filter((u) => u.createdAt >= oneWeekAgo).length;
+    const newMonth = allUsers.filter((u) => u.createdAt >= oneMonthAgo).length;
+
+    // Yesterday window (24h–48h ago) — for period-specific dashboard comparisons
+    const activeYesterday = allUsers.filter(
+      (u) => u.lastMessageAt && u.lastMessageAt >= twoDaysAgo && u.lastMessageAt < oneDayAgo
+    ).length;
+    const newYesterday = allUsers.filter(
+      (u) => u.createdAt >= twoDaysAgo && u.createdAt < oneDayAgo
     ).length;
 
-    // Dubai calendar-day stats
+    // Dubai calendar-day stats (anchored to Dubai midnight/week-start/month-start)
     const activeTodayDubai = allUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= dubaiDayStart
     ).length;
@@ -97,19 +116,25 @@ export const getStats = internalQuery({
       (u) => u.createdAt >= dubaiDayStart
     ).length;
 
-    const proUsers = allUsers.filter((u) => u.tier === "pro").length;
-
     return {
       totalUsers,
+      proUsers,
+      basicUsers,
+      // Rolling windows
       activeToday,
       activeWeek,
       activeMonth,
       newToday,
+      newWeek,
+      newMonth,
+      // Yesterday window
+      activeYesterday,
+      newYesterday,
+      // Dubai calendar-day stats
       activeTodayDubai,
       activeWeekDubai,
       activeMonthDubai,
       newTodayDubai,
-      proUsers,
     };
   },
 });
@@ -215,46 +240,6 @@ export const getAllUsers = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("users").collect();
-  },
-});
-
-/**
- * Period-aware dashboard stats.
- */
-export const getDashboardStats = internalQuery({
-  args: { period: v.union(v.literal("today"), v.literal("yesterday"), v.literal("7d"), v.literal("30d")) },
-  handler: async (ctx, { period }) => {
-    const now = Date.now();
-    const DAY = 24 * 60 * 60 * 1000;
-
-    let start: number;
-    let end: number = now;
-    switch (period) {
-      case "today":
-        start = now - DAY;
-        break;
-      case "yesterday":
-        start = now - 2 * DAY;
-        end = now - DAY;
-        break;
-      case "7d":
-        start = now - 7 * DAY;
-        break;
-      case "30d":
-        start = now - 30 * DAY;
-        break;
-    }
-
-    const allUsers = await ctx.db.query("users").collect();
-    const totalUsers = allUsers.length;
-    const newUsers = allUsers.filter((u) => u.createdAt >= start && u.createdAt < end).length;
-    const activeUsers = allUsers.filter(
-      (u) => u.lastMessageAt && u.lastMessageAt >= start && u.lastMessageAt < end
-    ).length;
-    const proUsers = allUsers.filter((u) => u.tier === "pro").length;
-    const basicUsers = allUsers.filter((u) => u.tier === "basic").length;
-
-    return { totalUsers, newUsers, activeUsers, proUsers, basicUsers };
   },
 });
 

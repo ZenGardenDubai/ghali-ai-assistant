@@ -308,13 +308,37 @@ http.route({
     if (!VALID_PERIODS.has(period)) {
       return new Response("Invalid period", { status: 400 });
     }
-    const result = await ctx.runQuery(internal.admin.getDashboardStats, {
-      period: period as "today" | "yesterday" | "7d" | "30d",
-    });
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const all = await ctx.runQuery(internal.admin.getStats, {});
+    // Map the consolidated stats snapshot to the period-specific response shape.
+    let newUsers: number;
+    let activeUsers: number;
+    switch (period) {
+      case "yesterday":
+        newUsers = all.newYesterday;
+        activeUsers = all.activeYesterday;
+        break;
+      case "7d":
+        newUsers = all.newWeek;
+        activeUsers = all.activeWeek;
+        break;
+      case "30d":
+        newUsers = all.newMonth;
+        activeUsers = all.activeMonth;
+        break;
+      default: // "today"
+        newUsers = all.newToday;
+        activeUsers = all.activeToday;
+    }
+    return new Response(
+      JSON.stringify({
+        totalUsers: all.totalUsers,
+        newUsers,
+        activeUsers,
+        proUsers: all.proUsers,
+        basicUsers: all.basicUsers,
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   }),
 });
 
