@@ -22,11 +22,12 @@ export const findOrCreateUser = internalMutation({
     }
 
     const now = Date.now();
+    const timezone = detectTimezone(phone);
     const userId = await ctx.db.insert("users", {
       phone,
       name,
       language: "en",
-      timezone: detectTimezone(phone),
+      timezone,
       tier: "basic",
       isAdmin: false,
       credits: CREDITS_BASIC,
@@ -45,6 +46,18 @@ export const findOrCreateUser = internalMutation({
         updatedAt: now,
       });
     }
+
+    // Fire analytics at creation time — not first message — so the user appears
+    // in PostHog even if their first message is lost (circuit breaker, crash, etc.)
+    await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
+      phone,
+      timezone,
+    });
+    await ctx.scheduler.runAfter(0, internal.analytics.identifyUser, {
+      phone,
+      timezone,
+      tier: "basic",
+    });
 
     return userId;
   },

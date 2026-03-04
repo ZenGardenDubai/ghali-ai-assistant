@@ -90,6 +90,18 @@ const SORTED_COUNTRY_PREFIXES = Object.keys(PHONE_PREFIX_TO_COUNTRY).sort(
 );
 
 /**
+ * Returns true if the gap since the last message exceeds the session gap threshold,
+ * meaning this message starts a new user session (used for user_returning semantics).
+ */
+export function isNewSession(
+  previousLastMessageAt: number | undefined,
+  now: number,
+  sessionGapMs: number
+): boolean {
+  return !previousLastMessageAt || now - previousLastMessageAt > sessionGapMs;
+}
+
+/**
  * Derive ISO country code from phone number prefix.
  * Returns "XX" if no match found.
  */
