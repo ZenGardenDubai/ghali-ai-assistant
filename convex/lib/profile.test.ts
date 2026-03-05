@@ -109,6 +109,28 @@ describe("upsertProfileEntry", () => {
     expect(result).not.toContain("old.com");
   });
 
+  it("handles case-insensitive category matching", () => {
+    const content = "## Personal\nname: Hesham";
+    const result = upsertProfileEntry(content, "personal", "birthday", "March 15");
+    // Should add to existing "Personal" category, not create "personal"
+    expect(result).toContain("## Personal");
+    expect(result).toContain("name: Hesham");
+    expect(result).toContain("birthday: March 15");
+    expect(result.match(/## /g)!.length).toBe(1); // only one category
+  });
+
+  it("throws on empty category after sanitization", () => {
+    expect(() => upsertProfileEntry("", "##", "name", "Hesham")).toThrow(
+      "Profile category cannot be empty"
+    );
+  });
+
+  it("throws on empty key after sanitization", () => {
+    expect(() => upsertProfileEntry("", "Personal", ":", "Hesham")).toThrow(
+      "Profile key cannot be empty"
+    );
+  });
+
   it("sanitizes category with ## prefix", () => {
     const result = upsertProfileEntry("", "## Personal", "name", "Hesham");
     expect(result).toBe("## Personal\nname: Hesham");
@@ -146,6 +168,14 @@ describe("removeProfileEntry", () => {
     const content = "## Personal\nname: Hesham";
     const result = removeProfileEntry(content, "Professional", "title");
     expect(result.found).toBe(false);
+  });
+
+  it("handles case-insensitive category matching", () => {
+    const content = "## Personal\nname: Hesham\nbirthday: March 15";
+    const result = removeProfileEntry(content, "personal", "name");
+    expect(result.found).toBe(true);
+    expect(result.updated).not.toContain("name:");
+    expect(result.updated).toContain("birthday: March 15");
   });
 
   it("cleans up empty section after removal", () => {

@@ -187,8 +187,12 @@ export async function handleSystemCommand(
       const profileFile = userFiles.find((f) => f.filename === "profile");
       const memoryFile = userFiles.find((f) => f.filename === "memory");
       const parts: string[] = [];
-      if (profileFile?.content) {
-        parts.push(`*Profile:*\n${profileFile.content}`);
+      const cleanProfile = profileFile?.content
+        ?.replace(/^##\s.*$/gm, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+      if (cleanProfile) {
+        parts.push(`*Profile:*\n${cleanProfile}`);
       }
       if (memoryFile?.content) {
         parts.push(`*Memory:*\n${memoryFile.content}`);

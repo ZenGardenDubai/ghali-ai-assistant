@@ -48,6 +48,18 @@ export function parseProfile(content: string): Map<string, Map<string, string>> 
   return result;
 }
 
+/** Find existing category name by case-insensitive match. */
+function findCategoryName(
+  parsed: Map<string, Map<string, string>>,
+  category: string
+): string | null {
+  const target = category.toLowerCase();
+  for (const existing of parsed.keys()) {
+    if (existing.toLowerCase() === target) return existing;
+  }
+  return null;
+}
+
 /**
  * Upsert a key-value entry in the profile.
  * - Key exists → replace value (case-insensitive match, preserves new casing)
@@ -66,6 +78,13 @@ export function upsertProfileEntry(
   key = key.replace(/[:\n]/g, " ").replace(/\s+/g, " ").trim();
   value = value.replace(/\n/g, " ").trim();
 
+  if (!category) {
+    throw new Error("Profile category cannot be empty.");
+  }
+  if (!key) {
+    throw new Error("Profile key cannot be empty.");
+  }
+
   // Delete case
   if (value === "") {
     const { updated } = removeProfileEntry(content, category, key);
@@ -73,7 +92,9 @@ export function upsertProfileEntry(
   }
 
   const parsed = parseProfile(content);
-  const catMap = parsed.get(category);
+  const existingCategoryName = findCategoryName(parsed, category);
+  const categoryName = existingCategoryName ?? category;
+  const catMap = parsed.get(categoryName);
 
   if (catMap) {
     // Find existing key (case-insensitive)
@@ -92,7 +113,7 @@ export function upsertProfileEntry(
   } else {
     const newMap = new Map<string, string>();
     newMap.set(key, value);
-    parsed.set(category, newMap);
+    parsed.set(categoryName, newMap);
   }
 
   return serializeProfile(parsed);
@@ -108,11 +129,11 @@ export function removeProfileEntry(
   key: string
 ): { updated: string; found: boolean } {
   const parsed = parseProfile(content);
-  const catMap = parsed.get(category);
-
-  if (!catMap) {
+  const existingCategoryName = findCategoryName(parsed, category);
+  if (!existingCategoryName) {
     return { updated: content, found: false };
   }
+  const catMap = parsed.get(existingCategoryName)!;
 
   // Case-insensitive key lookup
   let existingKey: string | null = null;
@@ -131,7 +152,7 @@ export function removeProfileEntry(
 
   // Remove empty category
   if (catMap.size === 0) {
-    parsed.delete(category);
+    parsed.delete(existingCategoryName);
   }
 
   return { updated: serializeProfile(parsed), found: true };

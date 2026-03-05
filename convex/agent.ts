@@ -308,15 +308,16 @@ const updateProfile = createTool({
       .describe("The fact value. Use empty string to delete the key."),
   }),
   handler: async (ctx, { category, key, value }) => {
+    const normalizedValue = value.trim();
     await ctx.runMutation(internal.users.internalUpsertProfile, {
       userId: ctx.userId as Id<"users">,
       category,
       key,
-      value,
+      value: normalizedValue,
     });
     return JSON.stringify({
       status: "success",
-      action: value === "" ? "profile_deleted" : "profile_upserted",
+      action: normalizedValue === "" ? "profile_deleted" : "profile_upserted",
       category,
       key,
     });

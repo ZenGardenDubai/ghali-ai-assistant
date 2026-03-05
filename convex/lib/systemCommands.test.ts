@@ -195,6 +195,8 @@ describe("handleSystemCommand", () => {
     expect(result).not.toBeNull();
     expect(result!.response).toContain("Profile:");
     expect(result!.response).toContain("name: Hesham");
+    // ## headers are stripped for WhatsApp
+    expect(result!.response).not.toContain("## Personal");
     expect(result!.response).toContain("Memory:");
     expect(result!.response).toContain("Prefers morning meetings");
   });

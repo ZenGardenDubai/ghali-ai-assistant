@@ -479,13 +479,20 @@ export const internalUpsertProfile = internalMutation({
 
     // Handle existing users who don't have a profile file yet
     if (!file) {
-      const fileId = await ctx.db.insert("userFiles", {
+      await ctx.db.insert("userFiles", {
         userId,
         filename: "profile",
         content: "",
         updatedAt: Date.now(),
       });
-      file = (await ctx.db.get(fileId))!;
+      // Re-read to self-heal if concurrent inserts created duplicates
+      const matches = await ctx.db
+        .query("userFiles")
+        .withIndex("by_userId_filename", (q) =>
+          q.eq("userId", userId).eq("filename", "profile")
+        )
+        .collect();
+      file = matches.sort((a, b) => a._creationTime - b._creationTime)[0]!;
     }
 
     const updated = upsertProfileEntry(file.content, category, key, value);
