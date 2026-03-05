@@ -84,7 +84,7 @@ describe("findOrCreateUser", () => {
     expect(fr!.timezone).toBe("Europe/Paris");
   });
 
-  it("initializes 3 user files on creation", async () => {
+  it("initializes 4 user files on creation", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {

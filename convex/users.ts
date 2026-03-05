@@ -7,6 +7,14 @@ import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
 import { upsertProfileEntry } from "./lib/profile";
 
+/** Shared filename validator for user files. */
+const userFileFilename = v.union(
+  v.literal("memory"),
+  v.literal("personality"),
+  v.literal("heartbeat"),
+  v.literal("profile")
+);
+
 export const findOrCreateUser = internalMutation({
   args: {
     phone: v.string(),
@@ -105,12 +113,7 @@ export const updateUser = internalMutation({
 export const getUserFile = internalQuery({
   args: {
     userId: v.id("users"),
-    filename: v.union(
-      v.literal("memory"),
-      v.literal("personality"),
-      v.literal("heartbeat"),
-      v.literal("profile")
-    ),
+    filename: userFileFilename,
   },
   handler: async (ctx, { userId, filename }) => {
     return await ctx.db
@@ -135,12 +138,7 @@ export const getUserFiles = internalQuery({
 export const updateUserFile = internalMutation({
   args: {
     userId: v.id("users"),
-    filename: v.union(
-      v.literal("memory"),
-      v.literal("personality"),
-      v.literal("heartbeat"),
-      v.literal("profile")
-    ),
+    filename: userFileFilename,
     content: v.string(),
   },
   handler: async (ctx, { userId, filename, content }) => {
@@ -259,12 +257,7 @@ export const getAccountData = internalQuery({
 export const internalUpdateUserFile = internalMutation({
   args: {
     userId: v.id("users"),
-    filename: v.union(
-      v.literal("memory"),
-      v.literal("personality"),
-      v.literal("heartbeat"),
-      v.literal("profile")
-    ),
+    filename: userFileFilename,
     content: v.string(),
   },
   handler: async (ctx, { userId, filename, content }) => {
@@ -470,29 +463,36 @@ export const internalUpsertProfile = internalMutation({
     value: v.string(),
   },
   handler: async (ctx, { userId, category, key, value }) => {
-    let file = await ctx.db
+    let matches = await ctx.db
       .query("userFiles")
       .withIndex("by_userId_filename", (q) =>
         q.eq("userId", userId).eq("filename", "profile")
       )
-      .unique();
+      .collect();
 
     // Handle existing users who don't have a profile file yet
-    if (!file) {
+    if (matches.length === 0) {
       await ctx.db.insert("userFiles", {
         userId,
         filename: "profile",
         content: "",
         updatedAt: Date.now(),
       });
-      // Re-read to self-heal if concurrent inserts created duplicates
-      const matches = await ctx.db
+      // Re-read after insert
+      matches = await ctx.db
         .query("userFiles")
         .withIndex("by_userId_filename", (q) =>
           q.eq("userId", userId).eq("filename", "profile")
         )
         .collect();
-      file = matches.sort((a, b) => a._creationTime - b._creationTime)[0]!;
+    }
+
+    // Self-heal: keep oldest, delete duplicates
+    matches.sort((a, b) => a._creationTime - b._creationTime);
+    const [file, ...duplicates] = matches;
+    if (!file) throw new Error("Profile file not found after insert.");
+    for (const dup of duplicates) {
+      await ctx.db.delete(dup._id);
     }
 
     const updated = upsertProfileEntry(file.content, category, key, value);
