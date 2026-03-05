@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Send, Radio, TestTube, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Send, Radio, TestTube, Loader2, CheckCircle2, XCircle, ImageIcon, Upload, X } from "lucide-react";
 
 interface TemplateInfo {
   key: string;
@@ -54,6 +54,10 @@ export default function TemplatesPage() {
   const [variables, setVariables] = useState<Record<string, string>>({});
   const [totalUserCount, setTotalUserCount] = useState<number>(0);
   const [activeUserCount, setActiveUserCount] = useState<number>(0);
+
+  // Image URL (optional attachment)
+  const [imageUrl, setImageUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   // Send state
   const [adminPhone, setAdminPhone] = useState("");
@@ -93,6 +97,7 @@ export default function TemplatesPage() {
       selectedTemplate.variables.forEach((v) => (fresh[v] = ""));
       setVariables(fresh);
       setResult(null);
+      setImageUrl("");
     }
   }, [selected, selectedTemplate]);
 
@@ -112,21 +117,22 @@ export default function TemplatesPage() {
     setResult(null);
 
     const contentVars = buildContentVariables();
+    const media = imageUrl.trim() || undefined;
     let endpoint: string;
     let body: Record<string, unknown>;
 
     switch (mode) {
       case "test":
         endpoint = "/api/admin/send-test-template";
-        body = { templateEnvVar: selected, variables: contentVars, adminPhone };
+        body = { templateEnvVar: selected, variables: contentVars, adminPhone, mediaUrl: media };
         break;
       case "user":
         endpoint = "/api/admin/send-template";
-        body = { templateEnvVar: selected, variables: contentVars, phone: userPhone };
+        body = { templateEnvVar: selected, variables: contentVars, phone: userPhone, mediaUrl: media };
         break;
       case "broadcast":
         endpoint = "/api/admin/send-template-broadcast";
-        body = { templateEnvVar: selected, variables: contentVars, messageBody: preview };
+        body = { templateEnvVar: selected, variables: contentVars, messageBody: preview, mediaUrl: media };
         break;
     }
 
@@ -142,6 +148,28 @@ export default function TemplatesPage() {
       setResult({ success: false, error: "Network error" });
     } finally {
       setSending(null);
+    }
+  }
+
+  async function handleImageUpload(file: File) {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setImageUrl(data.url);
+      } else {
+        setResult({ success: false, error: data.error || "Upload failed" });
+      }
+    } catch {
+      setResult({ success: false, error: "Upload failed" });
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -231,6 +259,75 @@ export default function TemplatesPage() {
                       />
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Image attachment (optional) */}
+            {selectedTemplate && (
+              <Card className="border-white/[0.06] bg-white/[0.02] backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="text-base text-white/80 flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    Image (optional)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  {/* Upload button + URL input */}
+                  <div className="flex gap-2">
+                    <Input
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="flex-1 border-white/[0.08] bg-white/[0.03] text-white/80 placeholder:text-white/20 focus-visible:ring-[#ED6B23]/30"
+                    />
+                    <Button
+                      type="button"
+                      disabled={uploading}
+                      className="bg-[#ED6B23]/15 text-[#ED6B23] border border-[#ED6B23]/20 hover:bg-[#ED6B23]/25 disabled:opacity-40"
+                      onClick={() => {
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
+                        input.onchange = () => {
+                          const file = input.files?.[0];
+                          if (file) handleImageUpload(file);
+                        };
+                        input.click();
+                      }}
+                    >
+                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      <span className="ml-2">Upload</span>
+                    </Button>
+                  </div>
+
+                  {/* Image preview with clear button */}
+                  {imageUrl.trim() && (
+                    <div className="relative overflow-hidden rounded-lg border border-white/[0.08]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imageUrl.trim()}
+                        alt="Preview"
+                        className="max-h-40 w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        aria-label="Clear image"
+                        onClick={() => setImageUrl("")}
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 p-0 text-white/80 hover:bg-black/80"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-white/25">
+                    Upload an image or paste a public URL. Active users receive it as a media message; inactive users receive it via template header.
+                  </p>
                 </CardContent>
               </Card>
             )}
@@ -372,8 +469,23 @@ export default function TemplatesPage() {
                 {selectedTemplate ? (
                   <div className="space-y-4">
                     {/* WhatsApp-style bubble */}
-                    <div className="rounded-xl bg-[#005c4b]/40 p-4 text-sm text-white/85 leading-relaxed">
-                      {preview || <span className="italic text-white/30">Fill in variables to preview...</span>}
+                    <div className="overflow-hidden rounded-xl bg-[#005c4b]/40">
+                      {imageUrl.trim() && (
+                        <div className="border-b border-white/[0.06]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imageUrl.trim()}
+                            alt="Attachment"
+                            className="max-h-48 w-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="p-4 text-sm text-white/85 leading-relaxed">
+                        {preview || <span className="italic text-white/30">Fill in variables to preview...</span>}
+                      </div>
                     </div>
                     <p className="text-[11px] text-white/25 font-mono">
                       Template: {selectedTemplate.name}

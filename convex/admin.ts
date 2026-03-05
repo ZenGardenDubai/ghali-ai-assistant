@@ -4,6 +4,26 @@ import { internal } from "./_generated/api";
 import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 import { getDubaiMidnightMs, getDubaiWeekStartMs, getDubaiMonthStartMs } from "./lib/dateUtils";
 
+/**
+ * Generate an upload URL for admin image uploads (Convex storage).
+ */
+export const generateUploadUrl = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Get a public URL for a Convex storage ID (admin use).
+ */
+export const getStorageUrl = internalQuery({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, { storageId }) => {
+    return await ctx.storage.getUrl(storageId);
+  },
+});
+
 /** Number of users to send to concurrently in each broadcast batch */
 const BROADCAST_BATCH_SIZE = 50;
 
@@ -40,6 +60,7 @@ export const TEMPLATE_DEFINITIONS = [
   { key: "TWILIO_TPL_REMINDER", name: "ghali_reminder", description: "Scheduled Reminder", variables: ["reminder_text"], preview: "Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant." },
   { key: "TWILIO_TPL_HEARTBEAT", name: "ghali_heartbeat", description: "Proactive Check-in", variables: ["message"], preview: "Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant." },
   { key: "TWILIO_TPL_BROADCAST", name: "ghali_broadcast", description: "Admin Announcement", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { key: "TWILIO_TPL_BROADCAST_IMAGE", name: "ghali_broadcast_image", description: "Admin Announcement (with Image)", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
   { key: "TWILIO_TPL_CREDITS_RESET", name: "ghali_credits_reset", description: "Monthly Credit Refresh", variables: ["credits", "tier"], preview: "Your {{2}} credits have been refreshed. You now have {{1}} credits for this month." },
   { key: "TWILIO_TPL_CREDITS_LOW", name: "ghali_credits_low", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro." },
   { key: "TWILIO_TPL_SUB_ACTIVE", name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
@@ -292,6 +313,15 @@ export const getTemplateStatus = internalQuery({
   },
 });
 
+/** Render a template preview by replacing {{1}}, {{2}}, etc. with variable values. */
+function renderTemplatePreview(preview: string, variables: Record<string, string>): string {
+  let rendered = preview;
+  for (const [key, value] of Object.entries(variables)) {
+    rendered = rendered.replace(`{{${key}}}`, value);
+  }
+  return rendered;
+}
+
 /**
  * Send a template message to the admin's own phone (test mode).
  */
@@ -300,13 +330,25 @@ export const sendTestTemplate = internalAction({
     templateEnvVar: v.string(),
     variables: v.record(v.string(), v.string()),
     adminPhone: v.string(),
+    mediaUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { templateEnvVar, variables, adminPhone }) => {
-    await ctx.runAction(internal.twilio.sendTemplate, {
-      to: adminPhone,
-      templateEnvVar,
-      variables,
-    });
+  handler: async (ctx, { templateEnvVar, variables, adminPhone, mediaUrl }) => {
+    if (mediaUrl) {
+      // Send single media message with template text as caption
+      const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
+      const caption = template ? renderTemplatePreview(template.preview, variables) : "";
+      await ctx.runAction(internal.twilio.sendMedia, {
+        to: adminPhone,
+        caption,
+        mediaUrl,
+      });
+    } else {
+      await ctx.runAction(internal.twilio.sendTemplate, {
+        to: adminPhone,
+        templateEnvVar,
+        variables,
+      });
+    }
     return { success: true };
   },
 });
@@ -319,16 +361,33 @@ export const sendTemplateToUser = internalAction({
     phone: v.string(),
     templateEnvVar: v.string(),
     variables: v.record(v.string(), v.string()),
+    mediaUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { phone, templateEnvVar, variables }) => {
+  handler: async (ctx, { phone, templateEnvVar, variables, mediaUrl }) => {
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
 
-    await ctx.runAction(internal.twilio.sendTemplate, {
-      to: phone,
-      templateEnvVar,
-      variables,
-    });
+    const isActive =
+      !!user.lastMessageAt &&
+      user.lastMessageAt >= Date.now() - WHATSAPP_SESSION_WINDOW_MS;
+
+    if (mediaUrl && isActive) {
+      // Active user: send single media message with template text as caption
+      const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
+      const caption = template ? renderTemplatePreview(template.preview, variables) : "";
+      await ctx.runAction(internal.twilio.sendMedia, {
+        to: phone,
+        caption,
+        mediaUrl,
+      });
+    } else {
+      // Inactive or no image: send template (image baked in via Content API)
+      await ctx.runAction(internal.twilio.sendTemplate, {
+        to: phone,
+        templateEnvVar,
+        variables,
+      });
+    }
     return { success: true, sentCount: 1 };
   },
 });
@@ -343,8 +402,9 @@ export const sendTemplateBroadcast = internalAction({
     templateEnvVar: v.string(),
     variables: v.record(v.string(), v.string()),
     messageBody: v.optional(v.string()),
+    mediaUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { templateEnvVar, variables, messageBody }) => {
+  handler: async (ctx, { templateEnvVar, variables, messageBody, mediaUrl }) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
       phone: string;
@@ -353,16 +413,26 @@ export const sendTemplateBroadcast = internalAction({
 
     const userByPhone = new Map(allUsers.map((u) => [u.phone, u]));
 
-    const sentCount = await sendInBatches(allUsers, (phone) => {
+    const sentCount = await sendInBatches(allUsers, async (phone) => {
       const user = userByPhone.get(phone)!;
       const isActive = user.lastMessageAt && user.lastMessageAt >= cutoff;
 
+      if (isActive && messageBody && mediaUrl) {
+        // Active user with image: send media message with caption
+        return ctx.runAction(internal.twilio.sendMedia, {
+          to: phone,
+          caption: messageBody,
+          mediaUrl,
+        });
+      }
       if (isActive && messageBody) {
+        // Active user, text only
         return ctx.runAction(internal.twilio.sendMessage, {
           to: phone,
           body: messageBody,
         });
       }
+      // Inactive user: send template (image baked into template via Content API)
       return ctx.runAction(internal.twilio.sendTemplate, {
         to: phone,
         templateEnvVar,

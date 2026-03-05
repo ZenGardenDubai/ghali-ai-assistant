@@ -7,5 +7,6 @@ export async function POST(req: NextRequest) {
     templateEnvVar: body.templateEnvVar,
     variables: body.variables,
     messageBody: body.messageBody,
+    mediaUrl: body.mediaUrl,
   });
 }
