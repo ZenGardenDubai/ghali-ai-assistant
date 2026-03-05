@@ -380,13 +380,50 @@ http.route({
 });
 
 http.route({
+  path: "/admin/generate-upload-url",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx) => {
+    const uploadUrl = await ctx.runMutation(internal.admin.generateUploadUrl);
+    return new Response(JSON.stringify({ uploadUrl }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/get-storage-url",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const storageId = body.storageId as string;
+    if (!storageId) {
+      return new Response("Missing storageId", { status: 400 });
+    }
+    const url = await ctx.runQuery(internal.admin.getStorageUrl, {
+      storageId: storageId as Id<"_storage">,
+    });
+    if (!url) {
+      return new Response(JSON.stringify({ error: "Not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ url }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/admin/send-test-template",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { templateEnvVar, variables, adminPhone } = body as {
+    const { templateEnvVar, variables, adminPhone, mediaUrl } = body as {
       templateEnvVar: string;
       variables: Record<string, string>;
       adminPhone: string;
+      mediaUrl?: string;
     };
     if (!templateEnvVar || !variables || !adminPhone) {
       return new Response("Missing templateEnvVar, variables, or adminPhone", { status: 400 });
@@ -395,6 +432,7 @@ http.route({
       templateEnvVar,
       variables,
       adminPhone,
+      mediaUrl,
     });
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -407,10 +445,11 @@ http.route({
   path: "/admin/send-template",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { phone, templateEnvVar, variables } = body as {
+    const { phone, templateEnvVar, variables, mediaUrl } = body as {
       phone: string;
       templateEnvVar: string;
       variables: Record<string, string>;
+      mediaUrl?: string;
     };
     if (!phone || !templateEnvVar || !variables) {
       return new Response("Missing phone, templateEnvVar, or variables", { status: 400 });
@@ -419,6 +458,7 @@ http.route({
       phone,
       templateEnvVar,
       variables,
+      mediaUrl,
     });
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -431,10 +471,11 @@ http.route({
   path: "/admin/send-template-broadcast",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { templateEnvVar, variables, messageBody } = body as {
+    const { templateEnvVar, variables, messageBody, mediaUrl } = body as {
       templateEnvVar: string;
       variables: Record<string, string>;
       messageBody?: string;
+      mediaUrl?: string;
     };
     if (!templateEnvVar || !variables) {
       return new Response("Missing templateEnvVar or variables", { status: 400 });
@@ -443,6 +484,7 @@ http.route({
       templateEnvVar,
       variables,
       messageBody,
+      mediaUrl,
     });
     return new Response(JSON.stringify(result), {
       status: 200,

@@ -7,5 +7,6 @@ export async function POST(req: NextRequest) {
     phone: body.phone,
     templateEnvVar: body.templateEnvVar,
     variables: body.variables,
+    mediaUrl: body.mediaUrl,
   });
 }
