@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.1...v0.31.2) (2026-03-05)
+
+
+### Bug Fixes
+
+* **migrations:** detect cryptic snake_case keys in migrateProfileFormat ([#139](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/139)) ([d161495](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/d1614956c59ca96176fc3a4447653354c2e1dfcc))
+
 ## [0.31.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.0...v0.31.1) (2026-03-05)
 
 
