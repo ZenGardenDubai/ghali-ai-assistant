@@ -190,8 +190,8 @@ describe("internalAppendMemory", () => {
 
     const result = await t.mutation(internal.users.internalAppendMemory, {
       userId,
-      category: "personal",
-      content: "- Name: Ahmad",
+      category: "preferences",
+      content: "- Likes coffee in the morning",
     });
 
     expect(result.compactionScheduled).toBe(false);
@@ -201,8 +201,8 @@ describe("internalAppendMemory", () => {
       filename: "memory",
     });
 
-    expect(file!.content).toContain("## Personal");
-    expect(file!.content).toContain("- Name: Ahmad");
+    expect(file!.content).toContain("## Preferences");
+    expect(file!.content).toContain("- Likes coffee in the morning");
   });
 
   it("appends to existing section", async () => {
@@ -215,15 +215,15 @@ describe("internalAppendMemory", () => {
     // First append
     await t.mutation(internal.users.internalAppendMemory, {
       userId,
-      category: "personal",
-      content: "- Name: Ahmad",
+      category: "preferences",
+      content: "- Likes coffee",
     });
 
     // Second append
     await t.mutation(internal.users.internalAppendMemory, {
       userId,
-      category: "personal",
-      content: "- Age: 30",
+      category: "preferences",
+      content: "- Prefers mornings",
     });
 
     const file = await t.query(internal.users.getUserFile, {
@@ -231,8 +231,8 @@ describe("internalAppendMemory", () => {
       filename: "memory",
     });
 
-    expect(file!.content).toContain("- Name: Ahmad");
-    expect(file!.content).toContain("- Age: 30");
+    expect(file!.content).toContain("- Likes coffee");
+    expect(file!.content).toContain("- Prefers mornings");
   });
 
   it("rejects content over 50KB", async () => {
@@ -264,14 +264,14 @@ describe("internalEditMemory", () => {
 
     await t.mutation(internal.users.internalAppendMemory, {
       userId,
-      category: "personal",
-      content: "- Name: Ahmad",
+      category: "general",
+      content: "- Prefers detailed explanations",
     });
 
     const result = await t.mutation(internal.users.internalEditMemory, {
       userId,
-      search: "- Name: Ahmad",
-      replacement: "- Name: Ahmed",
+      search: "- Prefers detailed explanations",
+      replacement: "- Prefers brief responses",
     });
 
     expect(result.found).toBe(true);
@@ -280,8 +280,8 @@ describe("internalEditMemory", () => {
       userId,
       filename: "memory",
     });
-    expect(file!.content).toContain("- Name: Ahmed");
-    expect(file!.content).not.toContain("- Name: Ahmad");
+    expect(file!.content).toContain("- Prefers brief responses");
+    expect(file!.content).not.toContain("- Prefers detailed explanations");
   });
 
   it("returns found=false for missing search text", async () => {
@@ -354,19 +354,18 @@ describe("saveMemorySnapshot", () => {
   });
 });
 
-describe("internalUpsertProfile", () => {
-  it("upserts a profile entry on empty profile", async () => {
+describe("internalUpdateProfileSection", () => {
+  it("creates a profile section on empty profile", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(internal.users.internalUpsertProfile, {
+    await t.mutation(internal.users.internalUpdateProfileSection, {
       userId,
-      category: "Personal",
-      key: "name",
-      value: "Hesham",
+      category: "personal",
+      content: "- Name: Hesham\n- Birthday: March 15",
     });
 
     const file = await t.query(internal.users.getUserFile, {
@@ -375,28 +374,27 @@ describe("internalUpsertProfile", () => {
     });
 
     expect(file!.content).toContain("## Personal");
-    expect(file!.content).toContain("name: Hesham");
+    expect(file!.content).toContain("- Name: Hesham");
+    expect(file!.content).toContain("- Birthday: March 15");
   });
 
-  it("replaces existing key", async () => {
+  it("replaces entire section content", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    await t.mutation(internal.users.internalUpsertProfile, {
+    await t.mutation(internal.users.internalUpdateProfileSection, {
       userId,
-      category: "Personal",
-      key: "name",
-      value: "Hesham",
+      category: "personal",
+      content: "- Name: Hesham",
     });
 
-    await t.mutation(internal.users.internalUpsertProfile, {
+    await t.mutation(internal.users.internalUpdateProfileSection, {
       userId,
-      category: "Personal",
-      key: "name",
-      value: "Ahmed",
+      category: "personal",
+      content: "- Name: Ahmed\n- Nationality: Emirati",
     });
 
     const file = await t.query(internal.users.getUserFile, {
@@ -404,14 +402,14 @@ describe("internalUpsertProfile", () => {
       filename: "profile",
     });
 
-    expect(file!.content).toContain("name: Ahmed");
+    expect(file!.content).toContain("- Name: Ahmed");
+    expect(file!.content).toContain("- Nationality: Emirati");
     expect(file!.content).not.toContain("Hesham");
   });
 
   it("creates profile file for existing user without one", async () => {
     const t = convexTest(schema, modules);
 
-    // Create user and manually delete their profile file
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
@@ -426,12 +424,10 @@ describe("internalUpsertProfile", () => {
       if (profile) await ctx.db.delete(profile._id);
     });
 
-    // Should create profile file on first upsert
-    await t.mutation(internal.users.internalUpsertProfile, {
+    await t.mutation(internal.users.internalUpdateProfileSection, {
       userId,
-      category: "Professional",
-      key: "title",
-      value: "Director",
+      category: "professional",
+      content: "- Title: Director\n- Company: Hub71",
     });
 
     const file = await t.query(internal.users.getUserFile, {
@@ -440,7 +436,8 @@ describe("internalUpsertProfile", () => {
     });
 
     expect(file).not.toBeNull();
-    expect(file!.content).toContain("title: Director");
+    expect(file!.content).toContain("## Professional");
+    expect(file!.content).toContain("- Title: Director");
   });
 });
 

@@ -5,7 +5,7 @@ import { detectTimezone } from "./lib/utils";
 import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
 import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
-import { upsertProfileEntry } from "./lib/profile";
+import { replaceProfileSection, type ProfileCategory } from "./lib/profile";
 
 /** Shared filename validator for user files. */
 const userFileFilename = v.union(
@@ -287,8 +287,6 @@ export const internalAppendMemory = internalMutation({
   args: {
     userId: v.id("users"),
     category: v.union(
-      v.literal("personal"),
-      v.literal("work_education"),
       v.literal("preferences"),
       v.literal("schedule"),
       v.literal("interests"),
@@ -448,21 +446,27 @@ export const resetApiErrors = internalMutation({
 });
 
 // ============================================================================
-// Profile Upsert
+// Profile Section Replace
 // ============================================================================
 
 /**
- * Upsert a fact in the user's profile file.
+ * Replace an entire section of the user's profile file.
  * Creates the profile file on first write for existing users.
  */
-export const internalUpsertProfile = internalMutation({
+export const internalUpdateProfileSection = internalMutation({
   args: {
     userId: v.id("users"),
-    category: v.string(),
-    key: v.string(),
-    value: v.string(),
+    category: v.union(
+      v.literal("personal"),
+      v.literal("professional"),
+      v.literal("education"),
+      v.literal("family"),
+      v.literal("location"),
+      v.literal("links")
+    ),
+    content: v.string(),
   },
-  handler: async (ctx, { userId, category, key, value }) => {
+  handler: async (ctx, { userId, category, content }) => {
     let matches = await ctx.db
       .query("userFiles")
       .withIndex("by_userId_filename", (q) =>
@@ -487,7 +491,8 @@ export const internalUpsertProfile = internalMutation({
         .collect();
     }
 
-    // Self-heal: keep oldest, delete duplicates
+    // Self-heal: keep oldest, delete duplicates.
+    // TODO: Simplify to .unique() after profile migration stabilizes.
     matches.sort((a, b) => a._creationTime - b._creationTime);
     const [file, ...duplicates] = matches;
     if (!file) throw new Error("Profile file not found after insert.");
@@ -495,7 +500,11 @@ export const internalUpsertProfile = internalMutation({
       await ctx.db.delete(dup._id);
     }
 
-    const updated = upsertProfileEntry(file.content, category, key, value);
+    const updated = replaceProfileSection(
+      file.content,
+      category as ProfileCategory,
+      content
+    );
 
     if (isFileTooLarge(updated)) {
       throw new Error("Profile file would exceed 50KB limit.");

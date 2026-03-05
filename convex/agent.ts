@@ -52,12 +52,12 @@ export const AGENT_INSTRUCTIONS = `You are Ghali, a personal AI assistant on Wha
 ${SYSTEM_BLOCK}
 
 PROFILE RULES:
-- Profile stores IDENTITY facts — who the user IS.
-- Use updateProfile for: name, birthday, location, job, company, education, family, nationality, languages, website, social media.
-- updateProfile uses upsert: key exists → replaced. No duplicates possible.
-- After web research about the user → always save identity facts to profile.
+- Profile stores IDENTITY facts — who the user IS. It is never compacted or summarized.
+- updateProfile replaces an entire section. Always include ALL known facts for that section.
+- Categories: personal (name, birthday, nationality, languages), professional (job, company, skills), education (degrees, schools), family (spouse, children), location (city, country), links (website, social media).
+- After web research about the user → save identity facts to profile.
 - After user shares their own document (CV, resume, bio) → extract identity facts to profile. Do NOT assume every document is about the user — only save when the user indicates it's theirs or context makes it obvious.
-- "What do you know about me" → read from profile (primary) + memory (supplementary).
+- "What do you know about me?" → read from profile (primary) + memory (supplementary).
 
 MEMORY RULES (critical):
 - Memory is for SOFT contextual awareness — behavioral observations, temporary context, relationship notes.
@@ -197,13 +197,13 @@ const appendToMemory = createTool({
     "Append new facts to the user's memory file under a specific category. Use for new information learned from conversation.",
   args: z.object({
     category: z
-      .enum(["personal", "work_education", "preferences", "schedule", "interests", "general"])
+      .enum(["preferences", "schedule", "interests", "general"])
       .describe(
-        "Category: personal (name, age, birthday, location, family), work_education (job, company, education), preferences (food, drink, likes/dislikes), schedule (events, travel, deadlines), interests (hobbies, music, movies, books, art, sports, topics), general (anything else)"
+        "preferences (food, drink, likes/dislikes), schedule (events, travel, deadlines), interests (hobbies, music, movies, books, sports), general (anything else)"
       ),
     content: z
       .string()
-      .describe("New bullet points to append (e.g. '- Name: Ahmad\\n- Birthday: March 15')"),
+      .describe("New bullet points to append (e.g. '- Prefers morning meetings\\n- Interested in AI startups')"),
   }),
   handler: async (ctx, { category, content }) => {
     const result = await ctx.runMutation(internal.users.internalAppendMemory, {
@@ -293,33 +293,25 @@ const updateHeartbeat = createTool({
 
 const updateProfile = createTool({
   description:
-    "Upsert a fact in the user's profile. Profile stores identity facts (who the user IS). Key exists → replaced. Empty value → deletes the key. Use for: name, birthday, location, job, company, education, family, nationality, languages.",
+    "Replace a section of the user's profile with updated content. Profile stores identity facts (who the user IS). Always include ALL known facts for the section — this replaces the entire section, not appends.",
   args: z.object({
     category: z
+      .enum(["personal", "professional", "education", "family", "location", "links"])
+      .describe("Profile section to update"),
+    content: z
       .string()
-      .describe(
-        "Profile category (e.g. 'Personal', 'Professional', 'Education', 'Family', 'Location', 'Links')"
-      ),
-    key: z
-      .string()
-      .describe("The fact key (e.g. 'name', 'title', 'company', 'birthday')"),
-    value: z
-      .string()
-      .describe("The fact value. Use empty string to delete the key."),
+      .describe("Complete section content as bullet points (e.g. '- Name: Hesham\\n- Birthday: March 15'). Include ALL facts for this section."),
   }),
-  handler: async (ctx, { category, key, value }) => {
-    const normalizedValue = value.trim();
-    await ctx.runMutation(internal.users.internalUpsertProfile, {
+  handler: async (ctx, { category, content }) => {
+    await ctx.runMutation(internal.users.internalUpdateProfileSection, {
       userId: ctx.userId as Id<"users">,
       category,
-      key,
-      value: normalizedValue,
+      content: content.trim(),
     });
     return JSON.stringify({
       status: "success",
-      action: normalizedValue === "" ? "profile_deleted" : "profile_upserted",
+      action: "profile_section_updated",
       category,
-      key,
     });
   },
 });

@@ -1,6 +1,10 @@
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getNextCronRun } from "./lib/cronParser";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+import { MODELS } from "./constants";
+import { parseProfileSections, replaceProfileSection, type ProfileCategory } from "./lib/profile";
 
 /**
  * Migrate pending reminders from scheduledJobs to scheduledTasks.
@@ -144,5 +148,304 @@ export const countPendingReminders = internalQuery({
       stale: stale.length,
       willMigrate: reminders.length - stale.length,
     };
+  },
+});
+
+// ============================================================================
+// Profile System Migration (v0.31)
+// ============================================================================
+
+/**
+ * Migrate identity facts from memory's ## Personal and ## Work & Education
+ * sections into the profile file using Gemini Flash for categorization.
+ *
+ * Idempotent: checks if memory still has those sections before migrating.
+ * Run via Convex dashboard after deploying the new code.
+ */
+export const migrateMemoryToProfile = internalAction({
+  args: {},
+  handler: async (ctx): Promise<string> => {
+    const users = await ctx.runQuery(internal.users.getAllUsers, {});
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const user of users) {
+      try {
+        const memoryFile = await ctx.runQuery(internal.users.getUserFile, {
+          userId: user._id,
+          filename: "memory",
+        });
+
+        if (!memoryFile || !memoryFile.content.trim()) {
+          skipped++;
+          continue;
+        }
+
+        const hasPersonal = memoryFile.content.includes("## Personal");
+        const hasWorkEd = memoryFile.content.includes("## Work & Education");
+
+        if (!hasPersonal && !hasWorkEd) {
+          skipped++;
+          continue;
+        }
+
+        // Extract ## Personal and ## Work & Education sections
+        const lines = memoryFile.content.split("\n");
+        const sectionsToExtract: string[] = [];
+        let capturing = false;
+        let capturedLines: string[] = [];
+
+        for (const line of lines) {
+          const headerMatch = line.match(/^##\s+(.+)$/);
+          if (headerMatch) {
+            if (capturing && capturedLines.length > 0) {
+              sectionsToExtract.push(capturedLines.join("\n"));
+            }
+            const name = headerMatch[1]!.trim();
+            capturing = name === "Personal" || name === "Work & Education";
+            capturedLines = capturing ? [`## ${name}`] : [];
+            continue;
+          }
+          if (capturing) {
+            capturedLines.push(line);
+          }
+        }
+        if (capturing && capturedLines.length > 0) {
+          sectionsToExtract.push(capturedLines.join("\n"));
+        }
+
+        const extractedContent = sectionsToExtract.join("\n\n").trim();
+        if (!extractedContent) {
+          skipped++;
+          continue;
+        }
+
+        // Use Gemini Flash to categorize into profile sections
+        const { text: categorized } = await generateText({
+          model: google(MODELS.FLASH),
+          prompt: `Convert the following memory content into profile bullet-point format.
+
+Input (old memory format):
+${extractedContent}
+
+Output format — organize into these sections ONLY if relevant facts exist:
+## Personal
+- Name: ...
+- Birthday: ...
+- Nationality: ...
+- Languages: ...
+
+## Professional
+- Title: ...
+- Company: ...
+- Industry: ...
+- Skills: ...
+
+## Education
+- Degree: ...
+- School: ...
+
+## Family
+- Spouse: ...
+- Children: ...
+
+## Location
+- City: ...
+- Country: ...
+
+## Links
+- Website: ...
+- LinkedIn: ...
+
+Rules:
+- Only include sections that have data
+- Each fact on its own bullet line with "- Key: Value" format
+- Strip any behavioral observations (those stay in memory)
+- Only include identity facts (who the person IS)
+
+Output ONLY the formatted sections, nothing else.`,
+        });
+
+        // Write categorized facts to profile
+        const profileFile = await ctx.runQuery(internal.users.getUserFile, {
+          userId: user._id,
+          filename: "profile",
+        });
+
+        let updatedProfile = profileFile?.content ?? "";
+        const categorizedSections = parseProfileSections(categorized);
+
+        const categoryKeyMap: Record<string, ProfileCategory> = {
+          Personal: "personal",
+          Professional: "professional",
+          Education: "education",
+          Family: "family",
+          Location: "location",
+          Links: "links",
+        };
+
+        for (const [sectionName, sectionContent] of categorizedSections) {
+          const catKey = categoryKeyMap[sectionName];
+          if (catKey && sectionContent.trim()) {
+            updatedProfile = replaceProfileSection(
+              updatedProfile,
+              catKey,
+              sectionContent
+            );
+          }
+        }
+
+        if (updatedProfile.trim()) {
+          await ctx.runMutation(internal.users.internalUpdateUserFile, {
+            userId: user._id,
+            filename: "profile",
+            content: updatedProfile,
+          });
+        }
+
+        // Remove ## Personal and ## Work & Education from memory
+        let updatedMemory = memoryFile.content;
+        updatedMemory = updatedMemory.replace(
+          /## Personal\n[\s\S]*?(?=\n## |\s*$)/,
+          ""
+        );
+        updatedMemory = updatedMemory.replace(
+          /## Work & Education\n[\s\S]*?(?=\n## |\s*$)/,
+          ""
+        );
+        updatedMemory = updatedMemory.replace(/\n{3,}/g, "\n\n").trim();
+
+        await ctx.runMutation(internal.users.internalUpdateUserFile, {
+          userId: user._id,
+          filename: "memory",
+          content: updatedMemory,
+        });
+
+        migrated++;
+        console.log(
+          `Migrated memory→profile for user ${user.phone}: ${categorizedSections.size} sections`
+        );
+      } catch (err) {
+        errors++;
+        console.error(
+          `Error migrating user ${user.phone}:`,
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
+    const summary = `Memory→Profile migration: ${migrated} migrated, ${skipped} skipped, ${errors} errors (${users.length} total)`;
+    console.log(summary);
+    return summary;
+  },
+});
+
+/**
+ * Convert existing key/value profile data to bullet-point format.
+ * Handles profiles created with the old `upsertProfileEntry` (key: value without "- " prefix).
+ *
+ * Idempotent: skips profiles already in bullet-point format.
+ */
+export const migrateProfileFormat = internalAction({
+  args: {},
+  handler: async (ctx): Promise<string> => {
+    const users = await ctx.runQuery(internal.users.getAllUsers, {});
+    let migrated = 0;
+    let skipped = 0;
+    let errors = 0;
+
+    for (const user of users) {
+      try {
+        const profileFile = await ctx.runQuery(internal.users.getUserFile, {
+          userId: user._id,
+          filename: "profile",
+        });
+
+        if (!profileFile || !profileFile.content.trim()) {
+          skipped++;
+          continue;
+        }
+
+        // Check format: bullet-point vs key/value
+        const contentLines: string[] = profileFile.content
+          .split("\n")
+          .filter((l: string) => l.trim() && !l.startsWith("#"));
+        const hasBullets = contentLines.some((l: string) => l.trim().startsWith("- "));
+        const hasKeyValue = contentLines.some(
+          (l: string) => !l.trim().startsWith("- ") && l.includes(":")
+        );
+
+        if (hasBullets && !hasKeyValue) {
+          skipped++; // Already in bullet format
+          continue;
+        }
+
+        if (!hasKeyValue) {
+          skipped++;
+          continue;
+        }
+
+        // Convert key/value to bullet-point format
+        const { text: converted } = await generateText({
+          model: google(MODELS.FLASH),
+          prompt: `Convert this profile from key/value format to bullet-point format.
+
+Input (old key/value format):
+${profileFile.content}
+
+Rules:
+- Keep the same ## section headers
+- Convert each "key: value" line to "- Key: value" (add "- " prefix, capitalize key)
+- Lines already starting with "- " stay as-is
+- Preserve all data, just change the format
+- Output ONLY the formatted content, nothing else.`,
+        });
+
+        // Validate by parsing and re-serializing to prevent corrupted output
+        const parsedSections = parseProfileSections(converted);
+        if (parsedSections.size > 0) {
+          // Re-build from parsed sections to strip any LLM preamble/hallucinations
+          let validated = "";
+          const categoryKeyMap: Record<string, ProfileCategory> = {
+            Personal: "personal",
+            Professional: "professional",
+            Education: "education",
+            Family: "family",
+            Location: "location",
+            Links: "links",
+          };
+          for (const [sectionName, sectionContent] of parsedSections) {
+            const catKey = categoryKeyMap[sectionName];
+            if (catKey && sectionContent.trim()) {
+              validated = replaceProfileSection(validated, catKey, sectionContent);
+            }
+          }
+          if (validated.trim()) {
+            await ctx.runMutation(internal.users.internalUpdateUserFile, {
+              userId: user._id,
+              filename: "profile",
+              content: validated,
+            });
+            migrated++;
+            console.log(`Migrated profile format for user ${user.phone}`);
+          } else {
+            skipped++;
+          }
+        } else {
+          skipped++;
+        }
+      } catch (err) {
+        errors++;
+        console.error(
+          `Error migrating profile for ${user.phone}:`,
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
+    const summary = `Profile format migration: ${migrated} migrated, ${skipped} skipped, ${errors} errors (${users.length} total)`;
+    console.log(summary);
+    return summary;
   },
 });
