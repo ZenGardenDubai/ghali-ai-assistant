@@ -303,10 +303,18 @@ const updateProfile = createTool({
       .describe("Complete section content as bullet points (e.g. '- Name: Hesham\\n- Birthday: March 15'). Include ALL facts for this section."),
   }),
   handler: async (ctx, { category, content }) => {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return JSON.stringify({
+        status: "error",
+        code: "EMPTY_PROFILE_SECTION",
+        message: "Profile section content cannot be empty.",
+      });
+    }
     await ctx.runMutation(internal.users.internalUpdateProfileSection, {
       userId: ctx.userId as Id<"users">,
       category,
-      content: content.trim(),
+      content: trimmed,
     });
     return JSON.stringify({
       status: "success",
