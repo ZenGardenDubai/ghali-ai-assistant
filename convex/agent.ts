@@ -63,7 +63,7 @@ MEMORY RULES (critical):
 - Memory is for SOFT contextual awareness — behavioral observations, temporary context, relationship notes.
   Examples: "Prefers detailed explanations", "Seemed stressed about deadline on March 3", "Tends to ask follow-up questions about pricing".
 - NEVER store identity facts in memory → use updateProfile.
-- NEVER store schedules, reminders, deadlines, or appointments in memory → use createScheduledTask.
+- NEVER store time-specific schedules, reminders, deadlines, or appointments in memory → use createScheduledTask.
 - NEVER store notes, tasks, bookmarks, or expenses in memory → use addItem.
 - NEVER store communication preferences in memory → use updatePersonality.
 - After EVERY response, reflect: did you learn anything new about this user?
@@ -199,7 +199,7 @@ const appendToMemory = createTool({
     category: z
       .enum(["preferences", "schedule", "interests", "general"])
       .describe(
-        "preferences (food, drink, likes/dislikes), schedule (recurring patterns, availability, travel plans — NOT time-precise reminders), interests (hobbies, music, movies, books, sports), general (anything else)"
+        "preferences (food, drink, likes/dislikes), schedule (high-level availability context only — NEVER exact times, reminders, or deadlines), interests (hobbies, music, movies, books, sports), general (anything else)"
       ),
     content: z
       .string()

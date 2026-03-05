@@ -5,6 +5,17 @@ import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { MODELS } from "./constants";
 import { parseProfileSections, replaceProfileSection, type ProfileCategory } from "./lib/profile";
+import { isFileTooLarge } from "./lib/userFiles";
+
+/** Shared mapping from display section names to ProfileCategory keys. */
+const SECTION_TO_CATEGORY: Record<string, ProfileCategory> = {
+  Personal: "personal",
+  Professional: "professional",
+  Education: "education",
+  Family: "family",
+  Location: "location",
+  Links: "links",
+};
 
 /**
  * Migrate pending reminders from scheduledJobs to scheduledTasks.
@@ -276,19 +287,10 @@ Output ONLY the formatted sections, nothing else.`,
         let updatedProfile = profileFile?.content ?? "";
         const categorizedSections = parseProfileSections(categorized);
 
-        const categoryKeyMap: Record<string, ProfileCategory> = {
-          Personal: "personal",
-          Professional: "professional",
-          Education: "education",
-          Family: "family",
-          Location: "location",
-          Links: "links",
-        };
-
         // Merge new facts into existing profile sections (don't clobber)
         const mappedSections: Array<[ProfileCategory, string]> = [];
         for (const [sectionName, sectionContent] of categorizedSections) {
-          const catKey = categoryKeyMap[sectionName];
+          const catKey = SECTION_TO_CATEGORY[sectionName];
           if (catKey && sectionContent.trim()) {
             // Merge with existing section to avoid losing facts
             const existingSections = parseProfileSections(updatedProfile);
@@ -313,6 +315,11 @@ Output ONLY the formatted sections, nothing else.`,
         }
 
         if (updatedProfile.trim()) {
+          if (isFileTooLarge(updatedProfile)) {
+            console.error(`Profile too large after migration for user ${user._id}, skipping`);
+            skipped++;
+            continue;
+          }
           await ctx.runMutation(internal.users.internalUpdateUserFile, {
             userId: user._id,
             filename: "profile",
@@ -424,22 +431,19 @@ Rules:
         if (parsedSections.size > 0) {
           let validated = profileFile.content;
           let replacedCount = 0;
-          const categoryKeyMap: Record<string, ProfileCategory> = {
-            Personal: "personal",
-            Professional: "professional",
-            Education: "education",
-            Family: "family",
-            Location: "location",
-            Links: "links",
-          };
           for (const [sectionName, sectionContent] of parsedSections) {
-            const catKey = categoryKeyMap[sectionName];
+            const catKey = SECTION_TO_CATEGORY[sectionName];
             if (catKey && sectionContent.trim()) {
               validated = replaceProfileSection(validated, catKey, sectionContent);
               replacedCount++;
             }
           }
           if (replacedCount > 0 && validated.trim()) {
+            if (isFileTooLarge(validated)) {
+              console.error(`Profile too large after format migration for user ${user._id}, skipping`);
+              skipped++;
+              continue;
+            }
             await ctx.runMutation(internal.users.internalUpdateUserFile, {
               userId: user._id,
               filename: "profile",
