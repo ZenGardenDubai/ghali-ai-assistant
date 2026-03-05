@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.27.0...v0.28.0) (2026-03-05)
+
+
+### Features
+
+* **agent:** add profile layer for structured identity facts ([#128](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/128)) ([dc9919e](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/dc9919e0766636f0dd932ec78c3de3dce4fba27e))
+
 ## [0.27.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.9...v0.27.0) (2026-03-05)
 
 
