@@ -491,9 +491,9 @@ export const internalUpdateProfileSection = internalMutation({
         .collect();
     }
 
-    // Self-heal: keep oldest, delete duplicates.
+    // Self-heal: keep newest, delete older duplicates.
     // TODO: Simplify to .unique() after profile migration stabilizes.
-    matches.sort((a, b) => a._creationTime - b._creationTime);
+    matches.sort((a, b) => (b.updatedAt ?? b._creationTime) - (a.updatedAt ?? a._creationTime));
     const [file, ...duplicates] = matches;
     if (!file) throw new Error("Profile file not found after insert.");
     for (const dup of duplicates) {

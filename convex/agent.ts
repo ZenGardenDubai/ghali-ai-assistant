@@ -134,7 +134,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 5. *Document Search* — You can search previously uploaded documents via searchDocuments. Only PDF, text, and Office files are indexed. Images, audio, and video are analyzed once but NOT stored for future search.
 
-6. *Per-User Files* — Profile (identity facts, upsert semantics), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}.
+6. *Per-User Files* — Profile (identity facts, section-replace semantics — always include ALL facts for a section), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}. Profile categories: personal, professional, education, family, location, links.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
@@ -199,7 +199,7 @@ const appendToMemory = createTool({
     category: z
       .enum(["preferences", "schedule", "interests", "general"])
       .describe(
-        "preferences (food, drink, likes/dislikes), schedule (events, travel, deadlines), interests (hobbies, music, movies, books, sports), general (anything else)"
+        "preferences (food, drink, likes/dislikes), schedule (recurring patterns, availability, travel plans — NOT time-precise reminders), interests (hobbies, music, movies, books, sports), general (anything else)"
       ),
     content: z
       .string()

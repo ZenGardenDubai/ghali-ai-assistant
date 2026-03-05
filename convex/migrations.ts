@@ -285,15 +285,31 @@ Output ONLY the formatted sections, nothing else.`,
           Links: "links",
         };
 
+        // Merge new facts into existing profile sections (don't clobber)
+        const mappedSections: Array<[ProfileCategory, string]> = [];
         for (const [sectionName, sectionContent] of categorizedSections) {
           const catKey = categoryKeyMap[sectionName];
           if (catKey && sectionContent.trim()) {
-            updatedProfile = replaceProfileSection(
-              updatedProfile,
-              catKey,
-              sectionContent
-            );
+            // Merge with existing section to avoid losing facts
+            const existingSections = parseProfileSections(updatedProfile);
+            const existingBody = existingSections.get(sectionName) ?? "";
+            const mergedBody = Array.from(
+              new Set(
+                `${existingBody}\n${sectionContent}`
+                  .split("\n")
+                  .map((l: string) => l.trim())
+                  .filter(Boolean)
+              )
+            ).join("\n");
+            updatedProfile = replaceProfileSection(updatedProfile, catKey, mergedBody);
+            mappedSections.push([catKey, mergedBody]);
           }
+        }
+
+        // Only clean memory if we actually wrote profile sections
+        if (mappedSections.length === 0) {
+          skipped++;
+          continue;
         }
 
         if (updatedProfile.trim()) {
@@ -304,7 +320,7 @@ Output ONLY the formatted sections, nothing else.`,
           });
         }
 
-        // Remove ## Personal and ## Work & Education from memory
+        // Remove migrated legacy sections only after successful profile write
         let updatedMemory = memoryFile.content;
         updatedMemory = updatedMemory.replace(
           /## Personal\n[\s\S]*?(?=\n## |\s*$)/,
@@ -324,12 +340,12 @@ Output ONLY the formatted sections, nothing else.`,
 
         migrated++;
         console.log(
-          `Migrated memory→profile for user ${user.phone}: ${categorizedSections.size} sections`
+          `Migrated memory→profile for user ${user._id}: ${categorizedSections.size} sections`
         );
       } catch (err) {
         errors++;
         console.error(
-          `Error migrating user ${user.phone}:`,
+          `Error migrating user ${user._id}:`,
           err instanceof Error ? err.message : err
         );
       }
@@ -402,11 +418,12 @@ Rules:
 - Output ONLY the formatted content, nothing else.`,
         });
 
-        // Validate by parsing and re-serializing to prevent corrupted output
+        // Validate by parsing and re-serializing to prevent corrupted output.
+        // Start from existing content so unrecognized sections are preserved.
         const parsedSections = parseProfileSections(converted);
         if (parsedSections.size > 0) {
-          // Re-build from parsed sections to strip any LLM preamble/hallucinations
-          let validated = "";
+          let validated = profileFile.content;
+          let replacedCount = 0;
           const categoryKeyMap: Record<string, ProfileCategory> = {
             Personal: "personal",
             Professional: "professional",
@@ -419,16 +436,17 @@ Rules:
             const catKey = categoryKeyMap[sectionName];
             if (catKey && sectionContent.trim()) {
               validated = replaceProfileSection(validated, catKey, sectionContent);
+              replacedCount++;
             }
           }
-          if (validated.trim()) {
+          if (replacedCount > 0 && validated.trim()) {
             await ctx.runMutation(internal.users.internalUpdateUserFile, {
               userId: user._id,
               filename: "profile",
               content: validated,
             });
             migrated++;
-            console.log(`Migrated profile format for user ${user.phone}`);
+            console.log(`Migrated profile format for user ${user._id}`);
           } else {
             skipped++;
           }
@@ -438,7 +456,7 @@ Rules:
       } catch (err) {
         errors++;
         console.error(
-          `Error migrating profile for ${user.phone}:`,
+          `Error migrating profile for ${user._id}:`,
           err instanceof Error ? err.message : err
         );
       }
