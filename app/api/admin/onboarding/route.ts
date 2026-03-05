@@ -12,9 +12,12 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+  const { storageId, url, enabled } = body ?? {};
   return adminConvexFetch("/admin/onboarding-config", {
+    storageId,
+    url,
+    enabled,
     action: "save",
-    ...body,
   });
 }
 

@@ -512,14 +512,14 @@ http.route({
     }
 
     if (action === "save") {
-      const { storageId, url, enabled } = body as {
-        storageId: string;
-        url: string;
-        enabled: boolean;
-      };
-      if (!storageId || !url) {
+      const storageId = body.storageId;
+      const url = body.url;
+      const enabledRaw = body.enabled;
+
+      if (typeof storageId !== "string" || typeof url !== "string" || !storageId || !url) {
         return new Response("Missing storageId or url", { status: 400 });
       }
+      const enabled = typeof enabledRaw === "boolean" ? enabledRaw : true;
 
       // If replacing, delete old storage file first
       const existing = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
@@ -534,7 +534,7 @@ http.route({
 
       await ctx.runMutation(internal.appConfig.setConfig, {
         key: "onboarding_image",
-        value: JSON.stringify({ storageId, url, enabled: enabled ?? true }),
+        value: JSON.stringify({ storageId, url, enabled }),
       });
       return new Response(JSON.stringify({ success: true }), {
         status: 200,

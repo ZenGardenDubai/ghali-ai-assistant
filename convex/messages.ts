@@ -218,12 +218,16 @@ export const generateResponse = internalAction({
         } catch {
           // Invalid config JSON — skip silently
         }
-        if (parsed?.enabled && typeof parsed.url === "string") {
-          await ctx.runAction(internal.twilio.sendMedia, {
-            to: user.phone,
-            caption: "",
-            mediaUrl: parsed.url,
-          });
+        if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
+          try {
+            await ctx.runAction(internal.twilio.sendMedia, {
+              to: user.phone,
+              caption: "",
+              mediaUrl: parsed.url,
+            });
+          } catch (error) {
+            console.error("Failed to send onboarding infographic:", error);
+          }
         }
       }
     }
