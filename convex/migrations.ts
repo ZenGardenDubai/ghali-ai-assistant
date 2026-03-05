@@ -339,17 +339,32 @@ Output ONLY the formatted sections, nothing else.`,
 
         // Remove migrated legacy sections only after successful profile write
         let updatedMemory = memoryFile.content;
-        // Remove bare identity lines only from the pre-header section
+        // Remove only the bare identity lines whose keys were actually written to profile.
+        // Extract keys from the written profile sections to avoid removing unwritten facts.
         if (bareIdentityLines.length > 0) {
-          const firstHeaderIdx = updatedMemory.search(/^##\s/m);
-          const preHeader = firstHeaderIdx === -1 ? updatedMemory : updatedMemory.slice(0, firstHeaderIdx);
-          const rest = firstHeaderIdx === -1 ? "" : updatedMemory.slice(firstHeaderIdx);
-          let cleanedPreHeader = preHeader;
-          for (const bareLine of bareIdentityLines) {
-            cleanedPreHeader = cleanedPreHeader.replace(bareLine + "\n", "");
-            cleanedPreHeader = cleanedPreHeader.replace(bareLine, "");
+          const writtenKeys = new Set<string>();
+          for (const [, body] of mappedSections) {
+            for (const line of body.split("\n")) {
+              const m = line.match(/^-\s*([^:]+):/);
+              if (m) writtenKeys.add(m[1]!.trim().toLowerCase());
+            }
           }
-          updatedMemory = cleanedPreHeader + rest;
+          const migratedBareLines = bareIdentityLines.filter((bl) => {
+            const m = bl.match(/^-\s*([^:]+):/);
+            return m && writtenKeys.has(m[1]!.trim().toLowerCase());
+          });
+
+          if (migratedBareLines.length > 0) {
+            const firstHeaderIdx = updatedMemory.search(/^##\s/m);
+            const preHeader = firstHeaderIdx === -1 ? updatedMemory : updatedMemory.slice(0, firstHeaderIdx);
+            const rest = firstHeaderIdx === -1 ? "" : updatedMemory.slice(firstHeaderIdx);
+            let cleanedPreHeader = preHeader;
+            for (const bareLine of migratedBareLines) {
+              cleanedPreHeader = cleanedPreHeader.replace(bareLine + "\n", "");
+              cleanedPreHeader = cleanedPreHeader.replace(bareLine, "");
+            }
+            updatedMemory = cleanedPreHeader + rest;
+          }
         }
         updatedMemory = updatedMemory.replace(
           /## Personal\n[\s\S]*?(?=\n## |\s*$)/,
@@ -452,6 +467,17 @@ Rules:
 - Preserve all data values, only clean up the keys
 - Output ONLY the formatted content, nothing else.`,
         });
+
+        // Validate LLM output: every non-empty line must be a section header or "- Key: value"
+        const isValidProfileLine = (line: string) => {
+          const t = line.trim();
+          return t === "" || /^##\s+/.test(t) || /^- [^:]+:\s*.+$/.test(t);
+        };
+        if (!converted.split("\n").every(isValidProfileLine)) {
+          console.error(`LLM returned malformed profile for user ${user._id}, skipping`);
+          skipped++;
+          continue;
+        }
 
         // Validate by parsing and re-serializing to prevent corrupted output.
         // Start from existing content so unrecognized sections are preserved.
