@@ -22,10 +22,11 @@ export async function POST(req: NextRequest) {
   }
 
   const formData = await req.formData();
-  const file = formData.get("file") as File | null;
-  if (!file) {
+  const fileEntry = formData.get("file");
+  if (!(fileEntry instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
+  const file = fileEntry;
 
   // Validate file type (images only)
   if (!file.type.startsWith("image/")) {
@@ -38,6 +39,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "File too large (max 5MB)" }, { status: 400 });
   }
 
+  const FETCH_TIMEOUT = 30_000;
+
   try {
     // Step 1: Get upload URL from Convex
     const uploadUrlRes = await fetch(`${CONVEX_SITE_URL}/admin/generate-upload-url`, {
@@ -46,6 +49,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${INTERNAL_API_SECRET}`,
       },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
     if (!uploadUrlRes.ok) {
       return NextResponse.json({ error: "Failed to get upload URL" }, { status: 500 });
@@ -60,6 +64,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: { "Content-Type": file.type },
       body: file,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
     if (!uploadRes.ok) {
       return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
@@ -77,6 +82,7 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${INTERNAL_API_SECRET}`,
       },
       body: JSON.stringify({ storageId }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT),
     });
     if (!urlRes.ok) {
       return NextResponse.json({ error: "Failed to get storage URL" }, { status: 500 });
@@ -89,6 +95,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url, storageId });
   } catch (err) {
     console.error("Admin image upload error:", err);
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      return NextResponse.json({ error: "Upload timed out" }, { status: 504 });
+    }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

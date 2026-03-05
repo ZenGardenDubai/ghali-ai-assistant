@@ -367,8 +367,12 @@ export const sendTemplateToUser = internalAction({
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
 
-    if (mediaUrl) {
-      // Send single media message with template text as caption
+    const isActive =
+      !!user.lastMessageAt &&
+      user.lastMessageAt >= Date.now() - WHATSAPP_SESSION_WINDOW_MS;
+
+    if (mediaUrl && isActive) {
+      // Active user: send single media message with template text as caption
       const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
       const caption = template ? renderTemplatePreview(template.preview, variables) : "";
       await ctx.runAction(internal.twilio.sendMedia, {
@@ -377,6 +381,7 @@ export const sendTemplateToUser = internalAction({
         mediaUrl,
       });
     } else {
+      // Inactive or no image: send template (image baked in via Content API)
       await ctx.runAction(internal.twilio.sendTemplate, {
         to: phone,
         templateEnvVar,

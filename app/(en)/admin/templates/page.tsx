@@ -313,12 +313,15 @@ export default function TemplatesPage() {
                           (e.target as HTMLImageElement).style.display = "none";
                         }}
                       />
-                      <button
+                      <Button
+                        type="button"
+                        size="icon"
+                        aria-label="Clear image"
                         onClick={() => setImageUrl("")}
-                        className="absolute top-2 right-2 rounded-full bg-black/60 p-1 text-white/80 hover:bg-black/80 transition-colors"
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full bg-black/60 p-0 text-white/80 hover:bg-black/80"
                       >
                         <X className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   )}
 
