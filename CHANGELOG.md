@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.9...v0.27.0) (2026-03-05)
+
+
+### Features
+
+* **whatsapp:** add reply-to-text context for quoted messages ([#126](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/126)) ([a0246d4](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/a0246d434c49e6911d7f72a14608f6f621639044))
+
 ## [0.26.9](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.26.8...v0.26.9) (2026-03-04)
 
 
