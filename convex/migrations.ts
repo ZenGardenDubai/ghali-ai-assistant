@@ -196,16 +196,31 @@ export const migrateMemoryToProfile = internalAction({
         const hasPersonal = memoryFile.content.includes("## Personal");
         const hasWorkEd = memoryFile.content.includes("## Work & Education");
 
-        if (!hasPersonal && !hasWorkEd) {
+        // Also check for bare identity facts before any ## header (e.g. "- Name: Hesham")
+        const lines = memoryFile.content.split("\n");
+        const bareIdentityLines: string[] = [];
+        for (const line of lines) {
+          if (line.match(/^##\s/)) break; // Stop at first section header
+          if (line.match(/^-\s*(Name|Birthday|Age|Nationality|Job|Title|Company|Location|City|Country|Phone|Email|Languages?)\s*:/i)) {
+            bareIdentityLines.push(line);
+          }
+        }
+        const hasBareIdentity = bareIdentityLines.length > 0;
+
+        if (!hasPersonal && !hasWorkEd && !hasBareIdentity) {
           skipped++;
           continue;
         }
 
         // Extract ## Personal and ## Work & Education sections
-        const lines = memoryFile.content.split("\n");
         const sectionsToExtract: string[] = [];
         let capturing = false;
         let capturedLines: string[] = [];
+
+        // Include bare identity facts as pseudo-Personal section
+        if (hasBareIdentity) {
+          sectionsToExtract.push(`## Personal\n${bareIdentityLines.join("\n")}`);
+        }
 
         for (const line of lines) {
           const headerMatch = line.match(/^##\s+(.+)$/);
@@ -324,6 +339,33 @@ Output ONLY the formatted sections, nothing else.`,
 
         // Remove migrated legacy sections only after successful profile write
         let updatedMemory = memoryFile.content;
+        // Remove only the bare identity lines whose keys were actually written to profile.
+        // Extract keys from the written profile sections to avoid removing unwritten facts.
+        if (bareIdentityLines.length > 0) {
+          const writtenKeys = new Set<string>();
+          for (const [, body] of mappedSections) {
+            for (const line of body.split("\n")) {
+              const m = line.match(/^-\s*([^:]+):/);
+              if (m) writtenKeys.add(m[1]!.trim().toLowerCase());
+            }
+          }
+          const migratedBareLines = bareIdentityLines.filter((bl) => {
+            const m = bl.match(/^-\s*([^:]+):/);
+            return m && writtenKeys.has(m[1]!.trim().toLowerCase());
+          });
+
+          if (migratedBareLines.length > 0) {
+            const firstHeaderIdx = updatedMemory.search(/^##\s/m);
+            const preHeader = firstHeaderIdx === -1 ? updatedMemory : updatedMemory.slice(0, firstHeaderIdx);
+            const rest = firstHeaderIdx === -1 ? "" : updatedMemory.slice(firstHeaderIdx);
+            let cleanedPreHeader = preHeader;
+            for (const bareLine of migratedBareLines) {
+              cleanedPreHeader = cleanedPreHeader.replace(bareLine + "\n", "");
+              cleanedPreHeader = cleanedPreHeader.replace(bareLine, "");
+            }
+            updatedMemory = cleanedPreHeader + rest;
+          }
+        }
         updatedMemory = updatedMemory.replace(
           /## Personal\n[\s\S]*?(?=\n## |\s*$)/,
           ""
@@ -408,21 +450,34 @@ export const migrateProfileFormat = internalAction({
           continue;
         }
 
-        // Convert key/value to bullet-point format
+        // Clean up to human-readable bullet-point format
         const { text: converted } = await generateText({
           model: google(MODELS.FLASH),
-          prompt: `Convert this profile from key/value format to bullet-point format.
+          prompt: `Clean up this profile into human-readable bullet-point format.
 
-Input (old key/value format):
+Input:
 ${profileFile.content}
 
 Rules:
 - Keep the same ## section headers
-- Convert each "key: value" line to "- Key: value" (add "- " prefix, capitalize key)
-- Lines already starting with "- " stay as-is
-- Preserve all data, just change the format
+- Every line must be "- Key: value" format
+- Rename cryptic/snake_case keys to human-readable labels (e.g. "bs_dates" → "Bachelor's", "ms_dates" → "Master's", "experience_summary" → "Experience")
+- Capitalize keys properly (e.g. "experience" → "Experience")
+- Add "- " prefix to lines missing it
+- Preserve all data values, only clean up the keys
 - Output ONLY the formatted content, nothing else.`,
         });
+
+        // Validate LLM output: every non-empty line must be a section header or "- Key: value"
+        const isValidProfileLine = (line: string) => {
+          const t = line.trim();
+          return t === "" || /^##\s+/.test(t) || /^- [^:]+:\s*.+$/.test(t);
+        };
+        if (!converted.split("\n").every(isValidProfileLine)) {
+          console.error(`LLM returned malformed profile for user ${user._id}, skipping`);
+          skipped++;
+          continue;
+        }
 
         // Validate by parsing and re-serializing to prevent corrupted output.
         // Start from existing content so unrecognized sections are preserved.
