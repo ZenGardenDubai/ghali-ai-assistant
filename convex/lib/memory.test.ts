@@ -9,8 +9,8 @@ import {
 } from "./memory";
 
 describe("MEMORY_CATEGORIES", () => {
-  it("has 6 categories", () => {
-    expect(Object.keys(MEMORY_CATEGORIES)).toHaveLength(6);
+  it("has 4 categories", () => {
+    expect(Object.keys(MEMORY_CATEGORIES)).toHaveLength(4);
   });
 
   it("CATEGORY_ORDER includes all categories", () => {
@@ -22,8 +22,6 @@ describe("MEMORY_CATEGORIES", () => {
 
 describe("categoryHeader", () => {
   it("returns ## header for each category", () => {
-    expect(categoryHeader("personal")).toBe("## Personal");
-    expect(categoryHeader("work_education")).toBe("## Work & Education");
     expect(categoryHeader("preferences")).toBe("## Preferences");
     expect(categoryHeader("schedule")).toBe("## Schedule");
     expect(categoryHeader("interests")).toBe("## Interests");
@@ -33,65 +31,65 @@ describe("categoryHeader", () => {
 
 describe("appendToCategory", () => {
   it("appends to an existing section", () => {
-    const file = "## Personal\n- Name: Ahmad";
-    const result = appendToCategory(file, "personal", "- Age: 30");
-    expect(result).toContain("## Personal");
-    expect(result).toContain("- Name: Ahmad");
-    expect(result).toContain("- Age: 30");
+    const file = "## Preferences\n- Likes coffee";
+    const result = appendToCategory(file, "preferences", "- Prefers mornings");
+    expect(result).toContain("## Preferences");
+    expect(result).toContain("- Likes coffee");
+    expect(result).toContain("- Prefers mornings");
   });
 
   it("appends to existing section with multiple sections", () => {
-    const file = "## Personal\n- Name: Ahmad\n\n## Preferences\n- Likes coffee";
-    const result = appendToCategory(file, "personal", "- Age: 30");
-    expect(result).toContain("- Name: Ahmad\n- Age: 30");
-    expect(result).toContain("## Preferences\n- Likes coffee");
+    const file = "## Preferences\n- Likes coffee\n\n## General\n- Note";
+    const result = appendToCategory(file, "preferences", "- Prefers mornings");
+    expect(result).toContain("- Likes coffee\n- Prefers mornings");
+    expect(result).toContain("## General\n- Note");
   });
 
   it("creates a missing section on an empty file", () => {
-    const result = appendToCategory("", "personal", "- Name: Ahmad");
-    expect(result).toBe("## Personal\n- Name: Ahmad");
+    const result = appendToCategory("", "preferences", "- Likes coffee");
+    expect(result).toBe("## Preferences\n- Likes coffee");
   });
 
   it("creates a missing section in correct canonical order (before later sections)", () => {
-    const file = "## Preferences\n- Likes tea";
-    const result = appendToCategory(file, "personal", "- Name: Ahmad");
-    const personalIdx = result.indexOf("## Personal");
+    const file = "## General\n- Note";
+    const result = appendToCategory(file, "preferences", "- Likes coffee");
     const preferencesIdx = result.indexOf("## Preferences");
-    expect(personalIdx).toBeLessThan(preferencesIdx);
+    const generalIdx = result.indexOf("## General");
+    expect(preferencesIdx).toBeLessThan(generalIdx);
   });
 
   it("creates a missing section at the end when no later section exists", () => {
-    const file = "## Personal\n- Name: Ahmad";
+    const file = "## Preferences\n- Likes coffee";
     const result = appendToCategory(file, "general", "- Note: test");
-    expect(result).toContain("## Personal\n- Name: Ahmad");
+    expect(result).toContain("## Preferences\n- Likes coffee");
     expect(result).toContain("## General\n- Note: test");
-    const personalIdx = result.indexOf("## Personal");
+    const preferencesIdx = result.indexOf("## Preferences");
     const generalIdx = result.indexOf("## General");
-    expect(generalIdx).toBeGreaterThan(personalIdx);
+    expect(generalIdx).toBeGreaterThan(preferencesIdx);
   });
 
   it("maintains canonical order when inserting between sections", () => {
-    const file = "## Personal\n- Name: Ahmad\n\n## Interests\n- Football";
+    const file = "## Preferences\n- Likes coffee\n\n## Interests\n- Football";
     const result = appendToCategory(file, "schedule", "- Meeting Monday 9am");
-    const personalIdx = result.indexOf("## Personal");
+    const preferencesIdx = result.indexOf("## Preferences");
     const scheduleIdx = result.indexOf("## Schedule");
     const interestsIdx = result.indexOf("## Interests");
-    expect(personalIdx).toBeLessThan(scheduleIdx);
+    expect(preferencesIdx).toBeLessThan(scheduleIdx);
     expect(scheduleIdx).toBeLessThan(interestsIdx);
   });
 });
 
 describe("editMemoryContent", () => {
   it("replaces existing text", () => {
-    const file = "## Personal\n- Name: Ahmad\n- Age: 30";
-    const { updated, found } = editMemoryContent(file, "- Age: 30", "- Age: 31");
+    const file = "## Preferences\n- Likes coffee\n- Prefers mornings";
+    const { updated, found } = editMemoryContent(file, "- Prefers mornings", "- Prefers evenings");
     expect(found).toBe(true);
-    expect(updated).toContain("- Age: 31");
-    expect(updated).not.toContain("- Age: 30");
+    expect(updated).toContain("- Prefers evenings");
+    expect(updated).not.toContain("- Prefers mornings");
   });
 
   it("deletes text when replacement is empty", () => {
-    const file = "## Personal\n- Name: Ahmad\n- Old fact";
+    const file = "## General\n- Name: Ahmad\n- Old fact";
     const { updated, found } = editMemoryContent(file, "- Old fact", "");
     expect(found).toBe(true);
     expect(updated).not.toContain("- Old fact");
@@ -99,28 +97,28 @@ describe("editMemoryContent", () => {
   });
 
   it("returns found=false when search is empty string", () => {
-    const file = "## Personal\n- Name: Ahmad";
+    const file = "## Preferences\n- Likes coffee";
     const { updated, found } = editMemoryContent(file, "", "injected");
     expect(found).toBe(false);
     expect(updated).toBe(file);
   });
 
   it("returns found=false when search is whitespace only", () => {
-    const file = "## Personal\n- Name: Ahmad";
+    const file = "## Preferences\n- Likes coffee";
     const { updated, found } = editMemoryContent(file, "   ", "injected");
     expect(found).toBe(false);
     expect(updated).toBe(file);
   });
 
   it("returns found=false when search text is not found", () => {
-    const file = "## Personal\n- Name: Ahmad";
+    const file = "## Preferences\n- Likes coffee";
     const { updated, found } = editMemoryContent(file, "nonexistent text", "replacement");
     expect(found).toBe(false);
     expect(updated).toBe(file);
   });
 
   it("cleans up excess blank lines after deletion", () => {
-    const file = "## Personal\n- Name: Ahmad\n\n\n\n- Age: 30";
+    const file = "## General\n- Name: Ahmad\n\n\n\n- Age: 30";
     const { updated } = editMemoryContent(file, "- Name: Ahmad", "");
     // Should not have more than 2 consecutive newlines
     expect(updated).not.toMatch(/\n{3,}/);

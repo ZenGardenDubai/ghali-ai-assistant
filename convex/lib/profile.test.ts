@@ -1,188 +1,163 @@
 import { describe, it, expect } from "vitest";
-import { parseProfile, upsertProfileEntry, removeProfileEntry } from "./profile";
+import {
+  replaceProfileSection,
+  parseProfileSections,
+  PROFILE_CATEGORIES,
+  PROFILE_CATEGORY_ORDER,
+} from "./profile";
 
-describe("parseProfile", () => {
+describe("PROFILE_CATEGORIES", () => {
+  it("has 6 categories", () => {
+    expect(Object.keys(PROFILE_CATEGORIES)).toHaveLength(6);
+  });
+
+  it("PROFILE_CATEGORY_ORDER includes all categories", () => {
+    const keys = Object.keys(PROFILE_CATEGORIES).sort();
+    const ordered = [...PROFILE_CATEGORY_ORDER].sort();
+    expect(ordered).toEqual(keys);
+  });
+});
+
+describe("parseProfileSections", () => {
   it("returns empty map for empty string", () => {
-    const result = parseProfile("");
-    expect(result.size).toBe(0);
+    expect(parseProfileSections("").size).toBe(0);
   });
 
-  it("parses single category with entries", () => {
-    const content = "## Personal\nname: Hesham Amiri\nbirthday: March 15";
-    const result = parseProfile(content);
+  it("returns empty map for whitespace-only", () => {
+    expect(parseProfileSections("   \n  ").size).toBe(0);
+  });
+
+  it("parses single section", () => {
+    const content = "## Personal\n- Name: Hesham Amiri\n- Birthday: March 15";
+    const result = parseProfileSections(content);
     expect(result.size).toBe(1);
-    const personal = result.get("Personal");
-    expect(personal).toBeDefined();
-    expect(personal!.get("name")).toBe("Hesham Amiri");
-    expect(personal!.get("birthday")).toBe("March 15");
+    expect(result.get("Personal")).toBe("- Name: Hesham Amiri\n- Birthday: March 15");
   });
 
-  it("parses multiple categories", () => {
-    const content = "## Personal\nname: Hesham\n\n## Professional\ntitle: Director";
-    const result = parseProfile(content);
+  it("parses multiple sections", () => {
+    const content =
+      "## Personal\n- Name: Hesham\n\n## Professional\n- Title: Director";
+    const result = parseProfileSections(content);
     expect(result.size).toBe(2);
-    expect(result.get("Personal")!.get("name")).toBe("Hesham");
-    expect(result.get("Professional")!.get("title")).toBe("Director");
+    expect(result.get("Personal")).toBe("- Name: Hesham");
+    expect(result.get("Professional")).toBe("- Title: Director");
   });
 
-  it("handles colons in values (URLs)", () => {
-    const content = "## Links\nwebsite: https://example.com/path?q=1";
-    const result = parseProfile(content);
-    expect(result.get("Links")!.get("website")).toBe("https://example.com/path?q=1");
-  });
-
-  it("trims whitespace from keys and values", () => {
-    const content = "## Personal\n  name  :  Hesham Amiri  ";
-    const result = parseProfile(content);
-    expect(result.get("Personal")!.get("name")).toBe("Hesham Amiri");
-  });
-
-  it("ignores entries before any category header", () => {
-    const content = "name: Orphan\n\n## Personal\nname: Hesham";
-    const result = parseProfile(content);
+  it("ignores content before any header", () => {
+    const content = "orphan line\n\n## Personal\n- Name: Hesham";
+    const result = parseProfileSections(content);
     expect(result.size).toBe(1);
-    expect(result.get("Personal")!.get("name")).toBe("Hesham");
+    expect(result.get("Personal")).toBe("- Name: Hesham");
   });
 
-  it("skips blank lines and non-entry lines", () => {
-    const content = "## Personal\n\nname: Hesham\n\nsome random text\nbirthday: March 15";
-    const result = parseProfile(content);
-    const personal = result.get("Personal")!;
-    expect(personal.get("name")).toBe("Hesham");
-    expect(personal.get("birthday")).toBe("March 15");
-    expect(personal.size).toBe(2);
+  it("skips sections with empty bodies", () => {
+    const content = "## Personal\n\n## Professional\n- Title: Director";
+    const result = parseProfileSections(content);
+    expect(result.size).toBe(1);
+    expect(result.get("Professional")).toBe("- Title: Director");
   });
 });
 
-describe("upsertProfileEntry", () => {
-  it("creates category and entry on empty content", () => {
-    const result = upsertProfileEntry("", "Personal", "name", "Hesham");
-    expect(result).toBe("## Personal\nname: Hesham");
+describe("replaceProfileSection", () => {
+  it("creates section on empty content", () => {
+    const result = replaceProfileSection("", "personal", "- Name: Hesham");
+    expect(result).toBe("## Personal\n- Name: Hesham");
   });
 
-  it("adds entry to existing category", () => {
-    const content = "## Personal\nname: Hesham";
-    const result = upsertProfileEntry(content, "Personal", "birthday", "March 15");
-    expect(result).toContain("name: Hesham");
-    expect(result).toContain("birthday: March 15");
+  it("creates section in canonical order (before later sections)", () => {
+    const content = "## Professional\n- Title: Director";
+    const result = replaceProfileSection(content, "personal", "- Name: Hesham");
+    const personalIdx = result.indexOf("## Personal");
+    const professionalIdx = result.indexOf("## Professional");
+    expect(personalIdx).toBeLessThan(professionalIdx);
   });
 
-  it("creates new category when needed", () => {
-    const content = "## Personal\nname: Hesham";
-    const result = upsertProfileEntry(content, "Professional", "title", "Director");
-    expect(result).toContain("## Personal\nname: Hesham");
-    expect(result).toContain("## Professional\ntitle: Director");
+  it("creates section in canonical order (after earlier sections)", () => {
+    const content = "## Personal\n- Name: Hesham";
+    const result = replaceProfileSection(content, "links", "- Website: https://example.com");
+    const personalIdx = result.indexOf("## Personal");
+    const linksIdx = result.indexOf("## Links");
+    expect(linksIdx).toBeGreaterThan(personalIdx);
   });
 
-  it("replaces existing key value", () => {
-    const content = "## Personal\nname: Hesham\nbirthday: March 15";
-    const result = upsertProfileEntry(content, "Personal", "name", "Ahmed");
-    expect(result).toContain("name: Ahmed");
+  it("replaces existing section content entirely", () => {
+    const content =
+      "## Personal\n- Name: Hesham\n- Birthday: March 15\n\n## Professional\n- Title: Director";
+    const result = replaceProfileSection(
+      content,
+      "personal",
+      "- Name: Ahmed\n- Nationality: Emirati"
+    );
+    expect(result).toContain("- Name: Ahmed");
+    expect(result).toContain("- Nationality: Emirati");
     expect(result).not.toContain("Hesham");
+    expect(result).not.toContain("Birthday");
+    // Professional section preserved
+    expect(result).toContain("## Professional\n- Title: Director");
   });
 
-  it("deletes key when value is empty string", () => {
-    const content = "## Personal\nname: Hesham\nbirthday: March 15";
-    const result = upsertProfileEntry(content, "Personal", "name", "");
-    expect(result).not.toContain("name:");
-    expect(result).toContain("birthday: March 15");
-  });
-
-  it("removes empty section after deletion", () => {
-    const content = "## Personal\nname: Hesham\n\n## Professional\ntitle: Director";
-    const result = upsertProfileEntry(content, "Personal", "name", "");
+  it("removes section when content is empty", () => {
+    const content =
+      "## Personal\n- Name: Hesham\n\n## Professional\n- Title: Director";
+    const result = replaceProfileSection(content, "personal", "");
     expect(result).not.toContain("## Personal");
-    expect(result).toContain("## Professional\ntitle: Director");
+    expect(result).toContain("## Professional\n- Title: Director");
   });
 
-  it("handles case-insensitive key matching", () => {
-    const content = "## Personal\nName: Hesham";
-    const result = upsertProfileEntry(content, "Personal", "name", "Ahmed");
-    expect(result).toContain("name: Ahmed");
-    expect(result).not.toContain("Name: Hesham");
+  it("removes section when content is whitespace", () => {
+    const content = "## Personal\n- Name: Hesham";
+    const result = replaceProfileSection(content, "personal", "   \n  ");
+    expect(result).toBe("");
   });
 
-  it("handles values with colons", () => {
-    const content = "## Links\nwebsite: https://old.com";
-    const result = upsertProfileEntry(content, "Links", "website", "https://new.com");
-    expect(result).toContain("website: https://new.com");
-    expect(result).not.toContain("old.com");
+  it("maintains canonical order across all 6 categories", () => {
+    let content = "";
+    // Add in reverse order
+    content = replaceProfileSection(content, "links", "- Website: https://example.com");
+    content = replaceProfileSection(content, "location", "- City: Abu Dhabi");
+    content = replaceProfileSection(content, "family", "- Spouse: Sara");
+    content = replaceProfileSection(content, "education", "- Degree: MBA");
+    content = replaceProfileSection(content, "professional", "- Title: Director");
+    content = replaceProfileSection(content, "personal", "- Name: Hesham");
+
+    const personalIdx = content.indexOf("## Personal");
+    const professionalIdx = content.indexOf("## Professional");
+    const educationIdx = content.indexOf("## Education");
+    const familyIdx = content.indexOf("## Family");
+    const locationIdx = content.indexOf("## Location");
+    const linksIdx = content.indexOf("## Links");
+
+    expect(personalIdx).toBeLessThan(professionalIdx);
+    expect(professionalIdx).toBeLessThan(educationIdx);
+    expect(educationIdx).toBeLessThan(familyIdx);
+    expect(familyIdx).toBeLessThan(locationIdx);
+    expect(locationIdx).toBeLessThan(linksIdx);
   });
 
-  it("handles case-insensitive category matching", () => {
-    const content = "## Personal\nname: Hesham";
-    const result = upsertProfileEntry(content, "personal", "birthday", "March 15");
-    // Should add to existing "Personal" category, not create "personal"
+  it("handles multi-line bullet content", () => {
+    const result = replaceProfileSection(
+      "",
+      "personal",
+      "- Name: Hesham Amiri\n- Birthday: March 15\n- Nationality: Emirati\n- Languages: Arabic, English"
+    );
+    expect(result).toContain("- Name: Hesham Amiri");
+    expect(result).toContain("- Languages: Arabic, English");
+  });
+
+  it("trims content before storing", () => {
+    const result = replaceProfileSection("", "personal", "  - Name: Hesham  \n  ");
+    expect(result).toBe("## Personal\n- Name: Hesham");
+  });
+
+  it("preserves unknown sections from other sources", () => {
+    const content = "## Personal\n- Name: Hesham\n\n## Custom\n- Note: something";
+    const result = replaceProfileSection(content, "professional", "- Title: Director");
     expect(result).toContain("## Personal");
-    expect(result).toContain("name: Hesham");
-    expect(result).toContain("birthday: March 15");
-    expect(result.match(/## /g)!.length).toBe(1); // only one category
-  });
-
-  it("throws on empty category after sanitization", () => {
-    expect(() => upsertProfileEntry("", "##", "name", "Hesham")).toThrow(
-      "Profile category cannot be empty"
-    );
-  });
-
-  it("throws on empty key after sanitization", () => {
-    expect(() => upsertProfileEntry("", "Personal", ":", "Hesham")).toThrow(
-      "Profile key cannot be empty"
-    );
-  });
-
-  it("sanitizes category with ## prefix", () => {
-    const result = upsertProfileEntry("", "## Personal", "name", "Hesham");
-    expect(result).toBe("## Personal\nname: Hesham");
-    expect(result).not.toContain("## ## Personal");
-  });
-
-  it("sanitizes key with colons and newlines", () => {
-    const result = upsertProfileEntry("", "Personal", "na:me\nfake", "Hesham");
-    expect(result).toContain("na me fake: Hesham");
-  });
-
-  it("sanitizes value with newlines", () => {
-    const result = upsertProfileEntry("", "Personal", "name", "Line1\nLine2");
-    expect(result).toContain("name: Line1 Line2");
-    expect(result).not.toContain("\n\n");
-  });
-});
-
-describe("removeProfileEntry", () => {
-  it("removes existing key", () => {
-    const content = "## Personal\nname: Hesham\nbirthday: March 15";
-    const result = removeProfileEntry(content, "Personal", "name");
-    expect(result.found).toBe(true);
-    expect(result.updated).not.toContain("name:");
-    expect(result.updated).toContain("birthday: March 15");
-  });
-
-  it("returns found=false for non-existent key", () => {
-    const content = "## Personal\nname: Hesham";
-    const result = removeProfileEntry(content, "Personal", "age");
-    expect(result.found).toBe(false);
-  });
-
-  it("returns found=false for non-existent category", () => {
-    const content = "## Personal\nname: Hesham";
-    const result = removeProfileEntry(content, "Professional", "title");
-    expect(result.found).toBe(false);
-  });
-
-  it("handles case-insensitive category matching", () => {
-    const content = "## Personal\nname: Hesham\nbirthday: March 15";
-    const result = removeProfileEntry(content, "personal", "name");
-    expect(result.found).toBe(true);
-    expect(result.updated).not.toContain("name:");
-    expect(result.updated).toContain("birthday: March 15");
-  });
-
-  it("cleans up empty section after removal", () => {
-    const content = "## Personal\nname: Hesham\n\n## Professional\ntitle: Director";
-    const result = removeProfileEntry(content, "Personal", "name");
-    expect(result.found).toBe(true);
-    expect(result.updated).not.toContain("## Personal");
-    expect(result.updated).toContain("## Professional");
+    expect(result).toContain("## Professional");
+    expect(result).toContain("## Custom");
+    // Custom comes after all known sections
+    const professionalIdx = result.indexOf("## Professional");
+    const customIdx = result.indexOf("## Custom");
+    expect(customIdx).toBeGreaterThan(professionalIdx);
   });
 });

@@ -6,8 +6,6 @@
  */
 
 export const MEMORY_CATEGORIES = {
-  personal: "Personal",
-  work_education: "Work & Education",
   preferences: "Preferences",
   schedule: "Schedule",
   interests: "Interests",
@@ -18,8 +16,6 @@ export type MemoryCategory = keyof typeof MEMORY_CATEGORIES;
 
 /** Canonical order for sections in the memory file */
 export const CATEGORY_ORDER: readonly MemoryCategory[] = [
-  "personal",
-  "work_education",
   "preferences",
   "schedule",
   "interests",

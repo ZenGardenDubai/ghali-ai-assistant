@@ -1,175 +1,129 @@
 /**
- * Profile — pure functions for parsing and upserting structured identity facts.
+ * Profile — pure functions for structured identity facts using bullet-point sections.
  *
  * Format:
  * ```
  * ## Personal
- * name: Hesham Amiri
- * birthday: March 15
+ * - Name: Hesham Amiri
+ * - Birthday: March 15
  *
  * ## Professional
- * title: Executive Director
+ * - Title: Executive Director
+ * - Company: Hub71
  * ```
+ *
+ * No compaction — identity facts are permanent. Section-replace semantics:
+ * the agent replaces an entire section at once, which naturally deduplicates.
  */
+
+export const PROFILE_CATEGORIES = {
+  personal: "Personal",
+  professional: "Professional",
+  education: "Education",
+  family: "Family",
+  location: "Location",
+  links: "Links",
+} as const;
+
+export type ProfileCategory = keyof typeof PROFILE_CATEGORIES;
+
+export const PROFILE_CATEGORY_ORDER: readonly ProfileCategory[] = [
+  "personal",
+  "professional",
+  "education",
+  "family",
+  "location",
+  "links",
+] as const;
 
 /**
- * Parse profile content into a nested Map: category → (key → value).
+ * Replace an entire section of the profile with new content.
+ * - Section exists → replace its content
+ * - Section doesn't exist → create it in canonical order
+ * - Empty newContent → remove the section entirely
  */
-export function parseProfile(content: string): Map<string, Map<string, string>> {
-  const result = new Map<string, Map<string, string>>();
+export function replaceProfileSection(
+  content: string,
+  category: ProfileCategory,
+  newSectionContent: string
+): string {
+  const trimmedNew = newSectionContent.trim();
+  const headerName = PROFILE_CATEGORIES[category];
+  const sections = parseProfileSections(content);
+
+  if (trimmedNew === "") {
+    // Remove the section
+    sections.delete(headerName);
+  } else {
+    sections.set(headerName, trimmedNew);
+  }
+
+  return serializeInOrder(sections);
+}
+
+/**
+ * Parse profile content into a Map of section name → raw section content.
+ * Keys are the display names (e.g. "Personal", not "personal").
+ */
+export function parseProfileSections(content: string): Map<string, string> {
+  const result = new Map<string, string>();
   if (!content.trim()) return result;
 
-  let currentCategory: string | null = null;
+  let currentSection: string | null = null;
+  let currentLines: string[] = [];
 
   for (const line of content.split("\n")) {
-    const trimmed = line.trim();
-
-    // Category header
-    const headerMatch = trimmed.match(/^##\s+(.+)$/);
+    const headerMatch = line.match(/^##\s+(.+)$/);
     if (headerMatch) {
-      currentCategory = headerMatch[1]!.trim();
-      if (!result.has(currentCategory)) {
-        result.set(currentCategory, new Map());
+      // Flush previous section
+      if (currentSection !== null) {
+        const body = currentLines.join("\n").trim();
+        if (body) result.set(currentSection, body);
       }
+      currentSection = headerMatch[1]!.trim();
+      currentLines = [];
       continue;
     }
-
-    // Key: value entry (split on FIRST colon only)
-    if (currentCategory && trimmed.includes(":")) {
-      const colonIdx = trimmed.indexOf(":");
-      const key = trimmed.slice(0, colonIdx).trim();
-      const value = trimmed.slice(colonIdx + 1).trim();
-      if (key) {
-        result.get(currentCategory)!.set(key, value);
-      }
+    if (currentSection !== null) {
+      currentLines.push(line);
     }
+  }
+
+  // Flush last section
+  if (currentSection !== null) {
+    const body = currentLines.join("\n").trim();
+    if (body) result.set(currentSection, body);
   }
 
   return result;
 }
 
-/** Find existing category name by case-insensitive match. */
-function findCategoryName(
-  parsed: Map<string, Map<string, string>>,
-  category: string
-): string | null {
-  const target = category.toLowerCase();
-  for (const existing of parsed.keys()) {
-    if (existing.toLowerCase() === target) return existing;
-  }
-  return null;
-}
+// ============================================================================
+// Helpers
+// ============================================================================
 
-/**
- * Upsert a key-value entry in the profile.
- * - Key exists → replace value (case-insensitive match, preserves new casing)
- * - New key → add to category
- * - Empty value → delete key
- * - New category → create section
- */
-export function upsertProfileEntry(
-  content: string,
-  category: string,
-  key: string,
-  value: string
-): string {
-  // Sanitize inputs to prevent format corruption
-  category = category.replace(/^#+\s*/, "").replace(/\n/g, " ").trim();
-  key = key.replace(/[:\n]/g, " ").replace(/\s+/g, " ").trim();
-  value = value.replace(/\n/g, " ").trim();
+/** Serialize sections back to string in canonical order. */
+function serializeInOrder(sections: Map<string, string>): string {
+  const ordered: string[] = [];
 
-  if (!category) {
-    throw new Error("Profile category cannot be empty.");
-  }
-  if (!key) {
-    throw new Error("Profile key cannot be empty.");
-  }
-
-  // Delete case
-  if (value === "") {
-    const { updated } = removeProfileEntry(content, category, key);
-    return updated;
-  }
-
-  const parsed = parseProfile(content);
-  const existingCategoryName = findCategoryName(parsed, category);
-  const categoryName = existingCategoryName ?? category;
-  const catMap = parsed.get(categoryName);
-
-  if (catMap) {
-    // Find existing key (case-insensitive)
-    let existingKey: string | null = null;
-    for (const k of catMap.keys()) {
-      if (k.toLowerCase() === key.toLowerCase()) {
-        existingKey = k;
-        break;
-      }
-    }
-
-    if (existingKey !== null) {
-      catMap.delete(existingKey);
-    }
-    catMap.set(key, value);
-  } else {
-    const newMap = new Map<string, string>();
-    newMap.set(key, value);
-    parsed.set(categoryName, newMap);
-  }
-
-  return serializeProfile(parsed);
-}
-
-/**
- * Remove a key from the profile. Returns { updated, found }.
- * Cleans up empty sections.
- */
-export function removeProfileEntry(
-  content: string,
-  category: string,
-  key: string
-): { updated: string; found: boolean } {
-  const parsed = parseProfile(content);
-  const existingCategoryName = findCategoryName(parsed, category);
-  if (!existingCategoryName) {
-    return { updated: content, found: false };
-  }
-  const catMap = parsed.get(existingCategoryName)!;
-
-  // Case-insensitive key lookup
-  let existingKey: string | null = null;
-  for (const k of catMap.keys()) {
-    if (k.toLowerCase() === key.toLowerCase()) {
-      existingKey = k;
-      break;
+  // First: sections in canonical order
+  for (const cat of PROFILE_CATEGORY_ORDER) {
+    const name = PROFILE_CATEGORIES[cat];
+    const body = sections.get(name);
+    if (body) {
+      ordered.push(`## ${name}\n${body}`);
     }
   }
 
-  if (existingKey === null) {
-    return { updated: content, found: false };
-  }
-
-  catMap.delete(existingKey);
-
-  // Remove empty category
-  if (catMap.size === 0) {
-    parsed.delete(existingCategoryName);
-  }
-
-  return { updated: serializeProfile(parsed), found: true };
-}
-
-/** Serialize a parsed profile back to string format. */
-function serializeProfile(parsed: Map<string, Map<string, string>>): string {
-  const sections: string[] = [];
-
-  for (const [category, entries] of parsed) {
-    if (entries.size === 0) continue;
-    const lines = [`## ${category}`];
-    for (const [key, value] of entries) {
-      lines.push(`${key}: ${value}`);
+  // Then: any unknown sections (preserve user/agent-created ones)
+  const knownNames = new Set<string>(
+    PROFILE_CATEGORY_ORDER.map((c) => PROFILE_CATEGORIES[c])
+  );
+  for (const [name, body] of sections) {
+    if (!knownNames.has(name) && body) {
+      ordered.push(`## ${name}\n${body}`);
     }
-    sections.push(lines.join("\n"));
   }
 
-  return sections.join("\n\n");
+  return ordered.join("\n\n");
 }
