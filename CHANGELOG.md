@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.0...v0.31.1) (2026-03-05)
+
+
+### Bug Fixes
+
+* **migrations:** handle users without profile file in migrateMemoryToProfile ([#137](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/137)) ([2bd9956](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2bd995689a547042bb8290c736c7468e62e0ac06))
+
 ## [0.31.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.30.0...v0.31.0) (2026-03-05)
 
 
