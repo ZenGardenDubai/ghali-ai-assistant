@@ -1,5 +1,5 @@
 /**
- * Profile — pure functions for parsing and upserting identity facts.
+ * Profile — pure functions for parsing and upserting structured identity facts.
  *
  * Format:
  * ```
