@@ -196,16 +196,31 @@ export const migrateMemoryToProfile = internalAction({
         const hasPersonal = memoryFile.content.includes("## Personal");
         const hasWorkEd = memoryFile.content.includes("## Work & Education");
 
-        if (!hasPersonal && !hasWorkEd) {
+        // Also check for bare identity facts before any ## header (e.g. "- Name: Hesham")
+        const lines = memoryFile.content.split("\n");
+        const bareIdentityLines: string[] = [];
+        for (const line of lines) {
+          if (line.match(/^##\s/)) break; // Stop at first section header
+          if (line.match(/^-\s*(Name|Birthday|Age|Nationality|Job|Title|Company|Location|City|Country|Phone|Email|Languages?)\s*:/i)) {
+            bareIdentityLines.push(line);
+          }
+        }
+        const hasBareIdentity = bareIdentityLines.length > 0;
+
+        if (!hasPersonal && !hasWorkEd && !hasBareIdentity) {
           skipped++;
           continue;
         }
 
         // Extract ## Personal and ## Work & Education sections
-        const lines = memoryFile.content.split("\n");
         const sectionsToExtract: string[] = [];
         let capturing = false;
         let capturedLines: string[] = [];
+
+        // Include bare identity facts as pseudo-Personal section
+        if (hasBareIdentity) {
+          sectionsToExtract.push(`## Personal\n${bareIdentityLines.join("\n")}`);
+        }
 
         for (const line of lines) {
           const headerMatch = line.match(/^##\s+(.+)$/);
@@ -324,6 +339,11 @@ Output ONLY the formatted sections, nothing else.`,
 
         // Remove migrated legacy sections only after successful profile write
         let updatedMemory = memoryFile.content;
+        // Remove bare identity lines (before any ## header)
+        for (const bareLine of bareIdentityLines) {
+          updatedMemory = updatedMemory.replace(bareLine + "\n", "");
+          updatedMemory = updatedMemory.replace(bareLine, ""); // last line edge case
+        }
         updatedMemory = updatedMemory.replace(
           /## Personal\n[\s\S]*?(?=\n## |\s*$)/,
           ""
@@ -408,19 +428,21 @@ export const migrateProfileFormat = internalAction({
           continue;
         }
 
-        // Convert key/value to bullet-point format
+        // Clean up to human-readable bullet-point format
         const { text: converted } = await generateText({
           model: google(MODELS.FLASH),
-          prompt: `Convert this profile from key/value format to bullet-point format.
+          prompt: `Clean up this profile into human-readable bullet-point format.
 
-Input (old key/value format):
+Input:
 ${profileFile.content}
 
 Rules:
 - Keep the same ## section headers
-- Convert each "key: value" line to "- Key: value" (add "- " prefix, capitalize key)
-- Lines already starting with "- " stay as-is
-- Preserve all data, just change the format
+- Every line must be "- Key: value" format
+- Rename cryptic/snake_case keys to human-readable labels (e.g. "bs_dates" → "Bachelor's", "ms_dates" → "Master's", "experience_summary" → "Experience")
+- Capitalize keys properly (e.g. "experience" → "Experience")
+- Add "- " prefix to lines missing it
+- Preserve all data values, only clean up the keys
 - Output ONLY the formatted content, nothing else.`,
         });
 
