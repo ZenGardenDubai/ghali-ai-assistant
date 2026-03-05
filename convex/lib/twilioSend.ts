@@ -70,6 +70,36 @@ export async function sendWhatsAppMedia(
 }
 
 /**
+ * Fetch the body of a previously sent/received message by SID.
+ * Used to provide reply-to-text context when a user quotes a text message.
+ */
+export async function fetchMessageBody(
+  accountSid: string,
+  authToken: string,
+  messageSid: string
+): Promise<string | null> {
+  if (!/^SM[0-9a-f]{32}$/i.test(messageSid)) {
+    throw new Error(`Invalid message SID format: ${messageSid}`);
+  }
+
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages/${messageSid}.json`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Twilio fetch message error (${response.status}): ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  return data.body ?? null;
+}
+
+/**
  * Send a WhatsApp Content Template message (works outside the 24h session window).
  * Uses ContentSid + ContentVariables instead of Body.
  */

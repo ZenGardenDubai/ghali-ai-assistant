@@ -155,6 +155,24 @@ export function getCurrentDateTime(timezone?: string): {
   return { date, time, tz };
 }
 
+const REPLY_QUOTE_MAX_LENGTH = 500;
+
+/**
+ * Build a prompt with reply-to-text context prepended.
+ * Truncates the quoted body to avoid bloating the prompt.
+ */
+export function buildReplyToTextPrompt(
+  quotedBody: string,
+  userMessage: string,
+  maxQuoteLength: number = REPLY_QUOTE_MAX_LENGTH
+): string {
+  const truncated =
+    quotedBody.length > maxQuoteLength
+      ? quotedBody.slice(0, maxQuoteLength) + "..."
+      : quotedBody;
+  return `[Replying to: "${truncated}"]\n${userMessage}`;
+}
+
 export function splitLongMessage(
   text: string,
   maxLength: number = WHATSAPP_MAX_LENGTH

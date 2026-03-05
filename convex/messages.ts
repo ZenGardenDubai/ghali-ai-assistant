@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent } from "./agent";
 import { MODELS } from "./models";
-import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
@@ -552,6 +552,22 @@ export const generateResponse = internalAction({
           mediaUrl = stored.storageUrl;
           mediaContentType = stored.mediaType;
           isReprocessing = true;
+        }
+      }
+
+      // Reply-to-text: if replying to a text message (no media found), fetch the quoted message
+      if (!mediaUrl && !replyStorageId) {
+        try {
+          const quotedBody: string | null = await ctx.runAction(
+            internal.twilio.fetchOriginalMessage,
+            { messageSid: originalRepliedMessageSid }
+          );
+          if (quotedBody) {
+            prompt = buildReplyToTextPrompt(quotedBody, body);
+          }
+        } catch (e) {
+          // Non-critical — if fetch fails, proceed without quoted context
+          console.warn("Failed to fetch replied-to message:", e);
         }
       }
     }
