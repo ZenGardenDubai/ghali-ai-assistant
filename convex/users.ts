@@ -5,6 +5,15 @@ import { detectTimezone } from "./lib/utils";
 import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
 import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
+import { upsertProfileEntry } from "./lib/profile";
+
+/** Shared filename validator for user files. */
+const userFileFilename = v.union(
+  v.literal("memory"),
+  v.literal("personality"),
+  v.literal("heartbeat"),
+  v.literal("profile")
+);
 
 export const findOrCreateUser = internalMutation({
   args: {
@@ -36,8 +45,8 @@ export const findOrCreateUser = internalMutation({
       createdAt: now,
     });
 
-    // Initialize the 3 user files
-    const files = ["memory", "personality", "heartbeat"] as const;
+    // Initialize the 4 user files
+    const files = ["memory", "personality", "heartbeat", "profile"] as const;
     for (const filename of files) {
       await ctx.db.insert("userFiles", {
         userId,
@@ -104,11 +113,7 @@ export const updateUser = internalMutation({
 export const getUserFile = internalQuery({
   args: {
     userId: v.id("users"),
-    filename: v.union(
-      v.literal("memory"),
-      v.literal("personality"),
-      v.literal("heartbeat")
-    ),
+    filename: userFileFilename,
   },
   handler: async (ctx, { userId, filename }) => {
     return await ctx.db
@@ -133,11 +138,7 @@ export const getUserFiles = internalQuery({
 export const updateUserFile = internalMutation({
   args: {
     userId: v.id("users"),
-    filename: v.union(
-      v.literal("memory"),
-      v.literal("personality"),
-      v.literal("heartbeat")
-    ),
+    filename: userFileFilename,
     content: v.string(),
   },
   handler: async (ctx, { userId, filename, content }) => {
@@ -256,11 +257,7 @@ export const getAccountData = internalQuery({
 export const internalUpdateUserFile = internalMutation({
   args: {
     userId: v.id("users"),
-    filename: v.union(
-      v.literal("memory"),
-      v.literal("personality"),
-      v.literal("heartbeat")
-    ),
+    filename: userFileFilename,
     content: v.string(),
   },
   handler: async (ctx, { userId, filename, content }) => {
@@ -446,6 +443,67 @@ export const resetApiErrors = internalMutation({
     await ctx.db.patch(userId, {
       consecutiveErrors: 0,
       errorBackoffUntil: undefined,
+    });
+  },
+});
+
+// ============================================================================
+// Profile Upsert
+// ============================================================================
+
+/**
+ * Upsert a fact in the user's profile file.
+ * Creates the profile file on first write for existing users.
+ */
+export const internalUpsertProfile = internalMutation({
+  args: {
+    userId: v.id("users"),
+    category: v.string(),
+    key: v.string(),
+    value: v.string(),
+  },
+  handler: async (ctx, { userId, category, key, value }) => {
+    let matches = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", "profile")
+      )
+      .collect();
+
+    // Handle existing users who don't have a profile file yet
+    if (matches.length === 0) {
+      await ctx.db.insert("userFiles", {
+        userId,
+        filename: "profile",
+        content: "",
+        updatedAt: Date.now(),
+      });
+      // Re-read after insert
+      matches = await ctx.db
+        .query("userFiles")
+        .withIndex("by_userId_filename", (q) =>
+          q.eq("userId", userId).eq("filename", "profile")
+        )
+        .collect();
+    }
+
+    // Self-heal: keep oldest, delete duplicates
+    matches.sort((a, b) => a._creationTime - b._creationTime);
+    const [file, ...duplicates] = matches;
+    if (!file) throw new Error("Profile file not found after insert.");
+    for (const dup of duplicates) {
+      await ctx.db.delete(dup._id);
+    }
+
+    const updated = upsertProfileEntry(file.content, category, key, value);
+
+    if (isFileTooLarge(updated)) {
+      throw new Error("Profile file would exceed 50KB limit.");
+    }
+
+    await ctx.db.patch(file._id, {
+      content: updated,
+      updatedAt: Date.now(),
     });
   },
 });

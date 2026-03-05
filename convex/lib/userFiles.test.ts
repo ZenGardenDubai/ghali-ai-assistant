@@ -66,8 +66,16 @@ describe("AGENT_INSTRUCTIONS", () => {
     expect(AGENT_INSTRUCTIONS).toContain(SYSTEM_BLOCK);
   });
 
+  it("contains profile rules", () => {
+    expect(AGENT_INSTRUCTIONS).toContain("PROFILE RULES");
+  });
+
   it("contains memory rules", () => {
     expect(AGENT_INSTRUCTIONS).toContain("MEMORY RULES");
+  });
+
+  it("instructs to call updateProfile for identity facts", () => {
+    expect(AGENT_INSTRUCTIONS).toContain("updateProfile");
   });
 
   it("instructs to call appendToMemory", () => {
@@ -113,20 +121,30 @@ describe("buildUserContext", () => {
     expect(result).toContain("- remind gym 7am daily");
   });
 
-  it("includes all three files in correct order", () => {
+  it("includes profile file with header", () => {
+    const files = [{ filename: "profile", content: "## Personal\nname: Hesham" }];
+    const result = buildUserContext(files, datetime);
+    expect(result).toContain("## User Profile");
+    expect(result).toContain("name: Hesham");
+  });
+
+  it("includes all four files in correct order", () => {
     const files = [
       { filename: "memory", content: "Name: Hesham" },
       { filename: "personality", content: "Casual tone" },
       { filename: "heartbeat", content: "- gym 7am" },
+      { filename: "profile", content: "## Personal\nname: Hesham" },
     ];
     const result = buildUserContext(files, datetime);
 
+    const profileIdx = result.indexOf("## User Profile");
     const personalityIdx = result.indexOf("## User Personality Preferences");
     const memoryIdx = result.indexOf("## User Memory");
     const heartbeatIdx = result.indexOf("## User Heartbeat/Reminders");
 
-    // Order: datetime, personality, memory, heartbeat
-    expect(personalityIdx).toBeGreaterThan(0);
+    // Order: datetime, profile, personality, memory, heartbeat
+    expect(profileIdx).toBeGreaterThan(0);
+    expect(personalityIdx).toBeGreaterThan(profileIdx);
     expect(memoryIdx).toBeGreaterThan(personalityIdx);
     expect(heartbeatIdx).toBeGreaterThan(memoryIdx);
   });

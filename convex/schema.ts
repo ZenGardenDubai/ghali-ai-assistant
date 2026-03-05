@@ -38,7 +38,8 @@ export default defineSchema({
     filename: v.union(
       v.literal("memory"),
       v.literal("personality"),
-      v.literal("heartbeat")
+      v.literal("heartbeat"),
+      v.literal("profile")
     ),
     content: v.string(),
     updatedAt: v.number(),

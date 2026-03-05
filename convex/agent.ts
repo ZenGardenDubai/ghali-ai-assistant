@@ -51,18 +51,27 @@ export const AGENT_INSTRUCTIONS = `You are Ghali, a personal AI assistant on Wha
 
 ${SYSTEM_BLOCK}
 
+PROFILE RULES:
+- Profile stores IDENTITY facts — who the user IS.
+- Use updateProfile for: name, birthday, location, job, company, education, family, nationality, languages, website, social media.
+- updateProfile uses upsert: key exists → replaced. No duplicates possible.
+- After web research about the user → always save identity facts to profile.
+- After user shares their own document (CV, resume, bio) → extract identity facts to profile. Do NOT assume every document is about the user — only save when the user indicates it's theirs or context makes it obvious.
+- "What do you know about me" → read from profile (primary) + memory (supplementary).
+
 MEMORY RULES (critical):
-- You have a memory file for this user. It's loaded in your context above.
+- Memory is for SOFT contextual awareness — behavioral observations, temporary context, relationship notes.
+  Examples: "Prefers detailed explanations", "Seemed stressed about deadline on March 3", "Tends to ask follow-up questions about pricing".
+- NEVER store identity facts in memory → use updateProfile.
+- NEVER store schedules, reminders, deadlines, or appointments in memory → use createScheduledTask.
+- NEVER store notes, tasks, bookmarks, or expenses in memory → use addItem.
+- NEVER store communication preferences in memory → use updatePersonality.
 - After EVERY response, reflect: did you learn anything new about this user?
-  - Name, age, birthday, location, timezone → appendToMemory(personal)
-  - Job, industry, company, education → appendToMemory(work_education)
-  - Food, drink, communication style likes/dislikes → appendToMemory(preferences)
-  - Events, travel, deadlines, appointments → appendToMemory(schedule)
-  - Hobbies, topics they engage with, favorite music/movies/books/art/sports → appendToMemory(interests)
-  - Anything else → appendToMemory(general)
-- If yes → call appendToMemory with the right category. Don't rewrite — append.
+  - Identity facts (name, birthday, location, job, etc.) → updateProfile
+  - Behavioral observations, relationship notes → appendToMemory
+- If yes → call the appropriate tool. Don't rewrite memory — append.
 - If no → don't call appendToMemory (save tokens).
-- To correct or remove facts (user moved cities, changed jobs, etc.) → call editMemory.
+- To correct or remove facts in memory → call editMemory.
 - Communication style preferences (tone, verbosity, emoji) → updatePersonality (NOT memory).
 - Language: always respond in the language the user writes in for that message. Only update the user's language preference in memory if they explicitly ask to change it ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch.
 - NEVER ask "should I remember this?" — just remember it silently.
@@ -125,7 +134,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 5. *Document Search* — You can search previously uploaded documents via searchDocuments. Only PDF, text, and Office files are indexed. Images, audio, and video are analyzed once but NOT stored for future search.
 
-6. *Per-User Files* — Memory file capped at 50KB with auto-compaction. Personality and heartbeat capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}.
+6. *Per-User Files* — Profile (identity facts, upsert semantics), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
@@ -279,6 +288,39 @@ const updateHeartbeat = createTool({
       content,
     });
     return JSON.stringify({ status: "success", action: "heartbeat_updated" });
+  },
+});
+
+const updateProfile = createTool({
+  description:
+    "Upsert a fact in the user's profile. Profile stores identity facts (who the user IS). Key exists → replaced. Empty value → deletes the key. Use for: name, birthday, location, job, company, education, family, nationality, languages.",
+  args: z.object({
+    category: z
+      .string()
+      .describe(
+        "Profile category (e.g. 'Personal', 'Professional', 'Education', 'Family', 'Location', 'Links')"
+      ),
+    key: z
+      .string()
+      .describe("The fact key (e.g. 'name', 'title', 'company', 'birthday')"),
+    value: z
+      .string()
+      .describe("The fact value. Use empty string to delete the key."),
+  }),
+  handler: async (ctx, { category, key, value }) => {
+    const normalizedValue = value.trim();
+    await ctx.runMutation(internal.users.internalUpsertProfile, {
+      userId: ctx.userId as Id<"users">,
+      category,
+      key,
+      value: normalizedValue,
+    });
+    return JSON.stringify({
+      status: "success",
+      action: normalizedValue === "" ? "profile_deleted" : "profile_upserted",
+      category,
+      key,
+    });
   },
 });
 
@@ -1640,6 +1682,7 @@ export const ghaliAgent = new Agent(components.agent, {
     editMemory,
     updatePersonality,
     updateHeartbeat,
+    updateProfile,
     deepReasoning,
     webSearch,
     generateImage,

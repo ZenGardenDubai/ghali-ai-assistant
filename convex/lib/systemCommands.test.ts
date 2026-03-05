@@ -27,8 +27,11 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const makeUserFiles = (memory?: string) => {
+const makeUserFiles = (memory?: string, profile?: string) => {
   const files = [];
+  if (profile !== undefined) {
+    files.push({ filename: "profile", content: profile });
+  }
   if (memory !== undefined) {
     files.push({ filename: "memory", content: memory });
   }
@@ -180,6 +183,22 @@ describe("handleSystemCommand", () => {
     expect(result!.response).toContain("*What I Know About You*");
     expect(result!.response).toContain("Likes coffee");
     expect(result!.response).toContain("Lives in Dubai");
+  });
+
+  it("routes 'my memory' with profile and memory", async () => {
+    const result = await handleSystemCommand(
+      "my memory",
+      makeUser(),
+      makeUserFiles("- Prefers morning meetings", "## Personal\nname: Hesham"),
+      "my memory"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Profile:");
+    expect(result!.response).toContain("name: Hesham");
+    // ## headers are stripped for WhatsApp
+    expect(result!.response).not.toContain("## Personal");
+    expect(result!.response).toContain("Memory:");
+    expect(result!.response).toContain("Prefers morning meetings");
   });
 
   it("routes 'my memory' with empty memory", async () => {
