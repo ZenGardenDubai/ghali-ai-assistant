@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.29.0...v0.30.0) (2026-03-05)
+
+
+### Features
+
+* **admin:** add onboarding infographic config and admin page ([#133](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/133)) ([c373022](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/c3730221c7fd81f4ca4c4dcbb09e749a7c4ba2fc))
+
 ## [0.29.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.28.0...v0.29.0) (2026-03-05)
 
 
