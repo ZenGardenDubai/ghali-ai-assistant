@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.2...v0.31.3) (2026-03-05)
+
+
+### Bug Fixes
+
+* **migrations:** improve LLM prompt and capture bare identity facts ([#141](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/141)) ([5f017e6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5f017e627e7f31d6eccb1a9ffe2415fddd9923a0))
+
 ## [0.31.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.1...v0.31.2) (2026-03-05)
 
 
