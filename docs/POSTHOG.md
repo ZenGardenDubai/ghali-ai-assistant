@@ -34,14 +34,14 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 ### `user_new`
 
-First message from an unknown phone number.
+Fired when a new user account is created.
 
 | Property | Type | Description |
 |---|---|---|
 | `phone_country` | string | ISO country code (e.g. `AE`, `GB`) |
 | `timezone` | string | IANA timezone (e.g. `Asia/Dubai`) |
 
-**Triggered in**: `convex/messages.ts` — when `onboardingStep === 1`
+**Triggered in**: `convex/users.ts` — `findOrCreateUser`, immediately after `db.insert` succeeds (scheduled via `ctx.scheduler.runAfter(0, ...)`)
 
 ### `user_returning`
 
