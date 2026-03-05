@@ -94,11 +94,12 @@ describe("findOrCreateUser", () => {
 
     const files = await t.query(internal.users.getUserFiles, { userId });
 
-    expect(files).toHaveLength(3);
+    expect(files).toHaveLength(4);
     expect(files.map((f: { filename: string }) => f.filename).sort()).toEqual([
       "heartbeat",
       "memory",
       "personality",
+      "profile",
     ]);
     expect(files.every((f: { content: string }) => f.content === "")).toBe(true);
   });
@@ -350,6 +351,96 @@ describe("saveMemorySnapshot", () => {
 
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0]!.content).toBe("new content");
+  });
+});
+
+describe("internalUpsertProfile", () => {
+  it("upserts a profile entry on empty profile", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.internalUpsertProfile, {
+      userId,
+      category: "Personal",
+      key: "name",
+      value: "Hesham",
+    });
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "profile",
+    });
+
+    expect(file!.content).toContain("## Personal");
+    expect(file!.content).toContain("name: Hesham");
+  });
+
+  it("replaces existing key", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.internalUpsertProfile, {
+      userId,
+      category: "Personal",
+      key: "name",
+      value: "Hesham",
+    });
+
+    await t.mutation(internal.users.internalUpsertProfile, {
+      userId,
+      category: "Personal",
+      key: "name",
+      value: "Ahmed",
+    });
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "profile",
+    });
+
+    expect(file!.content).toContain("name: Ahmed");
+    expect(file!.content).not.toContain("Hesham");
+  });
+
+  it("creates profile file for existing user without one", async () => {
+    const t = convexTest(schema, modules);
+
+    // Create user and manually delete their profile file
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.run(async (ctx) => {
+      const profile = await ctx.db
+        .query("userFiles")
+        .withIndex("by_userId_filename", (q) =>
+          q.eq("userId", userId).eq("filename", "profile")
+        )
+        .unique();
+      if (profile) await ctx.db.delete(profile._id);
+    });
+
+    // Should create profile file on first upsert
+    await t.mutation(internal.users.internalUpsertProfile, {
+      userId,
+      category: "Professional",
+      key: "title",
+      value: "Director",
+    });
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "profile",
+    });
+
+    expect(file).not.toBeNull();
+    expect(file!.content).toContain("title: Director");
   });
 });
 

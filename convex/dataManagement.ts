@@ -9,15 +9,20 @@ import { internal, components } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 /**
- * Clear user's memory: empty memory file + delete all agent threads.
+ * Clear user's memory: empty memory + profile files + delete all agent threads.
  */
 export const clearMemory = internalAction({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    // Empty the memory file
+    // Empty the memory and profile files
     await ctx.runMutation(internal.users.internalUpdateUserFile, {
       userId,
       filename: "memory",
+      content: "",
+    });
+    await ctx.runMutation(internal.users.internalUpdateUserFile, {
+      userId,
+      filename: "profile",
       content: "",
     });
 
@@ -72,13 +77,13 @@ export const clearSchedules = internalAction({
 });
 
 /**
- * Clear everything: memory + personality + heartbeat files, threads, RAG, media.
+ * Clear everything: memory + personality + heartbeat + profile files, threads, RAG, media.
  */
 export const clearEverything = internalAction({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    // Empty all 3 user files
-    const files = ["memory", "personality", "heartbeat"] as const;
+    // Empty all 4 user files
+    const files = ["memory", "personality", "heartbeat", "profile"] as const;
     for (const filename of files) {
       await ctx.runMutation(internal.users.internalUpdateUserFile, {
         userId,

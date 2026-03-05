@@ -184,9 +184,17 @@ export async function handleSystemCommand(
     }
 
     case "my memory": {
+      const profileFile = userFiles.find((f) => f.filename === "profile");
       const memoryFile = userFiles.find((f) => f.filename === "memory");
+      const parts: string[] = [];
+      if (profileFile?.content) {
+        parts.push(`*Profile:*\n${profileFile.content}`);
+      }
+      if (memoryFile?.content) {
+        parts.push(`*Memory:*\n${memoryFile.content}`);
+      }
       const memoryContent =
-        memoryFile?.content || "I haven't learned anything about you yet. Let's chat!";
+        parts.length > 0 ? parts.join("\n\n") : "I haven't learned anything about you yet. Let's chat!";
       return {
         response: await renderSystemMessage(
           "memory_summary",

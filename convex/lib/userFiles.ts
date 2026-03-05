@@ -14,6 +14,11 @@ export function buildUserContext(
     `CURRENT CONTEXT:\nToday is ${datetime.date}\nCurrent time: ${datetime.time} (${datetime.tz})`,
   ];
 
+  const profileFile = userFiles.find((f) => f.filename === "profile");
+  if (profileFile?.content) {
+    parts.push(`## User Profile\n${profileFile.content}`);
+  }
+
   const personalityFile = userFiles.find((f) => f.filename === "personality");
   if (personalityFile?.content) {
     parts.push(

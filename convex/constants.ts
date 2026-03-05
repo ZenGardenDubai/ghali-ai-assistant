@@ -43,7 +43,7 @@ export const IMAGE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 /** Incoming media files (images, PDFs, docs) expire after 90 days */
 export const MEDIA_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
-/** Max per-user file size in bytes (50KB) — memory, personality, heartbeat */
+/** Max per-user file size in bytes (50KB) — memory, personality, heartbeat, profile */
 export const MAX_USER_FILE_SIZE = 51_200;
 
 /** Memory compaction triggers at 75% of max */

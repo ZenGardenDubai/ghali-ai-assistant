@@ -5,6 +5,7 @@ import { detectTimezone } from "./lib/utils";
 import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
 import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
+import { upsertProfileEntry } from "./lib/profile";
 
 export const findOrCreateUser = internalMutation({
   args: {
@@ -36,8 +37,8 @@ export const findOrCreateUser = internalMutation({
       createdAt: now,
     });
 
-    // Initialize the 3 user files
-    const files = ["memory", "personality", "heartbeat"] as const;
+    // Initialize the 4 user files
+    const files = ["memory", "personality", "heartbeat", "profile"] as const;
     for (const filename of files) {
       await ctx.db.insert("userFiles", {
         userId,
@@ -107,7 +108,8 @@ export const getUserFile = internalQuery({
     filename: v.union(
       v.literal("memory"),
       v.literal("personality"),
-      v.literal("heartbeat")
+      v.literal("heartbeat"),
+      v.literal("profile")
     ),
   },
   handler: async (ctx, { userId, filename }) => {
@@ -136,7 +138,8 @@ export const updateUserFile = internalMutation({
     filename: v.union(
       v.literal("memory"),
       v.literal("personality"),
-      v.literal("heartbeat")
+      v.literal("heartbeat"),
+      v.literal("profile")
     ),
     content: v.string(),
   },
@@ -259,7 +262,8 @@ export const internalUpdateUserFile = internalMutation({
     filename: v.union(
       v.literal("memory"),
       v.literal("personality"),
-      v.literal("heartbeat")
+      v.literal("heartbeat"),
+      v.literal("profile")
     ),
     content: v.string(),
   },
@@ -446,6 +450,53 @@ export const resetApiErrors = internalMutation({
     await ctx.db.patch(userId, {
       consecutiveErrors: 0,
       errorBackoffUntil: undefined,
+    });
+  },
+});
+
+// ============================================================================
+// Profile Upsert
+// ============================================================================
+
+/**
+ * Upsert a fact in the user's profile file.
+ * Creates the profile file on first write for existing users.
+ */
+export const internalUpsertProfile = internalMutation({
+  args: {
+    userId: v.id("users"),
+    category: v.string(),
+    key: v.string(),
+    value: v.string(),
+  },
+  handler: async (ctx, { userId, category, key, value }) => {
+    let file = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", "profile")
+      )
+      .unique();
+
+    // Handle existing users who don't have a profile file yet
+    if (!file) {
+      const fileId = await ctx.db.insert("userFiles", {
+        userId,
+        filename: "profile",
+        content: "",
+        updatedAt: Date.now(),
+      });
+      file = (await ctx.db.get(fileId))!;
+    }
+
+    const updated = upsertProfileEntry(file.content, category, key, value);
+
+    if (isFileTooLarge(updated)) {
+      throw new Error("Profile file would exceed 50KB limit.");
+    }
+
+    await ctx.db.patch(file._id, {
+      content: updated,
+      updatedAt: Date.now(),
     });
   },
 });

@@ -99,6 +99,12 @@ describe("schema", () => {
         content: "",
         updatedAt: now,
       });
+      await ctx.db.insert("userFiles", {
+        userId,
+        filename: "profile",
+        content: "",
+        updatedAt: now,
+      });
     });
 
     const files = await t.run(async (ctx) => {
@@ -108,11 +114,12 @@ describe("schema", () => {
         .collect();
     });
 
-    expect(files).toHaveLength(3);
+    expect(files).toHaveLength(4);
     expect(files.map((f) => f.filename).sort()).toEqual([
       "heartbeat",
       "memory",
       "personality",
+      "profile",
     ]);
   });
 

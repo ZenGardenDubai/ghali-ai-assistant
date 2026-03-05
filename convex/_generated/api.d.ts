@@ -36,6 +36,7 @@ import type * as lib_media from "../lib/media.js";
 import type * as lib_memory from "../lib/memory.js";
 import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as lib_proWrite from "../lib/proWrite.js";
+import type * as lib_profile from "../lib/profile.js";
 import type * as lib_systemCommands from "../lib/systemCommands.js";
 import type * as lib_twilio from "../lib/twilio.js";
 import type * as lib_twilioSend from "../lib/twilioSend.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   "lib/memory": typeof lib_memory;
   "lib/onboarding": typeof lib_onboarding;
   "lib/proWrite": typeof lib_proWrite;
+  "lib/profile": typeof lib_profile;
   "lib/systemCommands": typeof lib_systemCommands;
   "lib/twilio": typeof lib_twilio;
   "lib/twilioSend": typeof lib_twilioSend;
