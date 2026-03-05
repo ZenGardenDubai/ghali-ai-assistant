@@ -278,22 +278,20 @@ Rules:
 Output ONLY the formatted sections, nothing else.`,
         });
 
-        // Write categorized facts to profile
+        // Read existing profile to merge facts (don't clobber)
         const profileFile = await ctx.runQuery(internal.users.getUserFile, {
           userId: user._id,
           filename: "profile",
         });
-
-        let updatedProfile = profileFile?.content ?? "";
+        const existingProfile = profileFile?.content ?? "";
         const categorizedSections = parseProfileSections(categorized);
 
-        // Merge new facts into existing profile sections (don't clobber)
+        // Build merged sections: combine new LLM output with existing profile facts
         const mappedSections: Array<[ProfileCategory, string]> = [];
         for (const [sectionName, sectionContent] of categorizedSections) {
           const catKey = SECTION_TO_CATEGORY[sectionName];
           if (catKey && sectionContent.trim()) {
-            // Merge with existing section to avoid losing facts
-            const existingSections = parseProfileSections(updatedProfile);
+            const existingSections = parseProfileSections(existingProfile);
             const existingBody = existingSections.get(sectionName) ?? "";
             const mergedBody = Array.from(
               new Set(
@@ -303,27 +301,24 @@ Output ONLY the formatted sections, nothing else.`,
                   .filter(Boolean)
               )
             ).join("\n");
-            updatedProfile = replaceProfileSection(updatedProfile, catKey, mergedBody);
             mappedSections.push([catKey, mergedBody]);
           }
         }
 
-        // Only clean memory if we actually wrote profile sections
+        // Only clean memory if we actually have profile sections to write
         if (mappedSections.length === 0) {
           skipped++;
           continue;
         }
 
-        if (updatedProfile.trim()) {
-          if (isFileTooLarge(updatedProfile)) {
-            console.error(`Profile too large after migration for user ${user._id}, skipping`);
-            skipped++;
-            continue;
-          }
-          await ctx.runMutation(internal.users.internalUpdateUserFile, {
+        // Write per-section via internalUpdateProfileSection which auto-creates
+        // the profile file for users who don't have one yet.
+        // Each call enforces the 50KB limit internally.
+        for (const [catKey, body] of mappedSections) {
+          await ctx.runMutation(internal.users.internalUpdateProfileSection, {
             userId: user._id,
-            filename: "profile",
-            content: updatedProfile,
+            category: catKey,
+            content: body,
           });
         }
 
