@@ -5,12 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, MessageSquareText, MessageSquareHeart, PanelLeftClose, PanelLeft } from "lucide-react";
+import { LayoutDashboard, MessageSquareText, MessageSquareHeart, UserPlus, PanelLeftClose, PanelLeft } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/templates", label: "Templates", icon: MessageSquareText },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquareHeart },
+  { href: "/admin/onboarding", label: "Onboarding", icon: UserPlus },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

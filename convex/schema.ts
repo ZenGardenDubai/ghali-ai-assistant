@@ -202,6 +202,12 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_expiresAt", ["expiresAt"]),
 
+  appConfig: defineTable({
+    key: v.string(),
+    value: v.string(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   feedback: defineTable({
     userId: v.id("users"),
     phone: v.string(),

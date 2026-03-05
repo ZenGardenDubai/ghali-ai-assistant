@@ -208,6 +208,26 @@ export const generateResponse = internalAction({
       : await classifyCommand(body);
     const messageForCredits = canonicalCommand ?? body;
 
+    // Send onboarding infographic before step 1 welcome (if configured and enabled)
+    if (user.onboardingStep === 1) {
+      const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+      if (onboardingConfig) {
+        let parsed: { enabled?: boolean; url?: string } | null = null;
+        try {
+          parsed = JSON.parse(onboardingConfig.value);
+        } catch {
+          // Invalid config JSON — skip silently
+        }
+        if (parsed?.enabled && typeof parsed.url === "string") {
+          await ctx.runAction(internal.twilio.sendMedia, {
+            to: user.phone,
+            caption: "",
+            mediaUrl: parsed.url,
+          });
+        }
+      }
+    }
+
     // Onboarding intercept — before credit check (onboarding is free)
     // Skip onboarding only if the message is an actual system command.
     if (user.onboardingStep != null && !canonicalCommand) {
