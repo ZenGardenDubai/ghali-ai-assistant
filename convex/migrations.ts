@@ -393,13 +393,17 @@ export const migrateProfileFormat = internalAction({
         const hasKeyValue = contentLines.some(
           (l: string) => !l.trim().startsWith("- ") && l.includes(":")
         );
+        // Detect cryptic snake_case keys from old upsertProfileEntry (e.g. "- Bs_dates:", "- Experience_summary:")
+        const hasCrypticKeys = contentLines.some(
+          (l: string) => /^- \w+_\w+:/.test(l.trim())
+        );
 
-        if (hasBullets && !hasKeyValue) {
-          skipped++; // Already in bullet format
+        if (hasBullets && !hasKeyValue && !hasCrypticKeys) {
+          skipped++; // Already in clean bullet format
           continue;
         }
 
-        if (!hasKeyValue) {
+        if (!hasKeyValue && !hasCrypticKeys) {
           skipped++;
           continue;
         }
