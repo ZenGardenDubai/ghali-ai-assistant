@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.30.0...v0.31.0) (2026-03-05)
+
+
+### Features
+
+* **profile:** refactor to bullet-point sections with section-replace semantics ([#135](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/135)) ([48106b6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/48106b6d05945db83df67183ec48e4b0d1c94e5e))
+
 ## [0.30.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.29.0...v0.30.0) (2026-03-05)
 
 
