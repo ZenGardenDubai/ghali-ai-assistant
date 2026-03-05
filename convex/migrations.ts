@@ -339,10 +339,17 @@ Output ONLY the formatted sections, nothing else.`,
 
         // Remove migrated legacy sections only after successful profile write
         let updatedMemory = memoryFile.content;
-        // Remove bare identity lines (before any ## header)
-        for (const bareLine of bareIdentityLines) {
-          updatedMemory = updatedMemory.replace(bareLine + "\n", "");
-          updatedMemory = updatedMemory.replace(bareLine, ""); // last line edge case
+        // Remove bare identity lines only from the pre-header section
+        if (bareIdentityLines.length > 0) {
+          const firstHeaderIdx = updatedMemory.search(/^##\s/m);
+          const preHeader = firstHeaderIdx === -1 ? updatedMemory : updatedMemory.slice(0, firstHeaderIdx);
+          const rest = firstHeaderIdx === -1 ? "" : updatedMemory.slice(firstHeaderIdx);
+          let cleanedPreHeader = preHeader;
+          for (const bareLine of bareIdentityLines) {
+            cleanedPreHeader = cleanedPreHeader.replace(bareLine + "\n", "");
+            cleanedPreHeader = cleanedPreHeader.replace(bareLine, "");
+          }
+          updatedMemory = cleanedPreHeader + rest;
         }
         updatedMemory = updatedMemory.replace(
           /## Personal\n[\s\S]*?(?=\n## |\s*$)/,
