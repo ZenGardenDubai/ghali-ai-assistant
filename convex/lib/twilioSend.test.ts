@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate } from "./twilioSend";
+import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, fetchMessageBody } from "./twilioSend";
 
 const options = {
   accountSid: "AC_test",
@@ -124,5 +124,52 @@ describe("sendWhatsAppTemplate", () => {
     await expect(
       sendWhatsAppTemplate(options, "HXinvalid", { "1": "test" })
     ).rejects.toThrow("Twilio template API error");
+  });
+});
+
+describe("fetchMessageBody", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const validSid = "SM" + "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+
+  it("fetches message body by SID", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ body: "Hello from Ghali!" }), { status: 200 })
+    );
+
+    const result = await fetchMessageBody("AC_test", "test_token", validSid);
+
+    expect(result).toBe("Hello from Ghali!");
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    const [url, init] = fetchSpy.mock.calls[0];
+    expect(url).toContain(`AC_test/Messages/${validSid}.json`);
+    expect(init?.method).toBe("GET");
+  });
+
+  it("returns null when body is missing", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 })
+    );
+
+    const result = await fetchMessageBody("AC_test", "test_token", validSid);
+    expect(result).toBeNull();
+  });
+
+  it("throws on API error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("Not Found", { status: 404 })
+    );
+
+    await expect(
+      fetchMessageBody("AC_test", "test_token", validSid)
+    ).rejects.toThrow("Twilio fetch message error");
+  });
+
+  it("throws on invalid SID format", async () => {
+    await expect(
+      fetchMessageBody("AC_test", "test_token", "INVALID_SID")
+    ).rejects.toThrow("Invalid message SID format");
   });
 });

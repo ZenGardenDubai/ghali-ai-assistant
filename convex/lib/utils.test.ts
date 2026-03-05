@@ -9,6 +9,7 @@ import {
   fillTemplate,
   splitLongMessage,
   getCurrentDateTime,
+  buildReplyToTextPrompt,
 } from "./utils";
 
 describe("detectTimezone", () => {
@@ -221,5 +222,36 @@ describe("splitLongMessage", () => {
     const chunks = splitLongMessage(text, 4096);
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks.join("").length).toBe(10000);
+  });
+});
+
+describe("buildReplyToTextPrompt", () => {
+  it("prepends quoted text to user message", () => {
+    const result = buildReplyToTextPrompt("Original message", "What about this?");
+    expect(result).toBe('[Replying to: "Original message"]\nWhat about this?');
+  });
+
+  it("truncates quoted text exceeding max length", () => {
+    const longQuote = "A".repeat(600);
+    const result = buildReplyToTextPrompt(longQuote, "Tell me more");
+    expect(result).toContain("[Replying to: \"" + "A".repeat(500) + "...\"]");
+    expect(result).toContain("\nTell me more");
+  });
+
+  it("does not truncate text at exactly max length", () => {
+    const exactQuote = "B".repeat(500);
+    const result = buildReplyToTextPrompt(exactQuote, "Reply");
+    expect(result).toBe(`[Replying to: "${exactQuote}"]\nReply`);
+    expect(result).not.toContain("...");
+  });
+
+  it("respects custom max length", () => {
+    const result = buildReplyToTextPrompt("Hello World", "Reply", 5);
+    expect(result).toBe('[Replying to: "Hello..."]\nReply');
+  });
+
+  it("handles empty user message", () => {
+    const result = buildReplyToTextPrompt("Original message", "");
+    expect(result).toBe('[Replying to: "Original message"]\n');
   });
 });

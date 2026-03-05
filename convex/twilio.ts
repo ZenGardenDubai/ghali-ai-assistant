@@ -1,16 +1,26 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
-import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate } from "./lib/twilioSend";
+import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, fetchMessageBody } from "./lib/twilioSend";
 import { TEMPLATE_DEFINITIONS } from "./admin";
 
 const ALLOWED_TEMPLATE_KEYS: Set<string> = new Set(TEMPLATE_DEFINITIONS.map((t) => t.key));
 
-function getTwilioOptions(to: string) {
+function getTwilioCredentials() {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+  if (!accountSid || !authToken) {
+    throw new Error("Missing Twilio environment variables");
+  }
+
+  return { accountSid, authToken };
+}
+
+function getTwilioOptions(to: string) {
+  const { accountSid, authToken } = getTwilioCredentials();
   const from = process.env.TWILIO_WHATSAPP_NUMBER;
 
-  if (!accountSid || !authToken || !from) {
+  if (!from) {
     throw new Error("Missing Twilio environment variables");
   }
 
@@ -35,6 +45,16 @@ export const sendMedia = internalAction({
   },
   handler: async (_ctx, { to, caption, mediaUrl }) => {
     await sendWhatsAppMedia(getTwilioOptions(to), caption, mediaUrl);
+  },
+});
+
+export const fetchOriginalMessage = internalAction({
+  args: {
+    messageSid: v.string(),
+  },
+  handler: async (_ctx, { messageSid }) => {
+    const { accountSid, authToken } = getTwilioCredentials();
+    return await fetchMessageBody(accountSid, authToken, messageSid);
   },
 });
 
