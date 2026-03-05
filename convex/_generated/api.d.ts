@@ -12,6 +12,7 @@ import type * as admin from "../admin.js";
 import type * as agent from "../agent.js";
 import type * as analytics from "../analytics.js";
 import type * as analyticsHelper from "../analyticsHelper.js";
+import type * as appConfig from "../appConfig.js";
 import type * as billing from "../billing.js";
 import type * as constants from "../constants.js";
 import type * as conversion from "../conversion.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   analytics: typeof analytics;
   analyticsHelper: typeof analyticsHelper;
+  appConfig: typeof appConfig;
   billing: typeof billing;
   constants: typeof constants;
   conversion: typeof conversion;

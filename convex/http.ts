@@ -494,6 +494,77 @@ http.route({
 });
 
 // ============================================================================
+// Admin onboarding config endpoints
+// ============================================================================
+
+http.route({
+  path: "/admin/onboarding-config",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const action = body.action as string | undefined;
+
+    if (action === "delete") {
+      await ctx.runMutation(internal.appConfig.deleteConfig, { key: "onboarding_image" });
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (action === "save") {
+      const storageId = body.storageId;
+      const url = body.url;
+      const enabledRaw = body.enabled;
+
+      if (typeof storageId !== "string" || typeof url !== "string" || !storageId || !url) {
+        return new Response("Missing storageId or url", { status: 400 });
+      }
+      const enabled = typeof enabledRaw === "boolean" ? enabledRaw : true;
+
+      // If replacing, delete old storage file first
+      const existing = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+      if (existing) {
+        try {
+          const old = JSON.parse(existing.value);
+          if (old.storageId && old.storageId !== storageId) {
+            await ctx.storage.delete(old.storageId as Id<"_storage">);
+          }
+        } catch { /* ignore */ }
+      }
+
+      await ctx.runMutation(internal.appConfig.setConfig, {
+        key: "onboarding_image",
+        value: JSON.stringify({ storageId, url, enabled }),
+      });
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Default: GET — return current config
+    const config = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+    if (!config) {
+      return new Response(JSON.stringify(null), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    try {
+      return new Response(JSON.stringify(JSON.parse(config.value)), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch {
+      return new Response(JSON.stringify(null), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }),
+});
+
+// ============================================================================
 // Feedback endpoints (public — token IS the auth)
 // ============================================================================
 
