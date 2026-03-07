@@ -10,57 +10,10 @@ const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
 export const TEMPLATES = {
   // === Onboarding ===
   onboarding_welcome: {
-    template: `*Hey!* 👋 I'm Ghali, your AI assistant.
+    template: `Hey {{name}}! 👋 Ready when you are — just ask me anything, send a file, or say "remind me to..." to start.
 
-I see your name is *{{name}}* — should I call you that, or something else?
-
-🕐 I've set your timezone to *{{timezone}}* based on your number. If you're elsewhere, just tell me your city.
-
-Type *help* anytime to see what I can do.
-_(Skip: just start chatting anytime)_`,
+(Timezone set to {{timezone}} · say *account* anytime to adjust settings)`,
     variables: ["name", "timezone"],
-  },
-
-  onboarding_language: {
-    template: `What language do you prefer?
-🇬🇧 English
-🇦🇪 العربية
-🇫🇷 Français
-
-Or just reply in your language and I'll match you automatically ✨`,
-    variables: [],
-  },
-
-  onboarding_personality: {
-    template: `Last thing — how would you like me to be?
-
-😊 Cheerful & friendly
-📋 Professional & serious
-⚡ Brief & to-the-point
-📚 Detailed & thorough
-
-Pick one, or say *skip* — you can change this anytime.`,
-    variables: [],
-  },
-
-  onboarding_complete: {
-    template: `*You're all set!* Here's what I can do 💬
-
-💬 Chat in any language
-💡 Deep thinking for tough questions
-🔍 Web search for real-time info
-📄 Read and remember your documents
-🖼️ Analyze photos or generate images
-🎤 Understand voice notes and video
-🧠 Remember your preferences over time
-⏰ Scheduled tasks — reminders, recurring reports, daily briefings
-💓 Heartbeat — proactive check-ins
-📊 Track expenses, tasks, contacts, notes & more
-✍️ ProWrite — professional multi-AI writing pipeline
-💭 Feedback — report bugs or suggest features
-
-Say *help* anytime for commands. Let's go!`,
-    variables: [],
   },
 
   // === Credits ===

@@ -285,7 +285,9 @@ export async function handleOnboarding(
   }
 
   switch (step) {
-    // Step 1: Send welcome message (first message from new user)
+    // Step 1: Send single welcome message (first message from new user)
+    // Onboarding completes immediately — timezone/name are auto-detected,
+    // language is detected from first real message, personality is learned organically.
     case 1: {
       const name = user.name || "there";
       const timezone = formatTimezoneForDisplay(user.timezone);
@@ -293,87 +295,10 @@ export async function handleOnboarding(
         name,
         timezone,
       });
-      return { response, nextStep: 2 };
-    }
-
-    // Step 2: Parse name/timezone reply + detect language
-    case 2: {
-      const updates: OnboardingResult["updates"] = {};
-
-      // Check for name change
-      const newName = parseName(trimmed);
-      if (newName) {
-        updates.name = newName;
-      }
-
-      // Check for timezone correction
-      const newTimezone = parseTimezoneCorrection(trimmed);
-      if (newTimezone) {
-        updates.timezone = newTimezone;
-      }
-
-      // Detect language from the reply
-      const detectedLang = await detectLanguage(trimmed);
-
-      if (detectedLang !== "en") {
-        // Language is clear from their reply — skip the language question
-        updates.language = detectedLang;
-        const response = fillTemplate(
-          TEMPLATES.onboarding_personality.template,
-          {}
-        );
-        return { response, nextStep: 4, updates };
-      }
-
-      // Language ambiguous (English reply) — ask about language
-      const response = fillTemplate(
-        TEMPLATES.onboarding_language.template,
-        {}
-      );
-      return { response, nextStep: 3, updates };
-    }
-
-    // Step 3: Parse language selection
-    case 3: {
-      const updates: OnboardingResult["updates"] = {};
-      const lang = parseLanguageReply(trimmed);
-      if (lang) {
-        updates.language = lang;
-      }
-      // Move to personality regardless
-      const response = fillTemplate(
-        TEMPLATES.onboarding_personality.template,
-        {}
-      );
-      return { response, nextStep: 4, updates };
-    }
-
-    // Step 4: Parse personality style
-    case 4: {
-      const style = await parsePersonalityReply(trimmed);
-      const fileUpdates: OnboardingResult["fileUpdates"] = {};
-
-      if (style && style !== "skip") {
-        fileUpdates.personality = buildPersonalityContent(style);
-      }
-
-      // Build memory from what we know
-      const name = user.name || "there";
-      fileUpdates.memory = buildOnboardingMemory(name);
-
-      const response = fillTemplate(
-        TEMPLATES.onboarding_complete.template,
-        {}
-      );
-
-      return {
-        response,
-        nextStep: null, // done
-        fileUpdates:
-          fileUpdates.personality || fileUpdates.memory
-            ? fileUpdates
-            : undefined,
+      const fileUpdates: OnboardingResult["fileUpdates"] = {
+        memory: buildOnboardingMemory(name),
       };
+      return { response, nextStep: null, fileUpdates };
     }
 
     default:
