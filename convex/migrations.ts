@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { getNextCronRun } from "./lib/cronParser";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
@@ -576,5 +577,191 @@ export const backfillUserNew = internalAction({
     const summary = `Backfill user_new: ${sent} sent, ${failed} failed, ${skipped} skipped (${uniquePhones.length} unique phones)`;
     console.log(summary);
     return summary;
+  },
+});
+
+/**
+ * One-time migration: sync language and timezone from user files → users table.
+ *
+ * Language: reads personality file, extracts any language reference,
+ *   writes it to user.language, removes it from the personality file.
+ *
+ * Timezone: reads profile file, extracts location/city,
+ *   resolves to IANA timezone, writes to user.timezone if different.
+ *
+ * Idempotent: safe to run multiple times.
+ * Run manually via Convex dashboard after deploying PR #158.
+ */
+// ============================================================================
+// migrateLanguageAndTimezone helpers — top-level for testability
+// ============================================================================
+
+/** Language display name / alias → ISO 639-1 code map. */
+const MIGRATION_LANG_MAP: Record<string, string> = {
+  arabic: "ar", عربية: "ar", عربي: "ar", ar: "ar",
+  english: "en", en: "en",
+  french: "fr", français: "fr", francais: "fr", fr: "fr",
+  spanish: "es", español: "es", es: "es",
+  hindi: "hi", hi: "hi",
+  urdu: "ur", ur: "ur",
+};
+const MIGRATION_LANG_SUPPORTED = new Set(["en", "ar", "fr", "es", "hi", "ur"]);
+
+/**
+ * Extracts a supported ISO language code from personality file content.
+ * Uses exact token matching (not substring) to avoid false positives like "Bengali" → "en".
+ */
+export function extractLanguageFromFile(content: string): string | null {
+  const match = content.match(/[-*]?\s*(?:preferred\s+)?language\s*[:\-]\s*([^\n]+)/i);
+  if (!match) return null;
+  const normalized = match[1].trim().toLowerCase().replace(/\s+/g, " ");
+  // Exact full-string match first
+  if (MIGRATION_LANG_SUPPORTED.has(normalized)) return normalized;
+  if (MIGRATION_LANG_MAP[normalized]) return MIGRATION_LANG_MAP[normalized];
+  // Token-by-token exact match (handles "Arabic / English" style)
+  for (const token of normalized.split(/\s*[\/,|&]|\band\b/g).map(t => t.trim()).filter(Boolean)) {
+    if (MIGRATION_LANG_SUPPORTED.has(token)) return token;
+    if (MIGRATION_LANG_MAP[token]) return MIGRATION_LANG_MAP[token];
+  }
+  return null;
+}
+
+/**
+ * Extracts a city or location string from a profile file for timezone resolution.
+ */
+export function extractCityFromProfile(profileContent: string): string | null {
+  for (const line of profileContent.split("\n")) {
+    const match = line.match(
+      /^\s*[-*]?\s*(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^,\n]+)/i
+    );
+    if (match) return match[1].trim();
+  }
+  return null;
+}
+
+/**
+ * Processes a single batch of user IDs for the language/timezone migration.
+ * Extracts language from personality files, resets personality to default,
+ * and resolves timezone from profile location.
+ *
+ * Only fills blank language/timezone fields — never overwrites existing settings.
+ * Personality is reset to default for ALL users regardless (intentional brand reset).
+ */
+export const migrateLanguageAndTimezoneBatch = internalMutation({
+  args: { userIds: v.array(v.id("users")) },
+  handler: async (ctx, { userIds }) => {
+    const { resolveCityToTimezone, buildDefaultPersonality } = await import("./lib/onboarding");
+    const DEFAULT_PERSONALITY = buildDefaultPersonality();
+    let langUpdated = 0, tzUpdated = 0, personalityReset = 0;
+
+    for (const userId of userIds) {
+      const user = await ctx.db.get(userId);
+      if (!user) continue;
+
+      const files = await ctx.db
+        .query("userFiles")
+        .withIndex("by_userId", q => q.eq("userId", userId))
+        .collect();
+
+      const personalityFile = files.find(f => f.filename === "personality");
+      const profileFile = files.find(f => f.filename === "profile");
+
+      // --- Language: extract from old personality file, only fill blanks ---
+      if (personalityFile?.content && !user.language) {
+        const detectedLang = extractLanguageFromFile(personalityFile.content);
+        if (detectedLang) {
+          await ctx.db.patch(userId, { language: detectedLang });
+          langUpdated++;
+        }
+      }
+
+      // --- Personality: reset ALL users to default (intentional brand reset) ---
+      if (personalityFile) {
+        if (personalityFile.content !== DEFAULT_PERSONALITY) {
+          await ctx.db.patch(personalityFile._id, {
+            content: DEFAULT_PERSONALITY,
+            updatedAt: Date.now(),
+          });
+          personalityReset++;
+        }
+      } else {
+        await ctx.db.insert("userFiles", {
+          userId,
+          filename: "personality",
+          content: DEFAULT_PERSONALITY,
+          updatedAt: Date.now(),
+        });
+        personalityReset++;
+      }
+
+      // --- Timezone: extract from profile location, only fill blanks ---
+      if (profileFile?.content && !user.timezone) {
+        const city = extractCityFromProfile(profileFile.content);
+        if (city) {
+          const resolved = resolveCityToTimezone(city);
+          if (resolved) {
+            await ctx.db.patch(userId, { timezone: resolved });
+            tzUpdated++;
+          }
+        }
+      }
+    }
+
+    return { langUpdated, tzUpdated, personalityReset, processed: userIds.length };
+  },
+});
+
+/**
+ * One-time migration: reset all personality files to the default personality,
+ * sync language and timezone from user files → users table.
+ *
+ * Orchestrates batched processing via migrateLanguageAndTimezoneBatch to stay
+ * within Convex per-mutation limits. Safe to run multiple times (idempotent).
+ *
+ * Run from the Convex dashboard after deploying PR #158.
+ */
+export const migrateLanguageAndTimezone = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const BATCH_SIZE = 50;
+    let cursor: string | null = null;
+    let totalLang = 0, totalTz = 0, totalPersonality = 0, totalProcessed = 0;
+
+    while (true) {
+      // Page through users in the action
+      const page = await ctx.runQuery(internal.migrations.migrateGetUserBatch, { cursor, limit: BATCH_SIZE }) as { userIds: Id<"users">[]; nextCursor: string | null };
+      const { userIds, nextCursor } = page;
+      if (userIds.length === 0) break;
+
+      const result = await ctx.runMutation(internal.migrations.migrateLanguageAndTimezoneBatch, {
+        userIds,
+      });
+
+      totalLang += result.langUpdated;
+      totalTz += result.tzUpdated;
+      totalPersonality += result.personalityReset;
+      totalProcessed += result.processed;
+
+      if (!nextCursor) break;
+      cursor = nextCursor;
+    }
+
+    return `Migration complete: personality reset=${totalPersonality}, language updated=${totalLang}, timezone updated=${totalTz}, total users=${totalProcessed}`;
+  },
+});
+
+/** Internal query to fetch a paginated batch of user IDs for the migration. */
+export const migrateGetUserBatch = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()), limit: v.number() },
+  returns: v.object({
+    userIds: v.array(v.id("users")),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx, { cursor, limit }) => {
+    const result = await ctx.db.query("users").paginate({ cursor: cursor as string | null, numItems: limit });
+    return {
+      userIds: result.page.map(u => u._id),
+      nextCursor: result.isDone ? null : result.continueCursor,
+    };
   },
 });

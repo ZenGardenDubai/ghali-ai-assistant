@@ -130,6 +130,182 @@ export function parseLanguageReply(reply: string): string | null {
 }
 
 // ============================================================================
+// DEFAULT_PERSONALITY — seeded for all new users at onboarding completion
+// ============================================================================
+
+export const DEFAULT_PERSONALITY = `# Preferences
+- Tone: playful, bubbly, and helpful
+- Verbosity: balanced
+- Emoji: expressive and frequent
+- Off-limits: none specified`;
+
+/** Returns the default personality content seeded for all new users at onboarding. */
+export function buildDefaultPersonality(): string {
+  return DEFAULT_PERSONALITY;
+}
+
+// ============================================================================
+// CITY_TIMEZONES — common city → IANA timezone map
+// ============================================================================
+
+export const CITY_TIMEZONES: Record<string, string> = {
+  // UAE
+  dubai: "Asia/Dubai",
+  "abu dhabi": "Asia/Dubai",
+  sharjah: "Asia/Dubai",
+  ajman: "Asia/Dubai",
+  // Middle East
+  riyadh: "Asia/Riyadh",
+  jeddah: "Asia/Riyadh",
+  mecca: "Asia/Riyadh",
+  medina: "Asia/Riyadh",
+  kuwait: "Asia/Kuwait",
+  "kuwait city": "Asia/Kuwait",
+  doha: "Asia/Qatar",
+  manama: "Asia/Bahrain",
+  muscat: "Asia/Muscat",
+  amman: "Asia/Amman",
+  beirut: "Asia/Beirut",
+  cairo: "Africa/Cairo",
+  baghdad: "Asia/Baghdad",
+  tehran: "Asia/Tehran",
+  jerusalem: "Asia/Jerusalem",
+  "tel aviv": "Asia/Jerusalem",
+  // Europe
+  london: "Europe/London",
+  paris: "Europe/Paris",
+  berlin: "Europe/Berlin",
+  madrid: "Europe/Madrid",
+  rome: "Europe/Rome",
+  amsterdam: "Europe/Amsterdam",
+  brussels: "Europe/Brussels",
+  zurich: "Europe/Zurich",
+  geneva: "Europe/Zurich",
+  vienna: "Europe/Vienna",
+  stockholm: "Europe/Stockholm",
+  oslo: "Europe/Oslo",
+  copenhagen: "Europe/Copenhagen",
+  helsinki: "Europe/Helsinki",
+  moscow: "Europe/Moscow",
+  istanbul: "Europe/Istanbul",
+  athens: "Europe/Athens",
+  warsaw: "Europe/Warsaw",
+  prague: "Europe/Prague",
+  budapest: "Europe/Budapest",
+  lisbon: "Europe/Lisbon",
+  // Asia
+  beijing: "Asia/Shanghai",
+  shanghai: "Asia/Shanghai",
+  "hong kong": "Asia/Hong_Kong",
+  tokyo: "Asia/Tokyo",
+  seoul: "Asia/Seoul",
+  singapore: "Asia/Singapore",
+  mumbai: "Asia/Kolkata",
+  delhi: "Asia/Kolkata",
+  "new delhi": "Asia/Kolkata",
+  bangalore: "Asia/Kolkata",
+  chennai: "Asia/Kolkata",
+  karachi: "Asia/Karachi",
+  lahore: "Asia/Karachi",
+  islamabad: "Asia/Karachi",
+  dhaka: "Asia/Dhaka",
+  colombo: "Asia/Colombo",
+  kathmandu: "Asia/Kathmandu",
+  kabul: "Asia/Kabul",
+  "kuala lumpur": "Asia/Kuala_Lumpur",
+  jakarta: "Asia/Jakarta",
+  bangkok: "Asia/Bangkok",
+  manila: "Asia/Manila",
+  taipei: "Asia/Taipei",
+  // Americas
+  "new york": "America/New_York",
+  "los angeles": "America/Los_Angeles",
+  chicago: "America/Chicago",
+  houston: "America/Chicago",
+  dallas: "America/Chicago",
+  phoenix: "America/Phoenix",
+  "san francisco": "America/Los_Angeles",
+  seattle: "America/Los_Angeles",
+  miami: "America/New_York",
+  boston: "America/New_York",
+  toronto: "America/Toronto",
+  vancouver: "America/Vancouver",
+  montreal: "America/Toronto",
+  "mexico city": "America/Mexico_City",
+  "sao paulo": "America/Sao_Paulo",
+  "rio de janeiro": "America/Sao_Paulo",
+  "buenos aires": "America/Argentina/Buenos_Aires",
+  bogota: "America/Bogota",
+  lima: "America/Lima",
+  santiago: "America/Santiago",
+  // Africa
+  lagos: "Africa/Lagos",
+  nairobi: "Africa/Nairobi",
+  johannesburg: "Africa/Johannesburg",
+  "cape town": "Africa/Johannesburg",
+  casablanca: "Africa/Casablanca",
+  // Oceania
+  sydney: "Australia/Sydney",
+  melbourne: "Australia/Melbourne",
+  brisbane: "Australia/Brisbane",
+  perth: "Australia/Perth",
+  auckland: "Pacific/Auckland",
+};
+
+/**
+ * Resolve a city name or IANA timezone string to a valid IANA timezone.
+ * Returns null if the city is unknown and the input is not a valid IANA zone.
+ */
+/**
+ * Normalize a city input for lookup: lowercase, trim, collapse spaces,
+ * remove punctuation/commas/country suffixes, strip diacritics.
+ */
+export function normalizeCityInput(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")   // strip diacritics
+    .toLowerCase()
+    .trim()
+    .replace(/[,\.]/g, " ")            // commas/dots → space
+    .replace(/\s+/g, " ")             // collapse multiple spaces
+    .replace(/\s+(province|state|country|region|governorate)$/i, "") // strip suffixes
+    .trim();
+}
+
+/** Resolve a city name or IANA timezone string to a canonical IANA timezone identifier. */
+export function resolveCityToTimezone(input: string): string | null {
+  const normalized = normalizeCityInput(input);
+
+  // 1. Exact match in city map
+  if (CITY_TIMEZONES[normalized]) {
+    return CITY_TIMEZONES[normalized];
+  }
+
+  // 2. Progressive prefix fallback — handles "Dubai, UAE" → "dubai uae" → try "dubai"
+  const parts = normalized.split(" ");
+  for (let end = parts.length - 1; end > 0; end--) {
+    const candidate = parts.slice(0, end).join(" ");
+    if (CITY_TIMEZONES[candidate]) {
+      return CITY_TIMEZONES[candidate];
+    }
+  }
+
+  // 3. Try as a direct IANA timezone — use resolvedOptions() for canonical casing
+  try {
+    const fmt = new Intl.DateTimeFormat(undefined, { timeZone: input });
+    return fmt.resolvedOptions().timeZone;
+  } catch {
+    // 4. Try normalized string as IANA (e.g. "asia/dubai")
+    try {
+      const fmt = new Intl.DateTimeFormat(undefined, { timeZone: normalized });
+      return fmt.resolvedOptions().timeZone;
+    } catch {
+      return null;
+    }
+  }
+}
+
+// ============================================================================
 // buildPersonalityContent — markdown for personality user block
 // ============================================================================
 
@@ -155,6 +331,7 @@ const PERSONALITY_STYLES: Record<string, string> = {
 - Emoji: moderate`,
 };
 
+/** Returns the personality file content for a given named style (cheerful, professional, brief, detailed). */
 export function buildPersonalityContent(style: string): string {
   return PERSONALITY_STYLES[style] ?? "";
 }
@@ -163,6 +340,7 @@ export function buildPersonalityContent(style: string): string {
 // buildOnboardingMemory — initial memory markdown
 // ============================================================================
 
+/** Builds the initial memory file content for a new user, seeding their name if known. */
 export function buildOnboardingMemory(name?: string): string {
   if (name) return `# User Memory\n- Name: ${name}`;
   return "# User Memory";
@@ -172,6 +350,7 @@ export function buildOnboardingMemory(name?: string): string {
 // formatTimezoneForDisplay — "Asia/Dubai" → "Dubai (GMT+4)"
 // ============================================================================
 
+/** Formats an IANA timezone string into a human-readable display label (e.g. "Asia/Dubai" → "Dubai"). */
 export function formatTimezoneForDisplay(iana: string): string {
   if (iana === "UTC") return "UTC (GMT+0)";
 
@@ -226,6 +405,7 @@ export async function handleOnboarding(
       });
       const fileUpdates: OnboardingResult["fileUpdates"] = {
         memory: buildOnboardingMemory(user.name?.trim() || undefined),
+        personality: buildDefaultPersonality(),
       };
       return { response, nextStep: null, fileUpdates };
     }

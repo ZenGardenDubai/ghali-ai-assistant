@@ -34,6 +34,7 @@ import {
   normalizeFilterDate,
 } from "./lib/items";
 import { formatProWriteResult, isOpusOverloaded } from "./lib/proWrite";
+import { resolveCityToTimezone } from "./lib/onboarding";
 import type { AggregateMode, QueryItem } from "./lib/items";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,7 @@ PROFILE RULES:
 - Profile stores IDENTITY facts — who the user IS. It is never compacted or summarized.
 - updateProfile replaces an entire section. Always include ALL known facts for that section.
 - Categories: personal (name, birthday, nationality, languages), professional (job, company, skills), education (degrees, schools), family (spouse, children), location (city, country), links (website, social media).
+- When user mentions moving to a new city → call updateTimezoneSetting (updates DB timezone) AND updateProfile (location category).
 - After web research about the user → save identity facts to profile.
 - After user shares their own document (CV, resume, bio) → extract identity facts to profile. Do NOT assume every document is about the user — only save when the user indicates it's theirs or context makes it obvious.
 - "What do you know about me?" → read from profile (primary) + memory (supplementary).
@@ -89,7 +91,7 @@ MEMORY RULES (critical):
 - If no → don't call appendToMemory (save tokens).
 - To correct or remove facts in memory → call editMemory.
 - Communication style preferences (tone, verbosity, emoji) → updatePersonality (NOT memory).
-- Language: always respond in the language the user writes in for that message. Only update the user's language preference in memory if they explicitly ask to change it ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch.
+- Language: always respond in the language the user writes in for that message. Only call updateLanguageSetting if they explicitly ask to change their preferred language ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch. Never store language in memory or personality.
 - NEVER ask "should I remember this?" — just remember it silently.
 - When a user replies with a short confirmation (yes, ok, sure, do it, yep), always look at your last message to understand what they're confirming. Never treat a confirmation as a new standalone request.
 - *Conversational focus*: when a follow-up message references something ambiguous (e.g. "elaborate on the context", "explain that", "tell me more"), ALWAYS resolve it against the current conversation topic and your recent messages first — not the user's personal context, schedule, or memory. If you just summarized a letter that had a "Context" bullet, "elaborate on the context" means that bullet — not the user's calendar. Only fall back to personal context if the conversation has no active topic.
@@ -197,7 +199,12 @@ STRUCTURED DATA RULES:
    - generateFeedbackLink — generates a web form link (expires in 15 minutes). After calling, reply ONLY with the link.
    - Feedback is always free (no credit deduction). This tool is ONLY for feedback about Ghali — not for dashboards, data queries, or items.
 
-15. *ProWrite* — Professional multi-AI writing pipeline for high-quality content (LinkedIn posts, emails, articles, reports).
+15. *User Settings (Language & Timezone)* — Two tools keep system settings in sync:
+   - updateLanguageSetting(language) — call when the user explicitly requests a language change (e.g. "switch to Arabic", "always reply in French"). Updates the preferred language for all responses, system messages, and heartbeat notifications.
+   - updateTimezoneSetting(city) — call when the user mentions relocating or changing their timezone (e.g. "I moved to London", "I'm in New York now"). Resolves the city to an IANA timezone and updates all scheduled tasks, reminders, and time-based context.
+   Rule: never update language or timezone via updatePersonality or updateProfile — use these dedicated tools only.
+
+16. *ProWrite* — Professional multi-AI writing pipeline for high-quality content (LinkedIn posts, emails, articles, reports).
    - Trigger: "prowrite ..." → call proWriteBrief immediately with the request
    - Suggestion: "write me a ..." (without "prowrite") → suggest ProWrite and explain briefly: "I can write that directly, or I can use *ProWrite* — an 8-step multi-AI pipeline that researches, drafts, and polishes professional content. Say *prowrite* to activate it."
    - Flow: proWriteBrief → show numbered questions (1. 2. 3.) → user answers → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute
@@ -265,7 +272,7 @@ const editMemory = createTool({
 
 const updatePersonality = createTool({
   description:
-    "Update the user's personality preferences (tone, language, verbosity, emoji style, interests, off-limits topics). Only updates the user block — the system block is immutable.",
+    "Update the user's personality preferences (tone, verbosity, emoji style, off-limits topics). Scope: tone/verbosity/emoji/off-limits ONLY. Do NOT use for language changes (use updateLanguageSetting) or timezone changes (use updateTimezoneSetting). Only updates the user block — the system block is immutable.",
   args: z.object({
     content: z
       .string()
@@ -281,6 +288,57 @@ const updatePersonality = createTool({
       content,
     });
     return JSON.stringify({ status: "success", action: "personality_updated" });
+  },
+});
+
+const updateLanguageSetting = createTool({
+  description:
+    "Update the user's preferred language. Use when the user explicitly asks to change their language (e.g. 'switch to Arabic', 'always reply in French', 'use English from now on'). Updates user.language in the DB — not the personality file.",
+  args: z.object({
+    language: z
+      .string()
+      .describe("BCP 47 language code (e.g. 'en', 'ar', 'fr', 'es', 'de', 'zh')"),
+  }),
+  handler: async (ctx, { language }): Promise<string> => {
+    // Basic validation: primary tag must be 2-3 letters (ISO 639-1/2), optional subtags
+    const normalized = language.toLowerCase().trim();
+    if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(normalized)) {
+      return JSON.stringify({
+        status: "error",
+        code: "INVALID_LANGUAGE_CODE",
+        message: `"${language}" is not a valid language code. Use ISO codes like 'en', 'ar', 'fr'.`,
+      });
+    }
+    await ctx.runMutation(internal.users.internalUpdateUser, {
+      userId: ctx.userId as Id<"users">,
+      fields: { language: normalized },
+    });
+    return JSON.stringify({ status: "success", action: "language_updated", language: normalized });
+  },
+});
+
+const updateTimezoneSetting = createTool({
+  description:
+    "Update the user's timezone. Use when the user mentions moving to a new city or changing their timezone (e.g. 'I moved to London', 'I'm now in New York', 'change my timezone to Paris'). Updates user.timezone in the DB — not the personality file.",
+  args: z.object({
+    city: z
+      .string()
+      .describe("City name (e.g. 'Dubai', 'London', 'New York') or IANA timezone (e.g. 'Asia/Dubai')"),
+  }),
+  handler: async (ctx, { city }): Promise<string> => {
+    const resolved = resolveCityToTimezone(city);
+    if (!resolved) {
+      return JSON.stringify({
+        status: "error",
+        code: "UNKNOWN_CITY",
+        message: `Could not resolve "${city}" to a timezone. Try providing the city name or IANA timezone (e.g. 'Asia/Dubai').`,
+      });
+    }
+    await ctx.runMutation(internal.users.internalUpdateUser, {
+      userId: ctx.userId as Id<"users">,
+      fields: { timezone: resolved },
+    });
+    return JSON.stringify({ status: "success", action: "timezone_updated", timezone: resolved });
   },
 });
 
@@ -1701,6 +1759,8 @@ export const ghaliAgent = new Agent(components.agent, {
     appendToMemory,
     editMemory,
     updatePersonality,
+    updateLanguageSetting,
+    updateTimezoneSetting,
     updateHeartbeat,
     updateProfile,
     deepReasoning,

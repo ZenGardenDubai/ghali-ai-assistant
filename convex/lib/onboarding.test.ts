@@ -19,6 +19,8 @@ const {
   parseLanguageReply,
   buildPersonalityContent,
   buildOnboardingMemory,
+  buildDefaultPersonality,
+  resolveCityToTimezone,
   formatTimezoneForDisplay,
   handleOnboarding,
 } = await import("./onboarding");
@@ -195,6 +197,77 @@ describe("parseLanguageReply", () => {
 });
 
 // ============================================================================
+// buildDefaultPersonality
+// ============================================================================
+
+describe("buildDefaultPersonality", () => {
+  it("returns default personality with playful tone", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Tone: playful, bubbly, and helpful");
+  });
+
+  it("includes balanced verbosity by default", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Verbosity: balanced");
+  });
+
+  it("includes expressive emoji by default", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Emoji: expressive and frequent");
+  });
+
+  it("includes off-limits field set to none", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Off-limits: none specified");
+  });
+
+  it("returns a non-empty string", () => {
+    expect(buildDefaultPersonality().length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================================
+// resolveCityToTimezone
+// ============================================================================
+
+describe("resolveCityToTimezone", () => {
+  it("resolves Dubai to Asia/Dubai", () => {
+    expect(resolveCityToTimezone("Dubai")).toBe("Asia/Dubai");
+    expect(resolveCityToTimezone("dubai")).toBe("Asia/Dubai");
+  });
+
+  it("resolves London to Europe/London", () => {
+    expect(resolveCityToTimezone("London")).toBe("Europe/London");
+  });
+
+  it("resolves New York to America/New_York", () => {
+    expect(resolveCityToTimezone("New York")).toBe("America/New_York");
+  });
+
+  it("accepts valid IANA timezone strings directly", () => {
+    expect(resolveCityToTimezone("Asia/Tokyo")).toBe("Asia/Tokyo");
+    expect(resolveCityToTimezone("Europe/Paris")).toBe("Europe/Paris");
+  });
+
+  it("resolves Mexico City correctly (does not strip 'city' from name)", () => {
+    expect(resolveCityToTimezone("Mexico City")).toBe("America/Mexico_City");
+    expect(resolveCityToTimezone("mexico city")).toBe("America/Mexico_City");
+  });
+
+  it("handles conversational variants with punctuation and country suffixes", () => {
+    expect(resolveCityToTimezone("Dubai, UAE")).toBe("Asia/Dubai");
+    expect(resolveCityToTimezone("São Paulo")).toBe("America/Sao_Paulo");
+  });
+
+  it("returns null for unknown city", () => {
+    expect(resolveCityToTimezone("Gotham City")).toBeNull();
+    expect(resolveCityToTimezone("not-a-city")).toBeNull();
+  });
+});
+
+
+
+// ============================================================================
 // buildPersonalityContent
 // ============================================================================
 
@@ -300,6 +373,11 @@ describe("handleOnboarding", () => {
     it("writes initial memory on welcome", async () => {
       const result = await handleOnboarding(1, "hi", makeUser());
       expect(result.fileUpdates?.memory).toContain("Ahmad");
+    });
+
+    it("seeds default personality file on welcome", async () => {
+      const result = await handleOnboarding(1, "hi", makeUser());
+      expect(result.fileUpdates?.personality).toContain("Tone: playful, bubbly, and helpful");
     });
 
     it("skips to AI if message is a real question", async () => {

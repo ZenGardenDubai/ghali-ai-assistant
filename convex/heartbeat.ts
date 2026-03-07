@@ -70,7 +70,11 @@ export const processUserHeartbeat = internalAction({
 
     // Build context
     const datetime = getCurrentDateTime(user.timezone);
-    const userContext = buildUserContext(userFiles, datetime);
+    const userContext = buildUserContext(
+      userFiles,
+      datetime,
+      { language: user.language, timezone: user.timezone }
+    );
 
     // Get or create thread (shared with normal conversation)
     const { threadId } = await ghaliAgent.createThread(ctx, {
