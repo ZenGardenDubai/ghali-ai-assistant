@@ -2,31 +2,13 @@
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
-import { PostHog } from "posthog-node";
 import { detectCountryFromPhone } from "./lib/analytics";
 
 // ---------------------------------------------------------------------------
-// PostHog client (lazy singleton, immediate flush)
+// PostHog capture — direct HTTP POST for reliable delivery in serverless
 // ---------------------------------------------------------------------------
 
-let cachedClient: PostHog | null = null;
-
-function getPostHogClient(): PostHog | null {
-  if (cachedClient) return cachedClient;
-
-  const apiKey = process.env.POSTHOG_API_KEY;
-  if (!apiKey) {
-    console.warn("[PostHog] Missing POSTHOG_API_KEY — analytics disabled");
-    return null;
-  }
-
-  cachedClient = new PostHog(apiKey, {
-    host: "https://us.i.posthog.com",
-    flushAt: 1,
-    flushInterval: 0,
-  });
-  return cachedClient;
-}
+const POSTHOG_HOST = "https://us.i.posthog.com";
 
 function redactId(id: string): string {
   if (id.length <= 4) return "***";
@@ -38,13 +20,55 @@ async function captureEvent(
   event: string,
   properties?: Record<string, unknown>
 ): Promise<void> {
+  const apiKey = process.env.POSTHOG_API_KEY;
+  if (!apiKey) {
+    console.warn("[PostHog] Missing POSTHOG_API_KEY — analytics disabled");
+    return;
+  }
   try {
-    const posthog = getPostHogClient();
-    if (!posthog) return;
-    posthog.capture({ distinctId, event, properties });
-    await posthog.flush();
+    const res = await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        event,
+        distinct_id: distinctId,
+        properties: { ...properties, $lib: "ghali-server" },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[PostHog] HTTP ${res.status} for "${event}" (${redactId(distinctId)}): ${body}`);
+    }
   } catch (error) {
-    console.error(`[PostHog] Failed to flush event "${event}" for ${redactId(distinctId)}:`, error);
+    console.error(`[PostHog] Failed to capture "${event}" for ${redactId(distinctId)}:`, error);
+  }
+}
+
+async function identifyPerson(
+  distinctId: string,
+  properties: Record<string, unknown>
+): Promise<void> {
+  const apiKey = process.env.POSTHOG_API_KEY;
+  if (!apiKey) return;
+  try {
+    const res = await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        event: "$identify",
+        distinct_id: distinctId,
+        properties: { ...properties, $lib: "ghali-server" },
+        $set: properties,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error(`[PostHog] HTTP ${res.status} for $identify (${redactId(distinctId)}): ${body}`);
+    }
+  } catch (error) {
+    console.error(`[PostHog] Failed to identify ${redactId(distinctId)}:`, error);
   }
 }
 
@@ -77,22 +101,12 @@ export const identifyUser = internalAction({
     tier: v.string(),
   },
   handler: async (_ctx, { phone, timezone, tier }) => {
-    try {
-      const posthog = getPostHogClient();
-      if (!posthog) return;
-      posthog.identify({
-        distinctId: phone,
-        properties: {
-          phone,
-          country: detectCountryFromPhone(phone),
-          tier,
-          timezone,
-        },
-      });
-      await posthog.flush();
-    } catch (error) {
-      console.error(`[PostHog] Failed to identify user ${redactId(phone)}:`, error);
-    }
+    await identifyPerson(phone, {
+      phone,
+      country: detectCountryFromPhone(phone),
+      tier,
+      timezone,
+    });
   },
 });
 
