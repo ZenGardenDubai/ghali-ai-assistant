@@ -139,6 +139,7 @@ export const DEFAULT_PERSONALITY = `# Preferences
 - Emoji: expressive and frequent
 - Off-limits: none specified`;
 
+/** Returns the default personality content seeded for all new users at onboarding. */
 export function buildDefaultPersonality(): string {
   return DEFAULT_PERSONALITY;
 }
@@ -285,9 +286,10 @@ export function resolveCityToTimezone(input: string): string | null {
     return input;
   } catch {
     // Also try normalized as IANA (e.g. "asia/dubai")
+    // Return original trimmed input to preserve canonical casing (e.g. "Asia/Dubai" not "asia/dubai")
     try {
       Intl.DateTimeFormat(undefined, { timeZone: normalized });
-      return normalized;
+      return input.trim();
     } catch {
       return null;
     }
@@ -320,6 +322,7 @@ const PERSONALITY_STYLES: Record<string, string> = {
 - Emoji: moderate`,
 };
 
+/** Returns the personality file content for a given named style (cheerful, professional, brief, detailed). */
 export function buildPersonalityContent(style: string): string {
   return PERSONALITY_STYLES[style] ?? "";
 }
@@ -328,6 +331,7 @@ export function buildPersonalityContent(style: string): string {
 // buildOnboardingMemory — initial memory markdown
 // ============================================================================
 
+/** Builds the initial memory file content for a new user, seeding their name if known. */
 export function buildOnboardingMemory(name?: string): string {
   if (name) return `# User Memory\n- Name: ${name}`;
   return "# User Memory";
