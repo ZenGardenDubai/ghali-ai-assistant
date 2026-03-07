@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.4...v0.31.5) (2026-03-07)
+
+
+### Bug Fixes
+
+* **analytics:** replace posthog-node SDK with direct HTTP for reliable event delivery ([#145](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/145)) ([8e76e39](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/8e76e39355ad12ff74a1b3242c15ce3f983f41f3))
+
 ## [0.31.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.3...v0.31.4) (2026-03-07)
 
 
