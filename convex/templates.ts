@@ -10,9 +10,9 @@ const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
 export const TEMPLATES = {
   // === Onboarding ===
   onboarding_welcome: {
-    template: `Hey {{name}}! 👋 Ready when you are — just ask me anything, send a file, or say "remind me to..." to start.
+    template: `Hey {{name}}! 👋 Ready when you are, just ask me anything, send a file, or say "remind me to..." to start.
 
-(Timezone set to {{timezone}} · say *account* anytime to adjust settings)`,
+(Timezone set to {{timezone}} · say *help* or *account* anytime)`,
     variables: ["name", "timezone"],
   },
 
