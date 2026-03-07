@@ -140,9 +140,11 @@ export const trackAIGeneration = internalAction({
     reasoningTokens: v.optional(v.number()),
     cachedInputTokens: v.optional(v.number()),
     tier: v.string(),
+    traceId: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     await captureEvent(args.phone, "$ai_generation", {
+      $ai_trace_id: args.traceId,
       $ai_model: args.model,
       $ai_provider: args.provider,
       $ai_input_tokens: args.promptTokens,
@@ -209,8 +211,9 @@ export const trackImageGenerated = internalAction({
     latency_ms: v.optional(v.number()),
     model: v.optional(v.string()),
     tier: v.optional(v.string()),
+    traceId: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, success, latency_ms, model, tier }) => {
+  handler: async (_ctx, { phone, success, latency_ms, model, tier, traceId }) => {
     const country = detectCountryFromPhone(phone);
 
     // Business event
@@ -222,6 +225,7 @@ export const trackImageGenerated = internalAction({
 
     // LLM Analytics event (shows in PostHog LLM Analytics dashboard)
     await captureEvent(phone, "$ai_generation", {
+      $ai_trace_id: traceId,
       $ai_model: model ?? "gemini-3-pro-image-preview",
       $ai_provider: "google",
       $ai_latency: latency_ms ? latency_ms / 1000 : undefined,

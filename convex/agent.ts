@@ -36,6 +36,22 @@ import {
 import { formatProWriteResult, isOpusOverloaded } from "./lib/proWrite";
 import type { AggregateMode, QueryItem } from "./lib/items";
 
+// ---------------------------------------------------------------------------
+// Per-request trace ID for PostHog LLM analytics ($ai_trace_id).
+// Convex actions run in isolation (one invocation at a time), so a module-level
+// variable is safe — no concurrency issues.  The caller sets this before
+// ghaliAgent.generateText() and the usageHandler reads it.
+// ---------------------------------------------------------------------------
+let _currentTraceId: string | undefined;
+
+export function setTraceId(id: string) {
+  _currentTraceId = id;
+}
+
+export function clearTraceId() {
+  _currentTraceId = undefined;
+}
+
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
 - Privacy-first: never share one user's data, conversations, or documents with another.
@@ -367,6 +383,7 @@ Rules:
           promptTokens: result.usage?.inputTokens ?? 0,
           completionTokens: result.usage?.outputTokens ?? 0,
           tier: user.tier,
+          traceId: _currentTraceId,
         });
       }
 
@@ -459,6 +476,7 @@ const generateImage = createTool({
         userId: ctx.userId as Id<"users">,
         prompt,
         aspectRatio,
+        traceId: _currentTraceId,
       });
       if (result.success && result.imageUrl) {
         const caption = result.description || "Here's your generated image.";
@@ -1583,6 +1601,7 @@ const proWriteBrief = createTool({
         userId,
         phone: user?.phone,
         tier: user?.tier,
+        traceId: _currentTraceId,
       });
       return JSON.stringify({
         status: "success",
@@ -1639,6 +1658,7 @@ const proWriteExecute = createTool({
         skipClarify: skipClarify ?? false,
         phone: user?.phone,
         tier: user?.tier,
+        traceId: _currentTraceId,
       });
 
       return formatProWriteResult(result);
@@ -1733,6 +1753,7 @@ export const ghaliAgent = new Agent(components.agent, {
         reasoningTokens: reasoningTokens || undefined,
         cachedInputTokens: cachedInputTokens || undefined,
         tier: user.tier,
+        traceId: _currentTraceId,
       });
     } catch (error) {
       console.error("[Analytics] usageHandler failed:", error);

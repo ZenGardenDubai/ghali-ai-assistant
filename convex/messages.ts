@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { ghaliAgent } from "./agent";
+import { ghaliAgent, setTraceId, clearTraceId } from "./agent";
 import { MODELS } from "./models";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
@@ -664,6 +664,9 @@ export const generateResponse = internalAction({
       userId,
     });
 
+    // Set per-request trace ID for PostHog LLM analytics
+    setTraceId(crypto.randomUUID());
+
     // Generate response
     let responseText: string | undefined;
     let imageResult: { imageUrl: string; caption: string } | null = null;
@@ -717,6 +720,8 @@ export const generateResponse = internalAction({
         // Silent failure — short-circuit to avoid unnecessary work downstream
         return;
       }
+    } finally {
+      clearTraceId();
     }
 
     // Only deduct credit after successful AI response
