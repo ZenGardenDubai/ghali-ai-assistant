@@ -300,9 +300,9 @@ const updateLanguageSetting = createTool({
       .describe("BCP 47 language code (e.g. 'en', 'ar', 'fr', 'es', 'de', 'zh')"),
   }),
   handler: async (ctx, { language }): Promise<string> => {
-    // Basic validation: must be 2-8 lowercase letters (allows subtags like 'zh-CN')
+    // Basic validation: primary tag must be 2-3 letters (ISO 639-1/2), optional subtags
     const normalized = language.toLowerCase().trim();
-    if (!/^[a-z]{2,8}(-[a-z0-9]{2,8})*$/.test(normalized)) {
+    if (!/^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(normalized)) {
       return JSON.stringify({
         status: "error",
         code: "INVALID_LANGUAGE_CODE",
