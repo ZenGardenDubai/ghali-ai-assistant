@@ -268,7 +268,7 @@ export function normalizeCityInput(input: string): string {
     .trim()
     .replace(/[,\.]/g, " ")            // commas/dots → space
     .replace(/\s+/g, " ")             // collapse multiple spaces
-    .replace(/\s+(city|province|state|country|region|governorate)$/i, "") // strip suffixes
+    .replace(/\s+(province|state|country|region|governorate)$/i, "") // strip suffixes
     .trim();
 }
 

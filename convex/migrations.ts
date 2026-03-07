@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { getNextCronRun } from "./lib/cronParser";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
@@ -629,8 +630,13 @@ export function extractLanguageFromFile(content: string): string | null {
  * Extracts a city or location string from a profile file for timezone resolution.
  */
 export function extractCityFromProfile(profileContent: string): string | null {
-  const match = profileContent.match(/(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^\n,]+)/i);
-  return match ? match[1].trim() : null;
+  for (const line of profileContent.split("\n")) {
+    const match = line.match(
+      /^\s*[-*]?\s*(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^,\n]+)/i
+    );
+    if (match) return match[1].trim();
+  }
+  return null;
 }
 
 /**
@@ -723,11 +729,12 @@ export const migrateLanguageAndTimezone = internalAction({
 
     while (true) {
       // Page through users in the action
-      const page = await ctx.runQuery(internal.migrations.migrateGetUserBatch, { cursor, limit: BATCH_SIZE });
-      if (page.userIds.length === 0) break;
+      const page = await ctx.runQuery(internal.migrations.migrateGetUserBatch, { cursor, limit: BATCH_SIZE }) as { userIds: Id<"users">[]; nextCursor: string | null };
+      const { userIds, nextCursor } = page;
+      if (userIds.length === 0) break;
 
       const result = await ctx.runMutation(internal.migrations.migrateLanguageAndTimezoneBatch, {
-        userIds: page.userIds,
+        userIds,
       });
 
       totalLang += result.langUpdated;
@@ -735,8 +742,8 @@ export const migrateLanguageAndTimezone = internalAction({
       totalPersonality += result.personalityReset;
       totalProcessed += result.processed;
 
-      if (!page.nextCursor) break;
-      cursor = page.nextCursor;
+      if (!nextCursor) break;
+      cursor = nextCursor;
     }
 
     return `Migration complete: personality reset=${totalPersonality}, language updated=${totalLang}, timezone updated=${totalTz}, total users=${totalProcessed}`;
@@ -746,6 +753,10 @@ export const migrateLanguageAndTimezone = internalAction({
 /** Internal query to fetch a paginated batch of user IDs for the migration. */
 export const migrateGetUserBatch = internalQuery({
   args: { cursor: v.union(v.string(), v.null()), limit: v.number() },
+  returns: v.object({
+    userIds: v.array(v.id("users")),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, { cursor, limit }) => {
     const result = await ctx.db.query("users").paginate({ cursor: cursor as string | null, numItems: limit });
     return {
