@@ -9,10 +9,40 @@ import { detectCountryFromPhone } from "./lib/analytics";
 // ---------------------------------------------------------------------------
 
 const POSTHOG_HOST = "https://us.i.posthog.com";
+const POSTHOG_TIMEOUT_MS = 10_000;
 
 function redactId(id: string): string {
   if (id.length <= 4) return "***";
   return `${id.slice(0, 2)}***${id.slice(-2)}`;
+}
+
+function requireApiKey(): string {
+  const apiKey = process.env.POSTHOG_API_KEY;
+  if (!apiKey) {
+    throw new Error("[PostHog] Missing POSTHOG_API_KEY");
+  }
+  return apiKey;
+}
+
+async function postToPostHog(body: Record<string, unknown>, label: string): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), POSTHOG_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const msg = `[PostHog] HTTP ${res.status} for ${label}: ${text}`;
+      console.error(msg);
+      throw new Error(msg);
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function captureEvent(
@@ -21,66 +51,28 @@ async function captureEvent(
   properties?: Record<string, unknown>,
   timestamp?: string
 ): Promise<void> {
-  const apiKey = process.env.POSTHOG_API_KEY;
-  if (!apiKey) {
-    console.warn("[PostHog] Missing POSTHOG_API_KEY — analytics disabled");
-    return;
-  }
-  try {
-    const payload: Record<string, unknown> = {
-      api_key: apiKey,
-      event,
-      distinct_id: distinctId,
-      properties: { ...properties, $lib: "ghali-server" },
-    };
-    if (timestamp) payload.timestamp = timestamp;
-    const res = await fetch(`${POSTHOG_HOST}/capture/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      const msg = `[PostHog] HTTP ${res.status} for "${event}" (${redactId(distinctId)}): ${body}`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-  } catch (error) {
-    console.error(`[PostHog] Failed to capture "${event}" for ${redactId(distinctId)}:`, error);
-    throw error;
-  }
+  const apiKey = requireApiKey();
+  const payload: Record<string, unknown> = {
+    api_key: apiKey,
+    event,
+    distinct_id: distinctId,
+    properties: { ...properties, $lib: "ghali-server" },
+  };
+  if (timestamp) payload.timestamp = timestamp;
+  await postToPostHog(payload, `"${event}" (${redactId(distinctId)})`);
 }
 
 async function identifyPerson(
   distinctId: string,
   properties: Record<string, unknown>
 ): Promise<void> {
-  const apiKey = process.env.POSTHOG_API_KEY;
-  if (!apiKey) {
-    console.warn("[PostHog] Missing POSTHOG_API_KEY — analytics disabled");
-    return;
-  }
-  try {
-    const res = await fetch(`${POSTHOG_HOST}/capture/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: apiKey,
-        event: "$identify",
-        distinct_id: distinctId,
-        properties: { $set: properties, $lib: "ghali-server" },
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      const msg = `[PostHog] HTTP ${res.status} for $identify (${redactId(distinctId)}): ${body}`;
-      console.error(msg);
-      throw new Error(msg);
-    }
-  } catch (error) {
-    console.error(`[PostHog] Failed to identify ${redactId(distinctId)}:`, error);
-    throw error;
-  }
+  const apiKey = requireApiKey();
+  await postToPostHog({
+    api_key: apiKey,
+    event: "$identify",
+    distinct_id: distinctId,
+    properties: { $set: properties, $lib: "ghali-server" },
+  }, `$identify (${redactId(distinctId)})`);
 }
 
 // ---------------------------------------------------------------------------
