@@ -537,10 +537,12 @@ export const backfillUserNew = internalAction({
     phones: v.array(v.string()),
   },
   handler: async (ctx, { phones }) => {
-    // Look up real timezones from user records
+    // Look up real timezones and creation dates from user records
     const users = await ctx.runQuery(internal.users.getAllUsers, {}) as Array<{
       phone: string;
       timezone: string;
+      createdAt?: number;
+      _creationTime: number;
     }>;
     const userByPhone = new Map(users.map((u) => [u.phone, u]));
 
@@ -555,10 +557,13 @@ export const backfillUserNew = internalAction({
         skipped++;
         continue;
       }
+      const createdMs = user.createdAt ?? user._creationTime;
+      const timestamp = new Date(createdMs).toISOString();
       try {
         await ctx.runAction(internal.analytics.trackUserNew, {
           phone,
           timezone: user.timezone || "UTC",
+          timestamp,
         });
         sent++;
       } catch {

@@ -18,7 +18,8 @@ function redactId(id: string): string {
 async function captureEvent(
   distinctId: string,
   event: string,
-  properties?: Record<string, unknown>
+  properties?: Record<string, unknown>,
+  timestamp?: string
 ): Promise<void> {
   const apiKey = process.env.POSTHOG_API_KEY;
   if (!apiKey) {
@@ -26,22 +27,27 @@ async function captureEvent(
     return;
   }
   try {
+    const payload: Record<string, unknown> = {
+      api_key: apiKey,
+      event,
+      distinct_id: distinctId,
+      properties: { ...properties, $lib: "ghali-server" },
+    };
+    if (timestamp) payload.timestamp = timestamp;
     const res = await fetch(`${POSTHOG_HOST}/capture/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: apiKey,
-        event,
-        distinct_id: distinctId,
-        properties: { ...properties, $lib: "ghali-server" },
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.error(`[PostHog] HTTP ${res.status} for "${event}" (${redactId(distinctId)}): ${body}`);
+      const msg = `[PostHog] HTTP ${res.status} for "${event}" (${redactId(distinctId)}): ${body}`;
+      console.error(msg);
+      throw new Error(msg);
     }
   } catch (error) {
     console.error(`[PostHog] Failed to capture "${event}" for ${redactId(distinctId)}:`, error);
+    throw error;
   }
 }
 
@@ -62,16 +68,18 @@ async function identifyPerson(
         api_key: apiKey,
         event: "$identify",
         distinct_id: distinctId,
-        properties: { ...properties, $lib: "ghali-server" },
-        $set: properties,
+        properties: { $set: properties, $lib: "ghali-server" },
       }),
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
-      console.error(`[PostHog] HTTP ${res.status} for $identify (${redactId(distinctId)}): ${body}`);
+      const msg = `[PostHog] HTTP ${res.status} for $identify (${redactId(distinctId)}): ${body}`;
+      console.error(msg);
+      throw new Error(msg);
     }
   } catch (error) {
     console.error(`[PostHog] Failed to identify ${redactId(distinctId)}:`, error);
+    throw error;
   }
 }
 
@@ -83,12 +91,13 @@ export const trackUserNew = internalAction({
   args: {
     phone: v.string(),
     timezone: v.string(),
+    timestamp: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, timezone }) => {
+  handler: async (_ctx, { phone, timezone, timestamp }) => {
     await captureEvent(phone, "user_new", {
       phone_country: detectCountryFromPhone(phone),
       timezone,
-    });
+    }, timestamp);
   },
 });
 
