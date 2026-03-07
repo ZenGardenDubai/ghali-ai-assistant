@@ -50,7 +50,10 @@ async function identifyPerson(
   properties: Record<string, unknown>
 ): Promise<void> {
   const apiKey = process.env.POSTHOG_API_KEY;
-  if (!apiKey) return;
+  if (!apiKey) {
+    console.warn("[PostHog] Missing POSTHOG_API_KEY — analytics disabled");
+    return;
+  }
   try {
     const res = await fetch(`${POSTHOG_HOST}/capture/`, {
       method: "POST",

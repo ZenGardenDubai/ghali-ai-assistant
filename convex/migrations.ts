@@ -542,15 +542,23 @@ export const backfillUserNew = internalAction({
       phone: string;
       timezone: string;
     }>;
-    const tzByPhone = new Map(users.map((u) => [u.phone, u.timezone]));
+    const userByPhone = new Map(users.map((u) => [u.phone, u]));
 
+    // Deduplicate input and skip phones not in Convex
+    const uniquePhones = [...new Set(phones)];
     let sent = 0;
     let failed = 0;
-    for (const phone of phones) {
+    let skipped = 0;
+    for (const phone of uniquePhones) {
+      const user = userByPhone.get(phone);
+      if (!user) {
+        skipped++;
+        continue;
+      }
       try {
         await ctx.runAction(internal.analytics.trackUserNew, {
           phone,
-          timezone: tzByPhone.get(phone) ?? "UTC",
+          timezone: user.timezone || "UTC",
         });
         sent++;
       } catch {
@@ -560,7 +568,7 @@ export const backfillUserNew = internalAction({
         failed++;
       }
     }
-    const summary = `Backfill user_new: ${sent} sent, ${failed} failed (${phones.length} total)`;
+    const summary = `Backfill user_new: ${sent} sent, ${failed} failed, ${skipped} skipped (${uniquePhones.length} unique phones)`;
     console.log(summary);
     return summary;
   },
