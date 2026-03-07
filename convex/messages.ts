@@ -492,7 +492,7 @@ export const generateResponse = internalAction({
 
     // Build user context from per-user files + datetime
     const { date, time, tz } = getCurrentDateTime(user.timezone);
-    const userContext = buildUserContext(userFiles, { date, time, tz });
+    const userContext = buildUserContext(userFiles, { date, time, tz }, { language: user.language, timezone: user.timezone });
 
     // Voice note intercept — transcribe and use as text prompt
     // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.

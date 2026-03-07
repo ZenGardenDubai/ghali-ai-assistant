@@ -71,6 +71,7 @@ PROFILE RULES:
 - Profile stores IDENTITY facts — who the user IS. It is never compacted or summarized.
 - updateProfile replaces an entire section. Always include ALL known facts for that section.
 - Categories: personal (name, birthday, nationality, languages), professional (job, company, skills), education (degrees, schools), family (spouse, children), location (city, country), links (website, social media).
+- When a user's location changes (city or country), also call updateTimezone with the correct IANA timezone (e.g. "Europe/London" for London, "America/New_York" for New York, "Asia/Dubai" for Dubai). This keeps scheduled tasks, reminders, and heartbeat firing at the right local time.
 - After web research about the user → save identity facts to profile.
 - After user shares their own document (CV, resume, bio) → extract identity facts to profile. Do NOT assume every document is about the user — only save when the user indicates it's theirs or context makes it obvious.
 - "What do you know about me?" → read from profile (primary) + memory (supplementary).
@@ -89,7 +90,7 @@ MEMORY RULES (critical):
 - If no → don't call appendToMemory (save tokens).
 - To correct or remove facts in memory → call editMemory.
 - Communication style preferences (tone, verbosity, emoji) → updatePersonality (NOT memory).
-- Language: always respond in the language the user writes in for that message. Only update the user's language preference in memory if they explicitly ask to change it ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch.
+- Language: always respond in the language the user writes in for that message. When a user explicitly asks to always reply in a specific language ("switch to Arabic", "always reply in English"), call updateLanguage to atomically sync both the database and personality file. Don't update language preference just because one message is in a different language — users often code-switch.
 - NEVER ask "should I remember this?" — just remember it silently.
 - When a user replies with a short confirmation (yes, ok, sure, do it, yep), always look at your last message to understand what they're confirming. Never treat a confirmation as a new standalone request.
 - *Conversational focus*: when a follow-up message references something ambiguous (e.g. "elaborate on the context", "explain that", "tell me more"), ALWAYS resolve it against the current conversation topic and your recent messages first — not the user's personal context, schedule, or memory. If you just summarized a letter that had a "Context" bullet, "elaborate on the context" means that bullet — not the user's calendar. Only fall back to personal context if the conversation has no active topic.
@@ -151,6 +152,8 @@ Keep this section in mind so you set accurate expectations with users.
 5. *Document Search* — You can search previously uploaded documents via searchDocuments. Only PDF, text, and Office files are indexed. Images, audio, and video are analyzed once but NOT stored for future search.
 
 6. *Per-User Files* — Profile (identity facts, section-replace semantics — always include ALL facts for a section), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}. Profile categories: personal, professional, education, family, location, links.
+   - Language changes: use updateLanguage (syncs database + personality file atomically).
+   - Timezone/location changes: call updateProfile for the location section AND updateTimezone to keep scheduled tasks firing at the right local time.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
@@ -304,6 +307,66 @@ const updateHeartbeat = createTool({
       content,
     });
     return JSON.stringify({ status: "success", action: "heartbeat_updated" });
+  },
+});
+
+const updateLanguage = createTool({
+  description:
+    "Update the user's preferred language for system responses. Call this when the user explicitly asks to always reply in a specific language (e.g. 'switch to Arabic', 'always reply in French'). Also updates the personality file to record the preference.",
+  args: z.object({
+    language: z
+      .string()
+      .describe(
+        "Language name or IETF tag (e.g. 'Arabic', 'ar', 'French', 'fr'). Use a human-readable name so the agent and system can both use it."
+      ),
+    personalityContent: z
+      .string()
+      .optional()
+      .describe(
+        "Full updated personality file content including the language preference. Omit if no personality file changes are needed."
+      ),
+  }),
+  handler: async (ctx, { language, personalityContent }) => {
+    const userId = ctx.userId as Id<"users">;
+    await ctx.runMutation(internal.users.internalUpdateUser, {
+      userId,
+      fields: { language },
+    });
+    if (personalityContent !== undefined) {
+      if (isFileTooLarge(personalityContent)) {
+        return JSON.stringify({
+          status: "error",
+          code: "FILE_TOO_LARGE",
+          message: "Personality file exceeds 50KB limit. Please summarize.",
+        });
+      }
+      await ctx.runMutation(internal.users.internalUpdateUserFile, {
+        userId,
+        filename: "personality",
+        content: personalityContent,
+      });
+    }
+    return JSON.stringify({ status: "success", action: "language_updated", language });
+  },
+});
+
+const updateTimezone = createTool({
+  description:
+    "Update the user's timezone when they mention moving to a new location or changing their timezone. Syncs user.timezone in the database so scheduled tasks, reminders, and heartbeat fire at the correct local time.",
+  args: z.object({
+    timezone: z
+      .string()
+      .describe(
+        "IANA timezone identifier (e.g. 'Europe/London', 'America/New_York', 'Asia/Dubai'). Resolve city/country names to IANA format."
+      ),
+  }),
+  handler: async (ctx, { timezone }) => {
+    const userId = ctx.userId as Id<"users">;
+    await ctx.runMutation(internal.users.internalUpdateUser, {
+      userId,
+      fields: { timezone },
+    });
+    return JSON.stringify({ status: "success", action: "timezone_updated", timezone });
   },
 });
 
@@ -1701,6 +1764,8 @@ export const ghaliAgent = new Agent(components.agent, {
     appendToMemory,
     editMemory,
     updatePersonality,
+    updateLanguage,
+    updateTimezone,
     updateHeartbeat,
     updateProfile,
     deepReasoning,

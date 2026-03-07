@@ -82,6 +82,14 @@ describe("AGENT_INSTRUCTIONS", () => {
     expect(AGENT_INSTRUCTIONS).toContain("appendToMemory");
   });
 
+  it("instructs to call updateLanguage for explicit language changes", () => {
+    expect(AGENT_INSTRUCTIONS).toContain("updateLanguage");
+  });
+
+  it("instructs to call updateTimezone when location changes", () => {
+    expect(AGENT_INSTRUCTIONS).toContain("updateTimezone");
+  });
+
   it("instructs to never ask about remembering", () => {
     expect(AGENT_INSTRUCTIONS).toContain(
       'NEVER ask "should I remember this?"'
@@ -157,5 +165,43 @@ describe("buildUserContext", () => {
     const result = buildUserContext(files, datetime);
     expect(result).not.toContain("## User Memory");
     expect(result).toContain("## User Personality Preferences");
+  });
+
+  it("includes user settings section when language is provided", () => {
+    const result = buildUserContext([], datetime, { language: "Arabic" });
+    expect(result).toContain("## User Settings");
+    expect(result).toContain("- Preferred language: Arabic");
+  });
+
+  it("includes user settings section when timezone is provided", () => {
+    const result = buildUserContext([], datetime, { timezone: "Asia/Dubai" });
+    expect(result).toContain("## User Settings");
+    expect(result).toContain("- Timezone: Asia/Dubai");
+  });
+
+  it("includes both language and timezone in user settings", () => {
+    const result = buildUserContext([], datetime, { language: "Arabic", timezone: "Asia/Dubai" });
+    expect(result).toContain("## User Settings");
+    expect(result).toContain("- Preferred language: Arabic");
+    expect(result).toContain("- Timezone: Asia/Dubai");
+  });
+
+  it("omits user settings section when userSettings is undefined", () => {
+    const result = buildUserContext([], datetime);
+    expect(result).not.toContain("## User Settings");
+  });
+
+  it("omits user settings section when both language and timezone are undefined", () => {
+    const result = buildUserContext([], datetime, {});
+    expect(result).not.toContain("## User Settings");
+  });
+
+  it("places user settings before profile section", () => {
+    const files = [{ filename: "profile", content: "## Personal\nname: Hesham" }];
+    const result = buildUserContext(files, datetime, { language: "Arabic" });
+    const settingsIdx = result.indexOf("## User Settings");
+    const profileIdx = result.indexOf("## User Profile");
+    expect(settingsIdx).toBeGreaterThan(0);
+    expect(settingsIdx).toBeLessThan(profileIdx);
   });
 });
