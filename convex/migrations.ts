@@ -8,6 +8,7 @@ import { generateText } from "ai";
 import { MODELS } from "./constants";
 import { parseProfileSections, replaceProfileSection, type ProfileCategory } from "./lib/profile";
 import { isFileTooLarge } from "./lib/userFiles";
+import { resolveCityToTimezone, buildDefaultPersonality } from "./lib/onboarding";
 
 /** Shared mapping from display section names to ProfileCategory keys. */
 const SECTION_TO_CATEGORY: Record<string, ProfileCategory> = {
@@ -650,7 +651,6 @@ export function extractCityFromProfile(profileContent: string): string | null {
 export const migrateLanguageAndTimezoneBatch = internalMutation({
   args: { userIds: v.array(v.id("users")) },
   handler: async (ctx, { userIds }) => {
-    const { resolveCityToTimezone, buildDefaultPersonality } = await import("./lib/onboarding");
     const DEFAULT_PERSONALITY = buildDefaultPersonality();
     let langUpdated = 0, tzUpdated = 0, personalityReset = 0;
 
@@ -747,6 +747,21 @@ export const migrateLanguageAndTimezone = internalAction({
     }
 
     return `Migration complete: personality reset=${totalPersonality}, language updated=${totalLang}, timezone updated=${totalTz}, total users=${totalProcessed}`;
+  },
+});
+
+/** One-off query: count scheduled tasks and unique users. Run from dashboard. */
+export const countScheduledTasks = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const tasks = await ctx.db.query("scheduledTasks").collect();
+    const total = tasks.length;
+    const enabled = tasks.filter(t => t.enabled).length;
+    const disabled = total - enabled;
+    const cron = tasks.filter(t => t.schedule.kind === "cron").length;
+    const once = total - cron;
+    const uniqueUsers = new Set(tasks.map(t => t.userId)).size;
+    return { total, enabled, disabled, cron, once, uniqueUsers };
   },
 });
 
