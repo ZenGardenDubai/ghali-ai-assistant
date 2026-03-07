@@ -674,6 +674,7 @@ export const migrateLanguageAndTimezone = internalMutation({
           userId: user._id,
           filename: "personality",
           content: DEFAULT_PERSONALITY,
+          updatedAt: Date.now(),
         });
         personalityReset++;
       }
