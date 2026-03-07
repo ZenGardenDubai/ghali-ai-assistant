@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.33.0...v0.33.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* replace dynamic import in migration + add scheduled tasks counter ([#161](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/161)) ([f352a42](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f352a42b18c827171c526834df6ea0840cea6836))
+
 ## [0.33.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.32.1...v0.33.0) (2026-03-07)
 
 
