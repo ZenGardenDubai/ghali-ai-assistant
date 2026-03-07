@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.3...v0.31.4) (2026-03-07)
+
+
+### Bug Fixes
+
+* **analytics:** add $ai_trace_id to PostHog $ai_generation events ([#143](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/143)) ([f21e012](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f21e012f5a9fdfb86d782e1cb988ebfd28f2244e))
+
 ## [0.31.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.2...v0.31.3) (2026-03-05)
 
 
