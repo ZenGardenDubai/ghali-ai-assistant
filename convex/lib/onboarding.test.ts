@@ -70,6 +70,12 @@ describe("isRealQuestion", () => {
     expect(isRealQuestion("Calculate 25 * 37")).toBe(true);
   });
 
+  it("detects reminder/schedule requests", () => {
+    expect(isRealQuestion("remind me to call mom")).toBe(true);
+    expect(isRealQuestion("set a reminder for tomorrow at 8")).toBe(true);
+    expect(isRealQuestion("schedule a reminder to pay rent")).toBe(true);
+  });
+
   it("returns false for short/simple onboarding replies", () => {
     expect(isRealQuestion("yes")).toBe(false);
     expect(isRealQuestion("no")).toBe(false);
@@ -236,6 +242,17 @@ describe("buildOnboardingMemory", () => {
     const memory = buildOnboardingMemory("Ahmad");
     expect(memory).not.toContain("Language");
     expect(memory).not.toContain("Timezone");
+  });
+
+  it("omits name entry when no name provided", () => {
+    const memory = buildOnboardingMemory();
+    expect(memory).toBe("# User Memory");
+    expect(memory).not.toContain("Name");
+  });
+
+  it("omits name entry when undefined", () => {
+    const memory = buildOnboardingMemory(undefined);
+    expect(memory).toBe("# User Memory");
   });
 });
 

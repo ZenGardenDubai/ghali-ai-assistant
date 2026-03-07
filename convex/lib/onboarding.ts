@@ -35,7 +35,7 @@ interface OnboardingUser {
 // vs. a short onboarding reply (name, yes/no, style pick, etc.)
 // ============================================================================
 
-const QUESTION_STARTERS = /^(what|how|why|where|when|who|which|can|could|would|should|is|are|do|does|did|will|tell|explain|describe|write|translate|summarize|calculate|find|search|help|show|list|compare|analyze|create|generate|make)\b/i;
+const QUESTION_STARTERS = /^(what|how|why|where|when|who|which|can|could|would|should|is|are|do|does|did|will|tell|explain|describe|write|translate|summarize|calculate|find|search|help|show|list|compare|analyze|create|generate|make|remind|set|schedule)\b/i;
 
 const SHORT_REPLIES = /^(yes|no|yeah|yep|nah|nope|ok|okay|sure|skip|hi|hello|hey|thanks|thank you|نعم|لا|أوكي|حسنا|مرحبا|oui|non|merci|salut|sí|no|hola|gracias)$/i;
 
@@ -163,8 +163,9 @@ export function buildPersonalityContent(style: string): string {
 // buildOnboardingMemory — initial memory markdown
 // ============================================================================
 
-export function buildOnboardingMemory(name: string): string {
-  return `# User Memory\n- Name: ${name}`;
+export function buildOnboardingMemory(name?: string): string {
+  if (name) return `# User Memory\n- Name: ${name}`;
+  return "# User Memory";
 }
 
 // ============================================================================
@@ -224,7 +225,7 @@ export async function handleOnboarding(
         timezone,
       });
       const fileUpdates: OnboardingResult["fileUpdates"] = {
-        memory: buildOnboardingMemory(name),
+        memory: buildOnboardingMemory(user.name?.trim() || undefined),
       };
       return { response, nextStep: null, fileUpdates };
     }
