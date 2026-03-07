@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getNextCronRun } from "./lib/cronParser";
@@ -521,6 +522,58 @@ Rules:
     }
 
     const summary = `Profile format migration: ${migrated} migrated, ${skipped} skipped, ${errors} errors (${users.length} total)`;
+    console.log(summary);
+    return summary;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// One-time backfill: fire user_new events for users missing from PostHog.
+// Run via Convex dashboard or: npx convex run --prod migrations:backfillUserNew '{"phones":["..."]}'
+// ---------------------------------------------------------------------------
+
+export const backfillUserNew = internalAction({
+  args: {
+    phones: v.array(v.string()),
+  },
+  handler: async (ctx, { phones }) => {
+    // Look up real timezones and creation dates from user records
+    const users = await ctx.runQuery(internal.users.getAllUsers, {}) as Array<{
+      phone: string;
+      timezone: string;
+      createdAt?: number;
+      _creationTime: number;
+    }>;
+    const userByPhone = new Map(users.map((u) => [u.phone, u]));
+
+    // Deduplicate input and skip phones not in Convex
+    const uniquePhones = [...new Set(phones)];
+    let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+    for (const phone of uniquePhones) {
+      const user = userByPhone.get(phone);
+      if (!user) {
+        skipped++;
+        continue;
+      }
+      const createdMs = user.createdAt ?? user._creationTime;
+      const timestamp = new Date(createdMs).toISOString();
+      try {
+        await ctx.runAction(internal.analytics.trackUserNew, {
+          phone,
+          timezone: user.timezone || "UTC",
+          timestamp,
+        });
+        sent++;
+      } catch {
+        // Redact phone in logs (same pattern as analytics.ts)
+        const redacted = phone.length > 4 ? `${phone.slice(0, 2)}***${phone.slice(-2)}` : "***";
+        console.error(`[Backfill] Failed for ${redacted}`);
+        failed++;
+      }
+    }
+    const summary = `Backfill user_new: ${sent} sent, ${failed} failed, ${skipped} skipped (${uniquePhones.length} unique phones)`;
     console.log(summary);
     return summary;
   },

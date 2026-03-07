@@ -2,50 +2,77 @@
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
-import { PostHog } from "posthog-node";
 import { detectCountryFromPhone } from "./lib/analytics";
 
 // ---------------------------------------------------------------------------
-// PostHog client (lazy singleton, immediate flush)
+// PostHog capture — direct HTTP POST for reliable delivery in serverless
 // ---------------------------------------------------------------------------
 
-let cachedClient: PostHog | null = null;
-
-function getPostHogClient(): PostHog | null {
-  if (cachedClient) return cachedClient;
-
-  const apiKey = process.env.POSTHOG_API_KEY;
-  if (!apiKey) {
-    console.warn("[PostHog] Missing POSTHOG_API_KEY — analytics disabled");
-    return null;
-  }
-
-  cachedClient = new PostHog(apiKey, {
-    host: "https://us.i.posthog.com",
-    flushAt: 1,
-    flushInterval: 0,
-  });
-  return cachedClient;
-}
+const POSTHOG_HOST = "https://us.i.posthog.com";
+const POSTHOG_TIMEOUT_MS = 10_000;
 
 function redactId(id: string): string {
   if (id.length <= 4) return "***";
   return `${id.slice(0, 2)}***${id.slice(-2)}`;
 }
 
+function requireApiKey(): string {
+  const apiKey = process.env.POSTHOG_API_KEY;
+  if (!apiKey) {
+    throw new Error("[PostHog] Missing POSTHOG_API_KEY");
+  }
+  return apiKey;
+}
+
+async function postToPostHog(body: Record<string, unknown>, label: string): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), POSTHOG_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${POSTHOG_HOST}/capture/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const msg = `[PostHog] HTTP ${res.status} for ${label}: ${text}`;
+      console.error(msg);
+      throw new Error(msg);
+    }
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 async function captureEvent(
   distinctId: string,
   event: string,
-  properties?: Record<string, unknown>
+  properties?: Record<string, unknown>,
+  timestamp?: string
 ): Promise<void> {
-  try {
-    const posthog = getPostHogClient();
-    if (!posthog) return;
-    posthog.capture({ distinctId, event, properties });
-    await posthog.flush();
-  } catch (error) {
-    console.error(`[PostHog] Failed to flush event "${event}" for ${redactId(distinctId)}:`, error);
-  }
+  const apiKey = requireApiKey();
+  const payload: Record<string, unknown> = {
+    api_key: apiKey,
+    event,
+    distinct_id: distinctId,
+    properties: { ...properties, $lib: "ghali-server" },
+  };
+  if (timestamp) payload.timestamp = timestamp;
+  await postToPostHog(payload, `"${event}" (${redactId(distinctId)})`);
+}
+
+async function identifyPerson(
+  distinctId: string,
+  properties: Record<string, unknown>
+): Promise<void> {
+  const apiKey = requireApiKey();
+  await postToPostHog({
+    api_key: apiKey,
+    event: "$identify",
+    distinct_id: distinctId,
+    properties: { $set: properties, $lib: "ghali-server" },
+  }, `$identify (${redactId(distinctId)})`);
 }
 
 // ---------------------------------------------------------------------------
@@ -56,12 +83,13 @@ export const trackUserNew = internalAction({
   args: {
     phone: v.string(),
     timezone: v.string(),
+    timestamp: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, timezone }) => {
+  handler: async (_ctx, { phone, timezone, timestamp }) => {
     await captureEvent(phone, "user_new", {
       phone_country: detectCountryFromPhone(phone),
       timezone,
-    });
+    }, timestamp);
   },
 });
 
@@ -77,22 +105,12 @@ export const identifyUser = internalAction({
     tier: v.string(),
   },
   handler: async (_ctx, { phone, timezone, tier }) => {
-    try {
-      const posthog = getPostHogClient();
-      if (!posthog) return;
-      posthog.identify({
-        distinctId: phone,
-        properties: {
-          phone,
-          country: detectCountryFromPhone(phone),
-          tier,
-          timezone,
-        },
-      });
-      await posthog.flush();
-    } catch (error) {
-      console.error(`[PostHog] Failed to identify user ${redactId(phone)}:`, error);
-    }
+    await identifyPerson(phone, {
+      phone,
+      country: detectCountryFromPhone(phone),
+      tier,
+      timezone,
+    });
   },
 });
 
