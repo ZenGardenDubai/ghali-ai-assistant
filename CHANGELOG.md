@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.32.1...v0.33.0) (2026-03-07)
+
+
+### Features
+
+* Phase 1 — default personality, language/timezone source of truth, personality bootstrap ([#158](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/158)) ([5104e92](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5104e92d03aee723d6d71de02cbe03aa63ff7525))
+
 ## [0.32.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.32.0...v0.32.1) (2026-03-07)
 
 
