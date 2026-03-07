@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.6...v0.32.0) (2026-03-07)
+
+
+### Features
+
+* simplify onboarding to single welcome message ([#151](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/151)) ([572ded5](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/572ded56b328debe0cccc119b38a9e4c62f6b0e9))
+
 ## [0.31.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.5...v0.31.6) (2026-03-07)
 
 
