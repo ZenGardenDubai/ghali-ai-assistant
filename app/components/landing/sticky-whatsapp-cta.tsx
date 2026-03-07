@@ -3,6 +3,7 @@
 import { usePostHog } from "posthog-js/react";
 import { useCallback } from "react";
 import type { TranslationDict } from "@/app/lib/i18n/types";
+import { trackGhaliChatStarted } from "@/lib/analytics";
 
 export function StickyWhatsAppCta({ t }: { t: TranslationDict }) {
   const posthog = usePostHog();
@@ -17,6 +18,7 @@ export function StickyWhatsAppCta({ t }: { t: TranslationDict }) {
       cta_location: "sticky_whatsapp",
       cta_href: t.whatsappUrl,
     });
+    trackGhaliChatStarted({ location: "sticky_whatsapp", href: t.whatsappUrl });
   }, [posthog, t.whatsappUrl]);
 
   return (

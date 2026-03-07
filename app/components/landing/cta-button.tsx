@@ -2,6 +2,7 @@
 
 import { usePostHog } from "posthog-js/react";
 import { useCallback } from "react";
+import { trackGhaliChatStarted } from "@/lib/analytics";
 
 interface CtaButtonProps {
   href: string;
@@ -27,6 +28,7 @@ export function CtaButton({ href, location, children, className }: CtaButtonProp
       cta_location: location,
       cta_href: href,
     });
+    trackGhaliChatStarted({ location, href });
   }, [posthog, location, href]);
 
   return (
