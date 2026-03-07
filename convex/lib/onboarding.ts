@@ -255,12 +255,28 @@ export const CITY_TIMEZONES: Record<string, string> = {
  * Resolve a city name or IANA timezone string to a valid IANA timezone.
  * Returns null if the city is unknown and the input is not a valid IANA zone.
  */
-export function resolveCityToTimezone(input: string): string | null {
-  const lower = input.toLowerCase().trim();
+/**
+ * Normalize a city input for lookup: lowercase, trim, collapse spaces,
+ * remove punctuation/commas/country suffixes, strip diacritics.
+ */
+export function normalizeCityInput(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")   // strip diacritics
+    .toLowerCase()
+    .trim()
+    .replace(/[,\.]/g, " ")            // commas/dots → space
+    .replace(/\s+/g, " ")             // collapse multiple spaces
+    .replace(/\s+(city|province|state|country|region|governorate)$/i, "") // strip suffixes
+    .trim();
+}
 
-  // Check city map first
-  if (CITY_TIMEZONES[lower]) {
-    return CITY_TIMEZONES[lower];
+export function resolveCityToTimezone(input: string): string | null {
+  const normalized = normalizeCityInput(input);
+
+  // Check city map with normalized key
+  if (CITY_TIMEZONES[normalized]) {
+    return CITY_TIMEZONES[normalized];
   }
 
   // Try as a direct IANA timezone (e.g. "Asia/Dubai", "Europe/London")
@@ -268,48 +284,14 @@ export function resolveCityToTimezone(input: string): string | null {
     Intl.DateTimeFormat(undefined, { timeZone: input });
     return input;
   } catch {
-    return null;
+    // Also try normalized as IANA (e.g. "asia/dubai")
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: normalized });
+      return normalized;
+    } catch {
+      return null;
+    }
   }
-}
-
-// ============================================================================
-// bootstrapPersonality — infer initial personality from first real message
-// ============================================================================
-
-/**
- * Silently detect personality signals from the user's first real message
- * and return updated personality content. Called once after onboarding.
- */
-export function bootstrapPersonality(message: string): string {
-  const words = message.trim().split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
-
-  // Emoji detection — standard emoji unicode ranges
-  const hasEmoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(message);
-
-  // Formal vocabulary signals
-  const formalPattern =
-    /\b(please|thank you|kindly|would you|could you|I would like|I am writing|I have a|sincerely|regards|greetings|good morning|good afternoon|good evening|dear)\b/i;
-  const casualPattern =
-    /\b(wanna|gonna|lol|btw|idk|omg|tbh|ngl|haha|ya|yep|nope|lemme|dunno|sup|hey|yo|wassup|chill|cool|awesome|dude)\b/i;
-
-  const isFormal = formalPattern.test(message) && !casualPattern.test(message);
-
-  // Determine fields based on signals
-  const verbosity =
-    wordCount <= 10 ? "concise, short answers" :
-    wordCount >= 30 ? "detailed" :
-    "balanced";
-
-  const emoji = hasEmoji ? "expressive and frequent" : "minimal";
-
-  const tone = isFormal ? "professional, formal" : "playful, bubbly, and helpful";
-
-  return `# Preferences
-- Tone: ${tone}
-- Verbosity: ${verbosity}
-- Emoji: ${emoji}
-- Off-limits: none specified`;
 }
 
 // ============================================================================
