@@ -249,6 +249,16 @@ describe("resolveCityToTimezone", () => {
     expect(resolveCityToTimezone("Europe/Paris")).toBe("Europe/Paris");
   });
 
+  it("resolves Mexico City correctly (does not strip 'city' from name)", () => {
+    expect(resolveCityToTimezone("Mexico City")).toBe("America/Mexico_City");
+    expect(resolveCityToTimezone("mexico city")).toBe("America/Mexico_City");
+  });
+
+  it("handles conversational variants with punctuation and country suffixes", () => {
+    expect(resolveCityToTimezone("Dubai, UAE")).toBe("Asia/Dubai");
+    expect(resolveCityToTimezone("São Paulo")).toBe("America/Sao_Paulo");
+  });
+
   it("returns null for unknown city", () => {
     expect(resolveCityToTimezone("Gotham City")).toBeNull();
     expect(resolveCityToTimezone("not-a-city")).toBeNull();

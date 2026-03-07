@@ -1,12 +1,14 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { getNextCronRun } from "./lib/cronParser";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { MODELS } from "./constants";
 import { parseProfileSections, replaceProfileSection, type ProfileCategory } from "./lib/profile";
 import { isFileTooLarge } from "./lib/userFiles";
+import { resolveCityToTimezone, buildDefaultPersonality } from "./lib/onboarding";
 
 /** Shared mapping from display section names to ProfileCategory keys. */
 const SECTION_TO_CATEGORY: Record<string, ProfileCategory> = {
@@ -629,8 +631,13 @@ export function extractLanguageFromFile(content: string): string | null {
  * Extracts a city or location string from a profile file for timezone resolution.
  */
 export function extractCityFromProfile(profileContent: string): string | null {
-  const match = profileContent.match(/(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^\n,]+)/i);
-  return match ? match[1].trim() : null;
+  for (const line of profileContent.split("\n")) {
+    const match = line.match(
+      /^\s*[-*]?\s*(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^,\n]+)/i
+    );
+    if (match) return match[1].trim();
+  }
+  return null;
 }
 
 /**
@@ -644,7 +651,6 @@ export function extractCityFromProfile(profileContent: string): string | null {
 export const migrateLanguageAndTimezoneBatch = internalMutation({
   args: { userIds: v.array(v.id("users")) },
   handler: async (ctx, { userIds }) => {
-    const { resolveCityToTimezone, buildDefaultPersonality } = await import("./lib/onboarding");
     const DEFAULT_PERSONALITY = buildDefaultPersonality();
     let langUpdated = 0, tzUpdated = 0, personalityReset = 0;
 
@@ -723,11 +729,12 @@ export const migrateLanguageAndTimezone = internalAction({
 
     while (true) {
       // Page through users in the action
-      const page = await ctx.runQuery(internal.migrations.migrateGetUserBatch, { cursor, limit: BATCH_SIZE });
-      if (page.userIds.length === 0) break;
+      const page = await ctx.runQuery(internal.migrations.migrateGetUserBatch, { cursor, limit: BATCH_SIZE }) as { userIds: Id<"users">[]; nextCursor: string | null };
+      const { userIds, nextCursor } = page;
+      if (userIds.length === 0) break;
 
       const result = await ctx.runMutation(internal.migrations.migrateLanguageAndTimezoneBatch, {
-        userIds: page.userIds,
+        userIds,
       });
 
       totalLang += result.langUpdated;
@@ -735,17 +742,36 @@ export const migrateLanguageAndTimezone = internalAction({
       totalPersonality += result.personalityReset;
       totalProcessed += result.processed;
 
-      if (!page.nextCursor) break;
-      cursor = page.nextCursor;
+      if (!nextCursor) break;
+      cursor = nextCursor;
     }
 
     return `Migration complete: personality reset=${totalPersonality}, language updated=${totalLang}, timezone updated=${totalTz}, total users=${totalProcessed}`;
   },
 });
 
+/** One-off query: count scheduled tasks and unique users. Run from dashboard. */
+export const countScheduledTasks = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const tasks = await ctx.db.query("scheduledTasks").collect();
+    const total = tasks.length;
+    const enabled = tasks.filter(t => t.enabled).length;
+    const disabled = total - enabled;
+    const cron = tasks.filter(t => t.schedule.kind === "cron").length;
+    const once = total - cron;
+    const uniqueUsers = new Set(tasks.map(t => t.userId)).size;
+    return { total, enabled, disabled, cron, once, uniqueUsers };
+  },
+});
+
 /** Internal query to fetch a paginated batch of user IDs for the migration. */
 export const migrateGetUserBatch = internalQuery({
   args: { cursor: v.union(v.string(), v.null()), limit: v.number() },
+  returns: v.object({
+    userIds: v.array(v.id("users")),
+    nextCursor: v.union(v.string(), v.null()),
+  }),
   handler: async (ctx, { cursor, limit }) => {
     const result = await ctx.db.query("users").paginate({ cursor: cursor as string | null, numItems: limit });
     return {
