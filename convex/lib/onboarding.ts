@@ -272,24 +272,33 @@ export function normalizeCityInput(input: string): string {
     .trim();
 }
 
+/** Resolve a city name or IANA timezone string to a canonical IANA timezone identifier. */
 export function resolveCityToTimezone(input: string): string | null {
   const normalized = normalizeCityInput(input);
 
-  // Check city map with normalized key
+  // 1. Exact match in city map
   if (CITY_TIMEZONES[normalized]) {
     return CITY_TIMEZONES[normalized];
   }
 
-  // Try as a direct IANA timezone (e.g. "Asia/Dubai", "Europe/London")
+  // 2. Progressive prefix fallback — handles "Dubai, UAE" → "dubai uae" → try "dubai"
+  const parts = normalized.split(" ");
+  for (let end = parts.length - 1; end > 0; end--) {
+    const candidate = parts.slice(0, end).join(" ");
+    if (CITY_TIMEZONES[candidate]) {
+      return CITY_TIMEZONES[candidate];
+    }
+  }
+
+  // 3. Try as a direct IANA timezone — use resolvedOptions() for canonical casing
   try {
-    Intl.DateTimeFormat(undefined, { timeZone: input });
-    return input;
+    const fmt = new Intl.DateTimeFormat(undefined, { timeZone: input });
+    return fmt.resolvedOptions().timeZone;
   } catch {
-    // Also try normalized as IANA (e.g. "asia/dubai")
-    // Return original trimmed input to preserve canonical casing (e.g. "Asia/Dubai" not "asia/dubai")
+    // 4. Try normalized string as IANA (e.g. "asia/dubai")
     try {
-      Intl.DateTimeFormat(undefined, { timeZone: normalized });
-      return input.trim();
+      const fmt = new Intl.DateTimeFormat(undefined, { timeZone: normalized });
+      return fmt.resolvedOptions().timeZone;
     } catch {
       return null;
     }
