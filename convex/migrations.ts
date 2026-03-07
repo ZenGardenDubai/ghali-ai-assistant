@@ -578,3 +578,105 @@ export const backfillUserNew = internalAction({
     return summary;
   },
 });
+
+/**
+ * One-time migration: sync language and timezone from user files → users table.
+ *
+ * Language: reads personality file, extracts any language reference,
+ *   writes it to user.language, removes it from the personality file.
+ *
+ * Timezone: reads profile file, extracts location/city,
+ *   resolves to IANA timezone, writes to user.timezone if different.
+ *
+ * Idempotent: safe to run multiple times.
+ * Run manually via Convex dashboard after deploying PR #158.
+ */
+export const migrateLanguageAndTimezone = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const { resolveCityToTimezone } = await import("./lib/onboarding");
+
+    // Language keyword → ISO code map
+    const LANG_MAP: Record<string, string> = {
+      arabic: "ar", عربية: "ar", عربي: "ar", ar: "ar",
+      english: "en", en: "en",
+      french: "fr", français: "fr", francais: "fr", fr: "fr",
+      spanish: "es", español: "es", es: "es",
+      hindi: "hi", hi: "hi",
+      urdu: "ur", ur: "ur",
+    };
+
+    const SUPPORTED = new Set(["en", "ar", "fr", "es", "hi", "ur"]);
+
+    function extractLanguage(content: string): string | null {
+      // Match lines like "- Language: Arabic", "- Preferred language: ar", "language: fr"
+      const match = content.match(/[-*]?\s*(?:preferred\s+)?language\s*[:\-]\s*([^\n]+)/i);
+      if (!match) return null;
+      const val = match[1].trim().toLowerCase();
+      // Direct ISO code
+      if (SUPPORTED.has(val)) return val;
+      // Map from display name
+      for (const [key, code] of Object.entries(LANG_MAP)) {
+        if (val.includes(key)) return code;
+      }
+      return null;
+    }
+
+    function removeLanguageLines(content: string): string {
+      return content
+        .split("\n")
+        .filter(line => !/(?:preferred\s+)?language\s*[:\-]/i.test(line))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    }
+
+    function extractCity(profileContent: string): string | null {
+      // Match lines under location section or "- Location: City"
+      const match = profileContent.match(/(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^\n,]+)/i);
+      return match ? match[1].trim() : null;
+    }
+
+    const allUsers = await ctx.db.query("users").collect();
+    let langUpdated = 0, tzUpdated = 0, personalityClean = 0;
+
+    for (const user of allUsers) {
+      const files = await ctx.db
+        .query("userFiles")
+        .withIndex("by_userId", q => q.eq("userId", user._id))
+        .collect();
+
+      const personalityFile = files.find(f => f.filename === "personality");
+      const profileFile = files.find(f => f.filename === "profile");
+
+      // --- Language ---
+      if (personalityFile?.content) {
+        const detectedLang = extractLanguage(personalityFile.content);
+        if (detectedLang && detectedLang !== user.language) {
+          await ctx.db.patch(user._id, { language: detectedLang });
+          langUpdated++;
+        }
+        // Remove language lines from personality regardless (clean up)
+        const cleaned = removeLanguageLines(personalityFile.content);
+        if (cleaned !== personalityFile.content) {
+          await ctx.db.patch(personalityFile._id, { content: cleaned });
+          personalityClean++;
+        }
+      }
+
+      // --- Timezone ---
+      if (profileFile?.content) {
+        const city = extractCity(profileFile.content);
+        if (city) {
+          const resolved = resolveCityToTimezone(city);
+          if (resolved && resolved !== user.timezone) {
+            await ctx.db.patch(user._id, { timezone: resolved });
+            tzUpdated++;
+          }
+        }
+      }
+    }
+
+    return `Migration complete: language updated=${langUpdated}, timezone updated=${tzUpdated}, personality files cleaned=${personalityClean}, total users=${allUsers.length}`;
+  },
+});
