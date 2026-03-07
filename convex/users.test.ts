@@ -478,3 +478,263 @@ describe("userFile CRUD", () => {
     expect(file!.content).toBe("Name: Ahmad\nWork: ADNOC");
   });
 });
+
+describe("recordApiError / resetApiErrors", () => {
+  it("increments consecutive error counter", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const result1 = await t.mutation(internal.users.recordApiError, { userId });
+    expect(result1.consecutiveErrors).toBe(1);
+    expect(result1.tripped).toBe(false);
+
+    const result2 = await t.mutation(internal.users.recordApiError, { userId });
+    expect(result2.consecutiveErrors).toBe(2);
+    expect(result2.tripped).toBe(false);
+
+    const result3 = await t.mutation(internal.users.recordApiError, { userId });
+    expect(result3.consecutiveErrors).toBe(3);
+    expect(result3.tripped).toBe(true); // Circuit breaker trips at threshold
+  });
+
+  it("sets errorBackoffUntil when circuit breaker trips", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Trip the circuit breaker
+    await t.mutation(internal.users.recordApiError, { userId });
+    await t.mutation(internal.users.recordApiError, { userId });
+    const result = await t.mutation(internal.users.recordApiError, { userId });
+
+    expect(result.tripped).toBe(true);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.errorBackoffUntil).toBeDefined();
+    expect(user!.errorBackoffUntil).toBeGreaterThan(Date.now());
+  });
+
+  it("resets error counter and backoff on success", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Record some errors
+    await t.mutation(internal.users.recordApiError, { userId });
+    await t.mutation(internal.users.recordApiError, { userId });
+
+    // Reset
+    await t.mutation(internal.users.resetApiErrors, { userId });
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.consecutiveErrors).toBe(0);
+    expect(user!.errorBackoffUntil).toBeUndefined();
+  });
+
+  it("does not re-set backoff if already active", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Trip circuit breaker
+    await t.mutation(internal.users.recordApiError, { userId });
+    await t.mutation(internal.users.recordApiError, { userId });
+    const firstTrip = await t.mutation(internal.users.recordApiError, { userId });
+
+    const user1 = await t.query(internal.users.getUser, { userId });
+    const firstBackoff = user1!.errorBackoffUntil;
+
+    // Record another error while backoff is active
+    const secondError = await t.mutation(internal.users.recordApiError, { userId });
+
+    const user2 = await t.query(internal.users.getUser, { userId });
+
+    expect(firstTrip.tripped).toBe(true);
+    expect(secondError.tripped).toBe(false); // Already tripped, don't re-trip
+    expect(user2!.errorBackoffUntil).toBe(firstBackoff); // Backoff unchanged
+  });
+});
+
+describe("setPendingAction / clearPendingAction", () => {
+  it("sets pending action with timestamp", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const before = Date.now();
+    await t.mutation(internal.users.setPendingAction, {
+      userId,
+      action: "clear_memory",
+    });
+    const after = Date.now();
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.pendingAction).toBe("clear_memory");
+    expect(user!.pendingActionAt).toBeGreaterThanOrEqual(before);
+    expect(user!.pendingActionAt).toBeLessThanOrEqual(after);
+  });
+
+  it("sets pending action with payload for admin broadcast", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.setPendingAction, {
+      userId,
+      action: "admin_broadcast",
+      payload: "Important announcement",
+    });
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.pendingAction).toBe("admin_broadcast");
+    expect(user!.pendingPayload).toBe("Important announcement");
+  });
+
+  it("clears pending action", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.setPendingAction, {
+      userId,
+      action: "clear_schedules",
+    });
+
+    await t.mutation(internal.users.clearPendingAction, { userId });
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.pendingAction).toBeUndefined();
+    expect(user!.pendingActionAt).toBeUndefined();
+    expect(user!.pendingPayload).toBeUndefined();
+  });
+});
+
+describe("getAllUsers", () => {
+  it("returns all users", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+      name: "User1",
+    });
+    await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+447911123456",
+      name: "User2",
+    });
+
+    const users = await t.query(internal.users.getAllUsers, {});
+
+    expect(users.length).toBeGreaterThanOrEqual(2);
+    expect(users.some((u: { name?: string }) => u.name === "User1")).toBe(true);
+    expect(users.some((u: { name?: string }) => u.name === "User2")).toBe(true);
+  });
+});
+
+describe("getAccountData", () => {
+  it("returns account data for Clerk user", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+      name: "Ahmad",
+    });
+
+    await t.mutation(internal.users.updateUser, {
+      userId,
+      fields: { clerkUserId: "clerk_12345", tier: "pro", credits: 600 },
+    });
+
+    const accountData = await t.query(internal.users.getAccountData, {
+      clerkUserId: "clerk_12345",
+    });
+
+    expect(accountData).toMatchObject({
+      name: "Ahmad",
+      phone: "+971501234567",
+      tier: "pro",
+      credits: 600,
+      creditsTotal: 600,
+      subscriptionCanceling: false,
+    });
+  });
+
+  it("returns null for unknown clerkUserId", async () => {
+    const t = convexTest(schema, modules);
+
+    const accountData = await t.query(internal.users.getAccountData, {
+      clerkUserId: "unknown_clerk_id",
+    });
+
+    expect(accountData).toBeNull();
+  });
+});
+
+describe("updateUserFile edge cases", () => {
+  it("throws error for non-existent file", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Delete the memory file
+    await t.run(async (ctx) => {
+      const file = await ctx.db
+        .query("userFiles")
+        .withIndex("by_userId_filename", (q) =>
+          q.eq("userId", userId).eq("filename", "memory")
+        )
+        .unique();
+      if (file) await ctx.db.delete(file._id);
+    });
+
+    await expect(
+      t.mutation(internal.users.updateUserFile, {
+        userId,
+        filename: "memory",
+        content: "test",
+      })
+    ).rejects.toThrow("User file not found");
+  });
+
+  it("updates file timestamp", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const before = Date.now();
+
+    await t.mutation(internal.users.updateUserFile, {
+      userId,
+      filename: "personality",
+      content: "Tone: friendly",
+    });
+
+    const after = Date.now();
+
+    const file = await t.query(internal.users.getUserFile, {
+      userId,
+      filename: "personality",
+    });
+
+    expect(file!.updatedAt).toBeGreaterThanOrEqual(before);
+    expect(file!.updatedAt).toBeLessThanOrEqual(after);
+  });
+});
