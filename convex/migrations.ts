@@ -591,10 +591,27 @@ export const backfillUserNew = internalAction({
  * Idempotent: safe to run multiple times.
  * Run manually via Convex dashboard after deploying PR #158.
  */
+/**
+ * One-time migration: reset all personality files to the default personality,
+ * sync language and timezone from user files → users table.
+ *
+ * Personality: ALL users get the new default (playful, bubbly, helpful).
+ *   Any language info in existing personality files is extracted first,
+ *   then the file is replaced with the clean default.
+ *
+ * Language: extracted from old personality file → written to user.language in DB.
+ *
+ * Timezone: extracted from profile location → resolved to IANA → written to user.timezone.
+ *
+ * Idempotent: safe to run multiple times.
+ * Run manually via Convex dashboard after deploying PR #158.
+ */
 export const migrateLanguageAndTimezone = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const { resolveCityToTimezone } = await import("./lib/onboarding");
+    const { resolveCityToTimezone, buildDefaultPersonality } = await import("./lib/onboarding");
+
+    const DEFAULT_PERSONALITY = buildDefaultPersonality();
 
     // Language keyword → ISO code map
     const LANG_MAP: Record<string, string> = {
@@ -609,36 +626,23 @@ export const migrateLanguageAndTimezone = internalMutation({
     const SUPPORTED = new Set(["en", "ar", "fr", "es", "hi", "ur"]);
 
     function extractLanguage(content: string): string | null {
-      // Match lines like "- Language: Arabic", "- Preferred language: ar", "language: fr"
       const match = content.match(/[-*]?\s*(?:preferred\s+)?language\s*[:\-]\s*([^\n]+)/i);
       if (!match) return null;
       const val = match[1].trim().toLowerCase();
-      // Direct ISO code
       if (SUPPORTED.has(val)) return val;
-      // Map from display name
       for (const [key, code] of Object.entries(LANG_MAP)) {
         if (val.includes(key)) return code;
       }
       return null;
     }
 
-    function removeLanguageLines(content: string): string {
-      return content
-        .split("\n")
-        .filter(line => !/(?:preferred\s+)?language\s*[:\-]/i.test(line))
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-    }
-
     function extractCity(profileContent: string): string | null {
-      // Match lines under location section or "- Location: City"
       const match = profileContent.match(/(?:city|location|based in|lives? in|located in)\s*[:\-]\s*([^\n,]+)/i);
       return match ? match[1].trim() : null;
     }
 
     const allUsers = await ctx.db.query("users").collect();
-    let langUpdated = 0, tzUpdated = 0, personalityClean = 0;
+    let langUpdated = 0, tzUpdated = 0, personalityReset = 0;
 
     for (const user of allUsers) {
       const files = await ctx.db
@@ -649,22 +653,32 @@ export const migrateLanguageAndTimezone = internalMutation({
       const personalityFile = files.find(f => f.filename === "personality");
       const profileFile = files.find(f => f.filename === "profile");
 
-      // --- Language ---
+      // --- Language: extract from old personality file before resetting ---
       if (personalityFile?.content) {
         const detectedLang = extractLanguage(personalityFile.content);
         if (detectedLang && detectedLang !== user.language) {
           await ctx.db.patch(user._id, { language: detectedLang });
           langUpdated++;
         }
-        // Remove language lines from personality regardless (clean up)
-        const cleaned = removeLanguageLines(personalityFile.content);
-        if (cleaned !== personalityFile.content) {
-          await ctx.db.patch(personalityFile._id, { content: cleaned });
-          personalityClean++;
-        }
       }
 
-      // --- Timezone ---
+      // --- Personality: reset ALL users to default ---
+      if (personalityFile) {
+        if (personalityFile.content !== DEFAULT_PERSONALITY) {
+          await ctx.db.patch(personalityFile._id, { content: DEFAULT_PERSONALITY });
+          personalityReset++;
+        }
+      } else {
+        // No file yet — create it
+        await ctx.db.insert("userFiles", {
+          userId: user._id,
+          filename: "personality",
+          content: DEFAULT_PERSONALITY,
+        });
+        personalityReset++;
+      }
+
+      // --- Timezone: extract from profile location ---
       if (profileFile?.content) {
         const city = extractCity(profileFile.content);
         if (city) {
@@ -677,6 +691,6 @@ export const migrateLanguageAndTimezone = internalMutation({
       }
     }
 
-    return `Migration complete: language updated=${langUpdated}, timezone updated=${tzUpdated}, personality files cleaned=${personalityClean}, total users=${allUsers.length}`;
+    return `Migration complete: personality reset=${personalityReset}, language updated=${langUpdated}, timezone updated=${tzUpdated}, total users=${allUsers.length}`;
   },
 });
