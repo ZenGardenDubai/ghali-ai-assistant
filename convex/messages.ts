@@ -209,6 +209,7 @@ export const generateResponse = internalAction({
     const messageForCredits = canonicalCommand ?? body;
 
     // Send onboarding infographic before step 1 welcome (if configured and enabled)
+    let sentInfographic = false;
     if (user.onboardingStep === 1) {
       const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
       if (onboardingConfig) {
@@ -225,6 +226,7 @@ export const generateResponse = internalAction({
               caption: "",
               mediaUrl: parsed.url,
             });
+            sentInfographic = true;
           } catch (error) {
             console.error("Failed to send onboarding infographic:", error);
           }
@@ -278,6 +280,10 @@ export const generateResponse = internalAction({
         // Translate onboarding response to the user's language
         const lang = result.updates?.language ?? user.language ?? "en";
         const translatedResponse = await translateMessage(result.response, lang);
+        // Brief delay so the infographic arrives before the welcome text
+        if (sentInfographic) {
+          await new Promise((r) => setTimeout(r, 2000));
+        }
         await ctx.runAction(internal.twilio.sendMessage, {
           to: user.phone,
           body: translatedResponse,

@@ -10,7 +10,6 @@ import {
 
 import { TEMPLATES } from "../templates";
 import { fillTemplate } from "./utils";
-import { detectLanguage } from "./systemCommands";
 
 // ============================================================================
 // Types
@@ -36,7 +35,7 @@ interface OnboardingUser {
 // vs. a short onboarding reply (name, yes/no, style pick, etc.)
 // ============================================================================
 
-const QUESTION_STARTERS = /^(what|how|why|where|when|who|which|can|could|would|should|is|are|do|does|did|will|tell|explain|describe|write|translate|summarize|calculate|find|search|help|show|list|compare|analyze|create|generate|make)\b/i;
+const QUESTION_STARTERS = /^(what|how|why|where|when|who|which|can|could|would|should|is|are|do|does|did|will|tell|explain|describe|write|translate|summarize|calculate|find|search|help|show|list|compare|analyze|create|generate|make|remind|set|schedule)\b/i;
 
 const SHORT_REPLIES = /^(yes|no|yeah|yep|nah|nope|ok|okay|sure|skip|hi|hello|hey|thanks|thank you|نعم|لا|أوكي|حسنا|مرحبا|oui|non|merci|salut|sí|no|hola|gracias)$/i;
 
@@ -164,8 +163,9 @@ export function buildPersonalityContent(style: string): string {
 // buildOnboardingMemory — initial memory markdown
 // ============================================================================
 
-export function buildOnboardingMemory(name: string): string {
-  return `# User Memory\n- Name: ${name}`;
+export function buildOnboardingMemory(name?: string): string {
+  if (name) return `# User Memory\n- Name: ${name}`;
+  return "# User Memory";
 }
 
 // ============================================================================
@@ -194,77 +194,6 @@ export function formatTimezoneForDisplay(iana: string): string {
 }
 
 // ============================================================================
-// parseName — extract name from step 2 reply
-// ============================================================================
-
-function parseName(reply: string): string | null {
-  const lower = reply.toLowerCase().trim();
-
-  // "call me X" / "call me X please"
-  const callMe = lower.match(/^call me (.+?)(?:\s+please)?$/i);
-  if (callMe) return callMe[1].trim();
-
-  // "my name is X" / "I'm X" / "it's X"
-  const nameIs = lower.match(
-    /^(?:my name is|i'm|i am|it's|its|name is)\s+(.+)$/i
-  );
-  if (nameIs) return nameIs[1].trim();
-
-  return null;
-}
-
-// ============================================================================
-// parseTimezoneCorrection — detect city-based timezone corrections
-// ============================================================================
-
-const CITY_TIMEZONES: Record<string, string> = {
-  london: "Europe/London",
-  paris: "Europe/Paris",
-  berlin: "Europe/Berlin",
-  "new york": "America/New_York",
-  "los angeles": "America/Los_Angeles",
-  chicago: "America/Chicago",
-  toronto: "America/Toronto",
-  dubai: "Asia/Dubai",
-  "abu dhabi": "Asia/Dubai",
-  riyadh: "Asia/Riyadh",
-  cairo: "Africa/Cairo",
-  tokyo: "Asia/Tokyo",
-  sydney: "Australia/Sydney",
-  mumbai: "Asia/Kolkata",
-  singapore: "Asia/Singapore",
-  "hong kong": "Asia/Hong_Kong",
-  istanbul: "Europe/Istanbul",
-  moscow: "Europe/Moscow",
-  "sao paulo": "America/Sao_Paulo",
-  shanghai: "Asia/Shanghai",
-  beijing: "Asia/Shanghai",
-  seoul: "Asia/Seoul",
-  doha: "Asia/Qatar",
-  bahrain: "Asia/Bahrain",
-  kuwait: "Asia/Kuwait",
-  muscat: "Asia/Muscat",
-  karachi: "Asia/Karachi",
-  jakarta: "Asia/Jakarta",
-};
-
-function parseTimezoneCorrection(reply: string): string | null {
-  const lower = reply.toLowerCase().trim();
-
-  // "I'm in X" / "I live in X" / "I am in X"
-  const inCity = lower.match(
-    /(?:i'm in|i am in|i live in|im in|currently in|based in)\s+(.+)/i
-  );
-  if (inCity) {
-    const city = inCity[1].trim();
-    return CITY_TIMEZONES[city] ?? null;
-  }
-
-  // Direct city name check
-  return CITY_TIMEZONES[lower] ?? null;
-}
-
-// ============================================================================
 // handleOnboarding — main state machine
 // ============================================================================
 
@@ -285,7 +214,9 @@ export async function handleOnboarding(
   }
 
   switch (step) {
-    // Step 1: Send welcome message (first message from new user)
+    // Step 1: Send single welcome message (first message from new user)
+    // Onboarding completes immediately — timezone/name are auto-detected,
+    // language is detected from first real message, personality is learned organically.
     case 1: {
       const name = user.name || "there";
       const timezone = formatTimezoneForDisplay(user.timezone);
@@ -293,87 +224,10 @@ export async function handleOnboarding(
         name,
         timezone,
       });
-      return { response, nextStep: 2 };
-    }
-
-    // Step 2: Parse name/timezone reply + detect language
-    case 2: {
-      const updates: OnboardingResult["updates"] = {};
-
-      // Check for name change
-      const newName = parseName(trimmed);
-      if (newName) {
-        updates.name = newName;
-      }
-
-      // Check for timezone correction
-      const newTimezone = parseTimezoneCorrection(trimmed);
-      if (newTimezone) {
-        updates.timezone = newTimezone;
-      }
-
-      // Detect language from the reply
-      const detectedLang = await detectLanguage(trimmed);
-
-      if (detectedLang !== "en") {
-        // Language is clear from their reply — skip the language question
-        updates.language = detectedLang;
-        const response = fillTemplate(
-          TEMPLATES.onboarding_personality.template,
-          {}
-        );
-        return { response, nextStep: 4, updates };
-      }
-
-      // Language ambiguous (English reply) — ask about language
-      const response = fillTemplate(
-        TEMPLATES.onboarding_language.template,
-        {}
-      );
-      return { response, nextStep: 3, updates };
-    }
-
-    // Step 3: Parse language selection
-    case 3: {
-      const updates: OnboardingResult["updates"] = {};
-      const lang = parseLanguageReply(trimmed);
-      if (lang) {
-        updates.language = lang;
-      }
-      // Move to personality regardless
-      const response = fillTemplate(
-        TEMPLATES.onboarding_personality.template,
-        {}
-      );
-      return { response, nextStep: 4, updates };
-    }
-
-    // Step 4: Parse personality style
-    case 4: {
-      const style = await parsePersonalityReply(trimmed);
-      const fileUpdates: OnboardingResult["fileUpdates"] = {};
-
-      if (style && style !== "skip") {
-        fileUpdates.personality = buildPersonalityContent(style);
-      }
-
-      // Build memory from what we know
-      const name = user.name || "there";
-      fileUpdates.memory = buildOnboardingMemory(name);
-
-      const response = fillTemplate(
-        TEMPLATES.onboarding_complete.template,
-        {}
-      );
-
-      return {
-        response,
-        nextStep: null, // done
-        fileUpdates:
-          fileUpdates.personality || fileUpdates.memory
-            ? fileUpdates
-            : undefined,
+      const fileUpdates: OnboardingResult["fileUpdates"] = {
+        memory: buildOnboardingMemory(user.name?.trim() || undefined),
       };
+      return { response, nextStep: null, fileUpdates };
     }
 
     default:

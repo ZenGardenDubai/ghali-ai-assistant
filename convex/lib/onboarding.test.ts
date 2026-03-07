@@ -70,6 +70,12 @@ describe("isRealQuestion", () => {
     expect(isRealQuestion("Calculate 25 * 37")).toBe(true);
   });
 
+  it("detects reminder/schedule requests", () => {
+    expect(isRealQuestion("remind me to call mom")).toBe(true);
+    expect(isRealQuestion("set a reminder for tomorrow at 8")).toBe(true);
+    expect(isRealQuestion("schedule a reminder to pay rent")).toBe(true);
+  });
+
   it("returns false for short/simple onboarding replies", () => {
     expect(isRealQuestion("yes")).toBe(false);
     expect(isRealQuestion("no")).toBe(false);
@@ -237,6 +243,17 @@ describe("buildOnboardingMemory", () => {
     expect(memory).not.toContain("Language");
     expect(memory).not.toContain("Timezone");
   });
+
+  it("omits name entry when no name provided", () => {
+    const memory = buildOnboardingMemory();
+    expect(memory).toBe("# User Memory");
+    expect(memory).not.toContain("Name");
+  });
+
+  it("omits name entry when undefined", () => {
+    const memory = buildOnboardingMemory(undefined);
+    expect(memory).toBe("# User Memory");
+  });
 });
 
 // ============================================================================
@@ -271,14 +288,18 @@ describe("formatTimezoneForDisplay", () => {
 // ============================================================================
 
 describe("handleOnboarding", () => {
-  describe("step 1 — welcome", () => {
-    it("returns welcome message with name and timezone", async () => {
+  describe("step 1 — single welcome message", () => {
+    it("returns welcome message with name and timezone, completes onboarding", async () => {
       const result = await handleOnboarding(1, "hi", makeUser());
-      expect(result.response).toContain("Ghali");
       expect(result.response).toContain("Ahmad");
       expect(result.response).toContain("Dubai");
-      expect(result.nextStep).toBe(2);
+      expect(result.nextStep).toBeNull(); // done after one message
       expect(result.skipToAI).toBeUndefined();
+    });
+
+    it("writes initial memory on welcome", async () => {
+      const result = await handleOnboarding(1, "hi", makeUser());
+      expect(result.fileUpdates?.memory).toContain("Ahmad");
     });
 
     it("skips to AI if message is a real question", async () => {
@@ -289,123 +310,6 @@ describe("handleOnboarding", () => {
       );
       expect(result.skipToAI).toBe(true);
       expect(result.nextStep).toBeNull();
-    });
-  });
-
-  describe("step 2 — parse name/timezone + detect language", () => {
-    it("accepts name confirmation and skips to personality if English", async () => {
-      // detectLanguage returns "en" by default
-      const result = await handleOnboarding(2, "yes", makeUser());
-      expect(result.nextStep).toBe(3); // ambiguous language → ask
-      expect(result.response).toContain("language");
-    });
-
-    it("accepts a new name", async () => {
-      const result = await handleOnboarding(2, "call me doc", makeUser());
-      expect(result.updates?.name).toBe("doc");
-      expect(result.nextStep).toBe(3);
-    });
-
-    it("detects non-English reply and skips language step", async () => {
-      mockedGenerateText.mockResolvedValueOnce({ text: "ar" } as never);
-      const result = await handleOnboarding(2, "نعم اسمي أحمد", makeUser());
-      expect(result.nextStep).toBe(4); // skip language, go to personality
-      expect(result.updates?.language).toBe("ar");
-    });
-
-    it("accepts timezone correction", async () => {
-      const result = await handleOnboarding(
-        2,
-        "I'm in London",
-        makeUser()
-      );
-      expect(result.updates?.timezone).toBe("Europe/London");
-    });
-
-    it("skips to AI if message is a real question", async () => {
-      const result = await handleOnboarding(
-        2,
-        "Can you help me write an email?",
-        makeUser()
-      );
-      expect(result.skipToAI).toBe(true);
-      expect(result.nextStep).toBeNull();
-    });
-  });
-
-  describe("step 3 — language selection", () => {
-    it("parses English selection", async () => {
-      const result = await handleOnboarding(3, "English", makeUser());
-      expect(result.updates?.language).toBe("en");
-      expect(result.nextStep).toBe(4);
-    });
-
-    it("parses Arabic selection", async () => {
-      const result = await handleOnboarding(3, "العربية", makeUser());
-      expect(result.updates?.language).toBe("ar");
-      expect(result.nextStep).toBe(4);
-    });
-
-    it("parses number selection", async () => {
-      const result = await handleOnboarding(3, "2", makeUser());
-      expect(result.updates?.language).toBe("ar");
-      expect(result.nextStep).toBe(4);
-    });
-
-    it("defaults to English for unrecognized and moves on", async () => {
-      const result = await handleOnboarding(3, "skip", makeUser());
-      expect(result.nextStep).toBe(4);
-    });
-
-    it("skips to AI if message is a real question", async () => {
-      const result = await handleOnboarding(
-        3,
-        "Tell me about quantum computing",
-        makeUser()
-      );
-      expect(result.skipToAI).toBe(true);
-      expect(result.nextStep).toBeNull();
-    });
-  });
-
-  describe("step 4 — personality style", () => {
-    it("parses cheerful style and completes onboarding", async () => {
-      const result = await handleOnboarding(4, "cheerful", makeUser());
-      expect(result.nextStep).toBeNull(); // done
-      expect(result.fileUpdates?.personality).toContain("Tone: playful");
-      expect(result.fileUpdates?.memory).toContain("Ahmad");
-      expect(result.response).toContain("*You're all set!*");
-    });
-
-    it("parses professional style by number", async () => {
-      const result = await handleOnboarding(4, "2", makeUser());
-      expect(result.nextStep).toBeNull();
-      expect(result.fileUpdates?.personality).toContain("Tone: formal");
-    });
-
-    it("handles skip — completes with no personality", async () => {
-      const result = await handleOnboarding(4, "skip", makeUser());
-      expect(result.nextStep).toBeNull();
-      expect(result.fileUpdates?.personality).toBeUndefined();
-      expect(result.fileUpdates?.memory).toContain("Ahmad");
-      expect(result.response).toContain("*You're all set!*");
-    });
-
-    it("skips to AI if message is a real question", async () => {
-      const result = await handleOnboarding(
-        4,
-        "Explain how neural networks work",
-        makeUser()
-      );
-      expect(result.skipToAI).toBe(true);
-      expect(result.nextStep).toBeNull();
-    });
-
-    it("handles unrecognized input as skip", async () => {
-      mockedGenerateText.mockResolvedValueOnce({ text: "none" } as never);
-      const result = await handleOnboarding(4, "banana", makeUser());
-      expect(result.nextStep).toBeNull();
-      expect(result.response).toContain("*You're all set!*");
     });
   });
 });
