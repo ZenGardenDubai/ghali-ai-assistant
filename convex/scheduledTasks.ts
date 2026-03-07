@@ -15,7 +15,7 @@ import {
 import { getNextCronRun } from "./lib/cronParser";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
-import { ghaliAgent } from "./agent";
+import { ghaliAgent, setTraceId, clearTraceId } from "./agent";
 
 /**
  * Pure helper: determine if a failure notification should be sent.
@@ -299,6 +299,9 @@ export const executeScheduledTask = internalAction({
     // Build prompt (personality/memory language preferences are in userContext)
     const fullPrompt = buildScheduledTaskPrompt(task, userContext);
 
+    // Set per-request trace ID for PostHog LLM analytics
+    setTraceId(crypto.randomUUID());
+
     // Run agent
     let responseText: string | undefined;
     let aiSucceeded = false;
@@ -319,6 +322,8 @@ export const executeScheduledTask = internalAction({
         taskId,
         lastStatus: "error",
       });
+    } finally {
+      clearTraceId();
     }
 
     if (!aiSucceeded || !responseText) {

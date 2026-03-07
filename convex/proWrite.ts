@@ -172,12 +172,13 @@ export const generateBrief = internalAction({
     userId: v.id("users"),
     phone: v.optional(v.string()),
     tier: v.optional(v.string()),
+    traceId: v.optional(v.string()),
   },
   returns: v.object({
     brief: v.string(),
     questions: v.array(v.string()),
   }),
-  handler: async (ctx, { request, userId, phone, tier }): Promise<{ brief: string; questions: string[] }> => {
+  handler: async (ctx, { request, userId, phone, tier, traceId }): Promise<{ brief: string; questions: string[] }> => {
     const prompt = buildBriefPrompt(request);
 
     const result = await opusWithFlashFallback("BRIEF", {
@@ -195,6 +196,7 @@ export const generateBrief = internalAction({
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
           tier,
+          traceId,
         });
       } catch (error) {
         console.error("[ProWrite] Failed to schedule BRIEF analytics:", error);
@@ -271,9 +273,10 @@ export const executePipeline = internalAction({
     skipClarify: v.optional(v.boolean()),
     phone: v.optional(v.string()),
     tier: v.optional(v.string()),
+    traceId: v.optional(v.string()),
   },
   returns: v.string(),
-  handler: async (ctx, { answers, userId, personality, skipClarify, phone, tier }) => {
+  handler: async (ctx, { answers, userId, personality, skipClarify, phone, tier, traceId }) => {
     const pipelineStart = Date.now();
     const deadlineMs = pipelineStart + PIPELINE_BUDGET_MS;
 
@@ -288,6 +291,7 @@ export const executePipeline = internalAction({
           promptTokens: result.promptTokens,
           completionTokens: result.completionTokens,
           tier,
+          traceId,
         });
       } catch (error) {
         console.error("[ProWrite] Failed to schedule step analytics:", error);

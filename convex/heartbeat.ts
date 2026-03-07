@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { ghaliAgent, SYSTEM_BLOCK } from "./agent";
+import { ghaliAgent, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { WHATSAPP_SESSION_WINDOW_MS } from "./constants";
@@ -95,6 +95,9 @@ ${SYSTEM_BLOCK}
 - Keep it concise and actionable
 - After sending a one-shot reminder (not recurring), call updateHeartbeat to remove it from the list. Keep all recurring items.`;
 
+    // Set per-request trace ID for PostHog LLM analytics
+    setTraceId(crypto.randomUUID());
+
     // AI call — circuit breaker scope (only AI errors count)
     let responseText: string | undefined;
     try {
@@ -105,6 +108,8 @@ ${SYSTEM_BLOCK}
       console.error(`Heartbeat AI failed for user ${userId}:`, error);
       await ctx.runMutation(internal.users.recordApiError, { userId });
       return;
+    } finally {
+      clearTraceId();
     }
 
     // Delivery — Twilio failures don't trip the circuit breaker

@@ -18,10 +18,11 @@ export const generateAndStoreImage = internalAction({
     aspectRatio: v.optional(
       v.union(v.literal("9:16"), v.literal("16:9"), v.literal("1:1"))
     ),
+    traceId: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { userId, prompt, aspectRatio = "9:16" }
+    { userId, prompt, aspectRatio = "9:16", traceId }
   ): Promise<{
     success: boolean;
     imageUrl?: string;
@@ -80,6 +81,7 @@ export const generateAndStoreImage = internalAction({
             latency_ms: Date.now() - startMs,
             model: MODELS.IMAGE_GENERATION,
             tier: user.tier,
+            traceId,
           });
         }
         return {
@@ -122,6 +124,7 @@ export const generateAndStoreImage = internalAction({
           latency_ms: Date.now() - startMs,
           model: MODELS.IMAGE_GENERATION,
           tier: user.tier,
+          traceId,
         });
         await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
           phone: user.phone,
@@ -140,6 +143,7 @@ export const generateAndStoreImage = internalAction({
           latency_ms: Date.now() - startMs,
           model: MODELS.IMAGE_GENERATION,
           tier: user.tier,
+          traceId,
         });
       }
       return {
