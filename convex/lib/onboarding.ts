@@ -10,7 +10,6 @@ import {
 
 import { TEMPLATES } from "../templates";
 import { fillTemplate } from "./utils";
-import { detectLanguage } from "./systemCommands";
 
 // ============================================================================
 // Types
@@ -191,77 +190,6 @@ export function formatTimezoneForDisplay(iana: string): string {
   } catch {
     return city;
   }
-}
-
-// ============================================================================
-// parseName — extract name from step 2 reply
-// ============================================================================
-
-function parseName(reply: string): string | null {
-  const lower = reply.toLowerCase().trim();
-
-  // "call me X" / "call me X please"
-  const callMe = lower.match(/^call me (.+?)(?:\s+please)?$/i);
-  if (callMe) return callMe[1].trim();
-
-  // "my name is X" / "I'm X" / "it's X"
-  const nameIs = lower.match(
-    /^(?:my name is|i'm|i am|it's|its|name is)\s+(.+)$/i
-  );
-  if (nameIs) return nameIs[1].trim();
-
-  return null;
-}
-
-// ============================================================================
-// parseTimezoneCorrection — detect city-based timezone corrections
-// ============================================================================
-
-const CITY_TIMEZONES: Record<string, string> = {
-  london: "Europe/London",
-  paris: "Europe/Paris",
-  berlin: "Europe/Berlin",
-  "new york": "America/New_York",
-  "los angeles": "America/Los_Angeles",
-  chicago: "America/Chicago",
-  toronto: "America/Toronto",
-  dubai: "Asia/Dubai",
-  "abu dhabi": "Asia/Dubai",
-  riyadh: "Asia/Riyadh",
-  cairo: "Africa/Cairo",
-  tokyo: "Asia/Tokyo",
-  sydney: "Australia/Sydney",
-  mumbai: "Asia/Kolkata",
-  singapore: "Asia/Singapore",
-  "hong kong": "Asia/Hong_Kong",
-  istanbul: "Europe/Istanbul",
-  moscow: "Europe/Moscow",
-  "sao paulo": "America/Sao_Paulo",
-  shanghai: "Asia/Shanghai",
-  beijing: "Asia/Shanghai",
-  seoul: "Asia/Seoul",
-  doha: "Asia/Qatar",
-  bahrain: "Asia/Bahrain",
-  kuwait: "Asia/Kuwait",
-  muscat: "Asia/Muscat",
-  karachi: "Asia/Karachi",
-  jakarta: "Asia/Jakarta",
-};
-
-function parseTimezoneCorrection(reply: string): string | null {
-  const lower = reply.toLowerCase().trim();
-
-  // "I'm in X" / "I live in X" / "I am in X"
-  const inCity = lower.match(
-    /(?:i'm in|i am in|i live in|im in|currently in|based in)\s+(.+)/i
-  );
-  if (inCity) {
-    const city = inCity[1].trim();
-    return CITY_TIMEZONES[city] ?? null;
-  }
-
-  // Direct city name check
-  return CITY_TIMEZONES[lower] ?? null;
 }
 
 // ============================================================================
