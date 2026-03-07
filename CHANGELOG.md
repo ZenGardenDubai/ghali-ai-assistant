@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.5...v0.31.6) (2026-03-07)
+
+
+### Bug Fixes
+
+* deduplicate ghali_chat_started Google Ads conversion event ([#148](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/148)) ([5151aab](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5151aab0c7b5e93cd6401c27cf92f587e5c4e7e1))
+
 ## [0.31.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.4...v0.31.5) (2026-03-07)
 
 
