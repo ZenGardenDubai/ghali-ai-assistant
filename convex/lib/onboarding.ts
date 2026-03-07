@@ -130,6 +130,189 @@ export function parseLanguageReply(reply: string): string | null {
 }
 
 // ============================================================================
+// DEFAULT_PERSONALITY — seeded for all new users at onboarding completion
+// ============================================================================
+
+export const DEFAULT_PERSONALITY = `# Preferences
+- Tone: playful, bubbly, and helpful
+- Verbosity: balanced
+- Emoji: expressive and frequent
+- Off-limits: none specified`;
+
+export function buildDefaultPersonality(): string {
+  return DEFAULT_PERSONALITY;
+}
+
+// ============================================================================
+// CITY_TIMEZONES — common city → IANA timezone map
+// ============================================================================
+
+export const CITY_TIMEZONES: Record<string, string> = {
+  // UAE
+  dubai: "Asia/Dubai",
+  "abu dhabi": "Asia/Dubai",
+  sharjah: "Asia/Dubai",
+  ajman: "Asia/Dubai",
+  // Middle East
+  riyadh: "Asia/Riyadh",
+  jeddah: "Asia/Riyadh",
+  mecca: "Asia/Riyadh",
+  medina: "Asia/Riyadh",
+  kuwait: "Asia/Kuwait",
+  "kuwait city": "Asia/Kuwait",
+  doha: "Asia/Qatar",
+  manama: "Asia/Bahrain",
+  muscat: "Asia/Muscat",
+  amman: "Asia/Amman",
+  beirut: "Asia/Beirut",
+  cairo: "Africa/Cairo",
+  baghdad: "Asia/Baghdad",
+  tehran: "Asia/Tehran",
+  jerusalem: "Asia/Jerusalem",
+  "tel aviv": "Asia/Jerusalem",
+  // Europe
+  london: "Europe/London",
+  paris: "Europe/Paris",
+  berlin: "Europe/Berlin",
+  madrid: "Europe/Madrid",
+  rome: "Europe/Rome",
+  amsterdam: "Europe/Amsterdam",
+  brussels: "Europe/Brussels",
+  zurich: "Europe/Zurich",
+  geneva: "Europe/Zurich",
+  vienna: "Europe/Vienna",
+  stockholm: "Europe/Stockholm",
+  oslo: "Europe/Oslo",
+  copenhagen: "Europe/Copenhagen",
+  helsinki: "Europe/Helsinki",
+  moscow: "Europe/Moscow",
+  istanbul: "Europe/Istanbul",
+  athens: "Europe/Athens",
+  warsaw: "Europe/Warsaw",
+  prague: "Europe/Prague",
+  budapest: "Europe/Budapest",
+  lisbon: "Europe/Lisbon",
+  // Asia
+  beijing: "Asia/Shanghai",
+  shanghai: "Asia/Shanghai",
+  "hong kong": "Asia/Hong_Kong",
+  tokyo: "Asia/Tokyo",
+  seoul: "Asia/Seoul",
+  singapore: "Asia/Singapore",
+  mumbai: "Asia/Kolkata",
+  delhi: "Asia/Kolkata",
+  "new delhi": "Asia/Kolkata",
+  bangalore: "Asia/Kolkata",
+  chennai: "Asia/Kolkata",
+  karachi: "Asia/Karachi",
+  lahore: "Asia/Karachi",
+  islamabad: "Asia/Karachi",
+  dhaka: "Asia/Dhaka",
+  colombo: "Asia/Colombo",
+  kathmandu: "Asia/Kathmandu",
+  kabul: "Asia/Kabul",
+  "kuala lumpur": "Asia/Kuala_Lumpur",
+  jakarta: "Asia/Jakarta",
+  bangkok: "Asia/Bangkok",
+  manila: "Asia/Manila",
+  taipei: "Asia/Taipei",
+  // Americas
+  "new york": "America/New_York",
+  "los angeles": "America/Los_Angeles",
+  chicago: "America/Chicago",
+  houston: "America/Chicago",
+  dallas: "America/Chicago",
+  phoenix: "America/Phoenix",
+  "san francisco": "America/Los_Angeles",
+  seattle: "America/Los_Angeles",
+  miami: "America/New_York",
+  boston: "America/New_York",
+  toronto: "America/Toronto",
+  vancouver: "America/Vancouver",
+  montreal: "America/Toronto",
+  "mexico city": "America/Mexico_City",
+  "sao paulo": "America/Sao_Paulo",
+  "rio de janeiro": "America/Sao_Paulo",
+  "buenos aires": "America/Argentina/Buenos_Aires",
+  bogota: "America/Bogota",
+  lima: "America/Lima",
+  santiago: "America/Santiago",
+  // Africa
+  lagos: "Africa/Lagos",
+  nairobi: "Africa/Nairobi",
+  johannesburg: "Africa/Johannesburg",
+  "cape town": "Africa/Johannesburg",
+  casablanca: "Africa/Casablanca",
+  // Oceania
+  sydney: "Australia/Sydney",
+  melbourne: "Australia/Melbourne",
+  brisbane: "Australia/Brisbane",
+  perth: "Australia/Perth",
+  auckland: "Pacific/Auckland",
+};
+
+/**
+ * Resolve a city name or IANA timezone string to a valid IANA timezone.
+ * Returns null if the city is unknown and the input is not a valid IANA zone.
+ */
+export function resolveCityToTimezone(input: string): string | null {
+  const lower = input.toLowerCase().trim();
+
+  // Check city map first
+  if (CITY_TIMEZONES[lower]) {
+    return CITY_TIMEZONES[lower];
+  }
+
+  // Try as a direct IANA timezone (e.g. "Asia/Dubai", "Europe/London")
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: input });
+    return input;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// bootstrapPersonality — infer initial personality from first real message
+// ============================================================================
+
+/**
+ * Silently detect personality signals from the user's first real message
+ * and return updated personality content. Called once after onboarding.
+ */
+export function bootstrapPersonality(message: string): string {
+  const words = message.trim().split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+
+  // Emoji detection — standard emoji unicode ranges
+  const hasEmoji = /\p{Emoji_Presentation}|\p{Extended_Pictographic}/u.test(message);
+
+  // Formal vocabulary signals
+  const formalPattern =
+    /\b(please|thank you|kindly|would you|could you|I would like|I am writing|I have a|sincerely|regards|greetings|good morning|good afternoon|good evening|dear)\b/i;
+  const casualPattern =
+    /\b(wanna|gonna|lol|btw|idk|omg|tbh|ngl|haha|ya|yep|nope|lemme|dunno|sup|hey|yo|wassup|chill|cool|awesome|dude)\b/i;
+
+  const isFormal = formalPattern.test(message) && !casualPattern.test(message);
+
+  // Determine fields based on signals
+  const verbosity =
+    wordCount <= 10 ? "concise, short answers" :
+    wordCount >= 30 ? "detailed" :
+    "balanced";
+
+  const emoji = hasEmoji ? "expressive and frequent" : "minimal";
+
+  const tone = isFormal ? "professional, formal" : "playful, bubbly, and helpful";
+
+  return `# Preferences
+- Tone: ${tone}
+- Verbosity: ${verbosity}
+- Emoji: ${emoji}
+- Off-limits: none specified`;
+}
+
+// ============================================================================
 // buildPersonalityContent — markdown for personality user block
 // ============================================================================
 
@@ -226,6 +409,7 @@ export async function handleOnboarding(
       });
       const fileUpdates: OnboardingResult["fileUpdates"] = {
         memory: buildOnboardingMemory(user.name?.trim() || undefined),
+        personality: buildDefaultPersonality(),
       };
       return { response, nextStep: null, fileUpdates };
     }

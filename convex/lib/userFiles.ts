@@ -8,11 +8,16 @@ export function isFileTooLarge(content: string): boolean {
 
 export function buildUserContext(
   userFiles: { filename: string; content: string }[],
-  datetime: { date: string; time: string; tz: string }
+  datetime: { date: string; time: string; tz: string },
+  settings?: { language: string; timezone: string }
 ): string {
   const parts: string[] = [
     `CURRENT CONTEXT:\nToday is ${datetime.date}\nCurrent time: ${datetime.time} (${datetime.tz})`,
   ];
+
+  if (settings) {
+    parts.push(`## User Settings\n- Preferred language: ${settings.language}\n- Timezone: ${settings.timezone}`);
+  }
 
   const profileFile = userFiles.find((f) => f.filename === "profile");
   if (profileFile?.content) {

@@ -203,6 +203,7 @@ export const internalUpdateUser = internalMutation({
       language: v.optional(v.string()),
       timezone: v.optional(v.string()),
       onboardingStep: v.optional(v.union(v.number(), v.null())),
+      personalityBootstrapped: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, { userId, fields }) => {

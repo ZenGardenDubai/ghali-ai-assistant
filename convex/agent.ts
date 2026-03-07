@@ -34,6 +34,7 @@ import {
   normalizeFilterDate,
 } from "./lib/items";
 import { formatProWriteResult, isOpusOverloaded } from "./lib/proWrite";
+import { resolveCityToTimezone } from "./lib/onboarding";
 import type { AggregateMode, QueryItem } from "./lib/items";
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,7 @@ PROFILE RULES:
 - Profile stores IDENTITY facts — who the user IS. It is never compacted or summarized.
 - updateProfile replaces an entire section. Always include ALL known facts for that section.
 - Categories: personal (name, birthday, nationality, languages), professional (job, company, skills), education (degrees, schools), family (spouse, children), location (city, country), links (website, social media).
+- When user mentions moving to a new city → call updateTimezoneSetting (updates DB timezone) AND updateProfile (location category).
 - After web research about the user → save identity facts to profile.
 - After user shares their own document (CV, resume, bio) → extract identity facts to profile. Do NOT assume every document is about the user — only save when the user indicates it's theirs or context makes it obvious.
 - "What do you know about me?" → read from profile (primary) + memory (supplementary).
@@ -89,7 +91,7 @@ MEMORY RULES (critical):
 - If no → don't call appendToMemory (save tokens).
 - To correct or remove facts in memory → call editMemory.
 - Communication style preferences (tone, verbosity, emoji) → updatePersonality (NOT memory).
-- Language: always respond in the language the user writes in for that message. Only update the user's language preference in memory if they explicitly ask to change it ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch.
+- Language: always respond in the language the user writes in for that message. Only call updateLanguageSetting if they explicitly ask to change their preferred language ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch. Never store language in memory or personality.
 - NEVER ask "should I remember this?" — just remember it silently.
 - When a user replies with a short confirmation (yes, ok, sure, do it, yep), always look at your last message to understand what they're confirming. Never treat a confirmation as a new standalone request.
 - *Conversational focus*: when a follow-up message references something ambiguous (e.g. "elaborate on the context", "explain that", "tell me more"), ALWAYS resolve it against the current conversation topic and your recent messages first — not the user's personal context, schedule, or memory. If you just summarized a letter that had a "Context" bullet, "elaborate on the context" means that bullet — not the user's calendar. Only fall back to personal context if the conversation has no active topic.
@@ -265,7 +267,7 @@ const editMemory = createTool({
 
 const updatePersonality = createTool({
   description:
-    "Update the user's personality preferences (tone, language, verbosity, emoji style, interests, off-limits topics). Only updates the user block — the system block is immutable.",
+    "Update the user's personality preferences (tone, verbosity, emoji style, off-limits topics). Scope: tone/verbosity/emoji/off-limits ONLY. Do NOT use for language changes (use updateLanguageSetting) or timezone changes (use updateTimezoneSetting). Only updates the user block — the system block is immutable.",
   args: z.object({
     content: z
       .string()
@@ -281,6 +283,57 @@ const updatePersonality = createTool({
       content,
     });
     return JSON.stringify({ status: "success", action: "personality_updated" });
+  },
+});
+
+const updateLanguageSetting = createTool({
+  description:
+    "Update the user's preferred language. Use when the user explicitly asks to change their language (e.g. 'switch to Arabic', 'always reply in French', 'use English from now on'). Updates user.language in the DB — not the personality file.",
+  args: z.object({
+    language: z
+      .string()
+      .describe("BCP 47 language code (e.g. 'en', 'ar', 'fr', 'es', 'de', 'zh')"),
+  }),
+  handler: async (ctx, { language }): Promise<string> => {
+    // Basic validation: must be 2-8 lowercase letters (allows subtags like 'zh-CN')
+    const normalized = language.toLowerCase().trim();
+    if (!/^[a-z]{2,8}(-[a-z0-9]{2,8})*$/.test(normalized)) {
+      return JSON.stringify({
+        status: "error",
+        code: "INVALID_LANGUAGE_CODE",
+        message: `"${language}" is not a valid language code. Use ISO codes like 'en', 'ar', 'fr'.`,
+      });
+    }
+    await ctx.runMutation(internal.users.internalUpdateUser, {
+      userId: ctx.userId as Id<"users">,
+      fields: { language: normalized },
+    });
+    return JSON.stringify({ status: "success", action: "language_updated", language: normalized });
+  },
+});
+
+const updateTimezoneSetting = createTool({
+  description:
+    "Update the user's timezone. Use when the user mentions moving to a new city or changing their timezone (e.g. 'I moved to London', 'I'm now in New York', 'change my timezone to Paris'). Updates user.timezone in the DB — not the personality file.",
+  args: z.object({
+    city: z
+      .string()
+      .describe("City name (e.g. 'Dubai', 'London', 'New York') or IANA timezone (e.g. 'Asia/Dubai')"),
+  }),
+  handler: async (ctx, { city }): Promise<string> => {
+    const resolved = resolveCityToTimezone(city);
+    if (!resolved) {
+      return JSON.stringify({
+        status: "error",
+        code: "UNKNOWN_CITY",
+        message: `Could not resolve "${city}" to a timezone. Try providing the city name or IANA timezone (e.g. 'Asia/Dubai').`,
+      });
+    }
+    await ctx.runMutation(internal.users.internalUpdateUser, {
+      userId: ctx.userId as Id<"users">,
+      fields: { timezone: resolved },
+    });
+    return JSON.stringify({ status: "success", action: "timezone_updated", timezone: resolved });
   },
 });
 
@@ -1701,6 +1754,8 @@ export const ghaliAgent = new Agent(components.agent, {
     appendToMemory,
     editMemory,
     updatePersonality,
+    updateLanguageSetting,
+    updateTimezoneSetting,
     updateHeartbeat,
     updateProfile,
     deepReasoning,

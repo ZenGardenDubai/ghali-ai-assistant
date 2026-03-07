@@ -19,6 +19,9 @@ const {
   parseLanguageReply,
   buildPersonalityContent,
   buildOnboardingMemory,
+  buildDefaultPersonality,
+  resolveCityToTimezone,
+  bootstrapPersonality,
   formatTimezoneForDisplay,
   handleOnboarding,
 } = await import("./onboarding");
@@ -195,6 +198,114 @@ describe("parseLanguageReply", () => {
 });
 
 // ============================================================================
+// buildDefaultPersonality
+// ============================================================================
+
+describe("buildDefaultPersonality", () => {
+  it("returns default personality with playful tone", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Tone: playful, bubbly, and helpful");
+  });
+
+  it("includes balanced verbosity by default", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Verbosity: balanced");
+  });
+
+  it("includes expressive emoji by default", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Emoji: expressive and frequent");
+  });
+
+  it("includes off-limits field set to none", () => {
+    const content = buildDefaultPersonality();
+    expect(content).toContain("Off-limits: none specified");
+  });
+
+  it("returns a non-empty string", () => {
+    expect(buildDefaultPersonality().length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================================
+// resolveCityToTimezone
+// ============================================================================
+
+describe("resolveCityToTimezone", () => {
+  it("resolves Dubai to Asia/Dubai", () => {
+    expect(resolveCityToTimezone("Dubai")).toBe("Asia/Dubai");
+    expect(resolveCityToTimezone("dubai")).toBe("Asia/Dubai");
+  });
+
+  it("resolves London to Europe/London", () => {
+    expect(resolveCityToTimezone("London")).toBe("Europe/London");
+  });
+
+  it("resolves New York to America/New_York", () => {
+    expect(resolveCityToTimezone("New York")).toBe("America/New_York");
+  });
+
+  it("accepts valid IANA timezone strings directly", () => {
+    expect(resolveCityToTimezone("Asia/Tokyo")).toBe("Asia/Tokyo");
+    expect(resolveCityToTimezone("Europe/Paris")).toBe("Europe/Paris");
+  });
+
+  it("returns null for unknown city", () => {
+    expect(resolveCityToTimezone("Gotham City")).toBeNull();
+    expect(resolveCityToTimezone("not-a-city")).toBeNull();
+  });
+});
+
+// ============================================================================
+// bootstrapPersonality
+// ============================================================================
+
+describe("bootstrapPersonality", () => {
+  it("sets concise verbosity for short messages (≤10 words)", () => {
+    const result = bootstrapPersonality("Hello, how are you doing today");
+    expect(result).toContain("Verbosity: concise, short answers");
+  });
+
+  it("sets detailed verbosity for long messages (≥30 words)", () => {
+    const longMessage =
+      "I need to prepare a comprehensive presentation about machine learning for my team meeting next Monday and I would like to cover neural networks, natural language processing, and computer vision with practical examples.";
+    const result = bootstrapPersonality(longMessage);
+    expect(result).toContain("Verbosity: detailed");
+  });
+
+  it("sets balanced verbosity for medium messages", () => {
+    const medMessage = "Can you help me understand how to use Python for data analysis and visualization with matplotlib?";
+    const result = bootstrapPersonality(medMessage);
+    expect(result).toContain("Verbosity: balanced");
+  });
+
+  it("sets minimal emoji when no emoji in message", () => {
+    const result = bootstrapPersonality("Hello how are you today");
+    expect(result).toContain("Emoji: minimal");
+  });
+
+  it("sets expressive emoji when emoji present in message", () => {
+    const result = bootstrapPersonality("Hello! \uD83D\uDE0A How are you?");
+    expect(result).toContain("Emoji: expressive and frequent");
+  });
+
+  it("sets professional tone for formal messages", () => {
+    const result = bootstrapPersonality("Good morning, I would like to request your assistance please");
+    expect(result).toContain("Tone: professional, formal");
+  });
+
+  it("keeps playful tone for casual messages", () => {
+    const result = bootstrapPersonality("hey wanna help me with something lol");
+    expect(result).toContain("Tone: playful, bubbly, and helpful");
+  });
+
+  it("always includes Off-limits field", () => {
+    const result = bootstrapPersonality("hello");
+    expect(result).toContain("Off-limits: none specified");
+  });
+});
+
+// ============================================================================
 // buildPersonalityContent
 // ============================================================================
 
@@ -300,6 +411,11 @@ describe("handleOnboarding", () => {
     it("writes initial memory on welcome", async () => {
       const result = await handleOnboarding(1, "hi", makeUser());
       expect(result.fileUpdates?.memory).toContain("Ahmad");
+    });
+
+    it("seeds default personality file on welcome", async () => {
+      const result = await handleOnboarding(1, "hi", makeUser());
+      expect(result.fileUpdates?.personality).toContain("Tone: playful, bubbly, and helpful");
     });
 
     it("skips to AI if message is a real question", async () => {

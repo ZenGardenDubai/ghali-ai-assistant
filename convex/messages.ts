@@ -10,7 +10,7 @@ import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
 import { PENDING_ACTION_EXPIRY_MS } from "./constants";
 import { handleAdminCommand } from "./lib/adminCommands";
-import { handleOnboarding } from "./lib/onboarding";
+import { handleOnboarding, bootstrapPersonality } from "./lib/onboarding";
 import {
   isSupportedMediaType,
   isRagIndexable,
@@ -490,9 +490,36 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Personality bootstrap — runs once, silently, on first AI message after onboarding
+    if (user.personalityBootstrapped !== true && user.onboardingStep === null) {
+      const bootstrappedPersonality = bootstrapPersonality(body);
+      await ctx.runMutation(internal.users.internalUpdateUserFile, {
+        userId: typedUserId,
+        filename: "personality",
+        content: bootstrappedPersonality,
+      });
+      await ctx.runMutation(internal.users.internalUpdateUser, {
+        userId: typedUserId,
+        fields: { personalityBootstrapped: true },
+      });
+      // Update local userFiles so the bootstrapped personality is used in context
+      const personalityIdx = (userFiles as Array<{ filename: string; content: string }>)
+        .findIndex((f) => f.filename === "personality");
+      if (personalityIdx >= 0) {
+        (userFiles as Array<{ filename: string; content: string }>)[personalityIdx] = {
+          ...(userFiles as Array<{ filename: string; content: string }>)[personalityIdx],
+          content: bootstrappedPersonality,
+        };
+      }
+    }
+
     // Build user context from per-user files + datetime
     const { date, time, tz } = getCurrentDateTime(user.timezone);
-    const userContext = buildUserContext(userFiles, { date, time, tz });
+    const userContext = buildUserContext(
+      userFiles,
+      { date, time, tz },
+      { language: user.language, timezone: user.timezone }
+    );
 
     // Voice note intercept — transcribe and use as text prompt
     // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.

@@ -98,6 +98,18 @@ describe("buildUserContext", () => {
     expect(result).toContain("14:30 (Asia/Dubai)");
   });
 
+  it("includes user settings when provided", () => {
+    const result = buildUserContext([], datetime, { language: "ar", timezone: "Asia/Dubai" });
+    expect(result).toContain("## User Settings");
+    expect(result).toContain("Preferred language: ar");
+    expect(result).toContain("Timezone: Asia/Dubai");
+  });
+
+  it("omits user settings section when not provided", () => {
+    const result = buildUserContext([], datetime);
+    expect(result).not.toContain("## User Settings");
+  });
+
   it("includes personality file with header", () => {
     const files = [{ filename: "personality", content: "Likes casual tone" }];
     const result = buildUserContext(files, datetime);
@@ -135,15 +147,17 @@ describe("buildUserContext", () => {
       { filename: "heartbeat", content: "- gym 7am" },
       { filename: "profile", content: "## Personal\nname: Hesham" },
     ];
-    const result = buildUserContext(files, datetime);
+    const result = buildUserContext(files, datetime, { language: "en", timezone: "Asia/Dubai" });
 
+    const settingsIdx = result.indexOf("## User Settings");
     const profileIdx = result.indexOf("## User Profile");
     const personalityIdx = result.indexOf("## User Personality Preferences");
     const memoryIdx = result.indexOf("## User Memory");
     const heartbeatIdx = result.indexOf("## User Heartbeat/Reminders");
 
-    // Order: datetime, profile, personality, memory, heartbeat
-    expect(profileIdx).toBeGreaterThan(0);
+    // Order: datetime, settings, profile, personality, memory, heartbeat
+    expect(settingsIdx).toBeGreaterThan(0);
+    expect(profileIdx).toBeGreaterThan(settingsIdx);
     expect(personalityIdx).toBeGreaterThan(profileIdx);
     expect(memoryIdx).toBeGreaterThan(personalityIdx);
     expect(heartbeatIdx).toBeGreaterThan(memoryIdx);
