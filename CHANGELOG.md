@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.32.0...v0.32.1) (2026-03-07)
+
+
+### Bug Fixes
+
+* replace em dash and add help command to welcome message footer ([#154](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/154)) ([3ccfd84](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/3ccfd84902b863737e8abde5623b7ebf93fd55bb)), closes [#153](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/153)
+
 ## [0.32.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.31.6...v0.32.0) (2026-03-07)
 
 
