@@ -350,6 +350,7 @@ export function buildOnboardingMemory(name?: string): string {
 // formatTimezoneForDisplay — "Asia/Dubai" → "Dubai (GMT+4)"
 // ============================================================================
 
+/** Formats an IANA timezone string into a human-readable display label (e.g. "Asia/Dubai" → "Dubai"). */
 export function formatTimezoneForDisplay(iana: string): string {
   if (iana === "UTC") return "UTC (GMT+0)";
 
