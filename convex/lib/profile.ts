@@ -23,6 +23,7 @@ export const PROFILE_CATEGORIES = {
   family: "Family",
   location: "Location",
   links: "Links",
+  milestones: "Milestones",
 } as const;
 
 export type ProfileCategory = keyof typeof PROFILE_CATEGORIES;
@@ -34,6 +35,7 @@ export const PROFILE_CATEGORY_ORDER: readonly ProfileCategory[] = [
   "family",
   "location",
   "links",
+  "milestones",
 ] as const;
 
 /**

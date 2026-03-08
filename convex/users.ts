@@ -463,7 +463,8 @@ export const internalUpdateProfileSection = internalMutation({
       v.literal("education"),
       v.literal("family"),
       v.literal("location"),
-      v.literal("links")
+      v.literal("links"),
+      v.literal("milestones")
     ),
     content: v.string(),
   },
