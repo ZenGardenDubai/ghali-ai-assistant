@@ -15,7 +15,7 @@ WhatsApp message
   → Return 200 + empty TwiML immediately
 
 Background action:
-  → Load user files (memory, personality, heartbeat)
+  → Load user files (profile, memory, personality, heartbeat)
   → Check/deduct credits (1 credit per user-initiated request)
   → Gemini Flash generates response (with tools available):
       → deepReasoning → Claude Opus (complex tasks)
@@ -44,13 +44,25 @@ Flash decides when to escalate. No separate classifier call needed.
 
 ## Per-User Files
 
-Three markdown files per user in `userFiles` table, loaded into agent context every turn:
+Four markdown files per user in `userFiles` table, loaded into agent context every turn:
 
-- **memory** — facts, preferences, history learned organically
-- **personality** — immutable system block (Ghali DNA) + editable user block (tone, language, style)
-- **heartbeat** — checklist for proactive scheduled messages
+- **profile** — identity facts (who the user IS), organized by section: personal, professional, education, family, location, links, milestones. Never compacted. Section-replace semantics.
+- **memory** — soft behavioral observations, preferences, and context. Auto-compacted at 38.4KB. Categories: preferences, schedule, interests, general.
+- **personality** — immutable system block (Ghali DNA) + editable user block (tone, verbosity, emoji, off-limits topics)
+- **heartbeat** — checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups
 
-Agent updates via tools: `updateMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation.
+Agent updates via tools: `updateProfile`, `updateMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation.
+
+### Behavioral Learning
+
+The agent silently observes communication patterns and stores them in memory:
+- Message length, emoji usage, language switching → preferences
+- Time-of-day habits → schedule
+- Recurring topics → interests
+
+Notable life events (job changes, visa approvals, moves) are captured as permanent milestones in the profile — never compacted.
+
+When users mention notable upcoming events (interviews, deadlines, trips), the agent adds follow-up items to the heartbeat file. The hourly cron evaluates these and fires personalized check-ins when the date arrives.
 
 ## Items & Collections
 
@@ -102,7 +114,7 @@ Uses `@convex-dev/rag` with pre-computed embeddings via `ai@5` to avoid version 
 | Table | Purpose |
 |-------|---------|
 | `users` | Phone, name, language, timezone, tier, isAdmin, credits |
-| `userFiles` | Per-user markdown files (memory/personality/heartbeat) |
+| `userFiles` | Per-user markdown files (profile/memory/personality/heartbeat) |
 | `items` | Structured data items (expenses, tasks, contacts, etc.) |
 | `collections` | Named groups for organizing items |
 | `itemEmbeddings` | Vector embeddings for semantic item search |

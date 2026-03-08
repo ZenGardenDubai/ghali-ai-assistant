@@ -20,16 +20,22 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 ### Media and Files
 - **Document processing** — PDF, images, audio, video sent directly to Gemini Flash
 - **Office files** — DOCX/PPTX/XLSX converted via CloudConvert, then processed
+- **File conversion** — convert between 200+ formats: documents (PDF↔DOCX, PPTX→PDF), images (PNG↔JPG↔WEBP), audio (MP3↔WAV↔OGG)
 - **Personal RAG** — uploaded documents chunked, embedded, and stored per-user for future retrieval
 - **Reply-to-media** — reply to a previously sent file with a new question
 
 ### User Experience
-- **Per-user memory** — learns facts, preferences, and history organically through conversation
-- **Adaptive personality** — two-layer system: immutable core DNA + editable user preferences
+- **Per-user profile** — permanent identity facts (name, job, family, location) organized by section, never compacted
+- **Per-user memory** — learns preferences, behavioral observations, and context organically through conversation
+- **Behavioral learning** — silently observes communication patterns (message length, emoji usage, language switching) and adapts over time
+- **Milestones** — permanent record of significant life events (job changes, visa approvals, moves) that Ghali references naturally
+- **Adaptive personality** — two-layer system: immutable core DNA + editable user preferences (tone, verbosity, emoji, off-limits topics)
 - **Scheduled Tasks** — AI-powered tasks that run on schedule (one-time or recurring), each triggering a full agent turn
-- **Heartbeat** — per-user checklist for proactive check-ins and follow-ups (hourly precision, all users)
-- **3-step onboarding** — name, language, style preference (skippable)
+- **Heartbeat** — per-user checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups (hourly precision)
+- **Proactive follow-ups** — when you mention an interview or deadline, Ghali adds a follow-up and checks in days later
+- **Onboarding** — 5-step guided setup: welcome, name, timezone, personality style, language (skippable)
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
+- **Feedback system** — tokenized WhatsApp links + web form, admin review panel, rate-limited (3/day)
 
 ### Structured Data
 - **Items & Collections** — track expenses, tasks, contacts, notes, bookmarks, habits via natural language
@@ -44,7 +50,8 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **Rate limiting** — per-user token bucket (30/min sustained, 40 burst)
 - **Country code blocking** — configurable blocklist
 - **Data management** — `clear memory`, `clear documents`, `clear everything` with confirmation
-- **Admin dashboard** — web panel for stats, user management, and template broadcasting
+- **Admin dashboard** — web panel for stats, user management, template broadcasting, feedback review, and onboarding config
+- **Arabic website** — full Arabic mirror of all marketing and feature pages
 
 ## How It Works
 
@@ -59,15 +66,18 @@ WhatsApp message
   → Return 200 immediately
 
 Background action:
-  → Load user files (memory, personality, heartbeat)
+  → Load user files (profile, memory, personality, heartbeat)
   → Check/deduct credits
-  → Gemini Flash generates response (with tools available)
-    → deepReasoning tool → Claude Opus (if needed)
-    → generateImage tool → Gemini Pro (if needed)
-    → googleSearch tool → real-time web data (if needed)
-    → searchDocuments tool → user's RAG knowledge base (if needed)
-    → addItem/queryItems/updateItem tools → structured data (if needed)
-    → proWriteBrief/proWriteExecute tools → multi-LLM writing pipeline (if needed)
+  → Gemini Flash generates response (27 tools available):
+    → deepReasoning → Claude Opus (complex tasks)
+    → generateImage → Gemini Pro (image generation)
+    → webSearch → real-time Google Search
+    → searchDocuments → user's RAG knowledge base
+    → addItem/queryItems/updateItem → structured data
+    → proWriteBrief/proWriteExecute → multi-LLM writing pipeline
+    → createScheduledTask → one-time or recurring AI tasks
+    → updateProfile/appendToMemory/updatePersonality → user files
+    → resolveMedia/reprocessMedia/convertFile → media handling
   → Format for WhatsApp + split long messages
   → Send reply via Twilio API
 ```
@@ -160,17 +170,21 @@ Environment variables are split between two runtimes. `.env.example` lists all v
 ```text
 ghali-ai-assistant/
 ├── app/                    # Next.js App Router
-│   ├── account/            # Account management page
-│   ├── admin/              # Admin dashboard + template management
+│   ├── (en)/               # English pages
+│   │   ├── account/        # Account management (Clerk auth)
+│   │   ├── admin/          # Admin dashboard, feedback, templates, onboarding
+│   │   ├── features/       # Feature landing pages (11 pages)
+│   │   ├── feedback/       # Feedback form (token + Clerk auth)
+│   │   ├── upgrade/        # Pro plan upgrade + Clerk billing
+│   │   ├── privacy/        # Privacy policy
+│   │   └── terms/          # Terms of service
+│   ├── (ar)/               # Arabic pages (full mirror)
 │   ├── api/                # Next.js API routes (proxy to Convex)
-│   ├── features/           # Feature landing pages
-│   ├── upgrade/            # Pro plan upgrade + Clerk billing
-│   ├── privacy/            # Privacy policy
-│   ├── terms/              # Terms of service
 │   └── providers/          # PostHog + Convex providers
-├── convex/                 # Convex backend
-│   ├── agent.ts            # Ghali agent definition + tools
+├── convex/                 # Convex backend (27 agent tools)
+│   ├── agent.ts            # Ghali agent definition + all tools
 │   ├── http.ts             # HTTP routes (Twilio + Clerk webhooks, admin API)
+│   ├── messages.ts         # Message processing + async response generation
 │   ├── documents.ts        # Document processing + RAG pipeline
 │   ├── items.ts            # Structured data (items + collections + embeddings)
 │   ├── rag.ts              # RAG component setup
@@ -178,15 +192,18 @@ ghali-ai-assistant/
 │   ├── images.ts           # Image generation (Gemini Pro)
 │   ├── voice.ts            # Voice transcription (Whisper)
 │   ├── twilio.ts           # Outbound WhatsApp messaging
-│   ├── credits.ts          # Credit system
+│   ├── credits.ts          # Credit system + monthly reset
 │   ├── billing.ts          # Subscription management (Clerk)
-│   ├── scheduledTasks.ts    # Scheduled agent tasks (one-time & recurring)
-│   ├── heartbeat.ts        # Proactive check-ins (all users)
+│   ├── scheduledTasks.ts   # Scheduled agent tasks (one-time & recurring)
+│   ├── heartbeat.ts        # Proactive check-ins + follow-ups
+│   ├── feedback.ts         # Feedback tokens + submissions
 │   ├── rateLimiting.ts     # Per-user rate limiting
-│   ├── admin.ts            # Admin commands + broadcasting
+│   ├── admin.ts            # Admin commands + broadcasting + templates
 │   ├── dataManagement.ts   # User data export/deletion
+│   ├── mediaStorage.ts     # Media download, storage, caching, expiry
+│   ├── memoryCompaction.ts # Auto-compress memory at 75% capacity
 │   ├── crons.ts            # Scheduled jobs (credit reset, heartbeat, cleanup)
-│   ├── users.ts            # User CRUD + user files
+│   ├── users.ts            # User CRUD + user files (profile, memory, personality, heartbeat)
 │   ├── constants.ts        # All business rules (single source of truth)
 │   ├── schema.ts           # Database schema
 │   └── lib/                # Pure utilities (formatting, templates, etc.)
@@ -231,21 +248,26 @@ cd convex && npx vitest run
 - [x] Credit system
 - [x] System commands and templates
 - [x] Onboarding flow
-- [x] Per-user files (memory, personality, heartbeat)
+- [x] Per-user files (profile, memory, personality, heartbeat)
 - [x] Voice notes (Whisper)
 - [x] Image generation (Gemini Pro)
 - [x] Document processing and RAG
+- [x] File conversion (CloudConvert — PDF, DOCX, images, audio)
 - [x] Data management commands
 - [x] Rate limiting
 - [x] Heartbeat (proactive check-ins)
-- [x] Admin commands
+- [x] Admin commands + web dashboard
+- [x] Twilio Content Templates (9 templates for out-of-window delivery)
 - [x] Billing (Clerk subscriptions)
-- [x] Landing page (ghali.ae)
+- [x] Feedback system (WhatsApp links + web form + admin panel)
+- [x] Landing page (ghali.ae) + Arabic mirror
 - [x] Integration testing
 - [x] Deployment and configuration
 - [x] Structured data (items, collections, embeddings, vector search)
 - [x] ProWrite (multi-LLM professional writing pipeline)
 - [x] Scheduled agent tasks (one-time & recurring AI tasks)
+- [x] Personalization Phase 1 (default personality, language/timezone, bootstrap)
+- [x] Personalization Phase 2 (behavioral learning, milestones, proactive follow-ups)
 - [ ] Post-launch hardening (monitoring, backups)
 
 ## Documentation
@@ -259,6 +281,7 @@ cd convex && npx vitest run
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) — Deployment and configuration guide
 - [POSTHOG.md](docs/POSTHOG.md) — Analytics events and dashboard setup
 - [SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) — Security review
+- [PHASE2_PLAN.md](docs/PHASE2_PLAN.md) — Personalization Phase 2 implementation plan
 - [Convex Agent docs](https://docs.convex.dev/agents) — Agent framework documentation
 - [Convex RAG docs](https://www.convex.dev/components/rag) — Document search component
 
