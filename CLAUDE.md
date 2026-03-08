@@ -68,7 +68,7 @@ Four markdown files per user in `userFiles` table, loaded into agent context on 
 - **personality** — two-layer: immutable system block (Ghali's DNA) + editable user block (tone, verbosity, emoji, off-limits)
 - **heartbeat** — checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups
 
-Agent updates these via tools: `updateProfile`, `updateMemory`, `updatePersonality`, `updateHeartbeat`. The agent silently observes communication patterns and stores them in memory, captures life milestones in profile, and adds proactive follow-ups to heartbeat when users mention notable events.
+Agent updates these via tools: `updateProfile`, `appendToMemory`, `updatePersonality`, `updateHeartbeat`. The agent silently observes communication patterns and stores them in memory, captures life milestones in profile, and adds proactive follow-ups to heartbeat when users mention notable events.
 
 ### Credit System
 

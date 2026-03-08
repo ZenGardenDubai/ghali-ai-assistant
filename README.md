@@ -76,7 +76,7 @@ Background action:
     → addItem/queryItems/updateItem → structured data
     → proWriteBrief/proWriteExecute → multi-LLM writing pipeline
     → createScheduledTask → one-time or recurring AI tasks
-    → updateProfile/appendToMemory/updatePersonality → user files
+    → updateProfile/appendToMemory/updatePersonality/updateHeartbeat → user files
     → resolveMedia/reprocessMedia/convertFile → media handling
   → Format for WhatsApp + split long messages
   → Send reply via Twilio API

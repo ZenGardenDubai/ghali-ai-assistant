@@ -23,7 +23,7 @@ Background action:
       → googleSearch → real-time web data
       → searchDocuments → user's RAG knowledge base
       → addItem/queryItems/updateItem → structured data
-      → updateMemory/updatePersonality/updateHeartbeat → user files
+      → updateProfile/appendToMemory/updatePersonality/updateHeartbeat → user files
   → Format for WhatsApp + split long messages (1500 char limit)
   → Send reply via Twilio API
 ```
@@ -51,7 +51,7 @@ Four markdown files per user in `userFiles` table, loaded into agent context eve
 - **personality** — immutable system block (Ghali DNA) + editable user block (tone, verbosity, emoji, off-limits topics)
 - **heartbeat** — checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups
 
-Agent updates via tools: `updateProfile`, `updateMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation.
+Agent updates via tools: `updateProfile`, `appendToMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation.
 
 ### Behavioral Learning
 
