@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.34.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.33.1...v0.34.0) (2026-03-08)
+
+
+### Features
+
+* Phase 2 — behavioral learning, milestones, proactive follow-ups ([#163](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/163)) ([f07ba83](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f07ba83536a694db582c9c77fb575052bd1412ff))
+
 ## [0.33.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.33.0...v0.33.1) (2026-03-07)
 
 
