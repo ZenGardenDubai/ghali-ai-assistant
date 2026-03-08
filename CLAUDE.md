@@ -86,7 +86,7 @@ System messages (credits, help, billing) use pre-defined templates with `{{varia
 ### Key Convex Tables
 
 - **users** — phone, name, language, timezone, tier, isAdmin, credits
-- **userFiles** — userId + filename (memory/personality/heartbeat) + content (markdown, max 10KB)
+- **userFiles** — userId + filename (profile/memory/personality/heartbeat) + content (markdown, max 10KB)
 - **usage** — per-message tracking: model, tokens, cost
 - **scheduledJobs** — heartbeat, reminders, follow-ups
 - Threads and messages managed by @convex-dev/agent (no custom tables)
