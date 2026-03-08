@@ -61,13 +61,14 @@ Web chat uses the same Convex mutation → action pattern but streams via WebSoc
 
 ### Per-User Files (Loaded Every Turn)
 
-Three markdown files per user in `userFiles` table, loaded into agent context on every turn:
+Four markdown files per user in `userFiles` table, loaded into agent context on every turn:
 
-- **memory** — facts, preferences, history the agent learns organically
-- **personality** — two-layer: immutable system block (Ghali's DNA) + editable user block (tone, language, style)
-- **heartbeat** — checklist for proactive scheduled messages
+- **profile** — identity facts (who the user IS): personal, professional, education, family, location, links, milestones. Never compacted. Section-replace semantics.
+- **memory** — soft behavioral observations, preferences, context. Auto-compacted at 38.4KB. Categories: preferences, schedule, interests, general.
+- **personality** — two-layer: immutable system block (Ghali's DNA) + editable user block (tone, verbosity, emoji, off-limits)
+- **heartbeat** — checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups
 
-Agent updates these via tools: `updateMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation ("remember I like coffee at 7am", "be more casual").
+Agent updates these via tools: `updateProfile`, `appendToMemory`, `editMemory`, `updatePersonality`, `updateHeartbeat`. The agent silently observes communication patterns and stores them in memory, captures life milestones in profile, and adds proactive follow-ups to heartbeat when users mention notable events.
 
 ### Credit System
 
@@ -85,7 +86,7 @@ System messages (credits, help, billing) use pre-defined templates with `{{varia
 ### Key Convex Tables
 
 - **users** — phone, name, language, timezone, tier, isAdmin, credits
-- **userFiles** — userId + filename (memory/personality/heartbeat) + content (markdown, max 10KB)
+- **userFiles** — userId + filename (profile/memory/personality/heartbeat) + content (markdown, max 50KB)
 - **usage** — per-message tracking: model, tokens, cost
 - **scheduledJobs** — heartbeat, reminders, follow-ups
 - Threads and messages managed by @convex-dev/agent (no custom tables)
