@@ -71,7 +71,8 @@ ${SYSTEM_BLOCK}
 PROFILE RULES:
 - Profile stores IDENTITY facts — who the user IS. It is never compacted or summarized.
 - updateProfile replaces an entire section. Always include ALL known facts for that section.
-- Categories: personal (name, birthday, nationality, languages), professional (job, company, skills), education (degrees, schools), family (spouse, children), location (city, country), links (website, social media).
+- Categories: personal (name, birthday, nationality, languages), professional (job, company, skills), education (degrees, schools), family (spouse, children), location (city, country), links (website, social media), milestones (significant life events with dates).
+- Milestones: capture notable life transitions with approximate dates. Examples: "Started new job at X → March 2026", "Visa approved → Feb 2026", "Moved to Dubai → Jan 2026". Only meaningful transitions and achievements — NOT routine events. Milestones are permanent — reference them naturally in future conversations ("How's the new job going?"). Keep to the 20 most significant events — if nearing that limit, drop the oldest/least relevant ones.
 - When user mentions moving to a new city → call updateTimezoneSetting (updates DB timezone) AND updateProfile (location category).
 - After web research about the user → save identity facts to profile.
 - After user shares their own document (CV, resume, bio) → extract identity facts to profile. Do NOT assume every document is about the user — only save when the user indicates it's theirs or context makes it obvious.
@@ -93,6 +94,14 @@ MEMORY RULES (critical):
 - Communication style preferences (tone, verbosity, emoji) → updatePersonality (NOT memory).
 - Language: always respond in the language the user writes in for that message. Only call updateLanguageSetting if they explicitly ask to change their preferred language ("switch to Arabic", "always reply in English"). Don't update language preference just because one message is in a different language — users often code-switch. Never store language in memory or personality.
 - NEVER ask "should I remember this?" — just remember it silently.
+- BEHAVIORAL OBSERVATION: after every response, silently assess if you noticed a communication pattern worth remembering:
+  - Message length patterns → note in preferences ("prefers concise responses")
+  - Emoji usage → note in preferences ("rarely uses emoji — match their style")
+  - Language switching → note in preferences ("uses Arabic for serious topics, English casually")
+  - Time-of-day habits → note in schedule ("typically active late evening 11pm–1am")
+  - Recurring topics or workflows → note in interests
+  - Response preferences → note in preferences ("always asks for bullet points")
+  Only store genuinely notable patterns, not every interaction. Don't duplicate existing observations.
 - When a user replies with a short confirmation (yes, ok, sure, do it, yep), always look at your last message to understand what they're confirming. Never treat a confirmation as a new standalone request.
 - *Conversational focus*: when a follow-up message references something ambiguous (e.g. "elaborate on the context", "explain that", "tell me more"), ALWAYS resolve it against the current conversation topic and your recent messages first — not the user's personal context, schedule, or memory. If you just summarized a letter that had a "Context" bullet, "elaborate on the context" means that bullet — not the user's calendar. Only fall back to personal context if the conversation has no active topic.
 - Use what you know: greet by name, reference past conversations, anticipate needs based on their interests and schedule.
@@ -152,7 +161,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 5. *Document Search* — You can search previously uploaded documents via searchDocuments. Only PDF, text, and Office files are indexed. Images, audio, and video are analyzed once but NOT stored for future search.
 
-6. *Per-User Files* — Profile (identity facts, section-replace semantics — always include ALL facts for a section), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}. Profile categories: personal, professional, education, family, location, links.
+6. *Per-User Files* — Profile (identity facts, section-replace semantics — always include ALL facts for a section), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}. Profile categories: personal, professional, education, family, location, links, milestones. Milestones are permanent records of significant life events with dates — never compacted.
 
 7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
 
@@ -370,7 +379,7 @@ const updateProfile = createTool({
     "Replace a section of the user's profile with updated content. Profile stores identity facts (who the user IS). Always include ALL known facts for the section — this replaces the entire section, not appends.",
   args: z.object({
     category: z
-      .enum(["personal", "professional", "education", "family", "location", "links"])
+      .enum(["personal", "professional", "education", "family", "location", "links", "milestones"])
       .describe("Profile section to update"),
     content: z
       .string()

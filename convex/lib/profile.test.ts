@@ -7,8 +7,8 @@ import {
 } from "./profile";
 
 describe("PROFILE_CATEGORIES", () => {
-  it("has 6 categories", () => {
-    expect(Object.keys(PROFILE_CATEGORIES)).toHaveLength(6);
+  it("has 7 categories", () => {
+    expect(Object.keys(PROFILE_CATEGORIES)).toHaveLength(7);
   });
 
   it("PROFILE_CATEGORY_ORDER includes all categories", () => {
@@ -110,9 +110,10 @@ describe("replaceProfileSection", () => {
     expect(result).toBe("");
   });
 
-  it("maintains canonical order across all 6 categories", () => {
+  it("maintains canonical order across all 7 categories", () => {
     let content = "";
     // Add in reverse order
+    content = replaceProfileSection(content, "milestones", "- Started new job → March 2026");
     content = replaceProfileSection(content, "links", "- Website: https://example.com");
     content = replaceProfileSection(content, "location", "- City: Abu Dhabi");
     content = replaceProfileSection(content, "family", "- Spouse: Sara");
@@ -126,12 +127,40 @@ describe("replaceProfileSection", () => {
     const familyIdx = content.indexOf("## Family");
     const locationIdx = content.indexOf("## Location");
     const linksIdx = content.indexOf("## Links");
+    const milestonesIdx = content.indexOf("## Milestones");
 
     expect(personalIdx).toBeLessThan(professionalIdx);
     expect(professionalIdx).toBeLessThan(educationIdx);
     expect(educationIdx).toBeLessThan(familyIdx);
     expect(familyIdx).toBeLessThan(locationIdx);
     expect(locationIdx).toBeLessThan(linksIdx);
+    expect(linksIdx).toBeLessThan(milestonesIdx);
+  });
+
+  it("creates milestones section with life events", () => {
+    const content = "## Personal\n- Name: Hesham";
+    const result = replaceProfileSection(
+      content,
+      "milestones",
+      "- Started new job at Acme → March 2026\n- Visa approved → February 2026"
+    );
+    expect(result).toContain("## Milestones");
+    expect(result).toContain("- Started new job at Acme → March 2026");
+    expect(result).toContain("- Visa approved → February 2026");
+    // Milestones comes after Personal
+    expect(result.indexOf("## Milestones")).toBeGreaterThan(result.indexOf("## Personal"));
+  });
+
+  it("replaces milestones section preserving other sections", () => {
+    const content = "## Personal\n- Name: Hesham\n\n## Milestones\n- Old event → Jan 2025";
+    const result = replaceProfileSection(
+      content,
+      "milestones",
+      "- Old event → Jan 2025\n- New event → March 2026"
+    );
+    expect(result).toContain("- New event → March 2026");
+    expect(result).toContain("- Old event → Jan 2025");
+    expect(result).toContain("## Personal\n- Name: Hesham");
   });
 
   it("handles multi-line bullet content", () => {

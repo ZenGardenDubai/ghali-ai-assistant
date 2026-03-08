@@ -29,3 +29,7 @@ Issues, improvements, and tech debt to revisit after MVP completion.
 ## Heartbeat
 
 - **WhatsApp template fallback for heartbeat** — Currently heartbeat messages are skipped if the user hasn't messaged within 24 hours (WhatsApp session window). Create a pre-approved Twilio Content Template (utility category) for heartbeat reminders so they can be delivered outside the 24h window. Template example: `"Hi {{1}}, here's your reminder: {{2}}"`. Requires Twilio Content Template approval. Then update `processUserHeartbeat` to fall back to the template when outside the session window instead of skipping.
+
+## Re-engagement for Inactive Users
+
+- **Proactive re-engagement cron** — Daily cron (8:00 UTC / 12:00 Dubai) finds users who haven't messaged in 5+ days, loads their profile + memory, uses Flash to compose a personalized 1-2 sentence WhatsApp check-in, and sends via Twilio template (`TWILIO_TPL_REENGAGEMENT`). Guardrails: 14-day cooldown between re-engagements, always uses template (users are outside 24h window by definition), respects error backoff, free (no credits), never mentions inactivity duration. Requires: new `lastReengagementAt` field on users table, new Twilio Content Template, new cron + mutation + action in `convex/heartbeat.ts`. Consider: opt-out via personality off-limits, minimum message threshold (only re-engage users with 5+ messages), analytics tracking (did user respond within 48h). See `docs/PHASE2_PLAN.md` PR C section for full design.
