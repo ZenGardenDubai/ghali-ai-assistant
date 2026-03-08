@@ -51,7 +51,7 @@ Four markdown files per user in `userFiles` table, loaded into agent context eve
 - **personality** — immutable system block (Ghali DNA) + editable user block (tone, verbosity, emoji, off-limits topics)
 - **heartbeat** — checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups
 
-Agent updates via tools: `updateProfile`, `appendToMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation.
+Agent updates via tools: `updateProfile`, `appendToMemory`, `editMemory`, `updatePersonality`, `updateHeartbeat`. Users edit naturally through conversation.
 
 ### Behavioral Learning
 

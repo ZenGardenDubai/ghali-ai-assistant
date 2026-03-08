@@ -68,7 +68,7 @@ Four markdown files per user in `userFiles` table, loaded into agent context on 
 - **personality** — two-layer: immutable system block (Ghali's DNA) + editable user block (tone, verbosity, emoji, off-limits)
 - **heartbeat** — checklist for proactive check-ins, recurring awareness items, and agent-created follow-ups
 
-Agent updates these via tools: `updateProfile`, `appendToMemory`, `updatePersonality`, `updateHeartbeat`. The agent silently observes communication patterns and stores them in memory, captures life milestones in profile, and adds proactive follow-ups to heartbeat when users mention notable events.
+Agent updates these via tools: `updateProfile`, `appendToMemory`, `editMemory`, `updatePersonality`, `updateHeartbeat`. The agent silently observes communication patterns and stores them in memory, captures life milestones in profile, and adds proactive follow-ups to heartbeat when users mention notable events.
 
 ### Credit System
 
@@ -86,7 +86,7 @@ System messages (credits, help, billing) use pre-defined templates with `{{varia
 ### Key Convex Tables
 
 - **users** — phone, name, language, timezone, tier, isAdmin, credits
-- **userFiles** — userId + filename (profile/memory/personality/heartbeat) + content (markdown, max 10KB)
+- **userFiles** — userId + filename (profile/memory/personality/heartbeat) + content (markdown, max 50KB)
 - **usage** — per-message tracking: model, tokens, cost
 - **scheduledJobs** — heartbeat, reminders, follow-ups
 - Threads and messages managed by @convex-dev/agent (no custom tables)
