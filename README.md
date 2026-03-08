@@ -68,7 +68,7 @@ WhatsApp message
 Background action:
   → Load user files (profile, memory, personality, heartbeat)
   → Check/deduct credits
-  → Gemini Flash generates response (27 tools available):
+  → Gemini Flash generates response (25 tools available):
     → deepReasoning → Claude Opus (complex tasks)
     → generateImage → Gemini Pro (image generation)
     → webSearch → real-time Google Search
@@ -181,7 +181,7 @@ ghali-ai-assistant/
 │   ├── (ar)/               # Arabic pages (full mirror)
 │   ├── api/                # Next.js API routes (proxy to Convex)
 │   └── providers/          # PostHog + Convex providers
-├── convex/                 # Convex backend (27 agent tools)
+├── convex/                 # Convex backend (25 agent tools)
 │   ├── agent.ts            # Ghali agent definition + all tools
 │   ├── http.ts             # HTTP routes (Twilio + Clerk webhooks, admin API)
 │   ├── messages.ts         # Message processing + async response generation
