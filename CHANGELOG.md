@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.34.0...v0.35.0) (2026-03-09)
+
+
+### Features
+
+* opt-out (stop/start) and account deletion flows ([#167](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/167)) ([5a86980](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5a8698051bfaf43630747736ec87d6838b8405fb))
+
 ## [0.34.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.33.1...v0.34.0) (2026-03-08)
 
 
