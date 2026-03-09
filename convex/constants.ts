@@ -58,12 +58,15 @@ export const MEMORY_COMPACTION_TARGET = Math.floor(MAX_USER_FILE_SIZE * 0.5);
 
 /**
  * Max characters per WhatsApp message segment.
- * Twilio sandbox = 1600, production = 4096. Set to 1500 for safety.
+ * WhatsApp supports up to 4096 chars; set to 1500 for safe multi-part splitting.
  */
 export const WHATSAPP_MAX_LENGTH = 1500;
 
-/** Delay between multi-part Twilio messages (ms) to preserve ordering */
-export const TWILIO_MESSAGE_DELAY_MS = 500;
+/** Delay between multi-part WhatsApp messages (ms) to preserve ordering */
+export const MESSAGE_DELAY_MS = 500;
+
+/** @deprecated Use MESSAGE_DELAY_MS instead */
+export const TWILIO_MESSAGE_DELAY_MS = MESSAGE_DELAY_MS;
 
 /**
  * Maximum number of WhatsApp message chunks per outbound send.

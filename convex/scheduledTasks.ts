@@ -235,12 +235,12 @@ export const executeScheduledTask = internalAction({
 
         try {
           if (withinWindow) {
-            await ctx.runAction(internal.twilio.sendMessage, {
+            await ctx.runAction(internal.whatsapp.sendMessage, {
               to: user.phone,
               body: `Your scheduled task "${task.title}" couldn't run — you're out of credits. Send "upgrade" to get more.`,
             });
           } else {
-            await ctx.runAction(internal.twilio.sendTemplate, {
+            await ctx.runAction(internal.whatsapp.sendTemplate, {
               to: user.phone,
               templateEnvVar: "TWILIO_TPL_CREDITS_LOW",
               variables: { "1": "0" },
@@ -342,7 +342,7 @@ export const executeScheduledTask = internalAction({
             user.lastMessageAt &&
             Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
           if (withinErrorWindow) {
-            await ctx.runAction(internal.twilio.sendMessage, {
+            await ctx.runAction(internal.whatsapp.sendMessage, {
               to: user.phone,
               body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
             });
@@ -377,14 +377,14 @@ export const executeScheduledTask = internalAction({
     let delivered = false;
     try {
       if (withinWindow) {
-        await ctx.runAction(internal.twilio.sendMessage, {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
           to: user.phone,
           body: responseText,
         });
       } else {
         // Out of session — use template with truncation
         const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
-        await ctx.runAction(internal.twilio.sendTemplate, {
+        await ctx.runAction(internal.whatsapp.sendTemplate, {
           to: user.phone,
           templateEnvVar: "TWILIO_TPL_SCHEDULED_TASK",
           variables: { "1": truncated },

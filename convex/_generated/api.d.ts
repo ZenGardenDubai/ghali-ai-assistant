@@ -40,6 +40,9 @@ import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as lib_proWrite from "../lib/proWrite.js";
 import type * as lib_profile from "../lib/profile.js";
 import type * as lib_systemCommands from "../lib/systemCommands.js";
+import type * as lib_dialog360Media from "../lib/dialog360Media.js";
+import type * as lib_dialog360Send from "../lib/dialog360Send.js";
+import type * as lib_dialog360Webhook from "../lib/dialog360Webhook.js";
 import type * as lib_twilio from "../lib/twilio.js";
 import type * as lib_twilioSend from "../lib/twilioSend.js";
 import type * as lib_userFiles from "../lib/userFiles.js";
@@ -59,6 +62,7 @@ import type * as scheduledTasks from "../scheduledTasks.js";
 import type * as templates from "../templates.js";
 import type * as twilio from "../twilio.js";
 import type * as users from "../users.js";
+import type * as whatsapp from "../whatsapp.js";
 import type * as voice from "../voice.js";
 import type * as webhookDedup from "../webhookDedup.js";
 
@@ -101,6 +105,9 @@ declare const fullApi: ApiFromModules<{
   "lib/proWrite": typeof lib_proWrite;
   "lib/profile": typeof lib_profile;
   "lib/systemCommands": typeof lib_systemCommands;
+  "lib/dialog360Media": typeof lib_dialog360Media;
+  "lib/dialog360Send": typeof lib_dialog360Send;
+  "lib/dialog360Webhook": typeof lib_dialog360Webhook;
   "lib/twilio": typeof lib_twilio;
   "lib/twilioSend": typeof lib_twilioSend;
   "lib/userFiles": typeof lib_userFiles;
@@ -121,6 +128,7 @@ declare const fullApi: ApiFromModules<{
   twilio: typeof twilio;
   users: typeof users;
   voice: typeof voice;
+  whatsapp: typeof whatsapp;
   webhookDedup: typeof webhookDedup;
 }>;
 

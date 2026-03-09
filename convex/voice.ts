@@ -2,7 +2,7 @@
 
 /**
  * Voice message transcription using OpenAI Whisper.
- * Downloads audio from Twilio, stores it in Convex file storage,
+ * Downloads audio from 360dialog (fresh) or Convex file storage (re-transcription),
  * and returns the transcript with the storage ID.
  */
 
@@ -17,15 +17,16 @@ import { getAudioExtension } from "./lib/voice";
  * Download audio, store in Convex file storage, and transcribe using OpenAI Whisper.
  *
  * Accepts either:
- * - A Twilio media URL (fresh voice note): requires Twilio Basic Auth, stores audio.
- * - A Convex storage URL (re-transcription): when `existingStorageId` is provided,
+ * - A 360dialog media ID (`mediaId`): downloads via 360dialog API, stores audio.
+ * - A Convex storage URL (`mediaUrl` + `existingStorageId`): re-transcription,
  *   no auth needed and audio is not re-stored.
  *
  * @returns `{ transcript, storageId }` or null on failure
  */
 export const transcribeVoiceMessage = internalAction({
   args: {
-    mediaUrl: v.string(),
+    mediaUrl: v.optional(v.string()),
+    mediaId: v.optional(v.string()),
     mediaType: v.string(),
     /** Present when re-transcribing from Convex storage — skips re-storing. */
     existingStorageId: v.optional(v.id("_storage")),
@@ -34,75 +35,81 @@ export const transcribeVoiceMessage = internalAction({
     v.object({ transcript: v.string(), storageId: v.id("_storage") }),
     v.null()
   ),
-  handler: async (ctx, { mediaUrl, mediaType, existingStorageId }) => {
+  handler: async (ctx, { mediaUrl, mediaId, mediaType, existingStorageId }) => {
     const startTime = Date.now();
 
     try {
-      // SSRF protection — strict origin validation via URL parsing
-      let parsed: URL;
-      try {
-        parsed = new URL(mediaUrl);
-      } catch {
-        console.error("[Voice] Invalid media URL");
-        return null;
-      }
+      let audioBuffer: ArrayBuffer;
 
-      const isTwilioUrl =
-        parsed.protocol === "https:" && parsed.hostname === "api.twilio.com";
-      const isConvexStorageUrl =
-        parsed.protocol === "https:" && parsed.hostname.endsWith(".convex.cloud");
-
-      if (existingStorageId != null) {
+      if (existingStorageId != null && mediaUrl) {
+        // Re-transcription from Convex storage — validate URL origin
+        let parsed: URL;
+        try {
+          parsed = new URL(mediaUrl);
+        } catch {
+          console.error("[Voice] Invalid media URL");
+          return null;
+        }
+        const isConvexStorageUrl =
+          parsed.protocol === "https:" && parsed.hostname.endsWith(".convex.cloud");
         if (!isConvexStorageUrl) {
           console.error("[Voice] existingStorageId requires Convex storage URL");
           return null;
         }
-      } else if (!isTwilioUrl) {
-        console.error("[Voice] Invalid media URL origin");
-        return null;
-      }
-
-      // Download audio — Twilio needs Basic Auth, Convex storage URLs are pre-signed
-      const headers: Record<string, string> = {};
-      if (isTwilioUrl) {
-        const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-        const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-
-        if (!twilioSid || !twilioToken) {
-          console.error("[Voice] Twilio credentials not configured");
+        console.log(`[Voice] downloading from Convex storage | type: ${mediaType}`);
+        const response = await fetch(mediaUrl);
+        if (!response.ok) {
+          console.error(`[Voice] Storage download failed: ${response.status} ${response.statusText}`);
+          return null;
+        }
+        audioBuffer = await response.arrayBuffer();
+      } else if (mediaId) {
+        // Fresh voice note from 360dialog — two-step download
+        const apiKey = process.env.DIALOG360_API_KEY;
+        if (!apiKey) {
+          console.error("[Voice] DIALOG360_API_KEY not configured");
           return null;
         }
 
-        headers["Authorization"] = `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`;
-      }
-
-      const source = isTwilioUrl ? "Twilio" : "Convex storage";
-      console.log(`[Voice] downloading from ${source} | type: ${mediaType}`);
-      const response = await fetch(mediaUrl, { headers });
-
-      if (!response.ok) {
-        console.error(
-          `[Voice] Download failed: ${response.status} ${response.statusText}`
+        console.log(`[Voice] resolving 360dialog media ID | type: ${mediaType}`);
+        const metaResponse = await fetch(
+          `https://waba.360dialog.io/v1/media/${mediaId}`,
+          { method: "GET", headers: { "D360-API-KEY": apiKey } }
         );
+        if (!metaResponse.ok) {
+          console.error(`[Voice] Media URL fetch failed: ${metaResponse.status}`);
+          return null;
+        }
+        const meta = (await metaResponse.json()) as { url?: string };
+        if (!meta.url) {
+          console.error("[Voice] Media URL missing in 360dialog response");
+          return null;
+        }
+
+        console.log(`[Voice] downloading from 360dialog | type: ${mediaType}`);
+        const fileResponse = await fetch(meta.url, {
+          headers: { "D360-API-KEY": apiKey },
+        });
+        if (!fileResponse.ok) {
+          console.error(`[Voice] Download failed: ${fileResponse.status} ${fileResponse.statusText}`);
+          return null;
+        }
+        audioBuffer = await fileResponse.arrayBuffer();
+      } else {
+        console.error("[Voice] No mediaUrl or mediaId provided");
         return null;
       }
-
-      const audioBuffer = await response.arrayBuffer();
 
       const audioBytes = new Uint8Array(audioBuffer);
 
       // Size validation
       if (audioBytes.length < VOICE_MIN_SIZE_BYTES) {
-        console.log(
-          `[Voice] Audio too short: ${audioBytes.length} bytes (< 1KB)`
-        );
+        console.log(`[Voice] Audio too short: ${audioBytes.length} bytes (< 1KB)`);
         return null;
       }
 
       if (audioBytes.length > VOICE_MAX_SIZE_BYTES) {
-        console.log(
-          `[Voice] Audio too large: ${audioBytes.length} bytes (> 25MB)`
-        );
+        console.log(`[Voice] Audio too large: ${audioBytes.length} bytes (> 25MB)`);
         return null;
       }
 
@@ -122,9 +129,7 @@ export const transcribeVoiceMessage = internalAction({
       });
 
       // Transcribe with Whisper
-      console.log(
-        `[Voice] transcribing | size: ${audioBytes.length} bytes`
-      );
+      console.log(`[Voice] transcribing | size: ${audioBytes.length} bytes`);
       const transcription = await openai.audio.transcriptions.create({
         file,
         model: "whisper-1",
@@ -144,9 +149,7 @@ export const transcribeVoiceMessage = internalAction({
         return null;
       }
 
-      console.log(
-        `[Voice] done | ${latencyMs}ms | ${transcript.length} chars`
-      );
+      console.log(`[Voice] done | ${latencyMs}ms | ${transcript.length} chars`);
 
       // Store audio in Convex file storage (skip when re-transcribing from own storage)
       let storageId: Id<"_storage">;

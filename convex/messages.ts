@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent, setTraceId, clearTraceId } from "./agent";
 import { MODELS } from "./models";
-import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
+import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
@@ -120,13 +120,14 @@ export const saveIncoming = internalMutation({
     userId: v.id("users"),
     body: v.string(),
     mediaUrl: v.optional(v.string()),
+    mediaId: v.optional(v.string()),
     mediaContentType: v.optional(v.string()),
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid }
+    { userId, body, mediaUrl, mediaId, mediaContentType, messageSid, originalRepliedMessageSid }
   ) => {
     // Capture previous lastMessageAt before updating — needed for session detection
     const user = await ctx.db.get(userId);
@@ -140,6 +141,7 @@ export const saveIncoming = internalMutation({
       userId: userId as string,
       body,
       mediaUrl,
+      mediaId,
       mediaContentType,
       messageSid,
       originalRepliedMessageSid,
@@ -157,6 +159,7 @@ export const generateResponse = internalAction({
     userId: v.string(),
     body: v.string(),
     mediaUrl: v.optional(v.string()),
+    mediaId: v.optional(v.string()),
     mediaContentType: v.optional(v.string()),
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
@@ -164,13 +167,13 @@ export const generateResponse = internalAction({
   },
   handler: async (ctx, args) => {
     const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt } = args;
-    let { body, mediaUrl, mediaContentType } = args;
+    let { body, mediaUrl, mediaId, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
 
     // ── Single response guarantee ──────────────────────────────────────
     // Ensures at most ONE outbound message (or message group) per invocation.
     // Every send path must go through guardedSend() instead of calling
-    // internal.twilio.sendMessage / sendMedia directly.
+    // internal.whatsapp.sendMessage / sendMedia directly.
     let responseSent = false;
 
     /**
@@ -197,7 +200,7 @@ export const generateResponse = internalAction({
         return false;
       }
       responseSent = true;
-      await ctx.runAction(internal.twilio.sendMessage, {
+      await ctx.runAction(internal.whatsapp.sendMessage, {
         to: user!.phone,
         body: msgBody,
       });
@@ -230,7 +233,7 @@ export const generateResponse = internalAction({
       }
       responseSent = true;
       try {
-        await ctx.runAction(internal.twilio.sendMedia, {
+        await ctx.runAction(internal.whatsapp.sendMedia, {
           to: user!.phone,
           caption,
           mediaUrl: mediaUrlToSend,
@@ -241,7 +244,7 @@ export const generateResponse = internalAction({
             `Note: if original was partially sent, user may receive duplicate.`,
           error
         );
-        await ctx.runAction(internal.twilio.sendMessage, {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
           to: user!.phone,
           body: caption,
         });
@@ -307,7 +310,7 @@ export const generateResponse = internalAction({
         }
         if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
           try {
-            await ctx.runAction(internal.twilio.sendMedia, {
+            await ctx.runAction(internal.whatsapp.sendMedia, {
               to: user.phone,
               caption: "",
               mediaUrl: parsed.url,
@@ -599,10 +602,10 @@ export const generateResponse = internalAction({
     // Voice note intercept — transcribe and use as text prompt
     // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.
     // Other audio formats (mp3, m4a, etc.) are treated as files for Gemini analysis.
-    if (mediaUrl && mediaContentType && isVoiceNote(mediaContentType)) {
+    if ((mediaUrl || mediaId) && mediaContentType && isVoiceNote(mediaContentType)) {
       const voiceResult = await ctx.runAction(
         internal.voice.transcribeVoiceMessage,
-        { mediaUrl, mediaType: mediaContentType }
+        { mediaUrl, mediaId, mediaType: mediaContentType }
       );
 
       if (!voiceResult) {
@@ -632,6 +635,7 @@ export const generateResponse = internalAction({
       // Replace body with transcript, clear media fields
       body = voiceResult.transcript;
       mediaUrl = undefined;
+      mediaId = undefined;
       mediaContentType = undefined;
     }
 
@@ -641,7 +645,7 @@ export const generateResponse = internalAction({
     // Reply-to-media: if replying to a previous message with stored media, fetch it
     let isReprocessing = false;
     let replyStorageId: string | null = null;
-    if (originalRepliedMessageSid && !mediaUrl) {
+    if (originalRepliedMessageSid && !mediaUrl && !mediaId) {
       const stored = await ctx.runQuery(
         internal.mediaStorage.getMediaBySid,
         { messageSid: originalRepliedMessageSid }
@@ -681,27 +685,14 @@ export const generateResponse = internalAction({
         }
       }
 
-      // Reply-to-text: if replying to a text message (no media found), fetch the quoted message
-      if (!mediaUrl && !replyStorageId) {
-        try {
-          const quotedBody: string | null = await ctx.runAction(
-            internal.twilio.fetchOriginalMessage,
-            { messageSid: originalRepliedMessageSid }
-          );
-          if (quotedBody) {
-            prompt = buildReplyToTextPrompt(quotedBody, body);
-          }
-        } catch (e) {
-          // Non-critical — if fetch fails, proceed without quoted context
-          console.warn("Failed to fetch replied-to message:", e);
-        }
-      }
+      // Reply-to-text context is not available via 360dialog API — skip silently.
     }
-    if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
+    if ((mediaUrl || mediaId) && mediaContentType && isSupportedMediaType(mediaContentType)) {
       const result = await ctx.runAction(
         internal.documents.processMedia,
         {
           mediaUrl,
+          mediaId,
           mediaType: mediaContentType,
           userPrompt: body || undefined,
           isReprocessing,
@@ -857,7 +848,7 @@ export const generateResponse = internalAction({
           TEMPLATES.credits_low_warning.template,
           { credits: newCredits }
         );
-        await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
           to: user.phone,
           body: lowCreditMsg,
         });

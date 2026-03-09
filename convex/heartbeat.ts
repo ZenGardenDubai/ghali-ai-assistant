@@ -128,13 +128,13 @@ ${SYSTEM_BLOCK}
 
       try {
         if (latestWithinWindow) {
-          await ctx.runAction(internal.twilio.sendMessage, {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
             to: latestUser.phone,
             body: responseText,
           });
         } else {
           // Outside 24h window — use Content Template
-          await ctx.runAction(internal.twilio.sendTemplate, {
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
             to: latestUser.phone,
             templateEnvVar: "TWILIO_TPL_HEARTBEAT",
             variables: { "1": responseText },

@@ -247,7 +247,7 @@ export const broadcastMessage = internalAction({
     ) as Array<{ phone: string; lastMessageAt?: number }>;
 
     const sentCount = await sendInBatches(activeUsers, (phone) =>
-      ctx.runAction(internal.twilio.sendMessage, { to: phone, body: message }),
+      ctx.runAction(internal.whatsapp.sendMessage, { to: phone, body: message }),
     );
 
     return { sentCount };
@@ -337,13 +337,13 @@ export const sendTestTemplate = internalAction({
       // Send single media message with template text as caption
       const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
       const caption = template ? renderTemplatePreview(template.preview, variables) : "";
-      await ctx.runAction(internal.twilio.sendMedia, {
+      await ctx.runAction(internal.whatsapp.sendMedia, {
         to: adminPhone,
         caption,
         mediaUrl,
       });
     } else {
-      await ctx.runAction(internal.twilio.sendTemplate, {
+      await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: adminPhone,
         templateEnvVar,
         variables,
@@ -375,14 +375,14 @@ export const sendTemplateToUser = internalAction({
       // Active user: send single media message with template text as caption
       const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
       const caption = template ? renderTemplatePreview(template.preview, variables) : "";
-      await ctx.runAction(internal.twilio.sendMedia, {
+      await ctx.runAction(internal.whatsapp.sendMedia, {
         to: phone,
         caption,
         mediaUrl,
       });
     } else {
       // Inactive or no image: send template (image baked in via Content API)
-      await ctx.runAction(internal.twilio.sendTemplate, {
+      await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: phone,
         templateEnvVar,
         variables,
@@ -419,7 +419,7 @@ export const sendTemplateBroadcast = internalAction({
 
       if (isActive && messageBody && mediaUrl) {
         // Active user with image: send media message with caption
-        return ctx.runAction(internal.twilio.sendMedia, {
+        return ctx.runAction(internal.whatsapp.sendMedia, {
           to: phone,
           caption: messageBody,
           mediaUrl,
@@ -427,13 +427,13 @@ export const sendTemplateBroadcast = internalAction({
       }
       if (isActive && messageBody) {
         // Active user, text only
-        return ctx.runAction(internal.twilio.sendMessage, {
+        return ctx.runAction(internal.whatsapp.sendMessage, {
           to: phone,
           body: messageBody,
         });
       }
       // Inactive user: send template (image baked into template via Content API)
-      return ctx.runAction(internal.twilio.sendTemplate, {
+      return ctx.runAction(internal.whatsapp.sendTemplate, {
         to: phone,
         templateEnvVar,
         variables,

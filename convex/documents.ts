@@ -29,38 +29,48 @@ import {
 } from "./lib/media";
 
 // ============================================================================
-// Twilio Download
+// 360dialog Media Download
 // ============================================================================
 
 /**
- * Download media from Twilio with Basic Auth.
- * Validates URL origin (SSRF protection) and file size.
+ * Download media from 360dialog using a media ID.
+ * Validates file size.
  */
-async function downloadFromTwilio(
-  mediaUrl: string
+async function downloadFromDialog360(
+  mediaId: string
 ): Promise<
   | { success: true; data: ArrayBuffer; size: number }
   | { success: false; error: string }
 > {
-  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const apiKey = process.env.DIALOG360_API_KEY;
 
-  if (!twilioSid || !twilioToken) {
-    console.error("[Documents] Twilio credentials not configured");
-    return { success: false, error: "Twilio credentials not configured" };
-  }
-
-  // SSRF protection
-  if (!mediaUrl.startsWith("https://api.twilio.com/")) {
-    console.error("[Documents] Invalid media URL origin");
-    return { success: false, error: "Invalid media URL origin" };
+  if (!apiKey) {
+    console.error("[Documents] DIALOG360_API_KEY not configured");
+    return { success: false, error: "360dialog credentials not configured" };
   }
 
   try {
-    const response = await fetch(mediaUrl, {
-      headers: {
-        Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
-      },
+    // Two-step: resolve URL, then download
+    const metaResponse = await fetch(
+      `https://waba.360dialog.io/v1/media/${mediaId}`,
+      { method: "GET", headers: { "D360-API-KEY": apiKey } }
+    );
+
+    if (!metaResponse.ok) {
+      console.error(
+        `[Documents] Media URL fetch failed: ${metaResponse.status} ${metaResponse.statusText}`
+      );
+      return { success: false, error: `Media URL fetch failed: ${metaResponse.status}` };
+    }
+
+    const meta = (await metaResponse.json()) as { url?: string };
+    const url = meta.url;
+    if (!url) {
+      return { success: false, error: "Media URL missing in 360dialog response" };
+    }
+
+    const response = await fetch(url, {
+      headers: { "D360-API-KEY": apiKey },
     });
 
     if (!response.ok) {
@@ -80,7 +90,10 @@ async function downloadFromTwilio(
 
     if (size > MEDIA_MAX_SIZE_BYTES) {
       console.log(`[Documents] File too large: ${size} bytes`);
-      return { success: false, error: `File too large (max ${MEDIA_MAX_SIZE_BYTES / (1024 * 1024)}MB)` };
+      return {
+        success: false,
+        error: `File too large (max ${MEDIA_MAX_SIZE_BYTES / (1024 * 1024)}MB)`,
+      };
     }
 
     return { success: true, data, size };
@@ -316,7 +329,8 @@ export async function convertViaCloudConvert(
  */
 export const processMedia = internalAction({
   args: {
-    mediaUrl: v.string(),
+    mediaUrl: v.optional(v.string()),
+    mediaId: v.optional(v.string()),
     mediaType: v.string(),
     userPrompt: v.optional(v.string()),
     isReprocessing: v.optional(v.boolean()),
@@ -325,15 +339,15 @@ export const processMedia = internalAction({
     v.object({ extracted: v.string(), storageId: v.union(v.id("_storage"), v.null()) }),
     v.null()
   ),
-  handler: async (ctx, { mediaUrl, mediaType, userPrompt, isReprocessing }) => {
+  handler: async (ctx, { mediaUrl, mediaId, mediaType, userPrompt, isReprocessing }) => {
     const startTime = Date.now();
     console.log(`[Documents] processing | type: ${mediaType} | reprocessing: ${!!isReprocessing}`);
 
     let data: ArrayBuffer;
     let storageId: string | null = null;
 
-    if (isReprocessing) {
-      // Re-processing: download from Convex storage URL (no Twilio auth needed)
+    if (isReprocessing && mediaUrl) {
+      // Re-processing: download from Convex storage URL (no auth needed)
       // Validate URL origin — must be a Convex storage URL
       const host = new URL(mediaUrl).hostname;
       if (!host.endsWith(".convex.cloud") && !host.endsWith(".convex.site")) {
@@ -351,9 +365,9 @@ export const processMedia = internalAction({
         console.error("[Documents] Storage download error:", error);
         return null;
       }
-    } else {
-      // First-time: download from Twilio
-      const download = await downloadFromTwilio(mediaUrl);
+    } else if (mediaId) {
+      // First-time: download from 360dialog via media ID
+      const download = await downloadFromDialog360(mediaId);
       if (!download.success) {
         console.error(`[Documents] Download failed: ${download.error}`);
         return null;
@@ -368,6 +382,9 @@ export const processMedia = internalAction({
         console.error("[Documents] Storage store failed:", error);
         // Non-fatal — continue with extraction
       }
+    } else {
+      console.error("[Documents] No mediaUrl or mediaId provided");
+      return null;
     }
 
     console.log(`[Documents] downloaded | size: ${data.byteLength} bytes`);

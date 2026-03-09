@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { validateTwilioSignature, parseTwilioMessage } from "./lib/twilio";
+import { validateDialog360Signature, parseDialog360Message } from "./lib/dialog360Webhook";
 import { isBlockedCountryCode } from "./lib/utils";
 import { validateClerkWebhook } from "./lib/clerk";
 import { MAX_MESSAGE_LENGTH, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
@@ -23,75 +23,87 @@ async function timingSafeEqual(a: string, b: string): Promise<boolean> {
 
 const VALID_PERIODS = new Set(["today", "yesterday", "7d", "30d"]);
 
-/** Normalize a WhatsApp number by stripping prefix and trimming whitespace. */
-function normalizeWhatsappNumber(n: string | undefined): string {
-  return (n ?? "").trim().replace(/^whatsapp:/, "");
-}
-
-let warnedMissingTwilioWhatsappNumber = false;
-
 const http = httpRouter();
+
+/**
+ * Webhook verification — Meta/360dialog sends a GET challenge to verify the endpoint.
+ * Must respond with hub.challenge when hub.verify_token matches.
+ */
+http.route({
+  path: "/whatsapp-webhook",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    const url = new URL(request.url);
+    const mode = url.searchParams.get("hub.mode");
+    const token = url.searchParams.get("hub.verify_token");
+    const challenge = url.searchParams.get("hub.challenge");
+
+    const verifyToken = process.env.DIALOG360_VERIFY_TOKEN;
+    if (!verifyToken) {
+      console.error("DIALOG360_VERIFY_TOKEN not set");
+      return new Response("Server configuration error", { status: 500 });
+    }
+
+    if (mode === "subscribe" && token === verifyToken) {
+      return new Response(challenge ?? "", { status: 200 });
+    }
+
+    return new Response("Forbidden", { status: 403 });
+  }),
+});
 
 http.route({
   path: "/whatsapp-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    // ALWAYS return 200 to Twilio — non-200 causes retries which can amplify bugs.
-    // The only exception is 403 for bad signatures (Twilio doesn't retry 4xx).
-    const twimlOk = () =>
-      new Response("<Response></Response>", {
-        status: 200,
-        headers: { "Content-Type": "text/xml" },
-      });
+    // Return 200 to prevent 360dialog retries on non-fatal errors.
+    const ok = () => new Response("OK", { status: 200 });
 
     try {
-      // Parse form data
-      const formData = await request.formData();
-      const params: Record<string, string> = {};
-      formData.forEach((value, key) => {
-        params[key] = value.toString();
-      });
+      const rawBody = await request.text();
 
-      // Validate Twilio signature
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      const signature = request.headers.get("X-Twilio-Signature") ?? "";
+      // Validate X-Hub-Signature-256 signature
+      const appSecret = process.env.DIALOG360_API_KEY;
+      const signature = request.headers.get("X-Hub-Signature-256") ?? "";
 
-      if (!authToken) {
-        console.error("TWILIO_AUTH_TOKEN not set");
-        // Return 200 even on config errors — returning 500 causes Twilio retries
-        return twimlOk();
+      if (!appSecret) {
+        console.error("DIALOG360_API_KEY not set — cannot validate signature");
+        return ok();
       }
 
-      const url = new URL(request.url);
-      // Use the public-facing URL for signature validation
-      const publicUrl =
-        process.env.CONVEX_SITE_URL ??
-        `${url.protocol}//${url.host}`;
-      const validationUrl = `${publicUrl}/whatsapp-webhook`;
-
-      if (!(await validateTwilioSignature(authToken, signature, validationUrl, params))) {
-        // 403 is fine — Twilio does NOT retry 4xx responses
+      if (
+        signature &&
+        !(await validateDialog360Signature(appSecret, signature, rawBody))
+      ) {
         return new Response("Forbidden", { status: 403 });
       }
 
-      // Parse the message
-      const message = parseTwilioMessage(params);
-
-      // Ignore messages from Ghali's own number — outbound delivery echoes or status
-      // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
-      const ghaliNumber = normalizeWhatsappNumber(process.env.TWILIO_WHATSAPP_NUMBER);
-      if (!ghaliNumber && !warnedMissingTwilioWhatsappNumber) {
-        warnedMissingTwilioWhatsappNumber = true;
-        console.warn("TWILIO_WHATSAPP_NUMBER not set — self-message filter disabled");
+      // Parse JSON body
+      let payload: Record<string, unknown>;
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        console.error("[whatsapp-webhook] Invalid JSON body");
+        return ok();
       }
-      if (ghaliNumber && normalizeWhatsappNumber(message.from) === ghaliNumber) {
-        return twimlOk();
+
+      // Parse the message
+      const message = parseDialog360Message(payload);
+      if (!message) {
+        // Not a processable message (status update, unsupported type, etc.)
+        return ok();
+      }
+
+      // Ignore messages from Ghali's own number (self-echo protection)
+      const ghaliNumber = (process.env.DIALOG360_WHATSAPP_NUMBER ?? "").trim();
+      if (ghaliNumber && message.from === ghaliNumber) {
+        return ok();
       }
 
       // Country code blocking
       if (isBlockedCountryCode(message.from)) {
         console.log(`Blocked message from ${message.from}`);
-        return twimlOk();
+        return ok();
       }
 
       // Truncate overly long messages (cost amplification protection)
@@ -99,14 +111,14 @@ http.route({
         message.body = message.body.slice(0, MAX_MESSAGE_LENGTH);
       }
 
-      // MessageSid dedup — reject replayed webhooks (atomic check-and-mark)
-      if (message.messageSid) {
+      // Message ID dedup — reject replayed webhooks (atomic check-and-mark)
+      if (message.messageId) {
         const isNew = await ctx.runMutation(internal.webhookDedup.tryMarkProcessed, {
-          messageSid: message.messageSid,
+          messageSid: message.messageId,
         });
         if (!isNew) {
-          console.log(`Duplicate MessageSid ${message.messageSid}, skipping`);
-          return twimlOk();
+          console.log(`Duplicate messageId ${message.messageId}, skipping`);
+          return ok();
         }
       }
 
@@ -120,17 +132,16 @@ http.route({
       await ctx.runMutation(internal.messages.saveIncoming, {
         userId,
         body: message.body,
-        mediaUrl: message.mediaUrl,
+        mediaId: message.mediaId,
         mediaContentType: message.mediaContentType,
-        messageSid: message.messageSid,
-        originalRepliedMessageSid: message.originalRepliedMessageSid,
+        messageSid: message.messageId,
+        originalRepliedMessageSid: message.originalRepliedMessageId,
       });
 
-      return twimlOk();
+      return ok();
     } catch (error) {
-      // Catch-all: log the error but ALWAYS return 200 to prevent Twilio retries
       console.error("[whatsapp-webhook] Unhandled error:", error);
-      return twimlOk();
+      return ok();
     }
   }),
 });
@@ -796,13 +807,13 @@ http.route({
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
-      await ctx.runAction(internal.twilio.sendMessage, {
+      await ctx.runAction(internal.whatsapp.sendMessage, {
         to: feedback.phone,
         body: message,
       });
     } else {
       // Outside 24h window — use broadcast template as fallback
-      await ctx.runAction(internal.twilio.sendTemplate, {
+      await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: feedback.phone,
         templateEnvVar: "TWILIO_TPL_BROADCAST",
         variables: { "1": message },

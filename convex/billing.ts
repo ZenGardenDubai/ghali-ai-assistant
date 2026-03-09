@@ -97,12 +97,12 @@ export const handleSubscriptionActive = internalMutation({
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
-      await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
         to: user.phone,
         body: `Your Ghali Pro plan is now active. You have ${CREDITS_PRO} credits this month.`,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.sendTemplate, {
         to: user.phone,
         templateEnvVar: "TWILIO_TPL_SUB_ACTIVE",
         variables: { "1": String(CREDITS_PRO) },
@@ -164,12 +164,12 @@ export const handleSubscriptionEnded = internalMutation({
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
-      await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
         to: user.phone,
         body: `Your Pro plan has ended. You're now on the Basic plan with ${CREDITS_BASIC} credits/month.`,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.twilio.sendTemplate, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.sendTemplate, {
         to: user.phone,
         templateEnvVar: "TWILIO_TPL_SUB_ENDED",
         variables: { "1": String(CREDITS_BASIC) },
