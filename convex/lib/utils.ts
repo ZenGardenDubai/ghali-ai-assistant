@@ -4,6 +4,7 @@
 
 import {
   WHATSAPP_MAX_LENGTH,
+  MAX_MESSAGE_CHUNKS,
   COUNTRY_CODE_TIMEZONES,
   DEFAULT_TIMEZONE,
   BLOCKED_COUNTRY_CODES,
@@ -175,7 +176,8 @@ export function buildReplyToTextPrompt(
 
 export function splitLongMessage(
   text: string,
-  maxLength: number = WHATSAPP_MAX_LENGTH
+  maxLength: number = WHATSAPP_MAX_LENGTH,
+  maxChunks: number = MAX_MESSAGE_CHUNKS
 ): string[] {
   if (text.length <= maxLength) {
     return [text];
@@ -184,7 +186,7 @@ export function splitLongMessage(
   const chunks: string[] = [];
   let remaining = text;
 
-  while (remaining.length > maxLength) {
+  while (remaining.length > maxLength && chunks.length < maxChunks - 1) {
     // Try to split at paragraph boundary
     let splitIndex = remaining.lastIndexOf("\n\n", maxLength);
 
@@ -209,7 +211,17 @@ export function splitLongMessage(
   }
 
   if (remaining.length > 0) {
-    chunks.push(remaining);
+    // If we hit the chunk limit and there's still more text, truncate with notice
+    if (chunks.length >= maxChunks - 1 && remaining.length > maxLength) {
+      const truncated = remaining.slice(0, maxLength - 40);
+      chunks.push(truncated.trim() + "\n\n_(Message truncated — too long)_");
+      console.warn(
+        `[splitLongMessage] Truncated: ${text.length} chars → ${chunks.length} chunks ` +
+          `(${remaining.length - maxLength + 40} chars dropped)`
+      );
+    } else {
+      chunks.push(remaining);
+    }
   }
 
   return chunks;
