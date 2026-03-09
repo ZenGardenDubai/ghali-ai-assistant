@@ -16,6 +16,8 @@ export const processHeartbeats = internalMutation({
     const allUsers = await ctx.db.query("users").collect();
 
     for (const user of allUsers) {
+      // Skip opted-out users
+      if (user.optedOut) continue;
 
       // Check heartbeat file
       const heartbeatFile = await ctx.db
@@ -48,16 +50,14 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
+    // Re-check opt-out (user may have sent STOP after processHeartbeats enqueued this)
+    if (user.optedOut) return;
+
     // Circuit breaker: skip if user is in error backoff
     if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
       console.log(`[circuit-breaker] Heartbeat skipped for user ${userId} — in error backoff`);
       return;
     }
-
-    // Check WhatsApp 24h session window
-    const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     // Load user files
     const userFiles = await ctx.runQuery(internal.users.internalGetUserFiles, {
@@ -118,16 +118,24 @@ ${SYSTEM_BLOCK}
 
     // Delivery — Twilio failures don't trip the circuit breaker
     if (responseText && !responseText.includes("__SKIP__")) {
+      // Re-fetch user to catch STOP sent during AI generation
+      const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
+      if (!latestUser || latestUser.optedOut) return;
+
+      const latestWithinWindow =
+        latestUser.lastMessageAt &&
+        Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
       try {
-        if (withinWindow) {
+        if (latestWithinWindow) {
           await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
+            to: latestUser.phone,
             body: responseText,
           });
         } else {
           // Outside 24h window — use Content Template
           await ctx.runAction(internal.twilio.sendTemplate, {
-            to: user.phone,
+            to: latestUser.phone,
             templateEnvVar: "TWILIO_TPL_HEARTBEAT",
             variables: { "1": responseText },
           });

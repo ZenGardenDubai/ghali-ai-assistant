@@ -310,7 +310,7 @@ export const generateResponse = internalAction({
       const isExpired = Date.now() - user.pendingActionAt > PENDING_ACTION_EXPIRY_MS;
 
       if (!isExpired && isAffirmative(body)) {
-        const pendingAction = user.pendingAction as "admin_broadcast" | "clear_memory" | "clear_documents" | "clear_schedules" | "clear_everything";
+        const pendingAction = user.pendingAction as "admin_broadcast" | "clear_memory" | "clear_documents" | "clear_schedules" | "clear_everything" | "delete_account";
 
         // Admin broadcast confirmation — re-verify admin status
         if (pendingAction === "admin_broadcast" && user.pendingPayload && user.isAdmin) {
@@ -380,6 +380,22 @@ export const generateResponse = internalAction({
           });
           return;
         }
+
+        // Account deletion confirmation — send farewell, then delete everything
+        if (pendingAction === "delete_account") {
+          await ctx.runMutation(internal.users.clearPendingAction, {
+            userId: typedUserId,
+          });
+          const farewellMsg = await renderSystemMessage("delete_account_done", {}, body);
+          await ctx.runAction(internal.twilio.sendMessage, {
+            to: user.phone,
+            body: farewellMsg,
+          });
+          await ctx.runAction(internal.accountControl.deleteAccount, {
+            userId: typedUserId,
+          });
+          return;
+        }
       }
 
       // Not affirmative or expired — clear pending action and fall through
@@ -403,13 +419,31 @@ export const generateResponse = internalAction({
         docCount
       );
       if (systemResult) {
-        // Set pending action if this is a clear command
+        // Set pending action if this is a confirmation command (clear, delete)
         if (systemResult.pendingAction) {
           await ctx.runMutation(internal.users.setPendingAction, {
             userId: typedUserId,
             action: systemResult.pendingAction,
           });
         }
+
+        // Handle immediate actions (opt-out/opt-in)
+        if (systemResult.immediateAction) {
+          if (systemResult.immediateAction === "opt_out") {
+            await ctx.runMutation(internal.accountControl.triggerOptOut, { userId: typedUserId });
+            await ctx.scheduler.runAfter(0, internal.analytics.trackUserOptedOut, {
+              phone: user.phone,
+              tier: user.tier,
+            });
+          } else if (systemResult.immediateAction === "opt_in") {
+            await ctx.runMutation(internal.accountControl.triggerOptIn, { userId: typedUserId });
+            await ctx.scheduler.runAfter(0, internal.analytics.trackUserOptedIn, {
+              phone: user.phone,
+              tier: user.tier,
+            });
+          }
+        }
+
         await ctx.scheduler.runAfter(0, internal.analytics.trackSystemCommand, {
           phone: user.phone,
           command: messageForCredits,

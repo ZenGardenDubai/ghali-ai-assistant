@@ -421,3 +421,44 @@ export const trackScheduledTaskCreditNotification = internalAction({
     });
   },
 });
+
+// ============================================================================
+// Account Control Events
+// ============================================================================
+
+export const trackUserOptedOut = internalAction({
+  args: {
+    phone: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "user_opted_out", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackUserOptedIn = internalAction({
+  args: {
+    phone: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "user_opted_in", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackAccountDeleted = internalAction({
+  args: {
+    phoneHash: v.string(),
+  },
+  handler: async (_ctx, { phoneHash }) => {
+    await captureEvent(phoneHash, "account_deleted", {
+      phone_hash: phoneHash,
+    });
+  },
+});

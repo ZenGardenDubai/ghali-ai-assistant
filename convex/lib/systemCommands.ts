@@ -95,12 +95,17 @@ export type PendingActionType =
   | "clear_documents"
   | "clear_schedules"
   | "clear_everything"
-  | "admin_broadcast";
+  | "admin_broadcast"
+  | "delete_account";
+
+// Immediate action types that execute directly (no confirmation needed)
+export type ImmediateActionType = "opt_out" | "opt_in";
 
 // Result from handleSystemCommand — includes optional pendingAction to set
 export interface SystemCommandResult {
   response: string;
   pendingAction?: PendingActionType;
+  immediateAction?: ImmediateActionType;
 }
 
 // User type expected by handleSystemCommand
@@ -112,6 +117,7 @@ interface SystemCommandUser {
   language: string;
   timezone: string;
   subscriptionCanceling?: boolean;
+  optedOut?: boolean;
 }
 
 // UserFile type expected by handleSystemCommand
@@ -134,6 +140,46 @@ export async function handleSystemCommand(
   const normalized = command.toLowerCase().trim();
 
   switch (normalized) {
+    // === Account Control ===
+    case "stop": {
+      if (user.optedOut) {
+        return {
+          response: await renderSystemMessage("stop_confirmed", {}, userMessage),
+        };
+      }
+      return {
+        response: await renderSystemMessage("stop_confirmed", {}, userMessage),
+        immediateAction: "opt_out",
+      };
+    }
+
+    case "start": {
+      if (!user.optedOut) {
+        return {
+          response: await renderSystemMessage("start_confirmed", {}, userMessage),
+        };
+      }
+      return {
+        response: await renderSystemMessage("start_confirmed", {}, userMessage),
+        immediateAction: "opt_in",
+      };
+    }
+
+    case "delete": {
+      // Block deletion for active Pro subscribers — must cancel subscription first
+      if (user.tier === "pro" && !user.subscriptionCanceling) {
+        const base = process.env.BASE_URL ?? "http://localhost:3000";
+        const accountUrl = `${base}/account?phone=${encodeURIComponent(user.phone)}`;
+        return {
+          response: await renderSystemMessage("delete_cancel_subscription_first", { accountUrl }, userMessage),
+        };
+      }
+      return {
+        response: await renderSystemMessage("delete_account_confirm", {}, userMessage),
+        pendingAction: "delete_account",
+      };
+    }
+
     case "credits": {
       const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
         "en-US",
@@ -176,8 +222,8 @@ export async function handleSystemCommand(
           ),
         };
       }
-      const baseUrl = process.env.UPGRADE_URL ?? "http://localhost:3000/upgrade";
-      const url = `${baseUrl}?phone=${encodeURIComponent(user.phone)}`;
+      const base = process.env.BASE_URL ?? "http://localhost:3000";
+      const url = `${base}/upgrade?phone=${encodeURIComponent(user.phone)}`;
       return {
         response: await renderSystemMessage("upgrade", { upgradeUrl: url }, userMessage),
       };

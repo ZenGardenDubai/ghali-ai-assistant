@@ -81,6 +81,9 @@ Thanks for being Pro! 💎`,
 • *clear documents* — delete stored files
 • *clear schedules* — delete all scheduled tasks
 • *clear everything* — full reset
+• *stop* — pause all reminders and proactive messages
+• *start* — resume reminders
+• *delete* — permanently delete your account and all data
 • *upgrade* — get Pro
 • *privacy* — how your data is handled
 • *help* — this guide
@@ -109,6 +112,7 @@ Thanks for being Pro! 💎`,
 • *clear memory* — erase what I've learned
 • *clear documents* — delete all stored documents
 • *clear everything* — total reset, like we never met
+• *delete* — permanently delete your account and all data
 
 Your data. Your rules.`,
     variables: [],
@@ -145,7 +149,9 @@ You've got the full package — enjoy! ⭐`,
 *Credits:* {{credits}}/{{maxCredits}}
 *Resets:* {{resetDate}}
 *Language:* {{language}}
-*Timezone:* {{timezone}}{{cancelingNote}}`,
+*Timezone:* {{timezone}}{{cancelingNote}}
+
+Type *help* for more commands.`,
     variables: ["tier", "credits", "maxCredits", "resetDate", "language", "timezone", "cancelingNote"],
   },
 
@@ -359,5 +365,52 @@ Delivered to {{sentCount}} users.`,
   admin_not_authorized: {
     template: `You don't have admin access.`,
     variables: [],
+  },
+
+  // === Account Control ===
+  stop_confirmed: {
+    template: `*Reminders Paused* ⏸️
+
+All proactive messages and reminders are paused. You can still chat with me anytime.
+
+Send *start* to resume.`,
+    variables: [],
+  },
+
+  start_confirmed: {
+    template: `*Reminders Resumed* ▶️
+
+Your reminders and proactive messages are back on!`,
+    variables: [],
+  },
+
+  delete_account_confirm: {
+    template: `*Delete Account?* ⚠️
+
+This will permanently delete:
+• All conversations and memory
+• All documents and files
+• All scheduled tasks and reminders
+• Your account and settings
+
+This cannot be undone.
+
+Say *yes* to confirm.`,
+    variables: [],
+  },
+
+  delete_account_done: {
+    template: `Your account and all data have been permanently deleted. Goodbye, and take care.`,
+    variables: [],
+  },
+
+  delete_cancel_subscription_first: {
+    template: `You have an active Pro subscription. Please cancel it first before deleting your account.
+
+Manage your subscription here:
+👉 {{accountUrl}}
+
+Once cancelled, send *delete* again.`,
+    variables: ["accountUrl"],
   },
 } as const;

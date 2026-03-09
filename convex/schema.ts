@@ -15,12 +15,14 @@ export default defineSchema({
     onboardingStep: v.union(v.number(), v.null()),
     clerkUserId: v.optional(v.string()),
     subscriptionCanceling: v.optional(v.boolean()),
+    optedOut: v.optional(v.boolean()),
     pendingAction: v.optional(v.union(
       v.literal("clear_memory"),
       v.literal("clear_documents"),
       v.literal("clear_schedules"),
       v.literal("clear_everything"),
-      v.literal("admin_broadcast")
+      v.literal("admin_broadcast"),
+      v.literal("delete_account")
     )),
     pendingActionAt: v.optional(v.number()),
     pendingPayload: v.optional(v.string()),
@@ -188,6 +190,7 @@ export default defineSchema({
       )
     ),
     creditNotificationSent: v.optional(v.boolean()),
+    disabledByOptOut: v.optional(v.boolean()),
     schedulerJobId: v.optional(v.id("_scheduled_functions")),
     createdAt: v.number(),
   })
