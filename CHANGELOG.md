@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.35.0...v0.35.1) (2026-03-09)
+
+
+### Bug Fixes
+
+* outbound rate guard, single-response guarantee, webhook hardening ([#169](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/169)) ([ec9b482](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/ec9b482a79b43036377825e81484a558abf65020))
+
 ## [0.35.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.34.0...v0.35.0) (2026-03-09)
 
 
