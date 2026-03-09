@@ -219,9 +219,23 @@ describe("splitLongMessage", () => {
 
   it("splits long messages into multiple chunks", () => {
     const text = "A".repeat(10000);
-    const chunks = splitLongMessage(text, 4096);
+    const chunks = splitLongMessage(text, 4096, 10);
     expect(chunks.length).toBeGreaterThan(1);
     expect(chunks.join("").length).toBe(10000);
+  });
+
+  it("caps chunks at maxChunks and truncates", () => {
+    // 150,000 chars with 1500 max = 100 chunks without cap
+    const text = "A".repeat(150_000);
+    const chunks = splitLongMessage(text, 1500, 3);
+    expect(chunks.length).toBe(3);
+    expect(chunks[2]).toContain("_(Message truncated — too long)_");
+  });
+
+  it("respects default maxChunks of 3", () => {
+    const text = "A".repeat(10000);
+    const chunks = splitLongMessage(text, 1500);
+    expect(chunks.length).toBeLessThanOrEqual(3);
   });
 });
 

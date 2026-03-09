@@ -65,6 +65,14 @@ export const WHATSAPP_MAX_LENGTH = 1500;
 /** Delay between multi-part Twilio messages (ms) to preserve ordering */
 export const TWILIO_MESSAGE_DELAY_MS = 500;
 
+/**
+ * Maximum number of WhatsApp message chunks per outbound send.
+ * Prevents runaway splitting from flooding a recipient.
+ * 3 chunks × 1500 chars = 4500 chars — plenty for any reasonable response.
+ * Anything beyond this is truncated with a "message too long" footer.
+ */
+export const MAX_MESSAGE_CHUNKS = 3;
+
 // ============================================================================
 // Voice Notes
 // ============================================================================

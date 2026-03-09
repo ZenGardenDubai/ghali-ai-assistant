@@ -3,7 +3,7 @@
  * Used as a Convex action since it needs HTTP access.
  */
 import { splitLongMessage } from "./utils";
-import { TWILIO_MESSAGE_DELAY_MS } from "../constants";
+import { TWILIO_MESSAGE_DELAY_MS, MAX_MESSAGE_CHUNKS } from "../constants";
 import { formatForWhatsApp } from "./formatter";
 
 interface TwilioSendOptions {
@@ -52,6 +52,15 @@ export async function sendWhatsAppMessage(
 ): Promise<void> {
   const formatted = formatForWhatsApp(body);
   const chunks = splitLongMessage(formatted);
+
+  // Defense-in-depth: hard cap on chunks even if splitLongMessage is misconfigured
+  if (chunks.length > MAX_MESSAGE_CHUNKS) {
+    console.error(
+      `[twilioSend] CRITICAL: ${chunks.length} chunks exceed MAX_MESSAGE_CHUNKS (${MAX_MESSAGE_CHUNKS}). ` +
+        `Truncating to prevent message flood. Original length: ${body.length} chars`
+    );
+    chunks.length = MAX_MESSAGE_CHUNKS;
+  }
 
   for (let i = 0; i < chunks.length; i++) {
     if (i > 0) {
