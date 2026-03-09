@@ -27,6 +27,12 @@ export default defineSchema({
     pendingActionAt: v.optional(v.number()),
     pendingPayload: v.optional(v.string()),
     lastMessageAt: v.optional(v.number()),
+    /** Timestamp of last outbound message — used for outbound rate guard */
+    lastOutboundAt: v.optional(v.number()),
+    /** Number of outbound messages in the current minute window */
+    outboundCountInWindow: v.optional(v.number()),
+    /** Start of the current outbound rate window (epoch ms) */
+    outboundWindowStart: v.optional(v.number()),
     consecutiveErrors: v.optional(v.number()),
     errorBackoffUntil: v.optional(v.number()),
     personalityBootstrapped: v.optional(v.boolean()),

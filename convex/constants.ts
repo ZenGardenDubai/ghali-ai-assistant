@@ -212,6 +212,12 @@ export const MAX_MESSAGE_LENGTH = 10_000;
 /** TTL for processed webhook dedup entries (24 hours) */
 export const WEBHOOK_DEDUP_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** Minimum interval between outbound messages to the same user (ms) */
+export const OUTBOUND_MIN_INTERVAL_MS = 2_000;
+
+/** Maximum outbound messages to the same user per minute */
+export const OUTBOUND_MAX_PER_MINUTE = 10;
+
 /** Number of consecutive AI API errors before the circuit breaker trips */
 export const ERROR_CIRCUIT_BREAKER_THRESHOLD = 3;
 
