@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.35.1...v0.35.2) (2026-03-09)
+
+
+### Bug Fixes
+
+* cap message chunks to 3 — root cause of 100-message flood ([#171](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/171)) ([819183b](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/819183b9e14f3086823beabdc1f9ad6dd86c2008))
+
 ## [0.35.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.35.0...v0.35.1) (2026-03-09)
 
 
