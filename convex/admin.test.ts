@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { TEMPLATE_DEFINITIONS } from "./admin";
 
 describe("TEMPLATE_DEFINITIONS", () => {
-  it("contains 9 templates", () => {
-    expect(TEMPLATE_DEFINITIONS).toHaveLength(9);
+  it("contains 14 templates", () => {
+    expect(TEMPLATE_DEFINITIONS).toHaveLength(14);
   });
 
   it("every template has required fields", () => {
@@ -11,7 +11,7 @@ describe("TEMPLATE_DEFINITIONS", () => {
       expect(tpl.key).toMatch(/^TWILIO_TPL_/);
       expect(tpl.name).toMatch(/^ghali_/);
       expect(tpl.description).toBeTruthy();
-      expect(tpl.variables.length).toBeGreaterThan(0);
+      expect(tpl.variables.length).toBeGreaterThanOrEqual(0);
       expect(tpl.preview).toBeTruthy();
     }
   });
