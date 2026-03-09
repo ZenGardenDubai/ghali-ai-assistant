@@ -50,6 +50,9 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
+    // Re-check opt-out (user may have sent STOP after processHeartbeats enqueued this)
+    if (user.optedOut) return;
+
     // Circuit breaker: skip if user is in error backoff
     if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
       console.log(`[circuit-breaker] Heartbeat skipped for user ${userId} — in error backoff`);

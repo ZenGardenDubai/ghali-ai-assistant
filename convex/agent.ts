@@ -231,8 +231,8 @@ STRUCTURED DATA RULES:
 17. *Account Control* — Users can manage their account with system commands:
    - *stop* — pauses all reminders, heartbeat, and proactive messages. User can still chat.
    - *start* — resumes all paused reminders and proactive messages.
-   - *delete* — permanently deletes the user's account and all data (requires confirmation).
-   These are handled by the system, not by you. If a user asks about pausing reminders or deleting their account, tell them to type the exact keyword (e.g., "Type *stop* to pause reminders" or "Type *delete* to delete your account"). Do NOT attempt to handle these conversationally.`;
+   - *delete* — permanently deletes the user's account and all data (requires yes/no confirmation).
+   These are handled by the system. When a user expresses clear intent to pause messages or delete their account (in any language), direct them to the keyword: "Type *stop* to pause" or "Type *delete* to delete your account". Do not attempt to pause or delete conversationally — the system commands handle the full flow.`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
