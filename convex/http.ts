@@ -36,99 +36,102 @@ http.route({
   path: "/whatsapp-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    // Parse form data
-    const formData = await request.formData();
-    const params: Record<string, string> = {};
-    formData.forEach((value, key) => {
-      params[key] = value.toString();
-    });
-
-    // Validate Twilio signature
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const signature = request.headers.get("X-Twilio-Signature") ?? "";
-
-    if (!authToken) {
-      console.error("TWILIO_AUTH_TOKEN not set");
-      return new Response("Server error", { status: 500 });
-    }
-
-    const url = new URL(request.url);
-    // Use the public-facing URL for signature validation
-    const publicUrl =
-      process.env.CONVEX_SITE_URL ??
-      `${url.protocol}//${url.host}`;
-    const validationUrl = `${publicUrl}/whatsapp-webhook`;
-
-    if (!(await validateTwilioSignature(authToken, signature, validationUrl, params))) {
-      return new Response("Forbidden", { status: 403 });
-    }
-
-    // Parse the message
-    const message = parseTwilioMessage(params);
-
-    // Ignore messages from Ghali's own number — outbound delivery echoes or status
-    // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
-    const ghaliNumber = normalizeWhatsappNumber(process.env.TWILIO_WHATSAPP_NUMBER);
-    if (!ghaliNumber && !warnedMissingTwilioWhatsappNumber) {
-      warnedMissingTwilioWhatsappNumber = true;
-      console.warn("TWILIO_WHATSAPP_NUMBER not set — self-message filter disabled");
-    }
-    if (ghaliNumber && normalizeWhatsappNumber(message.from) === ghaliNumber) {
-      return new Response("<Response></Response>", {
+    // ALWAYS return 200 to Twilio — non-200 causes retries which can amplify bugs.
+    // The only exception is 403 for bad signatures (Twilio doesn't retry 4xx).
+    const twimlOk = () =>
+      new Response("<Response></Response>", {
         status: 200,
         headers: { "Content-Type": "text/xml" },
       });
-    }
 
-    // Country code blocking
-    if (isBlockedCountryCode(message.from)) {
-      console.log(`Blocked message from ${message.from}`);
-      return new Response("<Response></Response>", {
-      status: 200,
-      headers: { "Content-Type": "text/xml" },
-    });
-    }
-
-    // Truncate overly long messages (cost amplification protection)
-    if (message.body.length > MAX_MESSAGE_LENGTH) {
-      message.body = message.body.slice(0, MAX_MESSAGE_LENGTH);
-    }
-
-    // MessageSid dedup — reject replayed webhooks (atomic check-and-mark)
-    if (message.messageSid) {
-      const isNew = await ctx.runMutation(internal.webhookDedup.tryMarkProcessed, {
-        messageSid: message.messageSid,
+    try {
+      // Parse form data
+      const formData = await request.formData();
+      const params: Record<string, string> = {};
+      formData.forEach((value, key) => {
+        params[key] = value.toString();
       });
-      if (!isNew) {
-        console.log(`Duplicate MessageSid ${message.messageSid}, skipping`);
-        return new Response("<Response></Response>", {
-          status: 200,
-          headers: { "Content-Type": "text/xml" },
-        });
+
+      // Validate Twilio signature
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const signature = request.headers.get("X-Twilio-Signature") ?? "";
+
+      if (!authToken) {
+        console.error("TWILIO_AUTH_TOKEN not set");
+        // Return 200 even on config errors — returning 500 causes Twilio retries
+        return twimlOk();
       }
+
+      const url = new URL(request.url);
+      // Use the public-facing URL for signature validation
+      const publicUrl =
+        process.env.CONVEX_SITE_URL ??
+        `${url.protocol}//${url.host}`;
+      const validationUrl = `${publicUrl}/whatsapp-webhook`;
+
+      if (!(await validateTwilioSignature(authToken, signature, validationUrl, params))) {
+        // 403 is fine — Twilio does NOT retry 4xx responses
+        return new Response("Forbidden", { status: 403 });
+      }
+
+      // Parse the message
+      const message = parseTwilioMessage(params);
+
+      // Ignore messages from Ghali's own number — outbound delivery echoes or status
+      // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
+      const ghaliNumber = normalizeWhatsappNumber(process.env.TWILIO_WHATSAPP_NUMBER);
+      if (!ghaliNumber && !warnedMissingTwilioWhatsappNumber) {
+        warnedMissingTwilioWhatsappNumber = true;
+        console.warn("TWILIO_WHATSAPP_NUMBER not set — self-message filter disabled");
+      }
+      if (ghaliNumber && normalizeWhatsappNumber(message.from) === ghaliNumber) {
+        return twimlOk();
+      }
+
+      // Country code blocking
+      if (isBlockedCountryCode(message.from)) {
+        console.log(`Blocked message from ${message.from}`);
+        return twimlOk();
+      }
+
+      // Truncate overly long messages (cost amplification protection)
+      if (message.body.length > MAX_MESSAGE_LENGTH) {
+        message.body = message.body.slice(0, MAX_MESSAGE_LENGTH);
+      }
+
+      // MessageSid dedup — reject replayed webhooks (atomic check-and-mark)
+      if (message.messageSid) {
+        const isNew = await ctx.runMutation(internal.webhookDedup.tryMarkProcessed, {
+          messageSid: message.messageSid,
+        });
+        if (!isNew) {
+          console.log(`Duplicate MessageSid ${message.messageSid}, skipping`);
+          return twimlOk();
+        }
+      }
+
+      // Find or create user + schedule async processing
+      const userId = await ctx.runMutation(internal.users.findOrCreateUser, {
+        phone: message.from,
+        name: message.profileName,
+      });
+
+      // Schedule async message processing
+      await ctx.runMutation(internal.messages.saveIncoming, {
+        userId,
+        body: message.body,
+        mediaUrl: message.mediaUrl,
+        mediaContentType: message.mediaContentType,
+        messageSid: message.messageSid,
+        originalRepliedMessageSid: message.originalRepliedMessageSid,
+      });
+
+      return twimlOk();
+    } catch (error) {
+      // Catch-all: log the error but ALWAYS return 200 to prevent Twilio retries
+      console.error("[whatsapp-webhook] Unhandled error:", error);
+      return twimlOk();
     }
-
-    // Find or create user + schedule async processing
-    const userId = await ctx.runMutation(internal.users.findOrCreateUser, {
-      phone: message.from,
-      name: message.profileName,
-    });
-
-    // Schedule async message processing
-    await ctx.runMutation(internal.messages.saveIncoming, {
-      userId,
-      body: message.body,
-      mediaUrl: message.mediaUrl,
-      mediaContentType: message.mediaContentType,
-      messageSid: message.messageSid,
-      originalRepliedMessageSid: message.originalRepliedMessageSid,
-    });
-
-    // Return 200 immediately
-    return new Response("<Response></Response>", {
-      status: 200,
-      headers: { "Content-Type": "text/xml" },
-    });
   }),
 });
 

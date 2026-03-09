@@ -167,8 +167,94 @@ export const generateResponse = internalAction({
     let { body, mediaUrl, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
 
+    // ── Single response guarantee ──────────────────────────────────────
+    // Ensures at most ONE outbound message (or message group) per invocation.
+    // Every send path must go through guardedSend() instead of calling
+    // internal.twilio.sendMessage / sendMedia directly.
+    let responseSent = false;
+
+    /**
+     * Send a text message to the user, guarded against double-sends.
+     * Returns true if sent, false if blocked (already sent this invocation).
+     */
+    async function guardedSendMessage(msgBody: string): Promise<boolean> {
+      if (responseSent) {
+        console.warn(
+          `[single-response-guard] Blocked duplicate send to ${userId} ` +
+            `(messageSid: ${messageSid})`
+        );
+        return false;
+      }
+      // Outbound rate guard — check DB-backed per-user rate limit
+      const guard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordOutbound,
+        { userId: typedUserId }
+      );
+      if (!guard.allowed) {
+        console.warn(
+          `[outbound-guard] Blocked send to ${userId}: ${guard.reason}`
+        );
+        return false;
+      }
+      responseSent = true;
+      await ctx.runAction(internal.twilio.sendMessage, {
+        to: user!.phone,
+        body: msgBody,
+      });
+      return true;
+    }
+
+    /**
+     * Send a media message to the user, guarded against double-sends.
+     * Falls back to text-only on Twilio error.
+     */
+    async function guardedSendMedia(
+      caption: string,
+      mediaUrlToSend: string
+    ): Promise<boolean> {
+      if (responseSent) {
+        console.warn(
+          `[single-response-guard] Blocked duplicate media send to ${userId}`
+        );
+        return false;
+      }
+      const guard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordOutbound,
+        { userId: typedUserId }
+      );
+      if (!guard.allowed) {
+        console.warn(
+          `[outbound-guard] Blocked media send to ${userId}: ${guard.reason}`
+        );
+        return false;
+      }
+      responseSent = true;
+      try {
+        await ctx.runAction(internal.twilio.sendMedia, {
+          to: user!.phone,
+          caption,
+          mediaUrl: mediaUrlToSend,
+        });
+      } catch (error) {
+        console.error(
+          `[guardedSendMedia] sendMedia failed for ${userId}, falling back to text. ` +
+            `Note: if original was partially sent, user may receive duplicate.`,
+          error
+        );
+        await ctx.runAction(internal.twilio.sendMessage, {
+          to: user!.phone,
+          body: caption,
+        });
+      }
+      return true;
+    }
+
+    // `user` is set below after the initial query — referenced by guard helpers.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let user: any = null;
+
     // Get user info
-    const user = await ctx.runQuery(internal.users.internalGetUser, {
+    user = await ctx.runQuery(internal.users.internalGetUser, {
       userId: typedUserId,
     });
 
@@ -284,10 +370,7 @@ export const generateResponse = internalAction({
         if (sentInfographic) {
           await new Promise((r) => setTimeout(r, 2000));
         }
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: translatedResponse,
-        });
+        await guardedSendMessage(translatedResponse);
         return;
       }
       // Fall through to AI with onboarding already marked done (nextStep: null)
@@ -327,10 +410,7 @@ export const generateResponse = internalAction({
             { sentCount: result.sentCount },
             body
           );
-          await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
-            body: doneMessage,
-          });
+          await guardedSendMessage(doneMessage);
           return;
         }
 
@@ -374,10 +454,7 @@ export const generateResponse = internalAction({
             doneVars,
             body
           );
-          await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
-            body: doneMessage,
-          });
+          await guardedSendMessage(doneMessage);
           return;
         }
 
@@ -387,10 +464,7 @@ export const generateResponse = internalAction({
             userId: typedUserId,
           });
           const farewellMsg = await renderSystemMessage("delete_account_done", {}, body);
-          await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
-            body: farewellMsg,
-          });
+          await guardedSendMessage(farewellMsg);
           await ctx.runAction(internal.accountControl.deleteAccount, {
             userId: typedUserId,
           });
@@ -448,10 +522,7 @@ export const generateResponse = internalAction({
           phone: user.phone,
           command: messageForCredits,
         });
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: systemResult.response,
-        });
+        await guardedSendMessage(systemResult.response);
         return;
       }
       // Unrecognized command → fall through to AI
@@ -473,10 +544,7 @@ export const generateResponse = internalAction({
             payload: adminResult.pendingPayload,
           });
         }
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: adminResult.response,
-        });
+        await guardedSendMessage(adminResult.response);
         return;
       }
     }
@@ -501,10 +569,7 @@ export const generateResponse = internalAction({
         tier: user.tier,
         reset_at: user.creditsResetAt,
       });
-      await ctx.runAction(internal.twilio.sendMessage, {
-        to: user.phone,
-        body: message,
-      });
+      await guardedSendMessage(message);
       return;
     }
 
@@ -517,10 +582,7 @@ export const generateResponse = internalAction({
       const message = fillTemplate(TEMPLATES.rate_limited.template, {
         retryAfterSeconds: rateCheck.retryAfterSeconds,
       });
-      await ctx.runAction(internal.twilio.sendMessage, {
-        to: user.phone,
-        body: message,
-      });
+      await guardedSendMessage(message);
       return;
     }
 
@@ -544,10 +606,7 @@ export const generateResponse = internalAction({
       );
 
       if (!voiceResult) {
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: TEMPLATES.voice_transcription_failed.template,
-        });
+        await guardedSendMessage(TEMPLATES.voice_transcription_failed.template);
         return;
       }
 
@@ -610,10 +669,7 @@ export const generateResponse = internalAction({
                 ? `${body}\n\n[Voice note transcript: "${voiceResult.transcript}"]`
                 : `[Voice note transcript: "${voiceResult.transcript}"]`;
             } else {
-              await ctx.runAction(internal.twilio.sendMessage, {
-                to: user.phone,
-                body: TEMPLATES.voice_transcription_failed.template,
-              });
+              await guardedSendMessage(TEMPLATES.voice_transcription_failed.template);
               return;
             }
           }
@@ -653,10 +709,7 @@ export const generateResponse = internalAction({
       );
 
       if (!result) {
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: TEMPLATES.document_extraction_failed.template,
-        });
+        await guardedSendMessage(TEMPLATES.document_extraction_failed.template);
         return;
       }
 
@@ -812,41 +865,11 @@ export const generateResponse = internalAction({
     }
 
     if (convertedResult) {
-      // Send converted file as WhatsApp media
-      try {
-        await ctx.runAction(internal.twilio.sendMedia, {
-          to: user.phone,
-          caption: convertedResult.caption,
-          mediaUrl: convertedResult.fileUrl,
-        });
-      } catch (error) {
-        console.error("sendMedia (conversion) failed, falling back to text:", error);
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: convertedResult.caption,
-        });
-      }
+      await guardedSendMedia(convertedResult.caption, convertedResult.fileUrl);
     } else if (imageResult) {
-      // Image analytics tracked in images.ts (with latency + model detail)
-      // Send generated image as WhatsApp media, fall back to text if media fails
-      try {
-        await ctx.runAction(internal.twilio.sendMedia, {
-          to: user.phone,
-          caption: imageResult.caption,
-          mediaUrl: imageResult.imageUrl,
-        });
-      } catch (error) {
-        console.error("sendMedia failed, falling back to text:", error);
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: imageResult.caption,
-        });
-      }
+      await guardedSendMedia(imageResult.caption, imageResult.imageUrl);
     } else if (responseText) {
-      await ctx.runAction(internal.twilio.sendMessage, {
-        to: user.phone,
-        body: responseText,
-      });
+      await guardedSendMessage(responseText);
     }
   },
 });
