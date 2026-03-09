@@ -16,6 +16,8 @@ export const processHeartbeats = internalMutation({
     const allUsers = await ctx.db.query("users").collect();
 
     for (const user of allUsers) {
+      // Skip opted-out users
+      if (user.optedOut) continue;
 
       // Check heartbeat file
       const heartbeatFile = await ctx.db

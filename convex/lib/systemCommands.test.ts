@@ -334,4 +334,105 @@ describe("handleSystemCommand", () => {
     expect(result).not.toBeNull();
     expect(result!.response).toContain("*Ghali Quick Guide*");
   });
+
+  // === Account Control ===
+
+  it("routes 'stop' to opt-out with immediateAction", async () => {
+    const result = await handleSystemCommand(
+      "stop",
+      makeUser(),
+      [],
+      "stop"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Reminders Paused");
+    expect(result!.immediateAction).toBe("opt_out");
+  });
+
+  it("routes 'stop' when already opted out — no immediateAction", async () => {
+    const result = await handleSystemCommand(
+      "stop",
+      makeUser({ optedOut: true }),
+      [],
+      "stop"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Reminders Paused");
+    expect(result!.immediateAction).toBeUndefined();
+  });
+
+  it("routes 'start' to opt-in with immediateAction", async () => {
+    const result = await handleSystemCommand(
+      "start",
+      makeUser({ optedOut: true }),
+      [],
+      "start"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Reminders Resumed");
+    expect(result!.immediateAction).toBe("opt_in");
+  });
+
+  it("routes 'start' when not opted out — no immediateAction", async () => {
+    const result = await handleSystemCommand(
+      "start",
+      makeUser(),
+      [],
+      "start"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Reminders Resumed");
+    expect(result!.immediateAction).toBeUndefined();
+  });
+
+  it("routes 'delete' to delete confirmation with pendingAction", async () => {
+    const result = await handleSystemCommand(
+      "delete",
+      makeUser(),
+      [],
+      "delete"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Delete Account?");
+    expect(result!.pendingAction).toBe("delete_account");
+    expect(result!.immediateAction).toBeUndefined();
+  });
+
+  it("blocks 'delete' for active Pro subscribers — must cancel first", async () => {
+    const result = await handleSystemCommand(
+      "delete",
+      makeUser({ tier: "pro" as const }),
+      [],
+      "delete"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("active Pro subscription");
+    expect(result!.response).toContain("/account");
+    expect(result!.pendingAction).toBeUndefined();
+  });
+
+  it("allows 'delete' for Pro user who is already canceling", async () => {
+    const result = await handleSystemCommand(
+      "delete",
+      makeUser({ tier: "pro" as const, subscriptionCanceling: true }),
+      [],
+      "delete"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Delete Account?");
+    expect(result!.pendingAction).toBe("delete_account");
+  });
+
+  it("help template includes stop, start, and delete commands", async () => {
+    const result = await handleSystemCommand(
+      "help",
+      makeUser(),
+      [],
+      "help"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("*stop*");
+    expect(result!.response).toContain("*start*");
+    expect(result!.response).toContain("*delete*");
+  });
 });

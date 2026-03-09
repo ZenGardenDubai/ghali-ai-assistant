@@ -299,6 +299,9 @@ export const SYSTEM_COMMANDS: ReadonlySet<string> = new Set([
   "clear memory",
   "clear documents",
   "clear everything",
+  "stop",
+  "start",
+  "delete",
 ]);
 
 // ============================================================================

@@ -187,6 +187,12 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
+    // Skip opted-out users
+    if (user.optedOut) {
+      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out`);
+      return;
+    }
+
     // Circuit breaker: skip if user is in error backoff (API outage protection)
     if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
       console.log(

@@ -169,7 +169,8 @@ export const setPendingAction = internalMutation({
       v.literal("clear_documents"),
       v.literal("clear_schedules"),
       v.literal("clear_everything"),
-      v.literal("admin_broadcast")
+      v.literal("admin_broadcast"),
+      v.literal("delete_account")
     ),
     payload: v.optional(v.string()),
   },
