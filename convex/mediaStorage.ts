@@ -23,7 +23,7 @@ export const trackMediaFile = internalMutation({
   },
 });
 
-/** Look up a stored media file by Twilio MessageSid */
+/** Look up a stored media file by WhatsApp message ID */
 export const getMediaBySid = internalQuery({
   args: { messageSid: v.string() },
   handler: async (ctx, { messageSid }) => {

@@ -6,7 +6,7 @@
 
 A WhatsApp-first AI assistant. Users message a WhatsApp number and chat with AI. Web chat is secondary. That's it.
 
-- **WhatsApp:** +971582896090 (Twilio Business API)
+- **WhatsApp:** +971542022073 (360dialog Cloud API)
 - **Web:** ghali.ae (landing page only — conversion to WhatsApp)
 - **License:** Apache 2.0
 
@@ -746,9 +746,8 @@ CLERK_SECRET_KEY=
 GOOGLE_GENERATIVE_AI_API_KEY=
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_WHATSAPP_NUMBER=+971582896090
+DIALOG360_API_KEY=
+WHATSAPP_NUMBER=+971542022073
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 CLERK_WEBHOOK_SIGNING_SECRET=

@@ -1,7 +1,7 @@
 "use node";
 
 /**
- * Document processing — download from Twilio, extract content via Gemini/CloudConvert.
+ * Document processing — download from 360dialog Cloud API, extract content via Gemini/CloudConvert.
  *
  * Routes by MIME type:
  * - Text files (txt, csv, json, etc.) → UTF-8 decode directly
@@ -27,51 +27,37 @@ import {
   arrayBufferToBase64,
   getOfficeFormat,
 } from "./lib/media";
+import { downloadMedia } from "./lib/whatsappSend";
 
 // ============================================================================
-// Twilio Download
+// 360dialog Media Download
 // ============================================================================
 
 /**
- * Download media from Twilio with Basic Auth.
- * Validates URL origin (SSRF protection) and file size.
+ * Download media from 360dialog Cloud API using media ID.
+ * Validates file size.
  */
-async function downloadFromTwilio(
-  mediaUrl: string
+async function downloadFromWhatsApp(
+  mediaId: string
 ): Promise<
   | { success: true; data: ArrayBuffer; size: number }
   | { success: false; error: string }
 > {
-  const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-  const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+  const apiKey = process.env.DIALOG360_API_KEY;
 
-  if (!twilioSid || !twilioToken) {
-    console.error("[Documents] Twilio credentials not configured");
-    return { success: false, error: "Twilio credentials not configured" };
-  }
-
-  // SSRF protection
-  if (!mediaUrl.startsWith("https://api.twilio.com/")) {
-    console.error("[Documents] Invalid media URL origin");
-    return { success: false, error: "Invalid media URL origin" };
+  if (!apiKey) {
+    console.error("[Documents] DIALOG360_API_KEY not configured");
+    return { success: false, error: "360dialog API key not configured" };
   }
 
   try {
-    const response = await fetch(mediaUrl, {
-      headers: {
-        Authorization: `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`,
-      },
-    });
+    const result = await downloadMedia(apiKey, mediaId);
 
-    if (!response.ok) {
-      console.error(
-        `[Documents] Download failed: ${response.status} ${response.statusText}`
-      );
-      return { success: false, error: `Download failed: ${response.status}` };
+    if (!result) {
+      return { success: false, error: "Media download failed" };
     }
 
-    const data = await response.arrayBuffer();
-    const size = data.byteLength;
+    const size = result.data.byteLength;
 
     if (size < MEDIA_MIN_SIZE_BYTES) {
       console.log(`[Documents] File too small: ${size} bytes`);
@@ -83,7 +69,7 @@ async function downloadFromTwilio(
       return { success: false, error: `File too large (max ${MEDIA_MAX_SIZE_BYTES / (1024 * 1024)}MB)` };
     }
 
-    return { success: true, data, size };
+    return { success: true, data: result.data, size };
   } catch (error) {
     console.error("[Documents] Download error:", error);
     return { success: false, error: "Failed to download file" };
@@ -305,7 +291,7 @@ export async function convertViaCloudConvert(
 // ============================================================================
 
 /**
- * Process a media file: download from Twilio, extract text content.
+ * Process a media file: download from 360dialog, extract text content.
  *
  * Routes based on MIME type:
  * - Text documents → UTF-8 decode
@@ -333,7 +319,7 @@ export const processMedia = internalAction({
     let storageId: string | null = null;
 
     if (isReprocessing) {
-      // Re-processing: download from Convex storage URL (no Twilio auth needed)
+      // Re-processing: download from Convex storage URL (no auth needed)
       // Validate URL origin — must be a Convex storage URL
       const host = new URL(mediaUrl).hostname;
       if (!host.endsWith(".convex.cloud") && !host.endsWith(".convex.site")) {
@@ -352,8 +338,8 @@ export const processMedia = internalAction({
         return null;
       }
     } else {
-      // First-time: download from Twilio
-      const download = await downloadFromTwilio(mediaUrl);
+      // First-time: download from 360dialog using media ID
+      const download = await downloadFromWhatsApp(mediaUrl);
       if (!download.success) {
         console.error(`[Documents] Download failed: ${download.error}`);
         return null;

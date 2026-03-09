@@ -97,15 +97,15 @@ export const fireReminder = internalAction({
     let sendSucceeded = false;
     try {
       if (withinWindow) {
-        await ctx.runAction(internal.twilio.sendMessage, {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
           to: user.phone,
           body: `⏰ ${job.payload}`,
         });
       } else {
         // Outside 24h window — use Content Template
-        await ctx.runAction(internal.twilio.sendTemplate, {
+        await ctx.runAction(internal.whatsapp.sendTemplate, {
           to: user.phone,
-          templateEnvVar: "TWILIO_TPL_REMINDER",
+          templateName: "ghali_reminder",
           variables: { "1": job.payload },
         });
       }

@@ -11,7 +11,7 @@
 **Subheadline:** No app to install. No account to create. Just message Ghali and get things done.
 
 **CTA Button:** Start Chatting →
-*(Links to: https://wa.me/971582896090?text=Hi%20Ghali)*
+*(Links to: https://wa.me/971542022073?text=Hi%20Ghali)*
 
 ---
 

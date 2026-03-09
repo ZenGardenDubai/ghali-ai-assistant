@@ -204,7 +204,7 @@ After each release, generate a social-friendly summary:
 • Image generation — describe it, get it in seconds
 • Smarter answers with web search
 
-Try it → wa.me/971582896090
+Try it → wa.me/971542022073
 
 #AI #WhatsApp #OpenSource
 ```

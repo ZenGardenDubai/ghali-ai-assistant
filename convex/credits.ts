@@ -90,7 +90,7 @@ export const resetCredits = internalMutation({
         if (withinWindow) {
           await ctx.scheduler.runAfter(
             resetCount * 500,
-            internal.twilio.sendMessage,
+            internal.whatsapp.sendMessage,
             {
               to: user.phone,
               body: `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`,
@@ -99,10 +99,10 @@ export const resetCredits = internalMutation({
         } else {
           await ctx.scheduler.runAfter(
             resetCount * 500,
-            internal.twilio.sendTemplate,
+            internal.whatsapp.sendTemplate,
             {
               to: user.phone,
-              templateEnvVar: "TWILIO_TPL_CREDITS_RESET",
+              templateName: "ghali_credits_reset",
               variables: {
                 "1": String(tierCredits),
                 "2": tierLabel,

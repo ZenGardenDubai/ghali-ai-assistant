@@ -7,8 +7,8 @@ import { CtaButton } from "./cta-button";
 import { en, ar } from "@/app/lib/i18n/translations";
 
 const WHATSAPP_URLS = {
-  en: "https://wa.me/971582896090?text=Hi%20Ghali",
-  ar: "https://wa.me/971582896090?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A",
+  en: "https://wa.me/971542022073?text=Hi%20Ghali",
+  ar: "https://wa.me/971542022073?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A",
 } as const;
 
 const CTA_TEXT = { en: "Start Chatting", ar: "\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629" } as const;

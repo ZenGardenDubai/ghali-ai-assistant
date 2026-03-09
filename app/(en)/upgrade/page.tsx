@@ -13,7 +13,7 @@ import { dark } from "@clerk/themes";
 import Link from "next/link";
 import { CREDITS_PRO } from "@/convex/constants";
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
+const WHATSAPP_URL = "https://wa.me/971542022073?text=Hi%20Ghali";
 
 interface AccountData {
   name?: string;

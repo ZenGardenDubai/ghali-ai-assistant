@@ -55,17 +55,17 @@ async function sendInBatches(
   return sentCount;
 }
 
-/** Template definitions with env var names and variable schemas */
+/** Template definitions — referenced by name for WhatsApp Cloud API */
 export const TEMPLATE_DEFINITIONS = [
-  { key: "TWILIO_TPL_REMINDER", name: "ghali_reminder", description: "Scheduled Reminder", variables: ["reminder_text"], preview: "Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { key: "TWILIO_TPL_HEARTBEAT", name: "ghali_heartbeat", description: "Proactive Check-in", variables: ["message"], preview: "Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { key: "TWILIO_TPL_BROADCAST", name: "ghali_broadcast", description: "Admin Announcement", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { key: "TWILIO_TPL_BROADCAST_IMAGE", name: "ghali_broadcast_image", description: "Admin Announcement (with Image)", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { key: "TWILIO_TPL_CREDITS_RESET", name: "ghali_credits_reset", description: "Monthly Credit Refresh", variables: ["credits", "tier"], preview: "Your {{2}} credits have been refreshed. You now have {{1}} credits for this month." },
-  { key: "TWILIO_TPL_CREDITS_LOW", name: "ghali_credits_low", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro." },
-  { key: "TWILIO_TPL_SUB_ACTIVE", name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
-  { key: "TWILIO_TPL_SUB_ENDED", name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },
-  { key: "TWILIO_TPL_SCHEDULED_TASK", name: "ghali_scheduled_task", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_reminder", description: "Scheduled Reminder", variables: ["reminder_text"], preview: "Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_heartbeat", description: "Proactive Check-in", variables: ["message"], preview: "Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_broadcast", description: "Admin Announcement", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_broadcast_image", description: "Admin Announcement (with Image)", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_credits_reset", description: "Monthly Credit Refresh", variables: ["credits", "tier"], preview: "Your {{2}} credits have been refreshed. You now have {{1}} credits for this month." },
+  { name: "ghali_credits_low", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro." },
+  { name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
+  { name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },
+  { name: "ghali_scheduled_task", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant." },
 ] as const;
 
 /**
@@ -247,7 +247,7 @@ export const broadcastMessage = internalAction({
     ) as Array<{ phone: string; lastMessageAt?: number }>;
 
     const sentCount = await sendInBatches(activeUsers, (phone) =>
-      ctx.runAction(internal.twilio.sendMessage, { to: phone, body: message }),
+      ctx.runAction(internal.whatsapp.sendMessage, { to: phone, body: message }),
     );
 
     return { sentCount };
@@ -297,18 +297,18 @@ export const verifyAdmin = internalQuery({
 });
 
 /**
- * Get template configuration status (which templates have Content SIDs set).
+ * Get template configuration status.
+ * With Cloud API, templates are referenced by name — no env vars needed.
  */
 export const getTemplateStatus = internalQuery({
   args: {},
   handler: async () => {
     return TEMPLATE_DEFINITIONS.map((t) => ({
-      key: t.key,
       name: t.name,
       description: t.description,
       variables: t.variables as unknown as string[],
       preview: t.preview,
-      configured: !!process.env[t.key],
+      configured: true, // Templates are referenced by name, always "configured"
     }));
   },
 });
@@ -327,25 +327,25 @@ function renderTemplatePreview(preview: string, variables: Record<string, string
  */
 export const sendTestTemplate = internalAction({
   args: {
-    templateEnvVar: v.string(),
+    templateName: v.string(),
     variables: v.record(v.string(), v.string()),
     adminPhone: v.string(),
     mediaUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { templateEnvVar, variables, adminPhone, mediaUrl }) => {
+  handler: async (ctx, { templateName, variables, adminPhone, mediaUrl }) => {
     if (mediaUrl) {
       // Send single media message with template text as caption
-      const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
+      const template = TEMPLATE_DEFINITIONS.find((t) => t.name === templateName);
       const caption = template ? renderTemplatePreview(template.preview, variables) : "";
-      await ctx.runAction(internal.twilio.sendMedia, {
+      await ctx.runAction(internal.whatsapp.sendMedia, {
         to: adminPhone,
         caption,
         mediaUrl,
       });
     } else {
-      await ctx.runAction(internal.twilio.sendTemplate, {
+      await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: adminPhone,
-        templateEnvVar,
+        templateName,
         variables,
       });
     }
@@ -359,11 +359,11 @@ export const sendTestTemplate = internalAction({
 export const sendTemplateToUser = internalAction({
   args: {
     phone: v.string(),
-    templateEnvVar: v.string(),
+    templateName: v.string(),
     variables: v.record(v.string(), v.string()),
     mediaUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { phone, templateEnvVar, variables, mediaUrl }) => {
+  handler: async (ctx, { phone, templateName, variables, mediaUrl }) => {
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
 
@@ -373,18 +373,20 @@ export const sendTemplateToUser = internalAction({
 
     if (mediaUrl && isActive) {
       // Active user: send single media message with template text as caption
-      const template = TEMPLATE_DEFINITIONS.find((t) => t.key === templateEnvVar);
+      const template = TEMPLATE_DEFINITIONS.find((t) => t.name === templateName);
       const caption = template ? renderTemplatePreview(template.preview, variables) : "";
-      await ctx.runAction(internal.twilio.sendMedia, {
+      await ctx.runAction(internal.whatsapp.sendMedia, {
         to: phone,
         caption,
         mediaUrl,
       });
     } else {
-      // Inactive or no image: send template (image baked in via Content API)
-      await ctx.runAction(internal.twilio.sendTemplate, {
+      // Inactive user or no media: send text-only template.
+      // Note: WhatsApp templates don't support inline media — mediaUrl is
+      // ignored for inactive users (24h session policy).
+      await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: phone,
-        templateEnvVar,
+        templateName,
         variables,
       });
     }
@@ -399,12 +401,12 @@ export const sendTemplateToUser = internalAction({
  */
 export const sendTemplateBroadcast = internalAction({
   args: {
-    templateEnvVar: v.string(),
+    templateName: v.string(),
     variables: v.record(v.string(), v.string()),
     messageBody: v.optional(v.string()),
     mediaUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { templateEnvVar, variables, messageBody, mediaUrl }) => {
+  handler: async (ctx, { templateName, variables, messageBody, mediaUrl }) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
       phone: string;
@@ -419,7 +421,7 @@ export const sendTemplateBroadcast = internalAction({
 
       if (isActive && messageBody && mediaUrl) {
         // Active user with image: send media message with caption
-        return ctx.runAction(internal.twilio.sendMedia, {
+        return ctx.runAction(internal.whatsapp.sendMedia, {
           to: phone,
           caption: messageBody,
           mediaUrl,
@@ -427,15 +429,15 @@ export const sendTemplateBroadcast = internalAction({
       }
       if (isActive && messageBody) {
         // Active user, text only
-        return ctx.runAction(internal.twilio.sendMessage, {
+        return ctx.runAction(internal.whatsapp.sendMessage, {
           to: phone,
           body: messageBody,
         });
       }
-      // Inactive user: send template (image baked into template via Content API)
-      return ctx.runAction(internal.twilio.sendTemplate, {
+      // Inactive user: send text-only template (media not supported in templates)
+      return ctx.runAction(internal.whatsapp.sendTemplate, {
         to: phone,
-        templateEnvVar,
+        templateName,
         variables,
       });
     });

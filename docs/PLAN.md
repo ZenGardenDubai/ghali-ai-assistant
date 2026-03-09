@@ -1197,7 +1197,7 @@ Get everything running in production.
   - Clerk subdomains verified: `clerk.ghali.ae`, `accounts.ghali.ae`, `clkmail.ghali.ae`
 
 - [x] **26.4 Configure Twilio webhook**
-  - WhatsApp Business number (+971582896090) webhook set to `https://amiable-hound-193.convex.site/whatsapp-webhook` (POST)
+  - WhatsApp Business number (+971542022073) webhook set to `https://amiable-hound-193.convex.site/whatsapp-webhook` (POST)
 
 - [x] **26.5 Configure Clerk**
   - Production Clerk app with Google OAuth (custom credentials)

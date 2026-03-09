@@ -1,7 +1,7 @@
 import type { TranslationDict } from "./types";
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
-const WHATSAPP_URL_AR = "https://wa.me/971582896090?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A";
+const WHATSAPP_URL = "https://wa.me/971542022073?text=Hi%20Ghali";
+const WHATSAPP_URL_AR = "https://wa.me/971542022073?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A";
 
 export const en: TranslationDict = {
   locale: "en",
