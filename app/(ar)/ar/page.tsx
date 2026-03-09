@@ -10,7 +10,7 @@ import { Pricing } from "@/app/components/landing/pricing";
 import { FaqSection } from "@/app/components/landing/faq-section";
 import { FinalCta } from "@/app/components/landing/final-cta";
 import { Footer } from "@/app/components/landing/footer";
-import { StickyWhatsAppCta } from "@/app/components/landing/sticky-whatsapp-cta";
+import { StickyCta } from "@/app/components/landing/sticky-cta";
 
 export const metadata: Metadata = {
   title: "\u063A\u0627\u0644\u064A \u2014 \u0645\u0633\u0627\u0639\u062F\u0643 \u0627\u0644\u0630\u0643\u064A \u0627\u0644\u0645\u0641\u0636\u0651\u0644 \u0641\u064A \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
@@ -100,7 +100,7 @@ export default function ArHome() {
       <FaqSection t={t} />
       <FinalCta t={t} />
       <Footer t={t} />
-      <StickyWhatsAppCta t={t} />
+      <StickyCta t={t} />
     </div>
   );
 }

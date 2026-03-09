@@ -48,6 +48,7 @@ export interface TranslationDict {
   locale: Locale;
   dir: "ltr" | "rtl";
   whatsappUrl: string;
+  telegramUrl: string;
 
   // Nav
   nav: {
@@ -62,6 +63,8 @@ export interface TranslationDict {
     subtitle: string;
     cta: string;
     trust: string;
+    ctaTelegram: string;
+    ctaWhatsApp: string;
   };
 
   // Strengths
@@ -153,6 +156,11 @@ export interface TranslationDict {
 
   // Sticky WhatsApp CTA
   stickyWhatsApp: {
+    ariaLabel: string;
+  };
+
+  // Sticky Telegram CTA
+  stickyTelegram: {
     ariaLabel: string;
   };
 }

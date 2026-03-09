@@ -10,12 +10,12 @@ import { Pricing } from "@/app/components/landing/pricing";
 import { FaqSection } from "@/app/components/landing/faq-section";
 import { FinalCta } from "@/app/components/landing/final-cta";
 import { Footer } from "@/app/components/landing/footer";
-import { StickyWhatsAppCta } from "@/app/components/landing/sticky-whatsapp-cta";
+import { StickyCta } from "@/app/components/landing/sticky-cta";
 
 export const metadata: Metadata = {
-  title: "Ghali — The UAE's Favourite AI Assistant on WhatsApp",
+  title: "Ghali — The UAE's Favourite AI Assistant on Telegram",
   description:
-    "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
+    "Ghali is an AI assistant on Telegram. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
   alternates: {
     canonical: "https://ghali.ae",
     languages: {
@@ -25,16 +25,16 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Ghali — The UAE's Favourite AI Assistant on WhatsApp",
+    title: "Ghali — The UAE's Favourite AI Assistant on Telegram",
     description:
-      "No app to install. No account to create. Just message Ghali on WhatsApp and get things done.",
+      "No app to install. No account to create. Just message Ghali on Telegram and get things done.",
     url: "https://ghali.ae",
     images: [
       {
         url: "/ghali-logo-with-bg.png",
         width: 640,
         height: 640,
-        alt: "Ghali — AI Assistant on WhatsApp",
+        alt: "Ghali — AI Assistant on Telegram",
       },
     ],
   },
@@ -75,16 +75,16 @@ const jsonLd = {
       url: "https://ghali.ae",
       name: "Ghali",
       description:
-        "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more.",
+        "Ghali is an AI assistant on Telegram. Chat, generate images, analyze documents, and more.",
       publisher: { "@id": "https://ghali.ae/#organization" },
     },
     {
       "@type": "WebPage",
       "@id": "https://ghali.ae/#webpage",
       url: "https://ghali.ae",
-      name: "Ghali — The UAE's Favourite AI Assistant on WhatsApp",
+      name: "Ghali — The UAE's Favourite AI Assistant on Telegram",
       description:
-        "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
+        "Ghali is an AI assistant on Telegram. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
       isPartOf: { "@id": "https://ghali.ae/#website" },
       about: { "@id": "https://ghali.ae/#organization" },
     },
@@ -92,7 +92,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       name: "Ghali",
       applicationCategory: "UtilitiesApplication",
-      operatingSystem: "WhatsApp",
+      operatingSystem: "Telegram",
       offers: [
         {
           "@type": "Offer",
@@ -161,7 +161,7 @@ export default function Home() {
       <FaqSection t={t} />
       <FinalCta t={t} />
       <Footer t={t} />
-      <StickyWhatsAppCta t={t} />
+      <StickyCta t={t} />
     </div>
   );
 }

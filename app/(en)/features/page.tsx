@@ -69,13 +69,13 @@ const featuresJsonLd = {
   ],
 };
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
+const TELEGRAM_URL = "https://t.me/GhaliBot";
 
 const FEATURES = [
   {
     icon: "📱",
     title: "Zero Friction",
-    desc: "No app, no account, no password. Just open WhatsApp and start chatting.",
+    desc: "No app, no account, no password. Just open Telegram and start chatting.",
     href: "/features/zero-friction",
   },
   {
@@ -164,7 +164,7 @@ export default function FeaturesPage() {
               عربي
             </Link>
             <a
-              href={WHATSAPP_URL}
+              href={TELEGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
@@ -183,7 +183,7 @@ export default function FeaturesPage() {
             Everything <span className="text-[#ED6B23]">Ghali</span> Can Do
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-white/50">
-            One assistant, powered by the best AI, delivered through WhatsApp. Here&apos;s what&apos;s inside.
+            One assistant, powered by the best AI, delivered through Telegram. Here&apos;s what&apos;s inside.
           </p>
         </div>
       </section>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { StickyWhatsAppCta } from "@/app/components/landing/sticky-whatsapp-cta";
+import { StickyCta } from "@/app/components/landing/sticky-cta";
 import { Footer } from "@/app/components/landing/footer";
 import { CtaButton } from "@/app/components/landing/cta-button";
 import { ar } from "@/app/lib/i18n/translations";
@@ -101,7 +101,7 @@ export default function ArFeaturesPage() {
       </section>
 
       <Footer t={ar} />
-      <StickyWhatsAppCta t={ar} />
+      <StickyCta t={ar} />
     </div>
   );
 }

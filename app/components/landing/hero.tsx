@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { CtaButton } from "./cta-button";
-import { WhatsAppIcon } from "./icons";
+import { TelegramIcon, WhatsAppIcon } from "./icons";
 import type { TranslationDict } from "@/app/lib/i18n/types";
 
 export function Hero({ t }: { t: TranslationDict }) {
@@ -32,18 +32,22 @@ export function Hero({ t }: { t: TranslationDict }) {
 
         <div className="animate-fade-up delay-300 mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <CtaButton
-            href={t.whatsappUrl}
-            location="hero"
+            href={t.telegramUrl}
+            location="hero_telegram"
             className="group flex items-center gap-3 rounded-full bg-[#ED6B23] px-8 py-4 text-lg font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-xl hover:shadow-[#ED6B23]/25"
           >
-            <WhatsAppIcon className="h-5 w-5" />
-            {t.hero.cta}
+            <TelegramIcon className="h-5 w-5" />
+            {t.hero.ctaTelegram}
             <span className="transition-transform group-hover:translate-x-1 rtl:group-hover:-translate-x-1 rtl:rotate-180">
               &rarr;
             </span>
           </CtaButton>
-          <span className="text-sm text-white/30">{t.hero.trust}</span>
+          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-8 py-4 text-lg font-semibold text-white/30 cursor-not-allowed select-none">
+            <WhatsAppIcon className="h-5 w-5" />
+            {t.hero.ctaWhatsApp}
+          </div>
         </div>
+        <span className="mt-4 block text-sm text-white/30">{t.hero.trust}</span>
       </div>
     </section>
   );
