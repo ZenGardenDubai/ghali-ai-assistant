@@ -149,7 +149,9 @@ You've got the full package — enjoy! ⭐`,
 *Credits:* {{credits}}/{{maxCredits}}
 *Resets:* {{resetDate}}
 *Language:* {{language}}
-*Timezone:* {{timezone}}{{cancelingNote}}`,
+*Timezone:* {{timezone}}{{cancelingNote}}
+
+Type *help* for more commands.`,
     variables: ["tier", "credits", "maxCredits", "resetDate", "language", "timezone", "cancelingNote"],
   },
 
