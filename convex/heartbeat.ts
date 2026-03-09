@@ -123,16 +123,24 @@ ${SYSTEM_BLOCK}
 
     // Delivery — Twilio failures don't trip the circuit breaker
     if (responseText && !responseText.includes("__SKIP__")) {
+      // Re-fetch user to catch STOP sent during AI generation
+      const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
+      if (!latestUser || latestUser.optedOut) return;
+
+      const latestWithinWindow =
+        latestUser.lastMessageAt &&
+        Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
       try {
-        if (withinWindow) {
+        if (latestWithinWindow) {
           await ctx.runAction(internal.twilio.sendMessage, {
-            to: user.phone,
+            to: latestUser.phone,
             body: responseText,
           });
         } else {
           // Outside 24h window — use Content Template
           await ctx.runAction(internal.twilio.sendTemplate, {
-            to: user.phone,
+            to: latestUser.phone,
             templateEnvVar: "TWILIO_TPL_HEARTBEAT",
             variables: { "1": responseText },
           });
