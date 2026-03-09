@@ -59,11 +59,6 @@ export const processUserHeartbeat = internalAction({
       return;
     }
 
-    // Check WhatsApp 24h session window
-    const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
     // Load user files
     const userFiles = await ctx.runQuery(internal.users.internalGetUserFiles, {
       userId,
