@@ -66,6 +66,11 @@ export const TEMPLATE_DEFINITIONS = [
   { key: "TWILIO_TPL_SUB_ACTIVE", name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
   { key: "TWILIO_TPL_SUB_ENDED", name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },
   { key: "TWILIO_TPL_SCHEDULED_TASK", name: "ghali_scheduled_task", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { key: "TWILIO_TPL_OPT_OUT", name: "ghali_opt_out", description: "Opt-Out Confirmation", variables: [], preview: "Proactive messages paused. Reply YES to resume, NO to keep paused, or message me anytime." },
+  { key: "TWILIO_TPL_DELETE_CONFIRM_REQUEST", name: "ghali_delete_confirm_request", description: "Delete Account Request", variables: [], preview: "This will permanently delete your account. Reply DELETE (in capitals) within 24h to confirm a 7-day grace period, or ignore to cancel." },
+  { key: "TWILIO_TPL_DELETE_SCHEDULED", name: "ghali_delete_scheduled", description: "Deletion Grace Period Started", variables: ["deletion_date"], preview: "Your account is scheduled for deletion on {{1}}. Reply CANCEL at any time to stop." },
+  { key: "TWILIO_TPL_DELETE_FINAL", name: "ghali_delete_final", description: "Account Deleted", variables: [], preview: "Your Ghali account and all data have been permanently deleted. Thank you for using Ghali." },
+  { key: "TWILIO_TPL_ACCOUNT_FROZEN", name: "ghali_account_frozen", description: "Account Frozen (Pending Deletion)", variables: ["deletion_date"], preview: "Your account is pending deletion on {{1}}. Reply CANCEL to stop." },
 ] as const;
 
 /**

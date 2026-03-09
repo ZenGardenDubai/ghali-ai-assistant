@@ -409,6 +409,57 @@ export const trackScheduledTaskUpdated = internalAction({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Account Control Analytics
+// ---------------------------------------------------------------------------
+
+export const trackUserOptedOut = internalAction({
+  args: { phone: v.string(), tier: v.string() },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "user_opted_out", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackUserOptedIn = internalAction({
+  args: { phone: v.string(), tier: v.string() },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "user_opted_in", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackAccountDeletionRequested = internalAction({
+  args: { phone: v.string(), tier: v.string() },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "account_deletion_requested", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackAccountDeletionCancelled = internalAction({
+  args: { phone: v.string(), tier: v.string() },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "account_deletion_cancelled", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackAccountDeletionCompleted = internalAction({
+  args: { phoneHash: v.string() },
+  handler: async (_ctx, { phoneHash }) => {
+    await captureEvent(phoneHash, "account_deletion_completed", {});
+  },
+});
+
 export const trackScheduledTaskCreditNotification = internalAction({
   args: {
     phone: v.string(),

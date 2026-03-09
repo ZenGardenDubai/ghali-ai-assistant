@@ -27,6 +27,9 @@ export const processHeartbeats = internalMutation({
 
       if (!heartbeatFile?.content?.trim()) continue;
 
+      // Skip opted-out users and accounts pending deletion
+      if (user.optedOut || user.deletionScheduledAt) continue;
+
       // Schedule async processing
       await ctx.scheduler.runAfter(0, internal.heartbeat.processUserHeartbeat, {
         userId: user._id,

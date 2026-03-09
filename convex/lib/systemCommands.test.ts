@@ -334,4 +334,108 @@ describe("handleSystemCommand", () => {
     expect(result).not.toBeNull();
     expect(result!.response).toContain("*Ghali Quick Guide*");
   });
+
+  // === Opt-Out & Delete Commands ===
+
+  it("routes 'stop' to opt-out with immediateAction", async () => {
+    const result = await handleSystemCommand("stop", makeUser(), [], "stop");
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("paused");
+    expect(result!.immediateAction).toBe("opt_out");
+  });
+
+  it("routes 'yes' when optedOut=true to resume", async () => {
+    const result = await handleSystemCommand(
+      "yes",
+      makeUser({ optedOut: true }),
+      [],
+      "yes"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Welcome back");
+    expect(result!.immediateAction).toBe("resume_from_opt_out");
+  });
+
+  it("routes 'no' when optedOut=true to keep paused", async () => {
+    const result = await handleSystemCommand(
+      "no",
+      makeUser({ optedOut: true }),
+      [],
+      "no"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.immediateAction).toBe("keep_paused");
+  });
+
+  it("returns null for 'yes' when not opted out", async () => {
+    const result = await handleSystemCommand(
+      "yes",
+      makeUser({ optedOut: false }),
+      [],
+      "yes"
+    );
+    expect(result).toBeNull();
+  });
+
+  it("returns null for 'no' when not opted out", async () => {
+    const result = await handleSystemCommand(
+      "no",
+      makeUser({ optedOut: false }),
+      [],
+      "no"
+    );
+    expect(result).toBeNull();
+  });
+
+  it("routes 'delete' with no pending deletion to delete confirm request", async () => {
+    const result = await handleSystemCommand(
+      "delete",
+      makeUser({ deletionScheduledAt: undefined }),
+      [],
+      "delete"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Delete Account");
+    expect(result!.immediateAction).toBe("schedule_deletion");
+  });
+
+  it("routes 'delete' with pending deletion to already-pending message", async () => {
+    const result = await handleSystemCommand(
+      "delete",
+      makeUser({
+        deletionScheduledAt: Date.now(),
+        deletionDueAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      }),
+      [],
+      "delete"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("already scheduled");
+    expect(result!.immediateAction).toBeUndefined();
+  });
+
+  it("routes 'cancel' with pending deletion to cancel", async () => {
+    const result = await handleSystemCommand(
+      "cancel",
+      makeUser({
+        deletionScheduledAt: Date.now(),
+        deletionDueAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      }),
+      [],
+      "cancel"
+    );
+    expect(result).not.toBeNull();
+    expect(result!.response).toContain("Cancelled");
+    expect(result!.immediateAction).toBe("cancel_deletion");
+  });
+
+  it("returns null for 'cancel' with no pending deletion", async () => {
+    const result = await handleSystemCommand(
+      "cancel",
+      makeUser({ deletionScheduledAt: undefined }),
+      [],
+      "cancel"
+    );
+    expect(result).toBeNull();
+  });
 });

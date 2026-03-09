@@ -226,7 +226,15 @@ STRUCTURED DATA RULES:
    - Skip mode: if user says "skip", "skip questions", "just write it", "go ahead", "no questions", "no", "just do it", "proceed", "continue", "yes", "yep", "yeah", or any short dismissal after being shown questions → tell user "✍️ Writing now — this takes 3-4 minutes, I'll send the result when it's ready." → call proWriteExecute with skipClarify=true immediately. Do NOT ask "skip what?" — in ProWrite context, "skip" always means skip the clarifying questions. If the previous assistant message showed numbered ProWrite clarifying questions and the user's reply is a single word or a short phrase (under 10 words) that doesn't directly answer any of the questions, treat it as a skip signal.
    - The brief is stored server-side automatically. proWriteExecute only needs the user's answers (or empty string if skipped). No IDs or references to pass.
    - Output may be long — WhatsApp auto-splits. This is expected.
-   - Cost: 1 credit (same as any message)`;
+   - Cost: 1 credit (same as any message)
+
+OPT-OUT & DELETE:
+- If the user clearly wants to stop receiving proactive messages in any language → call triggerOptOut. Do not handle conversationally.
+- If the user clearly wants to delete their account permanently in any language ("delete my account", "احذف حسابي", "supprimer mon compte", etc.) → call triggerDeleteConfirmation. Do not handle conversationally.
+- Only trigger on unambiguous intent. "I want fewer reminders" is NOT opt-out. "Delete this message" is NOT account deletion.
+- Do NOT ask "are you sure?" — the system flow handles confirmation.
+- After calling triggerOptOut, tell the user their proactive messages are paused and they can resume by replying *yes*.
+- After calling triggerDeleteConfirmation, tell the user they need to reply *DELETE* (in capitals) to confirm the 7-day grace period.`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({
@@ -1745,6 +1753,37 @@ const proWriteExecute = createTool({
 });
 
 // ============================================================================
+// Account Control Tools
+// ============================================================================
+
+const triggerOptOut = createTool({
+  description:
+    "Trigger the opt-out flow when the user clearly wants to stop receiving proactive messages (heartbeat, scheduled tasks). Use only on unambiguous intent in any language. Do NOT ask for confirmation — the system handles that. Do NOT use for reducing reminders or temporary pauses.",
+  args: z.object({}),
+  handler: async (ctx): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    await ctx.runMutation(internal.accountControl.triggerOptOut, { userId });
+    return JSON.stringify({ status: "opt_out_triggered" });
+  },
+});
+
+const triggerDeleteConfirmation = createTool({
+  description:
+    "Trigger the account deletion confirmation flow when the user clearly wants to permanently delete their account and all data. Use only on unambiguous intent in any language (e.g. 'delete my account', 'احذف حسابي', 'supprimer mon compte'). Do NOT ask 'are you sure?' — the system flow handles confirmation. Do NOT trigger for data clearing requests (use clear commands instead).",
+  args: z.object({}),
+  handler: async (ctx): Promise<string> => {
+    const userId = ctx.userId as Id<"users">;
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+    if (!user) return JSON.stringify({ status: "error", message: "User not found" });
+    if (user.deletionScheduledAt) {
+      return JSON.stringify({ status: "already_pending", message: "Deletion already scheduled" });
+    }
+    // Send the delete confirmation request template text as the next agent message
+    return JSON.stringify({ status: "confirmation_requested" });
+  },
+});
+
+// ============================================================================
 // Feedback Tools
 // ============================================================================
 
@@ -1795,6 +1834,8 @@ export const ghaliAgent = new Agent(components.agent, {
     proWriteBrief,
     proWriteExecute,
     generateFeedbackLink,
+    triggerOptOut,
+    triggerDeleteConfirmation,
   },
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {

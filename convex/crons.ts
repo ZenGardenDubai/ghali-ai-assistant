@@ -52,4 +52,11 @@ crons.daily(
   internal.feedback.cleanupExpiredTokens
 );
 
+// Hourly account deletion processor — checks for users past their 7-day grace period
+crons.cron(
+  "account-deletion-check",
+  "0 * * * *",
+  internal.accountControl.processAccountDeletions
+);
+
 export default crons;

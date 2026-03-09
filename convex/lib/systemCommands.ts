@@ -97,10 +97,19 @@ export type PendingActionType =
   | "clear_everything"
   | "admin_broadcast";
 
+// Immediate action types that are executed directly in messages.ts
+export type ImmediateActionType =
+  | "opt_out"
+  | "schedule_deletion"
+  | "cancel_deletion"
+  | "resume_from_opt_out"
+  | "keep_paused";
+
 // Result from handleSystemCommand — includes optional pendingAction to set
 export interface SystemCommandResult {
   response: string;
   pendingAction?: PendingActionType;
+  immediateAction?: ImmediateActionType;
 }
 
 // User type expected by handleSystemCommand
@@ -112,6 +121,9 @@ interface SystemCommandUser {
   language: string;
   timezone: string;
   subscriptionCanceling?: boolean;
+  optedOut?: boolean;
+  deletionScheduledAt?: number;
+  deletionDueAt?: number;
 }
 
 // UserFile type expected by handleSystemCommand
@@ -134,6 +146,71 @@ export async function handleSystemCommand(
   const normalized = command.toLowerCase().trim();
 
   switch (normalized) {
+    // === Opt-Out ===
+    case "stop": {
+      return {
+        response: await renderSystemMessage("opt_out_confirmed", {}, userMessage),
+        immediateAction: "opt_out",
+      };
+    }
+
+    // === YES/NO — context-sensitive ===
+    case "yes": {
+      if (user.optedOut) {
+        return {
+          response: await renderSystemMessage("opt_out_resumed", {}, userMessage),
+          immediateAction: "resume_from_opt_out",
+        };
+      }
+      // Not opted out → pass to agent (fall through to normal flow)
+      return null;
+    }
+
+    case "no": {
+      if (user.optedOut) {
+        return {
+          response: await renderSystemMessage("opt_out_kept_paused", {}, userMessage),
+          immediateAction: "keep_paused",
+        };
+      }
+      // Not opted out → pass to agent
+      return null;
+    }
+
+    // === Account Deletion ===
+    case "delete": {
+      if (user.deletionScheduledAt) {
+        // Already pending — show the scheduled date
+        const deletionDate = new Date(user.deletionDueAt!).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+        return {
+          response: await renderSystemMessage(
+            "delete_already_pending",
+            { deletionDate },
+            userMessage
+          ),
+        };
+      }
+      return {
+        response: await renderSystemMessage("delete_confirm_request", {}, userMessage),
+        immediateAction: "schedule_deletion",
+      };
+    }
+
+    case "cancel": {
+      if (user.deletionScheduledAt) {
+        return {
+          response: await renderSystemMessage("delete_cancelled", {}, userMessage),
+          immediateAction: "cancel_deletion",
+        };
+      }
+      // No deletion pending → pass to agent
+      return null;
+    }
+
     case "credits": {
       const resetDate = new Date(user.creditsResetAt).toLocaleDateString(
         "en-US",

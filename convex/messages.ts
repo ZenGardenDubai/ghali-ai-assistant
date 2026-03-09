@@ -187,6 +187,29 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Account frozen check — if deletion is pending, only CANCEL is allowed.
+    if (user.deletionScheduledAt) {
+      const normalized = body.trim().toUpperCase();
+      if (normalized === "CANCEL") {
+        // Cancel the deletion
+        await ctx.runMutation(internal.accountControl.cancelAccountDeletion, { userId: typedUserId });
+        const cancelMsg = await renderSystemMessage("delete_cancelled", {}, body);
+        await ctx.runAction(internal.twilio.sendMessage, { to: user.phone, body: cancelMsg });
+        await ctx.scheduler.runAfter(0, internal.analytics.trackAccountDeletionCancelled, {
+          phone: user.phone,
+          tier: user.tier,
+        });
+      } else {
+        // Account is frozen — send frozen message
+        const deletionDate = new Date(user.deletionDueAt!).toLocaleDateString("en-US", {
+          month: "long", day: "numeric", year: "numeric",
+        });
+        const frozenMsg = await renderSystemMessage("account_frozen", { deletionDate }, body);
+        await ctx.runAction(internal.twilio.sendMessage, { to: user.phone, body: frozenMsg });
+      }
+      return;
+    }
+
     // Track session-start for returning users (fire-and-forget).
     // user_returning fires only when the gap since their last message exceeds SESSION_GAP_MS.
     // trackUserNew was moved to findOrCreateUser so new users appear in PostHog at creation time.
@@ -410,6 +433,68 @@ export const generateResponse = internalAction({
             action: systemResult.pendingAction,
           });
         }
+
+        // Handle account control immediate actions
+        if (systemResult.immediateAction) {
+          switch (systemResult.immediateAction) {
+            case "opt_out":
+              await ctx.runMutation(internal.accountControl.triggerOptOut, { userId: typedUserId });
+              await ctx.scheduler.runAfter(0, internal.analytics.trackUserOptedOut, {
+                phone: user.phone, tier: user.tier,
+              });
+              break;
+
+            case "resume_from_opt_out": {
+              const hasTasks = await ctx.runMutation(internal.accountControl.hasScheduledTasks, { userId: typedUserId });
+              await ctx.runMutation(internal.accountControl.resumeFromOptOut, { userId: typedUserId });
+              await ctx.scheduler.runAfter(0, internal.analytics.trackUserOptedIn, {
+                phone: user.phone, tier: user.tier,
+              });
+              // Override response if user has no tasks
+              if (!hasTasks) {
+                const noTasksMsg = await renderSystemMessage("opt_out_resumed_no_tasks", {}, body);
+                await ctx.runAction(internal.twilio.sendMessage, { to: user.phone, body: noTasksMsg });
+                await ctx.scheduler.runAfter(0, internal.analytics.trackSystemCommand, {
+                  phone: user.phone, command: messageForCredits,
+                });
+                return;
+              }
+              break;
+            }
+
+            case "keep_paused":
+              // optedOut stays true — no DB change needed
+              break;
+
+            case "schedule_deletion": {
+              const { deletionDueAt } = await ctx.runMutation(
+                internal.accountControl.scheduleAccountDeletion,
+                { userId: typedUserId }
+              ) as { deletionDueAt: number };
+              const deletionDate = new Date(deletionDueAt).toLocaleDateString("en-US", {
+                month: "long", day: "numeric", year: "numeric",
+              });
+              // Override response with the scheduled date
+              const scheduledMsg = await renderSystemMessage("delete_scheduled", { deletionDate }, body);
+              await ctx.runAction(internal.twilio.sendMessage, { to: user.phone, body: scheduledMsg });
+              await ctx.scheduler.runAfter(0, internal.analytics.trackAccountDeletionRequested, {
+                phone: user.phone, tier: user.tier,
+              });
+              await ctx.scheduler.runAfter(0, internal.analytics.trackSystemCommand, {
+                phone: user.phone, command: messageForCredits,
+              });
+              return;
+            }
+
+            case "cancel_deletion":
+              await ctx.runMutation(internal.accountControl.cancelAccountDeletion, { userId: typedUserId });
+              await ctx.scheduler.runAfter(0, internal.analytics.trackAccountDeletionCancelled, {
+                phone: user.phone, tier: user.tier,
+              });
+              break;
+          }
+        }
+
         await ctx.scheduler.runAfter(0, internal.analytics.trackSystemCommand, {
           phone: user.phone,
           command: messageForCredits,
@@ -809,6 +894,10 @@ export const generateResponse = internalAction({
         });
       }
     } else if (responseText) {
+      // Append soft resume prompt if user is opted out
+      if (user.optedOut) {
+        responseText = responseText + TEMPLATES.opt_out_resume_prompt.template;
+      }
       await ctx.runAction(internal.twilio.sendMessage, {
         to: user.phone,
         body: responseText,

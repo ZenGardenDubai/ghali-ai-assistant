@@ -83,6 +83,8 @@ Thanks for being Pro! 💎`,
 • *clear everything* — full reset
 • *upgrade* — get Pro
 • *privacy* — how your data is handled
+• *stop* — pause all proactive messages from Ghali
+• *delete* — permanently delete your account and all data
 • *help* — this guide
 
 💭 *Feedback* — Say "I have feedback" or "report a bug" to get a feedback form link`,
@@ -358,6 +360,99 @@ Delivered to {{sentCount}} users.`,
 
   admin_not_authorized: {
     template: `You don't have admin access.`,
+    variables: [],
+  },
+
+  // === Opt-Out ===
+  opt_out_confirmed: {
+    template: `*Proactive messages paused* ✋
+
+I've stopped all scheduled check-ins and reminders. You can still message me anytime.
+
+Whenever you're ready to resume, just reply *yes* and I'll pick up where we left off. Or reply *no* to keep things paused.`,
+    variables: [],
+  },
+
+  opt_out_resume_prompt: {
+    template: `\n\n—\n_Your scheduled tasks are paused. Reply *yes* to resume them, or *no* to keep them off._`,
+    variables: [],
+  },
+
+  opt_out_resumed: {
+    template: `*Welcome back!* 👋
+
+Your scheduled tasks have been re-enabled.`,
+    variables: [],
+  },
+
+  opt_out_resumed_no_tasks: {
+    template: `*Welcome back!* 👋
+
+You're all set — no scheduled tasks to resume.`,
+    variables: [],
+  },
+
+  opt_out_kept_paused: {
+    template: `Got it — I'll stay quiet. You can message me anytime.`,
+    variables: [],
+  },
+
+  // === Account Deletion ===
+  delete_confirm_request: {
+    template: `*Delete Account?* ⚠️
+
+This will permanently delete everything:
+• All conversations and memory
+• All documents and files
+• All scheduled tasks and reminders
+• Your account and settings
+
+You'll have *7 days* to change your mind — reply *CANCEL* at any time to stop.
+
+To confirm, reply *DELETE* (in capitals).`,
+    variables: [],
+  },
+
+  delete_already_pending: {
+    template: `*Deletion already scheduled* ⏳
+
+Your account is set to be deleted on *{{deletionDate}}*.
+
+Reply *CANCEL* before that date to cancel.`,
+    variables: ["deletionDate"],
+  },
+
+  delete_scheduled: {
+    template: `*Account Deletion Scheduled* 🗑️
+
+Your account will be permanently deleted on *{{deletionDate}}*.
+
+You have 7 days to change your mind — just reply *CANCEL*.`,
+    variables: ["deletionDate"],
+  },
+
+  delete_cancelled: {
+    template: `*Deletion Cancelled* ✅
+
+Your account is safe. Everything is back to normal.`,
+    variables: [],
+  },
+
+  account_frozen: {
+    template: `*Account pending deletion* ⏳
+
+Your account is scheduled for deletion on *{{deletionDate}}*.
+
+Reply *CANCEL* to stop the deletion and keep your account.`,
+    variables: ["deletionDate"],
+  },
+
+  delete_final: {
+    template: `*Account Deleted* 👋
+
+Your account and all associated data have been permanently deleted.
+
+Thank you for using Ghali. If you ever want to start fresh, you can always message this number.`,
     variables: [],
   },
 } as const;

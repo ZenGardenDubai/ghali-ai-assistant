@@ -187,6 +187,14 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
+    // Skip opted-out users and accounts pending deletion
+    if (user.optedOut || user.deletionScheduledAt) {
+      console.log(
+        `[scheduledTasks] Task ${taskId} skipped for user ${task.userId} — ${user.optedOut ? "opted out" : "account pending deletion"}`
+      );
+      return;
+    }
+
     // Circuit breaker: skip if user is in error backoff (API outage protection)
     if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
       console.log(

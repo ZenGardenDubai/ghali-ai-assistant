@@ -226,6 +226,13 @@ export const ERROR_BACKOFF_MS = 30 * 60 * 1000;
 export const SESSION_GAP_MS = 4 * 60 * 60 * 1000;
 
 // ============================================================================
+// Account Control
+// ============================================================================
+
+/** Account deletion grace period (7 days) */
+export const ACCOUNT_DELETION_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// ============================================================================
 // Feedback
 // ============================================================================
 
@@ -298,7 +305,13 @@ export const SYSTEM_COMMANDS: ReadonlySet<string> = new Set([
   "my memory",
   "clear memory",
   "clear documents",
+  "clear schedules",
   "clear everything",
+  "stop",
+  "delete",
+  "cancel",
+  "yes",
+  "no",
 ]);
 
 // ============================================================================

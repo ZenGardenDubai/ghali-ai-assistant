@@ -15,6 +15,9 @@ export default defineSchema({
     onboardingStep: v.union(v.number(), v.null()),
     clerkUserId: v.optional(v.string()),
     subscriptionCanceling: v.optional(v.boolean()),
+    optedOut: v.optional(v.boolean()),
+    deletionScheduledAt: v.optional(v.number()),
+    deletionDueAt: v.optional(v.number()),
     pendingAction: v.optional(v.union(
       v.literal("clear_memory"),
       v.literal("clear_documents"),
