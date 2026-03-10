@@ -30,7 +30,6 @@ function normalizeWhatsappNumber(n: string | undefined): string {
 }
 
 let warnedMissingWhatsappNumber = false;
-let warnedMissingWebhookSecret = false;
 
 const http = httpRouter();
 
@@ -78,9 +77,6 @@ http.route({
         if (!(await validateWebhookSignature(webhookSecret, signatureHeader, rawBody))) {
           return new Response("Forbidden", { status: 403 });
         }
-      } else if (!warnedMissingWebhookSecret) {
-        console.warn("[whatsapp-webhook] WEBHOOK_SECRET not configured — signature validation disabled");
-        warnedMissingWebhookSecret = true;
       }
 
       // Parse JSON payload
