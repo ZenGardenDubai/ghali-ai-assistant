@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.1...v0.36.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* add missing /v1/media/ path segment in 360dialog media download URL ([#180](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/180)) ([fe29d30](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/fe29d3087aea2d025d32d1c8703dcec2e936ea0a)), closes [#178](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/178)
+
 ## [0.36.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.0...v0.36.1) (2026-03-10)
 
 
