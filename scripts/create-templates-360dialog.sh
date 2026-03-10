@@ -11,6 +11,7 @@ set -euo pipefail
 
 API_KEY="${DIALOG360_API_KEY:?Missing DIALOG360_API_KEY env var}"
 BASE_URL="https://waba-v2.360dialog.io/v1/configs/templates"
+HAD_ERRORS=false
 
 submit_template() {
   local name="$1"
@@ -53,6 +54,66 @@ ENDJSON
     echo "  ✓ Submitted (HTTP ${http_code})"
   else
     echo "  ✗ Failed (HTTP ${http_code})"
+    echo "  Response: ${body}"
+    HAD_ERRORS=true
+    return 1
+  fi
+  echo "  Response: ${body}"
+  echo ""
+}
+
+# Submit a media template with an IMAGE header + BODY text.
+submit_image_template() {
+  local name="$1"
+  local category="$2"
+  local body_text="$3"
+  local body_examples="$4"  # JSON array of example strings
+
+  local payload
+  payload=$(cat <<ENDJSON
+{
+  "name": "${name}",
+  "category": "${category}",
+  "language": "en",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "IMAGE",
+      "example": {
+        "header_handle": ["https://ghali.ae/ghali-logo-with-bg.svg"]
+      }
+    },
+    {
+      "type": "BODY",
+      "text": ${body_text},
+      "example": {
+        "body_text": [${body_examples}]
+      }
+    }
+  ]
+}
+ENDJSON
+)
+
+  echo "──────────────────────────────────────"
+  echo "Submitting: ${name} (${category}) [IMAGE]"
+
+  local http_code response
+  response=$(curl -s -w "\n%{http_code}" -X POST "${BASE_URL}" \
+    -H "D360-API-KEY: ${API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "${payload}")
+
+  http_code=$(echo "$response" | tail -1)
+  body=$(echo "$response" | sed '$d')
+
+  if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then
+    echo "  ✓ Submitted (HTTP ${http_code})"
+  else
+    echo "  ✗ Failed (HTTP ${http_code})"
+    echo "  Response: ${body}"
+    HAD_ERRORS=true
+    return 1
   fi
   echo "  Response: ${body}"
   echo ""
@@ -64,47 +125,47 @@ echo ""
 # 1. ghali_reminder — UTILITY, 1 var
 submit_template "ghali_reminder" "UTILITY" \
   '"Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
-  '["Drink 8 glasses of water today"]'
+  '["Drink 8 glasses of water today"]' || true
 
 # 2. ghali_heartbeat — UTILITY, 1 var
 submit_template "ghali_heartbeat" "UTILITY" \
   '"Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
-  '["How did your interview go yesterday?"]'
+  '["How did your interview go yesterday?"]' || true
 
 # 3. ghali_broadcast — MARKETING, 1 var
 submit_template "ghali_broadcast" "MARKETING" \
   '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
-  '["We just launched image generation! Send any image idea to try it out."]'
+  '["We just launched image generation! Send any image idea to try it out."]' || true
 
-# 4. ghali_broadcast_image — MARKETING, 1 var
-submit_template "ghali_broadcast_image" "MARKETING" \
+# 4. ghali_broadcast_image — MARKETING, 1 var, IMAGE header
+submit_image_template "ghali_broadcast_image" "MARKETING" \
   '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
-  '["Check out our new feature update!"]'
+  '["Check out our new feature update!"]' || true
 
 # 5. ghali_credits_reset — UTILITY, 2 vars
 submit_template "ghali_credits_reset" "UTILITY" \
   '"Your {{2}} credits have been refreshed. You now have {{1}} credits for this month."' \
-  '["60", "Basic"]'
+  '["60", "Basic"]' || true
 
 # 6. ghali_credits_low — UTILITY, 1 var
 submit_template "ghali_credits_low" "UTILITY" \
   '"You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro."' \
-  '["5"]'
+  '["5"]' || true
 
 # 7. ghali_subscription_active — UTILITY, 1 var
 submit_template "ghali_subscription_active" "UTILITY" \
   '"Your Ghali Pro plan is now active. You have {{1}} credits this month."' \
-  '["600"]'
+  '["600"]' || true
 
 # 8. ghali_subscription_ended — UTILITY, 1 var
 submit_template "ghali_subscription_ended" "UTILITY" \
   '"Your Pro plan has ended. You'\''re now on the Basic plan with {{1}} credits/month."' \
-  '["60"]'
+  '["60"]' || true
 
 # 9. ghali_scheduled_task — UTILITY, 1 var
 submit_template "ghali_scheduled_task" "UTILITY" \
   '"📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
-  '["Here is your daily news briefing for March 10, 2026."]'
+  '["Here is your daily news briefing for March 10, 2026."]' || true
 
 echo "══════════════════════════════════════"
 echo "All templates submitted. Fetching current status..."
@@ -138,4 +199,8 @@ except Exception as e:
 "
 
 echo ""
+if [[ "$HAD_ERRORS" == "true" ]]; then
+  echo "⚠ Some templates failed — see errors above."
+  exit 1
+fi
 echo "Done. Templates in 'submitted' status will be reviewed by Meta (up to 48h)."

@@ -67,9 +67,14 @@ http.route({
       // Read raw body for signature validation
       const rawBody = await request.text();
 
-      // Validate webhook signature if WEBHOOK_SECRET is configured.
-      // 360dialog v2 API may not send X-Hub-Signature-256 — signature validation
-      // is best-effort. When WEBHOOK_SECRET is set, unsigned requests are rejected.
+      // Webhook authentication layer:
+      // 1. When WEBHOOK_SECRET is set → HMAC-SHA256 signature validation (rejects unsigned/forged)
+      // 2. When WEBHOOK_SECRET is unset → 360dialog v2 API does not reliably send
+      //    X-Hub-Signature-256 headers, so signature validation is skipped.
+      //    Security in this mode relies on: (a) the webhook URL being a secret known
+      //    only to 360dialog, (b) country code blocking inside the processing loop,
+      //    and (c) user-level rate limiting (outbound guard).
+      // To enable signature validation, set WEBHOOK_SECRET in your Convex environment.
       const webhookSecret = process.env.WEBHOOK_SECRET;
       const signatureHeader = request.headers.get("X-Hub-Signature-256") ?? "";
 
