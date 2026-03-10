@@ -404,6 +404,11 @@ export const executeScheduledTask = internalAction({
       console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, dormant, or inactive >7 days`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
+      } else {
+        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+          taskId,
+          updates: { enabled: false },
+        });
       }
       return;
     }
