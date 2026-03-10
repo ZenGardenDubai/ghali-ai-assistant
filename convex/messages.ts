@@ -837,6 +837,7 @@ export const generateResponse = internalAction({
 
       // Low-credit warning — fires once when balance crosses below the threshold.
       // User just messaged so we're within the 24h session window — use normal message.
+      // Routed through outbound guard to prevent bypassing rate limits.
       if (
         newCredits <= CREDITS_LOW_THRESHOLD &&
         user.credits > CREDITS_LOW_THRESHOLD
@@ -845,10 +846,16 @@ export const generateResponse = internalAction({
           TEMPLATES.credits_low_warning.template,
           { credits: newCredits }
         );
-        await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
-          to: user.phone,
-          body: lowCreditMsg,
-        });
+        const lowCreditGuard = await ctx.runMutation(
+          internal.outboundGuard.checkAndRecordOutbound,
+          { userId: typedUserId }
+        );
+        if (lowCreditGuard.allowed) {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user.phone,
+            body: lowCreditMsg,
+          });
+        }
       }
     }
 

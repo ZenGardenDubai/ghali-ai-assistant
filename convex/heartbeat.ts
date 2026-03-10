@@ -117,10 +117,21 @@ ${SYSTEM_BLOCK}
     }
 
     // Delivery — WhatsApp API failures don't trip the circuit breaker
+    // Guarded to respect outbound rate limits (prevents flood from concurrent system sends)
     if (responseText && !responseText.includes("__SKIP__")) {
       // Re-fetch user to catch STOP sent during AI generation
       const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
       if (!latestUser || latestUser.optedOut) return;
+
+      // Check outbound rate guard before sending
+      const guard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordOutbound,
+        { userId }
+      );
+      if (!guard.allowed) {
+        console.warn(`[outbound-guard] Heartbeat blocked for ${userId}: ${guard.reason}`);
+        return;
+      }
 
       const latestWithinWindow =
         latestUser.lastMessageAt &&

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, downloadMedia } from "./lib/whatsappSend";
 import { TEMPLATE_DEFINITIONS } from "./admin";
 
@@ -73,6 +74,57 @@ export const sendTemplate = internalAction({
   handler: async (_ctx, { to, templateName, variables }) => {
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
+    }
+    await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+  },
+});
+
+/**
+ * Guarded send: checks outbound rate limit before sending a text message.
+ * Used by background senders (billing, credits, heartbeat, etc.) that can't
+ * call the guard mutation themselves because they schedule sends from mutations.
+ */
+export const guardedSendMessage = internalAction({
+  args: {
+    userId: v.id("users"),
+    to: v.string(),
+    body: v.string(),
+  },
+  handler: async (ctx, { userId, to, body }) => {
+    const guard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordOutbound,
+      { userId }
+    );
+    if (!guard.allowed) {
+      console.warn(`[outbound-guard] Blocked background send to ${userId}: ${guard.reason}`);
+      return;
+    }
+    await sendWhatsAppMessage(getSendOptions(to), body);
+  },
+});
+
+/**
+ * Guarded template send: checks outbound rate limit before sending a template.
+ * Used by background senders that schedule template sends from mutations.
+ */
+export const guardedSendTemplate = internalAction({
+  args: {
+    userId: v.id("users"),
+    to: v.string(),
+    templateName: v.string(),
+    variables: v.record(v.string(), v.string()),
+  },
+  handler: async (ctx, { userId, to, templateName, variables }) => {
+    if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
+      throw new Error(`Invalid template name: ${templateName}`);
+    }
+    const guard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordOutbound,
+      { userId }
+    );
+    if (!guard.allowed) {
+      console.warn(`[outbound-guard] Blocked background template to ${userId}: ${guard.reason}`);
+      return;
     }
     await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
   },

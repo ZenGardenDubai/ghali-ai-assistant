@@ -81,7 +81,7 @@ export const resetCredits = internalMutation({
           creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
         });
 
-        // Notify user — normal message if within 24h, template otherwise
+        // Notify user — guarded to respect outbound rate limits
         const withinWindow =
           user.lastMessageAt &&
           now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
@@ -90,8 +90,9 @@ export const resetCredits = internalMutation({
         if (withinWindow) {
           await ctx.scheduler.runAfter(
             resetCount * 500,
-            internal.whatsapp.sendMessage,
+            internal.whatsapp.guardedSendMessage,
             {
+              userId: user._id,
               to: user.phone,
               body: `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`,
             }
@@ -99,8 +100,9 @@ export const resetCredits = internalMutation({
         } else {
           await ctx.scheduler.runAfter(
             resetCount * 500,
-            internal.whatsapp.sendTemplate,
+            internal.whatsapp.guardedSendTemplate,
             {
+              userId: user._id,
               to: user.phone,
               templateName: "ghali_credits_reset",
               variables: {

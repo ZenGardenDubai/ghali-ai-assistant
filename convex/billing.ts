@@ -91,18 +91,20 @@ export const handleSubscriptionActive = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user via WhatsApp — normal message if within 24h, template otherwise
+    // Notify user via WhatsApp — guarded to respect outbound rate limits
     const withinWindow =
       user.lastMessageAt &&
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendMessage, {
+        userId: user._id,
         to: user.phone,
         body: `Your Ghali Pro plan is now active. You have ${CREDITS_PRO} credits this month.`,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.sendTemplate, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendTemplate, {
+        userId: user._id,
         to: user.phone,
         templateName: "ghali_subscription_active",
         variables: { "1": String(CREDITS_PRO) },
@@ -158,18 +160,20 @@ export const handleSubscriptionEnded = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user via WhatsApp — normal message if within 24h, template otherwise
+    // Notify user via WhatsApp — guarded to respect outbound rate limits
     const withinWindow =
       user.lastMessageAt &&
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendMessage, {
+        userId: user._id,
         to: user.phone,
         body: `Your Pro plan has ended. You're now on the Basic plan with ${CREDITS_BASIC} credits/month.`,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.sendTemplate, {
+      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendTemplate, {
+        userId: user._id,
         to: user.phone,
         templateName: "ghali_subscription_ended",
         variables: { "1": String(CREDITS_BASIC) },

@@ -15,9 +15,9 @@ interface WhatsAppSendOptions {
   to: string; // E.164 without + prefix (e.g., "971501234567")
 }
 
-/** Normalize phone number: strip + prefix and whatsapp: prefix */
+/** Normalize phone number: strip whatsapp: prefix, then + prefix */
 function normalizePhoneForApi(phone: string): string {
-  return phone.replace(/^\+/, "").replace(/^whatsapp:/, "");
+  return phone.replace(/^whatsapp:/, "").replace(/^\+/, "");
 }
 
 async function cloudApiCall(
@@ -132,42 +132,47 @@ export async function downloadMedia(
   apiKey: string,
   mediaId: string
 ): Promise<{ data: ArrayBuffer; mimeType: string } | null> {
-  // Step 1: Get media URL
-  const metaResponse = await fetch(
-    `${DIALOG360_BASE_URL}/${mediaId}`,
-    {
-      headers: { "D360-API-KEY": apiKey },
+  try {
+    // Step 1: Get media URL
+    const metaResponse = await fetch(
+      `${DIALOG360_BASE_URL}/${mediaId}`,
+      {
+        headers: { "D360-API-KEY": apiKey },
+      }
+    );
+
+    if (!metaResponse.ok) {
+      console.error(
+        `[whatsappSend] Media metadata fetch failed: ${metaResponse.status}`
+      );
+      return null;
     }
-  );
 
-  if (!metaResponse.ok) {
-    console.error(
-      `[whatsappSend] Media metadata fetch failed: ${metaResponse.status}`
-    );
+    const meta = await metaResponse.json();
+    const downloadUrl = meta.url;
+    const mimeType = meta.mime_type ?? "application/octet-stream";
+
+    if (!downloadUrl) {
+      console.error("[whatsappSend] No download URL in media metadata");
+      return null;
+    }
+
+    // Step 2: Download binary data
+    const dataResponse = await fetch(downloadUrl, {
+      headers: { "D360-API-KEY": apiKey },
+    });
+
+    if (!dataResponse.ok) {
+      console.error(
+        `[whatsappSend] Media download failed: ${dataResponse.status}`
+      );
+      return null;
+    }
+
+    const data = await dataResponse.arrayBuffer();
+    return { data, mimeType };
+  } catch (error) {
+    console.error(`[whatsappSend] Media download error for ${mediaId}:`, error);
     return null;
   }
-
-  const meta = await metaResponse.json();
-  const downloadUrl = meta.url;
-  const mimeType = meta.mime_type ?? "application/octet-stream";
-
-  if (!downloadUrl) {
-    console.error("[whatsappSend] No download URL in media metadata");
-    return null;
-  }
-
-  // Step 2: Download binary data
-  const dataResponse = await fetch(downloadUrl, {
-    headers: { "D360-API-KEY": apiKey },
-  });
-
-  if (!dataResponse.ok) {
-    console.error(
-      `[whatsappSend] Media download failed: ${dataResponse.status}`
-    );
-    return null;
-  }
-
-  const data = await dataResponse.arrayBuffer();
-  return { data, mimeType };
 }

@@ -89,6 +89,17 @@ export const fireReminder = internalAction({
       return;
     }
 
+    // Check outbound rate guard before sending
+    const guard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordOutbound,
+      { userId: job.userId }
+    );
+    if (!guard.allowed) {
+      console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
+      await ctx.runMutation(internal.reminders.markJobFailed, { jobId });
+      return;
+    }
+
     // Check WhatsApp 24h session window
     const withinWindow =
       user.lastMessageAt &&
