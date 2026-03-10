@@ -6,7 +6,9 @@ import { splitLongMessage } from "./utils";
 import { WHATSAPP_MESSAGE_DELAY_MS, MAX_MESSAGE_CHUNKS } from "../constants";
 import { formatForWhatsApp } from "./formatter";
 
-const DIALOG360_API_URL = "https://waba-v2.360dialog.io/messages";
+/** Base URL — configurable per environment (sandbox vs production) */
+const DIALOG360_BASE_URL =
+  process.env.DIALOG360_API_URL ?? "https://waba-v2.360dialog.io";
 
 interface WhatsAppSendOptions {
   apiKey: string;
@@ -22,7 +24,7 @@ async function cloudApiCall(
   apiKey: string,
   body: Record<string, unknown>
 ): Promise<void> {
-  const response = await fetch(DIALOG360_API_URL, {
+  const response = await fetch(`${DIALOG360_BASE_URL}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -132,7 +134,7 @@ export async function downloadMedia(
 ): Promise<{ data: ArrayBuffer; mimeType: string } | null> {
   // Step 1: Get media URL
   const metaResponse = await fetch(
-    `https://waba-v2.360dialog.io/${mediaId}`,
+    `${DIALOG360_BASE_URL}/${mediaId}`,
     {
       headers: { "D360-API-KEY": apiKey },
     }
