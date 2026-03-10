@@ -255,7 +255,7 @@ Your account and credits remain. Say hi to start fresh 👋`,
   },
   // === Documents ===
   document_extraction_failed: {
-    template: `Sorry, I couldn't process that file. Please try a different format (PDF, image, or text file) or send it again.`,
+    template: `Sorry, I couldn't process that file. Please try a different format (PDF, Word, Excel, PowerPoint, CSV, image, or text file) or send it again.`,
     variables: [],
   },
 

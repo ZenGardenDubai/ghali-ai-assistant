@@ -5,6 +5,9 @@ import {
   REFLECTION_TOOL_NAMES,
   parseImageToolResult,
   extractImageFromSteps,
+  extractToolResultText,
+  parseConvertedFileResult,
+  extractConvertedFileFromSteps,
 } from "./messages";
 
 // Helper to build a step for tests
@@ -285,8 +288,62 @@ describe("parseImageToolResult", () => {
   });
 });
 
+describe("extractToolResultText", () => {
+  it("extracts from new format: output { type: 'text', value: '...' }", () => {
+    expect(
+      extractToolResultText({ output: { type: "text", value: "hello" } })
+    ).toBe("hello");
+  });
+
+  it("extracts from new format: output { type: 'json', value: {...} }", () => {
+    const result = extractToolResultText({
+      output: { type: "json", value: { foo: "bar" } },
+    });
+    expect(result).toBe('{"foo":"bar"}');
+  });
+
+  it("extracts from legacy format: output is plain string", () => {
+    expect(extractToolResultText({ output: "hello" })).toBe("hello");
+  });
+
+  it("extracts from legacy format: result is plain string", () => {
+    expect(extractToolResultText({ result: "hello" })).toBe("hello");
+  });
+
+  it("prefers output over result", () => {
+    expect(
+      extractToolResultText({
+        output: { type: "text", value: "from-output" },
+        result: "from-result",
+      })
+    ).toBe("from-output");
+  });
+
+  it("returns null when no text available", () => {
+    expect(extractToolResultText({})).toBeNull();
+    expect(extractToolResultText({ output: undefined })).toBeNull();
+  });
+});
+
 describe("extractImageFromSteps", () => {
-  it("finds an image result in tool results", () => {
+  it("finds image result with new output format", () => {
+    const imageJson = JSON.stringify({
+      type: "image",
+      imageUrl: "https://example.com/img.png",
+      caption: "A sunset",
+    });
+    const steps = [
+      {
+        toolResults: [{ output: { type: "text", value: imageJson } }],
+      },
+    ];
+    expect(extractImageFromSteps(steps)).toEqual({
+      imageUrl: "https://example.com/img.png",
+      caption: "A sunset",
+    });
+  });
+
+  it("finds image result with legacy output format", () => {
     const imageJson = JSON.stringify({
       type: "image",
       imageUrl: "https://example.com/img.png",
@@ -304,11 +361,64 @@ describe("extractImageFromSteps", () => {
   });
 
   it("returns null when no image result exists", () => {
-    const steps = [{ toolResults: [{ output: '{"type":"text","content":"hello"}' }] }];
+    const steps = [
+      { toolResults: [{ output: { type: "text", value: '{"type":"text","content":"hello"}' } }] },
+    ];
     expect(extractImageFromSteps(steps)).toBeNull();
   });
 
   it("returns null for empty steps", () => {
     expect(extractImageFromSteps([])).toBeNull();
+  });
+});
+
+describe("extractConvertedFileFromSteps", () => {
+  it("finds conversion result with new output format", () => {
+    const conversionJson = JSON.stringify({
+      type: "conversion",
+      fileUrl: "https://example.com/file.pdf",
+      caption: "Here's your file converted to PDF.",
+      outputFormat: "pdf",
+    });
+    const steps = [
+      {
+        toolResults: [{ output: { type: "text", value: conversionJson } }],
+      },
+    ];
+    expect(extractConvertedFileFromSteps(steps)).toEqual({
+      fileUrl: "https://example.com/file.pdf",
+      caption: "Here's your file converted to PDF.",
+      outputFormat: "pdf",
+    });
+  });
+
+  it("finds conversion result with legacy output format", () => {
+    const conversionJson = JSON.stringify({
+      type: "conversion",
+      fileUrl: "https://example.com/file.pdf",
+      caption: "Here's your file converted to PDF.",
+      outputFormat: "pdf",
+    });
+    const steps = [
+      {
+        toolResults: [{ output: conversionJson }],
+      },
+    ];
+    expect(extractConvertedFileFromSteps(steps)).toEqual({
+      fileUrl: "https://example.com/file.pdf",
+      caption: "Here's your file converted to PDF.",
+      outputFormat: "pdf",
+    });
+  });
+
+  it("returns null when no conversion result exists", () => {
+    const steps = [
+      { toolResults: [{ output: { type: "text", value: "Some other text" } }] },
+    ];
+    expect(extractConvertedFileFromSteps(steps)).toBeNull();
+  });
+
+  it("returns null for empty steps", () => {
+    expect(extractConvertedFileFromSteps([])).toBeNull();
   });
 });

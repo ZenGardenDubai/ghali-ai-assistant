@@ -73,6 +73,30 @@ export function parseConvertedFileResult(
 }
 
 /**
+ * Extract the string value from a tool result, handling both formats:
+ * - Legacy (AI SDK v5 / older @convex-dev/agent): `result` is a plain string
+ * - Current (@convex-dev/agent 0.3.x): `output` is `{ type: "text", value: "..." }`
+ */
+export function extractToolResultText(
+  toolResult: Record<string, unknown>
+): string | null {
+  // New format: output is { type: "text"|"json"|..., value: ... }
+  const output = toolResult.output;
+  if (output && typeof output === "object" && "value" in output) {
+    const typed = output as { type: string; value: unknown };
+    if (typeof typed.value === "string") return typed.value;
+    // For JSON output type, stringify the value
+    if (typed.value !== null && typed.value !== undefined) {
+      return JSON.stringify(typed.value);
+    }
+  }
+  // Legacy format: output or result is a plain string
+  if (typeof output === "string") return output;
+  if (typeof toolResult.result === "string") return toolResult.result;
+  return null;
+}
+
+/**
  * Scan all tool results from generateText steps for a file conversion result.
  */
 export function extractConvertedFileFromSteps(
@@ -80,8 +104,8 @@ export function extractConvertedFileFromSteps(
 ): { fileUrl: string; caption: string; outputFormat: string } | null {
   for (const step of steps) {
     for (const toolResult of step.toolResults) {
-      const text = toolResult.output ?? toolResult.result;
-      if (typeof text === "string") {
+      const text = extractToolResultText(toolResult);
+      if (text) {
         const match = parseConvertedFileResult(text);
         if (match) return match;
       }
@@ -100,9 +124,8 @@ export function extractImageFromSteps(
 ): { imageUrl: string; caption: string } | null {
   for (const step of steps) {
     for (const toolResult of step.toolResults) {
-      // @convex-dev/agent uses "output" instead of "result"
-      const text = toolResult.output ?? toolResult.result;
-      if (typeof text === "string") {
+      const text = extractToolResultText(toolResult);
+      if (text) {
         const match = parseImageToolResult(text);
         if (match) return match;
       }
@@ -811,15 +834,23 @@ export const generateResponse = internalAction({
       // For now, reply-to-text context is not available with 360dialog.
     }
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
-      const result = await ctx.runAction(
-        internal.documents.processMedia,
-        {
-          mediaUrl,
-          mediaType: mediaContentType,
-          userPrompt: body || undefined,
-          isReprocessing,
-        }
-      );
+      let result: { extracted: string; storageId: Id<"_storage"> | null } | null = null;
+      try {
+        result = await ctx.runAction(
+          internal.documents.processMedia,
+          {
+            mediaUrl,
+            mediaType: mediaContentType,
+            userPrompt: body || undefined,
+            isReprocessing,
+          }
+        );
+      } catch (error) {
+        console.error(
+          `[Messages] processMedia failed for ${mediaContentType}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
 
       if (!result) {
         await guardedSendMessage(TEMPLATES.document_extraction_failed.template);

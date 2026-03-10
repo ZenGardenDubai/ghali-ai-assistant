@@ -3,6 +3,8 @@
  * Uses Web Crypto API (no Node.js dependency) for Convex runtime compatibility.
  */
 
+import { inferMimeTypeFromFilename } from "./media";
+
 export interface WhatsAppMessage {
   from: string; // E.164 phone number (e.g., "+971501234567")
   body: string;
@@ -107,12 +109,21 @@ export function parseCloudApiWebhook(
             mediaContentType = msg.video?.mime_type;
             hasMedia = true;
             break;
-          case "document":
+          case "document": {
             body = msg.document?.caption ?? "";
             mediaId = msg.document?.id;
-            mediaContentType = msg.document?.mime_type;
+            const docMime = msg.document?.mime_type;
+            // WhatsApp sometimes sends generic MIME (application/octet-stream)
+            // or omits it entirely — infer from filename extension as fallback
+            if (!docMime || docMime === "application/octet-stream") {
+              mediaContentType =
+                inferMimeTypeFromFilename(msg.document?.filename) ?? docMime;
+            } else {
+              mediaContentType = docMime;
+            }
             hasMedia = true;
             break;
+          }
           case "sticker":
             mediaId = msg.sticker?.id;
             mediaContentType = msg.sticker?.mime_type;
@@ -220,7 +231,7 @@ interface CloudApiMessage {
   video?: { id: string; mime_type: string; caption?: string };
   document?: {
     id: string;
-    mime_type: string;
+    mime_type?: string;
     filename?: string;
     caption?: string;
   };

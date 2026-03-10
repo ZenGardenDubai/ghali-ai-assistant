@@ -17,6 +17,7 @@ import {
   isConversionSupported,
   getFormatFromMime,
   MEDIA_CATEGORY_PREFIX_MAP,
+  inferMimeTypeFromFilename,
 } from "./media";
 
 describe("normalizeMimeType", () => {
@@ -531,5 +532,73 @@ describe("MEDIA_CATEGORY_PREFIX_MAP", () => {
 
   it("has exactly five categories", () => {
     expect(Object.keys(MEDIA_CATEGORY_PREFIX_MAP)).toHaveLength(5);
+  });
+});
+
+describe("inferMimeTypeFromFilename", () => {
+  it("infers text/csv from .csv extension", () => {
+    expect(inferMimeTypeFromFilename("data.csv")).toBe("text/csv");
+  });
+
+  it("infers text/plain from .txt extension", () => {
+    expect(inferMimeTypeFromFilename("notes.txt")).toBe("text/plain");
+  });
+
+  it("infers application/json from .json extension", () => {
+    expect(inferMimeTypeFromFilename("config.json")).toBe("application/json");
+  });
+
+  it("infers application/pdf from .pdf extension", () => {
+    expect(inferMimeTypeFromFilename("report.pdf")).toBe("application/pdf");
+  });
+
+  it("infers Word MIME type from .docx extension", () => {
+    expect(inferMimeTypeFromFilename("document.docx")).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("infers PowerPoint MIME type from .pptx extension", () => {
+    expect(inferMimeTypeFromFilename("slides.pptx")).toBe(
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    );
+  });
+
+  it("infers Excel MIME type from .xlsx extension", () => {
+    expect(inferMimeTypeFromFilename("spreadsheet.xlsx")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  });
+
+  it("handles uppercase extensions", () => {
+    expect(inferMimeTypeFromFilename("DATA.CSV")).toBe("text/csv");
+    expect(inferMimeTypeFromFilename("Report.PDF")).toBe("application/pdf");
+  });
+
+  it("handles mixed case extensions", () => {
+    expect(inferMimeTypeFromFilename("file.Docx")).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("returns null for unknown extensions", () => {
+    expect(inferMimeTypeFromFilename("file.xyz")).toBeNull();
+    expect(inferMimeTypeFromFilename("archive.zip")).toBeNull();
+  });
+
+  it("returns null for files with no extension", () => {
+    expect(inferMimeTypeFromFilename("README")).toBeNull();
+  });
+
+  it("returns null for undefined filename", () => {
+    expect(inferMimeTypeFromFilename(undefined)).toBeNull();
+  });
+
+  it("returns null for empty string", () => {
+    expect(inferMimeTypeFromFilename("")).toBeNull();
+  });
+
+  it("handles filenames with multiple dots", () => {
+    expect(inferMimeTypeFromFilename("my.report.2024.csv")).toBe("text/csv");
   });
 });
