@@ -7,6 +7,7 @@ import {
   CREDITS_PRO,
   CREDIT_RESET_PERIOD_MS,
   WHATSAPP_SESSION_WINDOW_MS,
+  TEMPLATE_INACTIVITY_GATE_MS,
 } from "./constants";
 
 /**
@@ -75,6 +76,7 @@ export const resetCredits = internalMutation({
     let resetCount = 0;
     for (const user of users) {
       // Skip dormant users — no outbound messages for pre-migration users
+      // (credits still reset for opted-out users, but notification is skipped below)
       if (user.dormant) continue;
       if (user.creditsResetAt <= now) {
         const tierCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
@@ -84,6 +86,17 @@ export const resetCredits = internalMutation({
         });
 
         // Notify user — guarded to respect outbound rate limits
+        // Skip notification for inactive users (>7 days since last message)
+        const isInactive = !user.lastMessageAt || now - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
+        if (isInactive) {
+          // Reset creditNotificationSent on all user's scheduled tasks
+          await ctx.scheduler.runAfter(0, internal.scheduledTasks.resetCreditNotifications, {
+            userId: user._id,
+          });
+          resetCount++;
+          continue;
+        }
+
         const withinWindow =
           user.lastMessageAt &&
           now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
@@ -106,7 +119,7 @@ export const resetCredits = internalMutation({
             {
               userId: user._id,
               to: user.phone,
-              templateName: "ghali_credits_reset",
+              templateName: "ghali_credits_refresh",
               variables: {
                 "1": String(tierCredits),
                 "2": tierLabel,

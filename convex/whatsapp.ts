@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, downloadMedia } from "./lib/whatsappSend";
 import { buildTypingIndicatorPayload } from "./lib/whatsapp";
 import { TEMPLATE_DEFINITIONS } from "./admin";
+import { TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
 
 const ALLOWED_TEMPLATE_NAMES: Set<string> = new Set(TEMPLATE_DEFINITIONS.map((t) => t.name));
 
@@ -119,14 +120,22 @@ export const guardedSendTemplate = internalAction({
     to: v.string(),
     templateName: v.string(),
     variables: v.record(v.string(), v.string()),
+    skipInactivityGate: v.optional(v.boolean()),
   },
-  handler: async (ctx, { userId, to, templateName, variables }) => {
+  handler: async (ctx, { userId, to, templateName, variables, skipInactivityGate }) => {
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
     // Re-check opt-out/dormant — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user || user.optedOut || user.dormant) return;
+
+    // 7-day inactivity gate — don't send templates to cold contacts
+    // Skipped for user-initiated events (e.g. billing) where the notification is expected
+    if (!skipInactivityGate && (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS)) {
+      console.log(`[template-gate] Skipped template to ${userId} — inactive >7 days`);
+      return;
+    }
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,

@@ -61,7 +61,7 @@ export const TEMPLATE_DEFINITIONS = [
   { name: "ghali_heartbeat", description: "Proactive Check-in", variables: ["message"], preview: "Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant." },
   { name: "ghali_broadcast", description: "Admin Announcement", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
   { name: "ghali_broadcast_image", description: "Admin Announcement (with Image)", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { name: "ghali_credits_reset", description: "Monthly Credit Refresh", variables: ["credits", "tier"], preview: "Your {{2}} credits have been refreshed. You now have {{1}} credits for this month." },
+  { name: "ghali_credits_refresh", description: "Monthly Credit Refresh", variables: ["credits", "tier"], preview: "Your {{2}} credits have been refreshed. You now have {{1}} credits for this month.\n\nReply STOP to unsubscribe from these notifications." },
   { name: "ghali_credits_low", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro." },
   { name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
   { name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },

@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { ghaliAgent, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
-import { WHATSAPP_SESSION_WINDOW_MS } from "./constants";
+import { WHATSAPP_SESSION_WINDOW_MS, TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
 import { extractResponseText } from "./messages";
 
 /**
@@ -17,8 +17,9 @@ export const processHeartbeats = internalMutation({
     const allUsers = await ctx.db.query("users").collect();
 
     for (const user of allUsers) {
-      // Skip opted-out or dormant users
+      // Skip opted-out, dormant, or inactive (>7 days) users
       if (user.optedOut || user.dormant) continue;
+      if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
 
       // Check heartbeat file
       const heartbeatFile = await ctx.db
@@ -51,8 +52,9 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
-    // Re-check opt-out/dormant (user may have changed state after processHeartbeats enqueued this)
+    // Re-check opt-out/dormant/inactivity (user may have changed state after processHeartbeats enqueued this)
     if (user.optedOut || user.dormant) return;
+    if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) return;
 
     // Circuit breaker: skip if user is in error backoff
     if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
@@ -121,9 +123,10 @@ ${SYSTEM_BLOCK}
     // Delivery — WhatsApp API failures don't trip the circuit breaker
     // Guarded to respect outbound rate limits (prevents flood from concurrent system sends)
     if (responseText && !responseText.includes("__SKIP__")) {
-      // Re-fetch user to catch STOP sent during AI generation
+      // Re-fetch user to catch STOP sent or inactivity crossed during AI generation
       const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
       if (!latestUser || latestUser.optedOut || latestUser.dormant) return;
+      if (!latestUser.lastMessageAt || Date.now() - latestUser.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) return;
 
       // Check outbound rate guard before sending
       const guard = await ctx.runMutation(

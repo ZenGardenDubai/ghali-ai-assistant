@@ -142,9 +142,9 @@ submit_image_template "ghali_broadcast_image" "MARKETING" \
   '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
   '["Check out our new feature update!"]' || true
 
-# 5. ghali_credits_reset — UTILITY, 2 vars
-submit_template "ghali_credits_reset" "UTILITY" \
-  '"Your {{2}} credits have been refreshed. You now have {{1}} credits for this month."' \
+# 5. ghali_credits_refresh — UTILITY, 2 vars
+submit_template "ghali_credits_refresh" "UTILITY" \
+  '"Your {{2}} credits have been refreshed. You now have {{1}} credits for this month.\n\nReply STOP to unsubscribe from these notifications."' \
   '["60", "Basic"]' || true
 
 # 6. ghali_credits_low — UTILITY, 1 var

@@ -11,6 +11,7 @@ import {
   SCHEDULED_TASKS_LIMIT_PRO,
   SCHEDULED_TASK_MAX_RESULT_LENGTH,
   WHATSAPP_SESSION_WINDOW_MS,
+  TEMPLATE_INACTIVITY_GATE_MS,
 } from "./constants";
 import { getNextCronRun } from "./lib/cronParser";
 import { getCurrentDateTime } from "./lib/utils";
@@ -188,11 +189,18 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Skip opted-out or dormant users — but reschedule cron so it resumes on reactivation
-    if (user.optedOut || user.dormant) {
-      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out or dormant`);
+    // Skip opted-out, dormant, or inactive (>7 days) users — but reschedule cron so it resumes on reactivation
+    const isInactive = !user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
+    if (user.optedOut || user.dormant || isInactive) {
+      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out, dormant, or inactive >7 days`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
+      } else {
+        // One-off: disable to avoid zombie tasks that never fire
+        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+          taskId,
+          updates: { enabled: false },
+        });
       }
       return;
     }
@@ -389,10 +397,11 @@ export const executeScheduledTask = internalAction({
     });
 
     // Re-fetch user before delivery — agent call above can take seconds/minutes,
-    // user may have opted out or sent a new message changing the 24h window
+    // user may have opted out, gone dormant, or crossed the 7-day inactivity boundary
     const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
-    if (!latestUser || latestUser.optedOut || latestUser.dormant) {
-      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, or dormant`);
+    const latestInactive = !latestUser?.lastMessageAt || Date.now() - latestUser.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
+    if (!latestUser || latestUser.optedOut || latestUser.dormant || latestInactive) {
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, dormant, or inactive >7 days`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       }
