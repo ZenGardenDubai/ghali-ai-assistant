@@ -287,7 +287,7 @@ Active: {{activeWeekDubai}}
 Active: {{activeMonthDubai}}
 
 *All Time*
-Total: {{totalUsers}} | Pro: {{proUsers}}`,
+Active: {{totalUsers}} | Dormant: {{dormantUsers}} | Pro: {{proUsers}}`,
     variables: [
       "newTodayDubai",
       "activeTodayDubai",
@@ -298,6 +298,7 @@ Total: {{totalUsers}} | Pro: {{proUsers}}`,
       "activeWeekDubai",
       "activeMonthDubai",
       "totalUsers",
+      "dormantUsers",
       "proUsers",
     ],
   },

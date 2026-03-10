@@ -95,8 +95,8 @@ export const getStats = internalQuery({
 
     const allUsers = await ctx.db.query("users").collect();
 
-    const totalUsers = allUsers.length;
     const dormantUsers = allUsers.filter((u) => u.dormant === true).length;
+    const totalUsers = allUsers.length - dormantUsers;
     const proUsers = allUsers.filter((u) => u.tier === "pro").length;
     const basicUsers = allUsers.filter((u) => u.tier === "basic").length;
 
