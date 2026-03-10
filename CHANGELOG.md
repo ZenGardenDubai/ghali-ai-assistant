@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.0...v0.36.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* allow unsigned webhooks + add template creation script ([#177](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/177)) ([9ff578d](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/9ff578d52862072181cf85e6cb5fefe88930096f))
+
 ## [0.36.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.35.2...v0.36.0) (2026-03-10)
 
 
