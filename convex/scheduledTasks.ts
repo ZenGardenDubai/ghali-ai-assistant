@@ -226,29 +226,37 @@ export const executeScheduledTask = internalAction({
     });
 
     if (creditCheck.status === "exhausted") {
-      // Send one notification per credit cycle
+      // Send one notification per credit cycle — guarded to respect outbound rate limits
       let notificationSent = task.creditNotificationSent === true;
       if (!notificationSent) {
-        const withinWindow =
-          user.lastMessageAt &&
-          Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+        const guard = await ctx.runMutation(
+          internal.outboundGuard.checkAndRecordOutbound,
+          { userId: task.userId }
+        );
+        if (guard.allowed) {
+          const withinWindow =
+            user.lastMessageAt &&
+            Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
-        try {
-          if (withinWindow) {
-            await ctx.runAction(internal.twilio.sendMessage, {
-              to: user.phone,
-              body: `Your scheduled task "${task.title}" couldn't run — you're out of credits. Send "upgrade" to get more.`,
-            });
-          } else {
-            await ctx.runAction(internal.twilio.sendTemplate, {
-              to: user.phone,
-              templateEnvVar: "TWILIO_TPL_CREDITS_LOW",
-              variables: { "1": "0" },
-            });
+          try {
+            if (withinWindow) {
+              await ctx.runAction(internal.whatsapp.sendMessage, {
+                to: user.phone,
+                body: `Your scheduled task "${task.title}" couldn't run — you're out of credits. Send "upgrade" to get more.`,
+              });
+            } else {
+              await ctx.runAction(internal.whatsapp.sendTemplate, {
+                to: user.phone,
+                templateName: "ghali_credits_low",
+                variables: { "1": "0" },
+              });
+            }
+            notificationSent = true;
+          } catch (error) {
+            console.error(`Failed to send credit notification for task ${taskId}:`, error);
           }
-          notificationSent = true;
-        } catch (error) {
-          console.error(`Failed to send credit notification for task ${taskId}:`, error);
+        } else {
+          console.warn(`[outbound-guard] Credit notification for task ${taskId} blocked: ${guard.reason}`);
         }
       }
 
@@ -337,18 +345,24 @@ export const executeScheduledTask = internalAction({
       // Suppresses notification during backoff AND on 2nd+ pre-breaker failures.
       const freshUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
       if (shouldNotifyOnFailure(freshUser)) {
-        try {
-          const withinErrorWindow =
-            user.lastMessageAt &&
-            Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-          if (withinErrorWindow) {
-            await ctx.runAction(internal.twilio.sendMessage, {
-              to: user.phone,
-              body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
-            });
+        const errorGuard = await ctx.runMutation(
+          internal.outboundGuard.checkAndRecordOutbound,
+          { userId: task.userId }
+        );
+        if (errorGuard.allowed) {
+          try {
+            const withinErrorWindow =
+              user.lastMessageAt &&
+              Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+            if (withinErrorWindow) {
+              await ctx.runAction(internal.whatsapp.sendMessage, {
+                to: user.phone,
+                body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
+              });
+            }
+          } catch {
+            // Best-effort notification
           }
-        } catch {
-          // Best-effort notification
         }
       }
 
@@ -369,24 +383,56 @@ export const executeScheduledTask = internalAction({
       userId: task.userId,
     });
 
-    // Deliver via WhatsApp
+    // Re-fetch user before delivery — agent call above can take seconds/minutes,
+    // user may have opted out or sent a new message changing the 24h window
+    const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
+    if (!latestUser || latestUser.optedOut) {
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found or opted out`);
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      }
+      return;
+    }
+
+    // Deliver via WhatsApp — guarded to respect outbound rate limits
+    const deliveryGuard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordOutbound,
+      { userId: task.userId }
+    );
+    if (!deliveryGuard.allowed) {
+      console.warn(`[outbound-guard] Task ${taskId} delivery blocked: ${deliveryGuard.reason}`);
+      await ctx.runMutation(internal.scheduledTasks.markLastRun, {
+        taskId,
+        lastStatus: "error",
+      });
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      } else {
+        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+          taskId,
+          updates: { enabled: false },
+        });
+      }
+      return;
+    }
+
     const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      latestUser.lastMessageAt &&
+      Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     let delivered = false;
     try {
       if (withinWindow) {
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
+        await ctx.runAction(internal.whatsapp.sendMessage, {
+          to: latestUser.phone,
           body: responseText,
         });
       } else {
         // Out of session — use template with truncation
         const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
-        await ctx.runAction(internal.twilio.sendTemplate, {
-          to: user.phone,
-          templateEnvVar: "TWILIO_TPL_SCHEDULED_TASK",
+        await ctx.runAction(internal.whatsapp.sendTemplate, {
+          to: latestUser.phone,
+          templateName: "ghali_scheduled_task",
           variables: { "1": truncated },
         });
       }

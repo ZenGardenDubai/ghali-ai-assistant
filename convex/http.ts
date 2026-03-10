@@ -2,7 +2,8 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { validateTwilioSignature, parseTwilioMessage } from "./lib/twilio";
+import { validateWebhookSignature, parseCloudApiWebhook } from "./lib/whatsapp";
+import type { CloudApiWebhookPayload } from "./lib/whatsapp";
 import { isBlockedCountryCode } from "./lib/utils";
 import { validateClerkWebhook } from "./lib/clerk";
 import { MAX_MESSAGE_LENGTH, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
@@ -28,109 +29,129 @@ function normalizeWhatsappNumber(n: string | undefined): string {
   return (n ?? "").trim().replace(/^whatsapp:/, "");
 }
 
-let warnedMissingTwilioWhatsappNumber = false;
+let warnedMissingWhatsappNumber = false;
 
 const http = httpRouter();
 
+// WhatsApp Cloud API webhook verification (GET) — required by 360dialog/Meta
+http.route({
+  path: "/whatsapp-webhook",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    const url = new URL(request.url);
+    const mode = url.searchParams.get("hub.mode");
+    const token = url.searchParams.get("hub.verify_token");
+    const challenge = url.searchParams.get("hub.challenge");
+
+    const verifyToken = process.env.WEBHOOK_VERIFY_TOKEN;
+
+    if (mode === "subscribe" && verifyToken && token === verifyToken) {
+      console.log("[whatsapp-webhook] Verification challenge accepted");
+      return new Response(challenge ?? "", { status: 200 });
+    }
+
+    return new Response("Forbidden", { status: 403 });
+  }),
+});
+
+// WhatsApp Cloud API webhook (POST) — receives messages from 360dialog
 http.route({
   path: "/whatsapp-webhook",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    // ALWAYS return 200 to Twilio — non-200 causes retries which can amplify bugs.
-    // The only exception is 403 for bad signatures (Twilio doesn't retry 4xx).
-    const twimlOk = () =>
-      new Response("<Response></Response>", {
-        status: 200,
-        headers: { "Content-Type": "text/xml" },
-      });
+    // ALWAYS return 200 — non-200 causes retries which can amplify bugs.
+    // The only exception is 403 for bad signatures.
+    const ok = () => new Response("OK", { status: 200 });
 
     try {
-      // Parse form data
-      const formData = await request.formData();
-      const params: Record<string, string> = {};
-      formData.forEach((value, key) => {
-        params[key] = value.toString();
-      });
+      // Read raw body for signature validation
+      const rawBody = await request.text();
 
-      // Validate Twilio signature
-      const authToken = process.env.TWILIO_AUTH_TOKEN;
-      const signature = request.headers.get("X-Twilio-Signature") ?? "";
+      // Validate webhook signature — mandatory in production
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const signatureHeader = request.headers.get("X-Hub-Signature-256") ?? "";
 
-      if (!authToken) {
-        console.error("TWILIO_AUTH_TOKEN not set");
-        // Return 200 even on config errors — returning 500 causes Twilio retries
-        return twimlOk();
+      if (!webhookSecret) {
+        console.error("[whatsapp-webhook] WEBHOOK_SECRET not configured — rejecting request");
+        return ok();
       }
 
-      const url = new URL(request.url);
-      // Use the public-facing URL for signature validation
-      const publicUrl =
-        process.env.CONVEX_SITE_URL ??
-        `${url.protocol}//${url.host}`;
-      const validationUrl = `${publicUrl}/whatsapp-webhook`;
-
-      if (!(await validateTwilioSignature(authToken, signature, validationUrl, params))) {
-        // 403 is fine — Twilio does NOT retry 4xx responses
+      if (!(await validateWebhookSignature(webhookSecret, signatureHeader, rawBody))) {
         return new Response("Forbidden", { status: 403 });
       }
 
-      // Parse the message
-      const message = parseTwilioMessage(params);
-
-      // Ignore messages from Ghali's own number — outbound delivery echoes or status
-      // callbacks would otherwise re-trigger the agent pipeline and cause feedback loops.
-      const ghaliNumber = normalizeWhatsappNumber(process.env.TWILIO_WHATSAPP_NUMBER);
-      if (!ghaliNumber && !warnedMissingTwilioWhatsappNumber) {
-        warnedMissingTwilioWhatsappNumber = true;
-        console.warn("TWILIO_WHATSAPP_NUMBER not set — self-message filter disabled");
-      }
-      if (ghaliNumber && normalizeWhatsappNumber(message.from) === ghaliNumber) {
-        return twimlOk();
+      // Parse JSON payload
+      let payload: CloudApiWebhookPayload;
+      try {
+        payload = JSON.parse(rawBody);
+      } catch {
+        console.error("[whatsapp-webhook] Invalid JSON body");
+        return ok();
       }
 
-      // Country code blocking
-      if (isBlockedCountryCode(message.from)) {
-        console.log(`Blocked message from ${message.from}`);
-        return twimlOk();
+      // Parse Cloud API messages
+      const messages = parseCloudApiWebhook(payload);
+      if (messages.length === 0) {
+        // Status update or empty — acknowledge silently
+        return ok();
       }
 
-      // Truncate overly long messages (cost amplification protection)
-      if (message.body.length > MAX_MESSAGE_LENGTH) {
-        message.body = message.body.slice(0, MAX_MESSAGE_LENGTH);
-      }
-
-      // MessageSid dedup — reject replayed webhooks (atomic check-and-mark)
-      if (message.messageSid) {
-        const isNew = await ctx.runMutation(internal.webhookDedup.tryMarkProcessed, {
-          messageSid: message.messageSid,
-        });
-        if (!isNew) {
-          console.log(`Duplicate MessageSid ${message.messageSid}, skipping`);
-          return twimlOk();
+      // Process each message (usually just one per webhook)
+      for (const message of messages) {
+        // Ignore messages from Ghali's own number (prevent feedback loops)
+        const ghaliNumber = normalizeWhatsappNumber(process.env.WHATSAPP_NUMBER);
+        if (!ghaliNumber && !warnedMissingWhatsappNumber) {
+          warnedMissingWhatsappNumber = true;
+          console.warn("WHATSAPP_NUMBER not set — self-message filter disabled");
         }
+        if (ghaliNumber && normalizeWhatsappNumber(message.from) === ghaliNumber) {
+          continue;
+        }
+
+        // Country code blocking
+        if (isBlockedCountryCode(message.from)) {
+          console.log(`Blocked message from ${message.from}`);
+          continue;
+        }
+
+        // Truncate overly long messages (cost amplification protection)
+        if (message.body.length > MAX_MESSAGE_LENGTH) {
+          message.body = message.body.slice(0, MAX_MESSAGE_LENGTH);
+        }
+
+        // Message ID dedup — reject replayed webhooks (atomic check-and-mark)
+        if (message.messageId) {
+          const isNew = await ctx.runMutation(internal.webhookDedup.tryMarkProcessed, {
+            messageSid: message.messageId,
+          });
+          if (!isNew) {
+            console.log(`Duplicate message ${message.messageId}, skipping`);
+            continue;
+          }
+        }
+
+        // Find or create user + schedule async processing
+        const userId = await ctx.runMutation(internal.users.findOrCreateUser, {
+          phone: message.from,
+          name: message.profileName,
+        });
+
+        // Schedule async message processing
+        await ctx.runMutation(internal.messages.saveIncoming, {
+          userId,
+          body: message.body,
+          mediaUrl: message.mediaId, // Pass media ID (downloaded later via 360dialog API)
+          mediaContentType: message.mediaContentType,
+          messageSid: message.messageId,
+          originalRepliedMessageSid: message.quotedMessageId,
+        });
       }
 
-      // Find or create user + schedule async processing
-      const userId = await ctx.runMutation(internal.users.findOrCreateUser, {
-        phone: message.from,
-        name: message.profileName,
-      });
-
-      // Schedule async message processing
-      await ctx.runMutation(internal.messages.saveIncoming, {
-        userId,
-        body: message.body,
-        mediaUrl: message.mediaUrl,
-        mediaContentType: message.mediaContentType,
-        messageSid: message.messageSid,
-        originalRepliedMessageSid: message.originalRepliedMessageSid,
-      });
-
-      return twimlOk();
+      return ok();
     } catch (error) {
-      // Catch-all: log the error but ALWAYS return 200 to prevent Twilio retries
+      // Catch-all: log the error but ALWAYS return 200 to prevent retries
       console.error("[whatsapp-webhook] Unhandled error:", error);
-      return twimlOk();
+      return ok();
     }
   }),
 });
@@ -422,17 +443,17 @@ http.route({
   path: "/admin/send-test-template",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { templateEnvVar, variables, adminPhone, mediaUrl } = body as {
-      templateEnvVar: string;
+    const { templateName, variables, adminPhone, mediaUrl } = body as {
+      templateName: string;
       variables: Record<string, string>;
       adminPhone: string;
       mediaUrl?: string;
     };
-    if (!templateEnvVar || !variables || !adminPhone) {
-      return new Response("Missing templateEnvVar, variables, or adminPhone", { status: 400 });
+    if (!templateName || !variables || !adminPhone) {
+      return new Response("Missing templateName, variables, or adminPhone", { status: 400 });
     }
     const result = await ctx.runAction(internal.admin.sendTestTemplate, {
-      templateEnvVar,
+      templateName,
       variables,
       adminPhone,
       mediaUrl,
@@ -448,18 +469,18 @@ http.route({
   path: "/admin/send-template",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { phone, templateEnvVar, variables, mediaUrl } = body as {
+    const { phone, templateName, variables, mediaUrl } = body as {
       phone: string;
-      templateEnvVar: string;
+      templateName: string;
       variables: Record<string, string>;
       mediaUrl?: string;
     };
-    if (!phone || !templateEnvVar || !variables) {
-      return new Response("Missing phone, templateEnvVar, or variables", { status: 400 });
+    if (!phone || !templateName || !variables) {
+      return new Response("Missing phone, templateName, or variables", { status: 400 });
     }
     const result = await ctx.runAction(internal.admin.sendTemplateToUser, {
       phone,
-      templateEnvVar,
+      templateName,
       variables,
       mediaUrl,
     });
@@ -474,17 +495,17 @@ http.route({
   path: "/admin/send-template-broadcast",
   method: "POST",
   handler: adminAuthHandler(async (ctx, body) => {
-    const { templateEnvVar, variables, messageBody, mediaUrl } = body as {
-      templateEnvVar: string;
+    const { templateName, variables, messageBody, mediaUrl } = body as {
+      templateName: string;
       variables: Record<string, string>;
       messageBody?: string;
       mediaUrl?: string;
     };
-    if (!templateEnvVar || !variables) {
-      return new Response("Missing templateEnvVar or variables", { status: 400 });
+    if (!templateName || !variables) {
+      return new Response("Missing templateName or variables", { status: 400 });
     }
     const result = await ctx.runAction(internal.admin.sendTemplateBroadcast, {
-      templateEnvVar,
+      templateName,
       variables,
       messageBody,
       mediaUrl,
@@ -796,15 +817,15 @@ http.route({
       Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     if (withinWindow) {
-      await ctx.runAction(internal.twilio.sendMessage, {
+      await ctx.runAction(internal.whatsapp.sendMessage, {
         to: feedback.phone,
         body: message,
       });
     } else {
       // Outside 24h window — use broadcast template as fallback
-      await ctx.runAction(internal.twilio.sendTemplate, {
+      await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: feedback.phone,
-        templateEnvVar: "TWILIO_TPL_BROADCAST",
+        templateName: "ghali_broadcast",
         variables: { "1": message },
       });
     }

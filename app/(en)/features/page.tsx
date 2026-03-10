@@ -69,7 +69,7 @@ const featuresJsonLd = {
   ],
 };
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
+const WHATSAPP_URL = "https://wa.me/971542022073?text=Hi%20Ghali";
 
 const FEATURES = [
   {

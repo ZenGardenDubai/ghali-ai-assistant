@@ -2,7 +2,7 @@
 
 /**
  * Voice message transcription using OpenAI Whisper.
- * Downloads audio from Twilio, stores it in Convex file storage,
+ * Downloads audio from 360dialog Cloud API, stores it in Convex file storage,
  * and returns the transcript with the storage ID.
  */
 
@@ -12,12 +12,13 @@ import { Id } from "./_generated/dataModel";
 import OpenAI from "openai";
 import { VOICE_MIN_SIZE_BYTES, VOICE_MAX_SIZE_BYTES } from "./constants";
 import { getAudioExtension } from "./lib/voice";
+import { downloadMedia } from "./lib/whatsappSend";
 
 /**
  * Download audio, store in Convex file storage, and transcribe using OpenAI Whisper.
  *
  * Accepts either:
- * - A Twilio media URL (fresh voice note): requires Twilio Basic Auth, stores audio.
+ * - A 360dialog media ID (fresh voice note): downloads via Cloud API, stores audio.
  * - A Convex storage URL (re-transcription): when `existingStorageId` is provided,
  *   no auth needed and audio is not re-stored.
  *
@@ -25,7 +26,7 @@ import { getAudioExtension } from "./lib/voice";
  */
 export const transcribeVoiceMessage = internalAction({
   args: {
-    mediaUrl: v.string(),
+    mediaUrl: v.string(), // media ID from 360dialog or Convex storage URL
     mediaType: v.string(),
     /** Present when re-transcribing from Convex storage — skips re-storing. */
     existingStorageId: v.optional(v.id("_storage")),
@@ -38,56 +39,44 @@ export const transcribeVoiceMessage = internalAction({
     const startTime = Date.now();
 
     try {
-      // SSRF protection — strict origin validation via URL parsing
-      let parsed: URL;
-      try {
-        parsed = new URL(mediaUrl);
-      } catch {
-        console.error("[Voice] Invalid media URL");
-        return null;
-      }
-
-      const isTwilioUrl =
-        parsed.protocol === "https:" && parsed.hostname === "api.twilio.com";
-      const isConvexStorageUrl =
-        parsed.protocol === "https:" && parsed.hostname.endsWith(".convex.cloud");
+      let audioBuffer: ArrayBuffer;
 
       if (existingStorageId != null) {
-        if (!isConvexStorageUrl) {
+        // Re-transcription: download from Convex storage URL
+        let parsed: URL;
+        try {
+          parsed = new URL(mediaUrl);
+        } catch {
+          console.error("[Voice] Invalid media URL");
+          return null;
+        }
+        if (!parsed.hostname.endsWith(".convex.cloud")) {
           console.error("[Voice] existingStorageId requires Convex storage URL");
           return null;
         }
-      } else if (!isTwilioUrl) {
-        console.error("[Voice] Invalid media URL origin");
-        return null;
-      }
-
-      // Download audio — Twilio needs Basic Auth, Convex storage URLs are pre-signed
-      const headers: Record<string, string> = {};
-      if (isTwilioUrl) {
-        const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-        const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-
-        if (!twilioSid || !twilioToken) {
-          console.error("[Voice] Twilio credentials not configured");
+        console.log(`[Voice] downloading from Convex storage | type: ${mediaType}`);
+        const response = await fetch(mediaUrl);
+        if (!response.ok) {
+          console.error(`[Voice] Download failed: ${response.status} ${response.statusText}`);
+          return null;
+        }
+        audioBuffer = await response.arrayBuffer();
+      } else {
+        // Fresh voice note: download from 360dialog using media ID
+        const apiKey = process.env.DIALOG360_API_KEY;
+        if (!apiKey) {
+          console.error("[Voice] DIALOG360_API_KEY not configured");
           return null;
         }
 
-        headers["Authorization"] = `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`;
+        console.log(`[Voice] downloading from 360dialog | type: ${mediaType}`);
+        const result = await downloadMedia(apiKey, mediaUrl);
+        if (!result) {
+          console.error("[Voice] Media download failed");
+          return null;
+        }
+        audioBuffer = result.data;
       }
-
-      const source = isTwilioUrl ? "Twilio" : "Convex storage";
-      console.log(`[Voice] downloading from ${source} | type: ${mediaType}`);
-      const response = await fetch(mediaUrl, { headers });
-
-      if (!response.ok) {
-        console.error(
-          `[Voice] Download failed: ${response.status} ${response.statusText}`
-        );
-        return null;
-      }
-
-      const audioBuffer = await response.arrayBuffer();
 
       const audioBytes = new Uint8Array(audioBuffer);
 

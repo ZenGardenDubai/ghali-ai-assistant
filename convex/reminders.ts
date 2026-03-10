@@ -89,29 +89,40 @@ export const fireReminder = internalAction({
       return;
     }
 
-    // Check WhatsApp 24h session window
-    const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+    // Check outbound rate guard before sending
+    const guard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordOutbound,
+      { userId: job.userId }
+    );
 
     let sendSucceeded = false;
-    try {
-      if (withinWindow) {
-        await ctx.runAction(internal.twilio.sendMessage, {
-          to: user.phone,
-          body: `⏰ ${job.payload}`,
-        });
-      } else {
-        // Outside 24h window — use Content Template
-        await ctx.runAction(internal.twilio.sendTemplate, {
-          to: user.phone,
-          templateEnvVar: "TWILIO_TPL_REMINDER",
-          variables: { "1": job.payload },
-        });
+    if (!guard.allowed) {
+      console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
+      // Don't return — fall through to recurrence logic so recurring reminders keep their chain
+    } else {
+      // Check WhatsApp 24h session window
+      const withinWindow =
+        user.lastMessageAt &&
+        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+      try {
+        if (withinWindow) {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user.phone,
+            body: `⏰ ${job.payload}`,
+          });
+        } else {
+          // Outside 24h window — use Content Template
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
+            to: user.phone,
+            templateName: "ghali_reminder",
+            variables: { "1": job.payload },
+          });
+        }
+        sendSucceeded = true;
+      } catch (error) {
+        console.error(`Failed to send reminder ${jobId}:`, error);
       }
-      sendSucceeded = true;
-    } catch (error) {
-      console.error(`Failed to send reminder ${jobId}:`, error);
     }
 
     // Mark done on success, failed on delivery error

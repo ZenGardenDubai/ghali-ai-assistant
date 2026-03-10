@@ -116,11 +116,22 @@ ${SYSTEM_BLOCK}
       clearTraceId();
     }
 
-    // Delivery — Twilio failures don't trip the circuit breaker
+    // Delivery — WhatsApp API failures don't trip the circuit breaker
+    // Guarded to respect outbound rate limits (prevents flood from concurrent system sends)
     if (responseText && !responseText.includes("__SKIP__")) {
       // Re-fetch user to catch STOP sent during AI generation
       const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
       if (!latestUser || latestUser.optedOut) return;
+
+      // Check outbound rate guard before sending
+      const guard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordOutbound,
+        { userId }
+      );
+      if (!guard.allowed) {
+        console.warn(`[outbound-guard] Heartbeat blocked for ${userId}: ${guard.reason}`);
+        return;
+      }
 
       const latestWithinWindow =
         latestUser.lastMessageAt &&
@@ -128,15 +139,15 @@ ${SYSTEM_BLOCK}
 
       try {
         if (latestWithinWindow) {
-          await ctx.runAction(internal.twilio.sendMessage, {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
             to: latestUser.phone,
             body: responseText,
           });
         } else {
           // Outside 24h window — use Content Template
-          await ctx.runAction(internal.twilio.sendTemplate, {
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
             to: latestUser.phone,
-            templateEnvVar: "TWILIO_TPL_HEARTBEAT",
+            templateName: "ghali_heartbeat",
             variables: { "1": responseText },
           });
         }

@@ -170,7 +170,7 @@ export const generateResponse = internalAction({
     // ── Single response guarantee ──────────────────────────────────────
     // Ensures at most ONE outbound message (or message group) per invocation.
     // Every send path must go through guardedSend() instead of calling
-    // internal.twilio.sendMessage / sendMedia directly.
+    // internal.whatsapp.sendMessage / sendMedia directly.
     let responseSent = false;
 
     /**
@@ -197,7 +197,7 @@ export const generateResponse = internalAction({
         return false;
       }
       responseSent = true;
-      await ctx.runAction(internal.twilio.sendMessage, {
+      await ctx.runAction(internal.whatsapp.sendMessage, {
         to: user!.phone,
         body: msgBody,
       });
@@ -206,7 +206,7 @@ export const generateResponse = internalAction({
 
     /**
      * Send a media message to the user, guarded against double-sends.
-     * Falls back to text-only on Twilio error.
+     * Falls back to text-only on send error.
      */
     async function guardedSendMedia(
       caption: string,
@@ -230,7 +230,7 @@ export const generateResponse = internalAction({
       }
       responseSent = true;
       try {
-        await ctx.runAction(internal.twilio.sendMedia, {
+        await ctx.runAction(internal.whatsapp.sendMedia, {
           to: user!.phone,
           caption,
           mediaUrl: mediaUrlToSend,
@@ -241,7 +241,7 @@ export const generateResponse = internalAction({
             `Note: if original was partially sent, user may receive duplicate.`,
           error
         );
-        await ctx.runAction(internal.twilio.sendMessage, {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
           to: user!.phone,
           body: caption,
         });
@@ -307,7 +307,7 @@ export const generateResponse = internalAction({
         }
         if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
           try {
-            await ctx.runAction(internal.twilio.sendMedia, {
+            await ctx.runAction(internal.whatsapp.sendMedia, {
               to: user.phone,
               caption: "",
               mediaUrl: parsed.url,
@@ -681,21 +681,9 @@ export const generateResponse = internalAction({
         }
       }
 
-      // Reply-to-text: if replying to a text message (no media found), fetch the quoted message
-      if (!mediaUrl && !replyStorageId) {
-        try {
-          const quotedBody: string | null = await ctx.runAction(
-            internal.twilio.fetchOriginalMessage,
-            { messageSid: originalRepliedMessageSid }
-          );
-          if (quotedBody) {
-            prompt = buildReplyToTextPrompt(quotedBody, body);
-          }
-        } catch (e) {
-          // Non-critical — if fetch fails, proceed without quoted context
-          console.warn("Failed to fetch replied-to message:", e);
-        }
-      }
+      // Reply-to-text: Cloud API doesn't expose quoted message text.
+      // TODO: Store outbound message wamids locally to enable reply-context lookup.
+      // For now, reply-to-text context is not available with 360dialog.
     }
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
       const result = await ctx.runAction(
@@ -847,29 +835,34 @@ export const generateResponse = internalAction({
         is_new_session: sessionStarted,
       });
 
-      // Low-credit warning — fires once when balance crosses below the threshold.
-      // User just messaged so we're within the 24h session window — use normal message.
-      if (
-        newCredits <= CREDITS_LOW_THRESHOLD &&
-        user.credits > CREDITS_LOW_THRESHOLD
-      ) {
-        const lowCreditMsg = fillTemplate(
-          TEMPLATES.credits_low_warning.template,
-          { credits: newCredits }
-        );
-        await ctx.scheduler.runAfter(0, internal.twilio.sendMessage, {
-          to: user.phone,
-          body: lowCreditMsg,
-        });
-      }
     }
 
+    // Send the primary reply first — this is what the user is waiting for
     if (convertedResult) {
       await guardedSendMedia(convertedResult.caption, convertedResult.fileUrl);
     } else if (imageResult) {
       await guardedSendMedia(imageResult.caption, imageResult.imageUrl);
     } else if (responseText) {
       await guardedSendMessage(responseText);
+    }
+
+    // Low-credit warning — fires AFTER the main reply so it can't pre-empt it.
+    // Best-effort: scheduled follow-up so failures don't affect the user's response.
+    if (
+      aiSucceeded &&
+      creditCheck.status === "available" &&
+      (Math.max(0, user.credits - 1)) <= CREDITS_LOW_THRESHOLD &&
+      user.credits > CREDITS_LOW_THRESHOLD
+    ) {
+      const lowCreditMsg = fillTemplate(
+        TEMPLATES.credits_low_warning.template,
+        { credits: Math.max(0, user.credits - 1) }
+      );
+      ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {
+        userId: typedUserId,
+        to: user.phone,
+        body: lowCreditMsg,
+      });
     }
   },
 });

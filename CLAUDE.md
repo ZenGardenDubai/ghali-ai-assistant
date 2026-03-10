@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Ghali is a WhatsApp-first AI assistant. Users message a WhatsApp number (+971582896090 via Twilio) and chat with AI. Web chat (ghali.ae) is secondary. Apache 2.0 license.
+Ghali is a WhatsApp-first AI assistant. Users message a WhatsApp number (+971542022073 via 360dialog) and chat with AI. Web chat (ghali.ae) is secondary. Apache 2.0 license.
 
 ## Tech Stack
 
@@ -14,7 +14,7 @@ Ghali is a WhatsApp-first AI assistant. Users message a WhatsApp number (+971582
 - **Auth:** Clerk
 - **AI Agent:** @convex-dev/agent (threads, messages, tools, streaming, RAG)
 - **AI SDK:** Vercel AI SDK + @ai-sdk/google, @ai-sdk/anthropic, @ai-sdk/openai
-- **WhatsApp:** Twilio Business API
+- **WhatsApp:** 360dialog (WhatsApp Cloud API)
 - **Analytics:** PostHog
 - **Testing:** Vitest
 - **Hosting:** Vercel + Convex Cloud
@@ -47,14 +47,14 @@ Flash decides when to escalate. No separate classifier call needed.
 ### Message Flow (Async Pattern)
 
 ```
-WhatsApp → Twilio webhook (POST /api/whatsapp/webhook)
+WhatsApp → 360dialog webhook (POST /whatsapp-webhook)
   → Validate signature + country code blocking
   → Find/create user + thread
   → Save message (mutation, transactional)
   → Schedule async response generation (ctx.scheduler.runAfter)
   → Return 200 immediately
   → Action runs: agent.generateText on user's thread
-  → Send reply via Twilio API
+  → Send reply via 360dialog Cloud API
 ```
 
 Web chat uses the same Convex mutation → action pattern but streams via WebSocket.

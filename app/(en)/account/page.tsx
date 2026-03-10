@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
+const WHATSAPP_URL = "https://wa.me/971542022073?text=Hi%20Ghali";
 
 interface AccountData {
   name?: string;

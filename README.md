@@ -57,7 +57,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 
 ```
 WhatsApp message
-  → Twilio webhook (Convex HTTP route)
+  → 360dialog webhook (Convex HTTP route)
   → Validate signature + check country blocklist
   → Deduplicate (MessageSid check)
   → Find or create user + thread
@@ -79,7 +79,7 @@ Background action:
     → updateProfile/appendToMemory/editMemory/updatePersonality/updateHeartbeat → user files
     → resolveMedia/reprocessMedia/convertFile → media handling
   → Format for WhatsApp + split long messages
-  → Send reply via Twilio API
+  → Send reply via 360dialog API
 ```
 
 ## Tech Stack
@@ -92,7 +92,7 @@ Background action:
 | AI Agent | @convex-dev/agent |
 | AI SDK | Vercel AI SDK v5 |
 | RAG | @convex-dev/rag + OpenAI embeddings |
-| Messaging | Twilio WhatsApp Business API |
+| Messaging | 360dialog WhatsApp Business API |
 | UI | Tailwind v4 + shadcn/ui |
 | Analytics | PostHog |
 | Testing | Vitest + convex-test |
@@ -117,7 +117,7 @@ Background action:
 - Node.js 20+
 - [pnpm](https://pnpm.io/) 10+
 - [Convex](https://convex.dev) account
-- [Twilio](https://twilio.com) account with WhatsApp Business
+- [360dialog](https://360dialog.com) account with WhatsApp Business
 - API keys: Google AI, Anthropic, OpenAI
 - Optional: [Clerk](https://clerk.com) (auth + billing), [PostHog](https://posthog.com) (analytics), [CloudConvert](https://cloudconvert.com) (Office files)
 
@@ -156,10 +156,9 @@ Environment variables are split between two runtimes. `.env.example` lists all v
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI API key (Flash + Pro) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (Claude Opus) |
 | `OPENAI_API_KEY` | OpenAI API key (Whisper + embeddings) |
-| `TWILIO_ACCOUNT_SID` | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | Twilio auth token |
-| `TWILIO_WHATSAPP_NUMBER` | Your Twilio WhatsApp number |
-| `CONVEX_SITE_URL` | Public-facing Convex HTTP URL (for Twilio signature validation) |
+| `DIALOG360_API_KEY` | 360dialog Cloud API key |
+| `WHATSAPP_NUMBER` | Your WhatsApp Business number |
+| `CONVEX_SITE_URL` | Public-facing Convex HTTP URL |
 | `INTERNAL_API_SECRET` | Shared secret for Next.js ↔ Convex API auth |
 | `CLERK_WEBHOOK_SECRET` | Clerk webhook signature secret |
 | `CLOUDCONVERT_API_KEY` | CloudConvert API key (Office file conversion) |
@@ -183,7 +182,7 @@ ghali-ai-assistant/
 │   └── providers/          # PostHog + Convex providers
 ├── convex/                 # Convex backend (25 agent tools)
 │   ├── agent.ts            # Ghali agent definition + all tools
-│   ├── http.ts             # HTTP routes (Twilio + Clerk webhooks, admin API)
+│   ├── http.ts             # HTTP routes (360dialog + Clerk webhooks, admin API)
 │   ├── messages.ts         # Message processing + async response generation
 │   ├── documents.ts        # Document processing + RAG pipeline
 │   ├── items.ts            # Structured data (items + collections + embeddings)
@@ -191,7 +190,7 @@ ghali-ai-assistant/
 │   ├── proWrite.ts         # ProWrite multi-LLM writing pipeline
 │   ├── images.ts           # Image generation (Gemini Pro)
 │   ├── voice.ts            # Voice transcription (Whisper)
-│   ├── twilio.ts           # Outbound WhatsApp messaging
+│   ├── whatsapp.ts            # Outbound WhatsApp messaging
 │   ├── credits.ts          # Credit system + monthly reset
 │   ├── billing.ts          # Subscription management (Clerk)
 │   ├── scheduledTasks.ts   # Scheduled agent tasks (one-time & recurring)
@@ -241,8 +240,8 @@ cd convex && npx vitest run
 - [x] Database schema
 - [x] User management
 - [x] Pure utility functions
-- [x] Twilio inbound webhook
-- [x] Twilio outbound messaging
+- [x] 360dialog inbound webhook
+- [x] 360dialog outbound messaging
 - [x] AI agent core (Flash + threads + async flow)
 - [x] Escalation tools + search grounding + WhatsApp formatting
 - [x] Credit system
@@ -257,7 +256,7 @@ cd convex && npx vitest run
 - [x] Rate limiting
 - [x] Heartbeat (proactive check-ins)
 - [x] Admin commands + web dashboard
-- [x] Twilio Content Templates (9 templates for out-of-window delivery)
+- [x] 360dialog Content Templates (9 templates for out-of-window delivery)
 - [x] Billing (Clerk subscriptions)
 - [x] Feedback system (WhatsApp links + web form + admin panel)
 - [x] Landing page (ghali.ae) + Arabic mirror

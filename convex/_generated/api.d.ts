@@ -40,11 +40,11 @@ import type * as lib_onboarding from "../lib/onboarding.js";
 import type * as lib_proWrite from "../lib/proWrite.js";
 import type * as lib_profile from "../lib/profile.js";
 import type * as lib_systemCommands from "../lib/systemCommands.js";
-import type * as lib_twilio from "../lib/twilio.js";
-import type * as lib_twilioSend from "../lib/twilioSend.js";
 import type * as lib_userFiles from "../lib/userFiles.js";
 import type * as lib_utils from "../lib/utils.js";
 import type * as lib_voice from "../lib/voice.js";
+import type * as lib_whatsapp from "../lib/whatsapp.js";
+import type * as lib_whatsappSend from "../lib/whatsappSend.js";
 import type * as mediaStorage from "../mediaStorage.js";
 import type * as memoryCompaction from "../memoryCompaction.js";
 import type * as messages from "../messages.js";
@@ -57,10 +57,10 @@ import type * as rateLimiting from "../rateLimiting.js";
 import type * as reminders from "../reminders.js";
 import type * as scheduledTasks from "../scheduledTasks.js";
 import type * as templates from "../templates.js";
-import type * as twilio from "../twilio.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
 import type * as webhookDedup from "../webhookDedup.js";
+import type * as whatsapp from "../whatsapp.js";
 
 import type {
   ApiFromModules,
@@ -101,11 +101,11 @@ declare const fullApi: ApiFromModules<{
   "lib/proWrite": typeof lib_proWrite;
   "lib/profile": typeof lib_profile;
   "lib/systemCommands": typeof lib_systemCommands;
-  "lib/twilio": typeof lib_twilio;
-  "lib/twilioSend": typeof lib_twilioSend;
   "lib/userFiles": typeof lib_userFiles;
   "lib/utils": typeof lib_utils;
   "lib/voice": typeof lib_voice;
+  "lib/whatsapp": typeof lib_whatsapp;
+  "lib/whatsappSend": typeof lib_whatsappSend;
   mediaStorage: typeof mediaStorage;
   memoryCompaction: typeof memoryCompaction;
   messages: typeof messages;
@@ -118,10 +118,10 @@ declare const fullApi: ApiFromModules<{
   reminders: typeof reminders;
   scheduledTasks: typeof scheduledTasks;
   templates: typeof templates;
-  twilio: typeof twilio;
   users: typeof users;
   voice: typeof voice;
   webhookDedup: typeof webhookDedup;
+  whatsapp: typeof whatsapp;
 }>;
 
 /**

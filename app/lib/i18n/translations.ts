@@ -1,7 +1,9 @@
 import type { TranslationDict } from "./types";
 
-const WHATSAPP_URL = "https://wa.me/971582896090?text=Hi%20Ghali";
-const WHATSAPP_URL_AR = "https://wa.me/971582896090?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A";
+const WHATSAPP_NUMBER = "971542022073";
+const WHATSAPP_DISPLAY = "+971 54 202 2073";
+const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=Hi%20Ghali`;
+const WHATSAPP_URL_AR = `https://wa.me/${WHATSAPP_NUMBER}?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A`;
 
 export const en: TranslationDict = {
   locale: "en",
@@ -236,7 +238,7 @@ export const en: TranslationDict = {
 
   start: {
     headline: "Your AI Assistant on WhatsApp",
-    phone: "+971 58 289 6090",
+    phone: WHATSAPP_DISPLAY,
     cta: "Chat with Ghali on WhatsApp",
     trust: "Free \u00B7 No signup \u00B7 60 credits/month",
     switchLocale: "\u0639\u0631\u0628\u064A",
@@ -481,7 +483,7 @@ export const ar: TranslationDict = {
 
   start: {
     headline: "\u0645\u0633\u0627\u0639\u062F\u0643 \u0627\u0644\u0630\u0643\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
-    phone: "+971 58 289 6090",
+    phone: WHATSAPP_DISPLAY,
     cta: "\u062A\u062D\u062F\u062B \u0645\u0639 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
     trust: "\u0645\u062C\u0627\u0646\u064A \u00B7 \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644 \u00B7 60 \u0631\u0635\u064A\u062F/\u0634\u0647\u0631",
     switchLocale: "English",

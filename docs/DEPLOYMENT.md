@@ -18,9 +18,8 @@ GitHub: `ZenGardenDubai/ghali-ai-assistant` (auto-connected)
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Secret | Yes | |
 | `ANTHROPIC_API_KEY` | Secret | Yes | |
 | `OPENAI_API_KEY` | Secret | Yes | |
-| `TWILIO_ACCOUNT_SID` | Secret | Yes | |
-| `TWILIO_AUTH_TOKEN` | Secret | Yes | |
-| `TWILIO_WHATSAPP_NUMBER` | Secret | Yes | `+971582896090` |
+| `DIALOG360_API_KEY` | Secret | Yes | |
+| `WHATSAPP_NUMBER` | Secret | Yes | `+971542022073` |
 | `NEXT_PUBLIC_POSTHOG_KEY` | Public | Post-launch | Project API key (used by both client & server SDKs) |
 | `NEXT_PUBLIC_POSTHOG_HOST` | Public | Post-launch | `https://us.i.posthog.com` |
 | `POSTHOG_PERSONAL_API_KEY` | Secret | Post-launch | Personal API key for PostHog Query API (admin analytics) |
