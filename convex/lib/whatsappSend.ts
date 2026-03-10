@@ -171,7 +171,25 @@ export async function downloadMedia(
     }
 
     // Step 2: Download binary data
-    const dataResponse = await fetch(downloadUrl, {
+    // The metadata URL is a Facebook CDN URL (lookaside.fbsbx.com) which
+    // doesn't accept D360-API-KEY. Replace the host with 360dialog's proxy
+    // so the request goes through their API with our key.
+    let proxyUrl = downloadUrl;
+    try {
+      const base = new URL(DIALOG360_BASE_URL);
+      const parsed = new URL(downloadUrl);
+      if (parsed.hostname !== base.hostname) {
+        parsed.hostname = base.hostname;
+        parsed.protocol = base.protocol;
+        parsed.port = "";
+        proxyUrl = parsed.toString();
+      }
+    } catch (e) {
+      // If URL parsing fails, use the original URL as-is
+      console.warn("[whatsappSend] Could not parse download URL, using as-is:", downloadUrl, e);
+    }
+
+    const dataResponse = await fetch(proxyUrl, {
       headers: { "D360-API-KEY": apiKey },
     });
 
