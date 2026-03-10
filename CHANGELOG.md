@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.3...v0.39.4) (2026-03-10)
+
+
+### Bug Fixes
+
+* pass explicit media type when sending converted files via WhatsApp ([#208](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/208)) ([6cab3dc](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/6cab3dc05c328a956daa64d8bd76793bc66ac751))
+
 ## [0.39.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.2...v0.39.3) (2026-03-10)
 
 
