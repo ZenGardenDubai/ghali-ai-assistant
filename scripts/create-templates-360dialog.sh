@@ -80,7 +80,7 @@ submit_image_template() {
       "type": "HEADER",
       "format": "IMAGE",
       "example": {
-        "header_handle": ["https://ghali.ae/ghali-logo-with-bg.svg"]
+        "header_handle": ["https://ghali.ae/ghali-logo-with-bg.png"]
       }
     },
     {
