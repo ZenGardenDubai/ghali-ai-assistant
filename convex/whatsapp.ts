@@ -25,7 +25,8 @@ export const sendMessage = internalAction({
     body: v.string(),
   },
   handler: async (_ctx, { to, body }) => {
-    await sendWhatsAppMessage(getSendOptions(to), body);
+    const wamids = await sendWhatsAppMessage(getSendOptions(to), body);
+    return { wamids };
   },
 });
 

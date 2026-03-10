@@ -23,7 +23,7 @@ function normalizePhoneForApi(phone: string): string {
 async function cloudApiCall(
   apiKey: string,
   body: Record<string, unknown>
-): Promise<void> {
+): Promise<string | undefined> {
   const response = await fetch(`${DIALOG360_BASE_URL}/messages`, {
     method: "POST",
     headers: {
@@ -40,12 +40,19 @@ async function cloudApiCall(
     const error = await response.text();
     throw new Error(`360dialog API error (${response.status}): ${error}`);
   }
+
+  try {
+    const json = await response.json();
+    return (json?.messages?.[0]?.id as string | undefined) ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function sendWhatsAppMessage(
   options: WhatsAppSendOptions,
   body: string
-): Promise<void> {
+): Promise<string[]> {
   const formatted = formatForWhatsApp(body);
   const chunks = splitLongMessage(formatted);
 
@@ -59,18 +66,22 @@ export async function sendWhatsAppMessage(
   }
 
   const to = normalizePhoneForApi(options.to);
+  const wamids: string[] = [];
 
   for (let i = 0; i < chunks.length; i++) {
     if (i > 0) {
       await new Promise((r) => setTimeout(r, WHATSAPP_MESSAGE_DELAY_MS));
     }
-    await cloudApiCall(options.apiKey, {
+    const wamid = await cloudApiCall(options.apiKey, {
       recipient_type: "individual",
       to,
       type: "text",
       text: { body: chunks[i] },
     });
+    if (wamid) wamids.push(wamid);
   }
+
+  return wamids;
 }
 
 /**

@@ -30,6 +30,33 @@ describe("sendWhatsAppMessage", () => {
     expect(body.text.body).toBe("Hello!");
   });
 
+  it("returns the wamid from the API response", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.abc123" }] }), { status: 200 })
+    );
+
+    const wamids = await sendWhatsAppMessage(options, "Hello!");
+    expect(wamids).toEqual(["wamid.abc123"]);
+  });
+
+  it("returns empty array when API response has no wamid", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [] }), { status: 200 })
+    );
+
+    const wamids = await sendWhatsAppMessage(options, "Hello!");
+    expect(wamids).toEqual([]);
+  });
+
+  it("returns empty array when API response body is not parseable JSON", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("OK", { status: 200 })
+    );
+
+    const wamids = await sendWhatsAppMessage(options, "Hello!");
+    expect(wamids).toEqual([]);
+  });
+
   it("splits long messages into multiple API calls", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ messages: [{ id: "wamid.123" }] }), { status: 200 })
@@ -39,6 +66,24 @@ describe("sendWhatsAppMessage", () => {
     await sendWhatsAppMessage(options, longText);
 
     expect(fetchSpy.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("returns a wamid for each chunk of a multi-chunk message", async () => {
+    let callCount = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      callCount++;
+      return new Response(
+        JSON.stringify({ messages: [{ id: `wamid.chunk${callCount}` }] }),
+        { status: 200 }
+      );
+    });
+
+    const longText = "A".repeat(5000) + "\n\n" + "B".repeat(2000);
+    const wamids = await sendWhatsAppMessage(options, longText);
+
+    expect(wamids.length).toBeGreaterThan(1);
+    expect(wamids[0]).toBe("wamid.chunk1");
+    expect(wamids[1]).toBe("wamid.chunk2");
   });
 
   it("throws on API error", async () => {

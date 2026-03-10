@@ -260,10 +260,18 @@ export const generateResponse = internalAction({
         return false;
       }
       responseSent = true;
-      await ctx.runAction(internal.whatsapp.sendMessage, {
+      const sendResult = await ctx.runAction(internal.whatsapp.sendMessage, {
         to: user!.phone,
         body: msgBody,
-      });
+      }) as { wamids?: string[] } | null;
+      const wamids = sendResult?.wamids ?? [];
+      for (const wamid of wamids) {
+        await ctx.runMutation(internal.outboundMessages.saveOutbound, {
+          userId: typedUserId,
+          wamid,
+          body: msgBody,
+        });
+      }
       return true;
     }
 
@@ -744,9 +752,16 @@ export const generateResponse = internalAction({
         }
       }
 
-      // Reply-to-text: Cloud API doesn't expose quoted message text.
-      // TODO: Store outbound message wamids locally to enable reply-context lookup.
-      // For now, reply-to-text context is not available with 360dialog.
+      // Reply-to-text: look up our previously sent outbound message by wamid.
+      // Only runs when no stored inbound media was found for this reply.
+      if (!stored) {
+        const outbound = await ctx.runQuery(internal.outboundMessages.getByWamid, {
+          wamid: originalRepliedMessageSid,
+        });
+        if (outbound) {
+          prompt = buildReplyToTextPrompt(outbound.body, body);
+        }
+      }
     }
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
       const result = await ctx.runAction(

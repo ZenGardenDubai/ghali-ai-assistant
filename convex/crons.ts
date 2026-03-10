@@ -52,4 +52,11 @@ crons.daily(
   internal.feedback.cleanupExpiredTokens
 );
 
+// Daily cleanup of expired outbound message records (reply-to-text store)
+crons.daily(
+  "outbound-messages-cleanup",
+  { hourUTC: 3, minuteUTC: 30 },
+  internal.outboundMessages.cleanupExpired
+);
+
 export default crons;

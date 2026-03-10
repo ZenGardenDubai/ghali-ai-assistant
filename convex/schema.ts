@@ -212,6 +212,16 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_expiresAt", ["expiresAt"]),
 
+  outboundMessages: defineTable({
+    userId: v.id("users"),
+    wamid: v.string(),
+    body: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_wamid", ["wamid"])
+    .index("by_userId", ["userId"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   appConfig: defineTable({
     key: v.string(),
     value: v.string(),

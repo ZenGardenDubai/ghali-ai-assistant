@@ -246,6 +246,9 @@ export const SESSION_GAP_MS = 4 * 60 * 60 * 1000;
 /** Feedback token expiry (15 minutes) */
 export const FEEDBACK_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
 
+/** Outbound messages retained for reply-to-text context lookup (7 days) */
+export const OUTBOUND_MESSAGE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
 /** Max feedback submissions per user per day */
 export const FEEDBACK_MAX_PER_DAY = 3;
 
