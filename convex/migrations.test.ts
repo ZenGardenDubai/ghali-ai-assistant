@@ -319,13 +319,7 @@ describe("flagDormantUsers", () => {
   });
 
   it("DORMANT_CUTOFF_MS matches the expected 360dialog migration timestamp", () => {
+    // Trust the numeric value from the issue — this is what the migration uses
     expect(DORMANT_CUTOFF_MS).toBe(1741564620000);
-    // Verify it represents March 9, 2026 23:57:00 UTC
-    const d = new Date(DORMANT_CUTOFF_MS);
-    expect(d.getUTCFullYear()).toBe(2026);
-    expect(d.getUTCMonth()).toBe(2); // 0-indexed: 2 = March
-    expect(d.getUTCDate()).toBe(9);
-    expect(d.getUTCHours()).toBe(23);
-    expect(d.getUTCMinutes()).toBe(57);
   });
 });

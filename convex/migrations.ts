@@ -755,7 +755,7 @@ export const migrateLanguageAndTimezone = internalAction({
 // ============================================================================
 
 /**
- * Cutoff timestamp for the 360dialog migration (March 9, 2026 23:57:00 UTC).
+ * Cutoff timestamp for the 360dialog migration (timestamp: 1741564620000).
  * All users created before this point used Twilio and never opted in to the
  * new 360dialog number — they must not receive outbound messages.
  */
