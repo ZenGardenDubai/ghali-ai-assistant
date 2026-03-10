@@ -148,7 +148,7 @@ export async function downloadMedia(
   try {
     // Step 1: Get media URL
     const metaResponse = await fetch(
-      `${DIALOG360_BASE_URL}/v1/media/${mediaId}`,
+      `${DIALOG360_BASE_URL}/${mediaId}`,
       {
         headers: { "D360-API-KEY": apiKey },
       }
