@@ -74,14 +74,14 @@ export async function sendWhatsAppMessage(
 }
 
 /**
- * Infer Cloud API media type from URL or explicit type.
+ * Infer Cloud API media type from URL.
  * Cloud API types: image, document, audio, video.
  */
-function inferMediaType(mediaUrl: string): "image" | "document" {
+function inferMediaType(mediaUrl: string): "image" | "document" | "audio" | "video" {
   const lower = mediaUrl.toLowerCase();
-  if (lower.endsWith(".pdf") || lower.endsWith(".docx") || lower.endsWith(".xlsx") || lower.endsWith(".pptx") || lower.endsWith(".doc") || lower.endsWith(".csv") || lower.endsWith(".txt")) {
-    return "document";
-  }
+  if (/\.(pdf|docx?|xlsx?|pptx?|csv|txt|rtf|odt)(\?|$)/.test(lower)) return "document";
+  if (/\.(mp3|ogg|opus|aac|amr|wav|flac|m4a)(\?|$)/.test(lower)) return "audio";
+  if (/\.(mp4|3gpp?|mov|avi|webm|mkv)(\?|$)/.test(lower)) return "video";
   return "image";
 }
 
