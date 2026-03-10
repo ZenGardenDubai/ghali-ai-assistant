@@ -188,9 +188,12 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Skip opted-out users
-    if (user.optedOut) {
-      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out`);
+    // Skip opted-out or dormant users — but reschedule cron so it resumes on reactivation
+    if (user.optedOut || user.dormant) {
+      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out or dormant`);
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      }
       return;
     }
 
@@ -388,8 +391,8 @@ export const executeScheduledTask = internalAction({
     // Re-fetch user before delivery — agent call above can take seconds/minutes,
     // user may have opted out or sent a new message changing the 24h window
     const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
-    if (!latestUser || latestUser.optedOut) {
-      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found or opted out`);
+    if (!latestUser || latestUser.optedOut || latestUser.dormant) {
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, or dormant`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       }

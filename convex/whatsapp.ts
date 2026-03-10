@@ -92,9 +92,9 @@ export const guardedSendMessage = internalAction({
     body: v.string(),
   },
   handler: async (ctx, { userId, to, body }) => {
-    // Re-check opt-out — user may have sent STOP between scheduling and execution
+    // Re-check opt-out/dormant — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.optedOut) return;
+    if (!user || user.optedOut || user.dormant) return;
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
@@ -124,9 +124,9 @@ export const guardedSendTemplate = internalAction({
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
-    // Re-check opt-out — user may have sent STOP between scheduling and execution
+    // Re-check opt-out/dormant — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.optedOut) return;
+    if (!user || user.optedOut || user.dormant) return;
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,

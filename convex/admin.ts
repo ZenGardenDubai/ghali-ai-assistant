@@ -96,6 +96,7 @@ export const getStats = internalQuery({
     const allUsers = await ctx.db.query("users").collect();
 
     const totalUsers = allUsers.length;
+    const dormantUsers = allUsers.filter((u) => u.dormant === true).length;
     const proUsers = allUsers.filter((u) => u.tier === "pro").length;
     const basicUsers = allUsers.filter((u) => u.tier === "basic").length;
 
@@ -139,6 +140,7 @@ export const getStats = internalQuery({
 
     return {
       totalUsers,
+      dormantUsers,
       proUsers,
       basicUsers,
       // Rolling windows
@@ -225,10 +227,11 @@ export const getBroadcastCounts = internalQuery({
   handler: async (ctx) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.db.query("users").collect();
-    const activeCount = allUsers.filter(
+    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut);
+    const activeCount = eligibleUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= cutoff
     ).length;
-    return { totalUsers: allUsers.length, activeUsers: activeCount };
+    return { totalUsers: eligibleUsers.length, activeUsers: activeCount };
   },
 });
 
@@ -242,8 +245,8 @@ export const broadcastMessage = internalAction({
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
     const activeUsers = allUsers.filter(
-      (u: { lastMessageAt?: number; phone: string }) =>
-        u.lastMessageAt && u.lastMessageAt >= cutoff
+      (u: { lastMessageAt?: number; phone: string; dormant?: boolean; optedOut?: boolean }) =>
+        !u.dormant && !u.optedOut && u.lastMessageAt && u.lastMessageAt >= cutoff
     ) as Array<{ phone: string; lastMessageAt?: number }>;
 
     const sentCount = await sendInBatches(activeUsers, (phone) =>
@@ -366,6 +369,7 @@ export const sendTemplateToUser = internalAction({
   handler: async (ctx, { phone, templateName, variables, mediaUrl }) => {
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
+    if (user.dormant || user.optedOut) return { success: true, sentCount: 0 };
 
     const isActive =
       !!user.lastMessageAt &&
@@ -411,11 +415,14 @@ export const sendTemplateBroadcast = internalAction({
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
       phone: string;
       lastMessageAt?: number;
+      dormant?: boolean;
+      optedOut?: boolean;
     }>;
 
-    const userByPhone = new Map(allUsers.map((u) => [u.phone, u]));
+    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut);
+    const userByPhone = new Map(eligibleUsers.map((u) => [u.phone, u]));
 
-    const sentCount = await sendInBatches(allUsers, async (phone) => {
+    const sentCount = await sendInBatches(eligibleUsers, async (phone) => {
       const user = userByPhone.get(phone)!;
       const isActive = user.lastMessageAt && user.lastMessageAt >= cutoff;
 

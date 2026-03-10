@@ -17,8 +17,8 @@ export const processHeartbeats = internalMutation({
     const allUsers = await ctx.db.query("users").collect();
 
     for (const user of allUsers) {
-      // Skip opted-out users
-      if (user.optedOut) continue;
+      // Skip opted-out or dormant users
+      if (user.optedOut || user.dormant) continue;
 
       // Check heartbeat file
       const heartbeatFile = await ctx.db
@@ -51,8 +51,8 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
-    // Re-check opt-out (user may have sent STOP after processHeartbeats enqueued this)
-    if (user.optedOut) return;
+    // Re-check opt-out/dormant (user may have changed state after processHeartbeats enqueued this)
+    if (user.optedOut || user.dormant) return;
 
     // Circuit breaker: skip if user is in error backoff
     if (user.errorBackoffUntil && Date.now() < user.errorBackoffUntil) {
@@ -123,7 +123,7 @@ ${SYSTEM_BLOCK}
     if (responseText && !responseText.includes("__SKIP__")) {
       // Re-fetch user to catch STOP sent during AI generation
       const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
-      if (!latestUser || latestUser.optedOut) return;
+      if (!latestUser || latestUser.optedOut || latestUser.dormant) return;
 
       // Check outbound rate guard before sending
       const guard = await ctx.runMutation(
