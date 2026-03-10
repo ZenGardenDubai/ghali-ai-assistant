@@ -5,7 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import { getNextCronRun } from "./lib/cronParser";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
-import { MODELS } from "./constants";
+import { MODELS, DORMANT_MIGRATION_CUTOFF_MS } from "./constants";
 import { parseProfileSections, replaceProfileSection, type ProfileCategory } from "./lib/profile";
 import { isFileTooLarge } from "./lib/userFiles";
 import { resolveCityToTimezone, buildDefaultPersonality } from "./lib/onboarding";
@@ -762,6 +762,65 @@ export const countScheduledTasks = internalQuery({
     const once = total - cron;
     const uniqueUsers = new Set(tasks.map(t => t.userId)).size;
     return { total, enabled, disabled, cron, once, uniqueUsers };
+  },
+});
+
+// ============================================================================
+// Dormant User Migration (v0.37 — 360dialog migration)
+// ============================================================================
+
+/**
+ * Dry-run: count users that would be flagged as dormant.
+ * Run from Convex dashboard before the actual migration.
+ */
+export const countDormantCandidates = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const allUsers = await ctx.db.query("users").collect();
+    const candidates = allUsers.filter(
+      (u) =>
+        u.createdAt < DORMANT_MIGRATION_CUTOFF_MS &&
+        (!u.lastMessageAt || u.lastMessageAt < DORMANT_MIGRATION_CUTOFF_MS)
+    );
+    const alreadyDormant = allUsers.filter((u) => u.dormant === true);
+    return {
+      total: allUsers.length,
+      candidates: candidates.length,
+      alreadyDormant: alreadyDormant.length,
+      willFlag: candidates.filter((u) => u.dormant !== true).length,
+    };
+  },
+});
+
+/**
+ * One-time migration: flag pre-360dialog users as dormant.
+ *
+ * Flags users where:
+ * - createdAt < DORMANT_MIGRATION_CUTOFF_MS (before 360dialog migration)
+ * - lastMessageAt is missing or also before the cutoff (no post-migration activity)
+ *
+ * Idempotent: skips users already flagged. Safe to run multiple times.
+ * Run from Convex dashboard after deployment.
+ */
+export const flagDormantUsers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const allUsers = await ctx.db.query("users").collect();
+    let flagged = 0;
+
+    for (const user of allUsers) {
+      if (
+        user.createdAt < DORMANT_MIGRATION_CUTOFF_MS &&
+        (!user.lastMessageAt || user.lastMessageAt < DORMANT_MIGRATION_CUTOFF_MS) &&
+        user.dormant !== true
+      ) {
+        await ctx.db.patch(user._id, { dormant: true });
+        flagged++;
+      }
+    }
+
+    console.log(`Dormant migration: ${flagged} users flagged out of ${allUsers.length} total`);
+    return { flagged, total: allUsers.length };
   },
 });
 
