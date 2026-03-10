@@ -108,6 +108,7 @@ export const handleSubscriptionActive = internalMutation({
         to: user.phone,
         templateName: "ghali_subscription_active",
         variables: { "1": String(CREDITS_PRO) },
+        skipInactivityGate: true,
       });
     }
   },
@@ -177,6 +178,7 @@ export const handleSubscriptionEnded = internalMutation({
         to: user.phone,
         templateName: "ghali_subscription_ended",
         variables: { "1": String(CREDITS_BASIC) },
+        skipInactivityGate: true,
       });
     }
   },

@@ -159,6 +159,9 @@ export const RATE_LIMIT_BURST_CAPACITY = 40;
 /** WhatsApp session window (24 hours) — can only send free-form messages within this window */
 export const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/** Template inactivity gate (7 days) — do not send proactive templates to users inactive longer than this */
+export const TEMPLATE_INACTIVITY_GATE_MS = 7 * 24 * 60 * 60 * 1000;
+
 // ============================================================================
 // Structured Data (Items & Collections)
 // ============================================================================

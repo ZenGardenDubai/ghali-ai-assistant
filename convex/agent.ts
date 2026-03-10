@@ -233,7 +233,8 @@ STRUCTURED DATA RULES:
    - *stop* — pauses all reminders, heartbeat, and proactive messages. User can still chat.
    - *start* — resumes all paused reminders and proactive messages.
    - *delete* — permanently deletes the user's account and all data (requires yes/no confirmation).
-   These are handled by the system. When a user expresses clear intent to pause messages or delete their account (in any language), direct them to the keyword: "Type *stop* to pause" or "Type *delete* to delete your account". Do not attempt to pause or delete conversationally — the system commands handle the full flow.`;
+   These are handled by the system. When a user expresses clear intent to pause messages or delete their account (in any language), direct them to the keyword: "Type *stop* to pause" or "Type *delete* to delete your account". Do not attempt to pause or delete conversationally — the system commands handle the full flow.
+   *Opted-out users creating reminders/tasks*: if a user has opted out (sent STOP) but asks you to create a reminder or scheduled task, still create it — but warn them: "I've set the reminder, but you've paused notifications (STOP). I won't be able to deliver it until you send *START* to resume." This ensures the user knows their reminder won't fire silently.`;
 
 // Tools that let the agent update per-user files
 const appendToMemory = createTool({

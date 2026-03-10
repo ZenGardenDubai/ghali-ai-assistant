@@ -15,14 +15,21 @@ export function isFileTooLarge(content: string): boolean {
 export function buildUserContext(
   userFiles: { filename: string; content: string }[],
   datetime: { date: string; time: string; tz: string },
-  settings?: { language: string; timezone: string }
+  settings?: { language: string; timezone: string; optedOut?: boolean }
 ): string {
   const parts: string[] = [
     `CURRENT CONTEXT:\nToday is ${datetime.date}\nCurrent time: ${datetime.time} (${datetime.tz})`,
   ];
 
   if (settings) {
-    parts.push(`## User Settings\n- Preferred language: ${settings.language}\n- Timezone: ${settings.timezone}`);
+    const settingsLines = [
+      `- Preferred language: ${settings.language}`,
+      `- Timezone: ${settings.timezone}`,
+    ];
+    if (settings.optedOut) {
+      settingsLines.push(`- Notifications: PAUSED (user sent STOP — reminders and proactive messages will not be delivered until they send START)`);
+    }
+    parts.push(`## User Settings\n${settingsLines.join("\n")}`);
   }
 
   const profileFile = userFiles.find((f) => f.filename === "profile");

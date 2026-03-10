@@ -661,7 +661,7 @@ export const generateResponse = internalAction({
     const userContext = buildUserContext(
       userFiles,
       { date, time, tz },
-      { language: user.language, timezone: user.timezone }
+      { language: user.language, timezone: user.timezone, optedOut: !!user.optedOut }
     );
 
     // Voice note intercept — transcribe and use as text prompt

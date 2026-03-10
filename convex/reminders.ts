@@ -9,6 +9,7 @@ import { Id } from "./_generated/dataModel";
 import {
   MAX_REMINDERS_PER_USER,
   WHATSAPP_SESSION_WINDOW_MS,
+  TEMPLATE_INACTIVITY_GATE_MS,
 } from "./constants";
 import { getNextCronRun } from "./lib/cronParser";
 
@@ -86,6 +87,30 @@ export const fireReminder = internalAction({
     });
     if (!user) {
       await ctx.runMutation(internal.reminders.markJobDone, { jobId });
+      return;
+    }
+
+    // Skip opted-out, dormant, or inactive (>7 days) users
+    const isInactive = !user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
+    if (user.optedOut || user.dormant || isInactive) {
+      console.log(`[reminder] Reminder ${jobId} skipped — user ${job.userId} opted out, dormant, or inactive >7 days`);
+      // Still mark done so it doesn't retry, but schedule next recurrence
+      await ctx.runMutation(internal.reminders.markJobDone, { jobId });
+      if (job.cronExpr && job.timezone) {
+        try {
+          const nextRunAt = getNextCronRun(job.cronExpr, job.timezone, new Date());
+          await ctx.runMutation(internal.reminders.createReminder, {
+            userId: job.userId,
+            payload: job.payload,
+            runAt: nextRunAt,
+            cronExpr: job.cronExpr,
+            timezone: job.timezone!,
+            isReschedule: true,
+          });
+        } catch (error) {
+          console.error(`Failed to schedule next recurring reminder for ${jobId}:`, error);
+        }
+      }
       return;
     }
 
