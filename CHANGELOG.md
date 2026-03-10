@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.3...v0.37.0) (2026-03-10)
+
+
+### Features
+
+* typing indicator via 360dialog Cloud API ([#187](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/187)) ([c530836](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/c5308363c2f24c76376968987a63c9dee2943532))
+
 ## [0.36.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.2...v0.36.3) (2026-03-10)
 
 
