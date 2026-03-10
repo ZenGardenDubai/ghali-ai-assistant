@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.38.1...v0.39.0) (2026-03-10)
+
+
+### Features
+
+* template message policy — 7-day inactivity gate and opt-out coverage ([#199](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/199)) ([f42affc](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/f42affc92afc72a00ffdacbf18d9646fef985d4e))
+
 ## [0.38.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.38.0...v0.38.1) (2026-03-10)
 
 
