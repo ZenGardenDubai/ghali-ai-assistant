@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.37.0...v0.37.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* suppress internal reflection text from leaking as WhatsApp messages ([#189](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/189)) ([ac3a514](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/ac3a51468fa19cee604c30fca73153ba6ba0205c))
+
 ## [0.37.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.3...v0.37.0) (2026-03-10)
 
 
