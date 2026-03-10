@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.35.2...v0.36.0) (2026-03-10)
+
+
+### Features
+
+* migrate WhatsApp BSP from Twilio to 360dialog ([#175](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/175)) ([cb0cc80](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/cb0cc80e51ad09228554e14d265e9fcdff87be7c))
+
 ## [0.35.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.35.1...v0.35.2) (2026-03-09)
 
 
