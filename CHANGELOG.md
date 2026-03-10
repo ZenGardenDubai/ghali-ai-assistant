@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.38.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.38.0...v0.38.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* proxy 360dialog media downloads to avoid 401 ([#197](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/197)) ([07080d8](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/07080d80b245437bcb6393f068bcbb3e7f3066f2))
+
 ## [0.38.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.37.1...v0.38.0) (2026-03-10)
 
 
