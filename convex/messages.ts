@@ -128,6 +128,48 @@ export const REFLECTION_TOOL_NAMES = new Set([
 ]);
 
 /**
+ * Patterns that indicate the start of an inline reflection block.
+ * The LLM sometimes embeds internal narration directly in the response text
+ * instead of emitting it in a separate step. These patterns match the known
+ * headers the model uses, and everything from the first match to the end of
+ * the text is stripped.
+ */
+const INLINE_REFLECTION_PATTERNS: RegExp[] = [
+  /\n\s*\*{0,2}Reflecting on\b/i,
+  /\n\s*\*{0,2}Silent reflection\b/i,
+  /\n\s*\*{0,2}Identity and memory update/i,
+  // Require "..." or a newline after the colon to avoid matching legitimate
+  // agent replies like "Memory update: your preference was saved".
+  /\n\s*\*{0,2}Memory update\s*[:—]\s*\n/i,
+  /\n\s*\*{0,2}Profile update\s*[:—]\s*\n/i,
+  /\n\s*\*{0,2}Behavioral pattern/i,
+  /\n\s*\*{0,2}Internal note/i,
+];
+
+/**
+ * Strip inline reflection blocks from a response text.
+ *
+ * Sometimes the LLM ignores the "SILENT REFLECTION" instruction and embeds
+ * internal narration (e.g. "**Reflecting on behavioral patterns...**")
+ * directly within the user-facing reply. This function finds the earliest
+ * such block and removes everything from that point onward.
+ */
+export function stripInlineReflection(text: string): string {
+  if (!text) return text;
+
+  let earliest = -1;
+  for (const pattern of INLINE_REFLECTION_PATTERNS) {
+    const match = pattern.exec(text);
+    if (match && (earliest === -1 || match.index < earliest)) {
+      earliest = match.index;
+    }
+  }
+
+  if (earliest === -1) return text;
+  return text.slice(0, earliest).trimEnd();
+}
+
+/**
  * Extract the user-facing response text from agent generation steps.
  *
  * After generating a response the agent calls memory/profile update tools
@@ -140,14 +182,26 @@ export const REFLECTION_TOOL_NAMES = new Set([
  * A step's text is suppressed when ALL of the following are true:
  *   1. The step has no tool calls (it is a terminating text-only step).
  *   2. The immediately preceding step called ONLY reflection tools.
+ *   3. A user-facing response was already captured from an earlier step.
+ *
+ * Condition 3 prevents false suppression when the agent does real work
+ * (e.g. addItem) in an earlier step, then reflects, then emits the reply
+ * as the first text — since no prior text was captured, it must be the
+ * actual response, not a reflection leak.
  *
  * This covers the two common reflection-leak patterns:
  *   Pattern A — main response + reflection tool in step 0, reflection text in step 1.
  *   Pattern C — web search (step 0) → response + reflection tool (step 1) → reflection text (step 2).
  *
+ * But correctly preserves the reply in patterns like:
+ *   addItem (step 0) → appendToMemory (step 1) → reply text (step 2).
+ *
  * The function also recovers the user-facing text when the model produces an
  * empty final step (no text) after reflection tools, returning the text from
  * the last substantive response step instead.
+ *
+ * As a final safety net, inline reflection blocks are stripped from the
+ * returned text via {@link stripInlineReflection}.
  */
 export function extractResponseText(
   steps: Array<{ text: string; toolCalls: Array<{ toolName: string }> }>
@@ -160,18 +214,21 @@ export function extractResponseText(
 
     // Detect reflection-leak: this step has no tool calls (terminating step)
     // and the previous step called only reflection tools.
+    // But only suppress if we already captured user-facing text earlier —
+    // if lastGoodText is still empty, this must be the actual reply
+    // (e.g. addItem → appendToMemory → reply text).
     if (step.toolCalls.length === 0 && i > 0) {
       const prev = steps[i - 1];
       const prevOnlyReflection =
         prev.toolCalls.length > 0 &&
         prev.toolCalls.every((tc) => REFLECTION_TOOL_NAMES.has(tc.toolName));
-      if (prevOnlyReflection) continue; // suppress reflection text
+      if (prevOnlyReflection && lastGoodText) continue; // suppress reflection text
     }
 
     lastGoodText = step.text;
   }
 
-  return lastGoodText;
+  return stripInlineReflection(lastGoodText);
 }
 
 /**
