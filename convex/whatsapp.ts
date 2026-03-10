@@ -35,9 +35,15 @@ export const sendMedia = internalAction({
     to: v.string(),
     caption: v.string(),
     mediaUrl: v.string(),
+    mediaType: v.optional(v.union(
+      v.literal("image"),
+      v.literal("document"),
+      v.literal("audio"),
+      v.literal("video"),
+    )),
   },
-  handler: async (_ctx, { to, caption, mediaUrl }) => {
-    await sendWhatsAppMedia(getSendOptions(to), caption, mediaUrl);
+  handler: async (_ctx, { to, caption, mediaUrl, mediaType }) => {
+    await sendWhatsAppMedia(getSendOptions(to), caption, mediaUrl, mediaType);
   },
 });
 
