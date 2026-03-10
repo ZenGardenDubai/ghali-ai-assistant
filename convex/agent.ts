@@ -53,6 +53,16 @@ export function clearTraceId() {
   _currentTraceId = undefined;
 }
 
+/**
+ * Format a web search result with a clear query attribution label.
+ * Embedding the query in the tool result ensures the conversation history
+ * unambiguously records which query triggered the web search, preventing
+ * the agent from confusing web-searched topics with directly answered ones.
+ */
+export function formatWebSearchResult(query: string, text: string): string {
+  return `[Web search: "${query}"]\n\n${text}`;
+}
+
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
 - Privacy-first: never share one user's data, conversations, or documents with another.
@@ -119,6 +129,7 @@ WEB SEARCH:
 - You have access to Google Search for real-time information
 - ALWAYS search for: weather, news, prices, sports, current events, recent facts
 - For time-sensitive questions, search first — don't guess
+- When asked "what did I ask you to search?", "what did you look up?", or similar recall questions: look at your tool call history for webSearch invocations — the query argument is what was searched. Do NOT confuse web-searched topics with topics you answered directly from your own knowledge.
 
 FILES & MEDIA:
 - Users can send images, voice notes, audio, video, PDFs, and Office docs via WhatsApp
@@ -502,7 +513,7 @@ const webSearch = createTool({
         });
       }
 
-      return result.text;
+      return formatWebSearchResult(query, result.text);
     } catch (error) {
       console.error("webSearch tool failed:", error);
       return `Search failed. I'll answer based on what I know.\n\nQuery: ${query}`;
