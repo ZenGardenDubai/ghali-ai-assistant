@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.4...v0.39.5) (2026-03-10)
+
+
+### Bug Fixes
+
+* show active vs dormant user counts in admin stats ([#210](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/210)) ([bb6bdda](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/bb6bdda806ddf4048d155eed0f02b9c3e7fd1bff))
+
 ## [0.39.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.3...v0.39.4) (2026-03-10)
 
 
