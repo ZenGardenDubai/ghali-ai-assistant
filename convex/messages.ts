@@ -112,6 +112,69 @@ export function extractImageFromSteps(
 }
 
 /**
+ * Tool names that perform silent background operations (memory/profile updates).
+ * After these tools run, the agent should produce no text — only tool calls.
+ * Any text emitted by the agent in the step immediately following a reflection-only
+ * tool call is internal reasoning that must never reach the outbound message queue.
+ */
+export const REFLECTION_TOOL_NAMES = new Set([
+  "appendToMemory",
+  "editMemory",
+  "updateProfile",
+  "updatePersonality",
+  "updateHeartbeat",
+  "updateLanguageSetting",
+  "updateTimezoneSetting",
+]);
+
+/**
+ * Extract the user-facing response text from agent generation steps.
+ *
+ * After generating a response the agent calls memory/profile update tools
+ * (appendToMemory, updateProfile, etc.) silently.  The LLM occasionally emits
+ * a "reflection" text in the final step after those tool calls complete — e.g.
+ * "Reflecting on Hesham's profile: Professional: Still ED at UAE PMO…"
+ * This internal narration must never be sent to the user.
+ *
+ * Algorithm: walk steps in order, tracking the last "user-facing" text.
+ * A step's text is suppressed when ALL of the following are true:
+ *   1. The step has no tool calls (it is a terminating text-only step).
+ *   2. The immediately preceding step called ONLY reflection tools.
+ *
+ * This covers the two common reflection-leak patterns:
+ *   Pattern A — main response + reflection tool in step 0, reflection text in step 1.
+ *   Pattern C — web search (step 0) → response + reflection tool (step 1) → reflection text (step 2).
+ *
+ * The function also recovers the user-facing text when the model produces an
+ * empty final step (no text) after reflection tools, returning the text from
+ * the last substantive response step instead.
+ */
+export function extractResponseText(
+  steps: Array<{ text: string; toolCalls: Array<{ toolName: string }> }>
+): string {
+  let lastGoodText = "";
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    if (!step.text?.trim()) continue;
+
+    // Detect reflection-leak: this step has no tool calls (terminating step)
+    // and the previous step called only reflection tools.
+    if (step.toolCalls.length === 0 && i > 0) {
+      const prev = steps[i - 1];
+      const prevOnlyReflection =
+        prev.toolCalls.length > 0 &&
+        prev.toolCalls.every((tc) => REFLECTION_TOOL_NAMES.has(tc.toolName));
+      if (prevOnlyReflection) continue; // suppress reflection text
+    }
+
+    lastGoodText = step.text;
+  }
+
+  return lastGoodText;
+}
+
+/**
  * Save an incoming WhatsApp message and schedule async processing.
  * Called by the HTTP webhook handler.
  */
@@ -770,7 +833,11 @@ export const generateResponse = internalAction({
             : prompt,
         }
       );
-      responseText = result.text;
+      // Use extractResponseText instead of result.text to suppress reflection
+      // text that the agent emits after silent memory/profile update tool calls.
+      // Do NOT fall back to result.text — if extraction returns '' it means the
+      // final step text was correctly suppressed as a reflection leak.
+      responseText = extractResponseText(result.steps);
       aiSucceeded = true;
       // Reset the circuit breaker on a successful response
       await ctx.runMutation(internal.users.resetApiErrors, { userId: typedUserId });
