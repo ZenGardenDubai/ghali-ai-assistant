@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.0...v0.39.1) (2026-03-10)
+
+
+### Bug Fixes
+
+* admin template send broken by Twilio→360dialog field mismatch ([#201](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/201)) ([06e2dc1](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/06e2dc1a05a0f480c3b67c44a7a756d7ca157c30))
+
 ## [0.39.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.38.1...v0.39.0) (2026-03-10)
 
 
