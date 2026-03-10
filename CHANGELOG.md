@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.2...v0.39.3) (2026-03-10)
+
+
+### Bug Fixes
+
+* document processing failures — MIME inference, silent errors, and broken tool result extraction ([#206](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/206)) ([60c0f66](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/60c0f66889621321986d2b7bf8d73f64c11467f7)), closes [#202](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/202)
+
 ## [0.39.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.1...v0.39.2) (2026-03-10)
 
 
