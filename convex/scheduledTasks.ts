@@ -187,9 +187,12 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Skip opted-out or dormant users
+    // Skip opted-out or dormant users — but reschedule cron so it resumes on reactivation
     if (user.optedOut || user.dormant) {
       console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out or dormant`);
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      }
       return;
     }
 

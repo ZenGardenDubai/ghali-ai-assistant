@@ -369,7 +369,7 @@ export const sendTemplateToUser = internalAction({
   handler: async (ctx, { phone, templateName, variables, mediaUrl }) => {
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
-    if (user.dormant) return { success: false, reason: "User is dormant", sentCount: 0 };
+    if (user.dormant || user.optedOut) return { success: true, sentCount: 0 };
 
     const isActive =
       !!user.lastMessageAt &&
