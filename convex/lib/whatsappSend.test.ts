@@ -85,6 +85,40 @@ describe("sendWhatsAppMedia", () => {
     expect(body.image.caption).toBe("Check this image");
     expect(body.image.link).toBe("https://example.com/image.jpg");
   });
+
+  it("uses mediaTypeHint when provided instead of inferring from URL", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.doc1" }] }), { status: 200 })
+    );
+
+    // Convex storage URL has no extension — would default to "image" without hint
+    await sendWhatsAppMedia(
+      options,
+      "Here's your PDF",
+      "https://xxx.convex.cloud/api/storage/abc123",
+      "document"
+    );
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.type).toBe("document");
+    expect(body.document.caption).toBe("Here's your PDF");
+    expect(body.document.link).toBe("https://xxx.convex.cloud/api/storage/abc123");
+  });
+
+  it("falls back to URL inference when no mediaTypeHint provided", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: "wamid.pdf1" }] }), { status: 200 })
+    );
+
+    await sendWhatsAppMedia(
+      options,
+      "Here's a PDF",
+      "https://example.com/report.pdf"
+    );
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.type).toBe("document");
+  });
 });
 
 describe("sendWhatsAppTemplate", () => {

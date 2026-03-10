@@ -88,10 +88,11 @@ function inferMediaType(mediaUrl: string): "image" | "document" | "audio" | "vid
 export async function sendWhatsAppMedia(
   options: WhatsAppSendOptions,
   caption: string,
-  mediaUrl: string
+  mediaUrl: string,
+  mediaTypeHint?: "image" | "document" | "audio" | "video"
 ): Promise<void> {
   const to = normalizePhoneForApi(options.to);
-  const mediaType = inferMediaType(mediaUrl);
+  const mediaType = mediaTypeHint ?? inferMediaType(mediaUrl);
 
   await cloudApiCall(options.apiKey, {
     recipient_type: "individual",

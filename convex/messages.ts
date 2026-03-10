@@ -73,6 +73,20 @@ export function parseConvertedFileResult(
 }
 
 /**
+ * Map a convertFile output format to the WhatsApp Cloud API media type.
+ * Convex storage URLs have no file extension, so we can't infer from URL.
+ */
+export function convertedFormatToWhatsAppType(
+  outputFormat: string
+): "image" | "document" | "audio" | "video" {
+  const fmt = outputFormat.toLowerCase();
+  if (["png", "jpg", "jpeg", "webp"].includes(fmt)) return "image";
+  if (["mp3", "wav", "ogg", "aac", "flac"].includes(fmt)) return "audio";
+  if (["mp4", "webm", "3gpp", "mov"].includes(fmt)) return "video";
+  return "document";
+}
+
+/**
  * Extract the string value from a tool result, handling both formats:
  * - Legacy (AI SDK v5 / older @convex-dev/agent): `result` is a plain string
  * - Current (@convex-dev/agent 0.3.x): `output` is `{ type: "text", value: "..." }`
@@ -358,7 +372,8 @@ export const generateResponse = internalAction({
      */
     async function guardedSendMedia(
       caption: string,
-      mediaUrlToSend: string
+      mediaUrlToSend: string,
+      mediaType?: "image" | "document" | "audio" | "video"
     ): Promise<boolean> {
       if (responseSent) {
         console.warn(
@@ -382,6 +397,7 @@ export const generateResponse = internalAction({
           to: user!.phone,
           caption,
           mediaUrl: mediaUrlToSend,
+          mediaType,
         });
       } catch (error) {
         console.error(
@@ -999,9 +1015,10 @@ export const generateResponse = internalAction({
 
     // Send the primary reply first — this is what the user is waiting for
     if (convertedResult) {
-      await guardedSendMedia(convertedResult.caption, convertedResult.fileUrl);
+      const waMediaType = convertedFormatToWhatsAppType(convertedResult.outputFormat);
+      await guardedSendMedia(convertedResult.caption, convertedResult.fileUrl, waMediaType);
     } else if (imageResult) {
-      await guardedSendMedia(imageResult.caption, imageResult.imageUrl);
+      await guardedSendMedia(imageResult.caption, imageResult.imageUrl, "image");
     } else if (responseText) {
       await guardedSendMessage(responseText);
     }

@@ -8,6 +8,7 @@ import {
   extractToolResultText,
   parseConvertedFileResult,
   extractConvertedFileFromSteps,
+  convertedFormatToWhatsAppType,
 } from "./messages";
 
 // Helper to build a step for tests
@@ -420,5 +421,29 @@ describe("extractConvertedFileFromSteps", () => {
 
   it("returns null for empty steps", () => {
     expect(extractConvertedFileFromSteps([])).toBeNull();
+  });
+});
+
+describe("convertedFormatToWhatsAppType", () => {
+  it("maps document formats to 'document'", () => {
+    expect(convertedFormatToWhatsAppType("pdf")).toBe("document");
+    expect(convertedFormatToWhatsAppType("docx")).toBe("document");
+    expect(convertedFormatToWhatsAppType("csv")).toBe("document");
+  });
+
+  it("maps image formats to 'image'", () => {
+    expect(convertedFormatToWhatsAppType("png")).toBe("image");
+    expect(convertedFormatToWhatsAppType("jpg")).toBe("image");
+    expect(convertedFormatToWhatsAppType("webp")).toBe("image");
+  });
+
+  it("maps audio formats to 'audio'", () => {
+    expect(convertedFormatToWhatsAppType("mp3")).toBe("audio");
+    expect(convertedFormatToWhatsAppType("wav")).toBe("audio");
+    expect(convertedFormatToWhatsAppType("ogg")).toBe("audio");
+  });
+
+  it("defaults unknown formats to 'document'", () => {
+    expect(convertedFormatToWhatsAppType("xyz")).toBe("document");
   });
 });
