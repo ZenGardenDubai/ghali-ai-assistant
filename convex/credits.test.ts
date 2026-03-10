@@ -183,4 +183,28 @@ describe("resetCredits", () => {
     const user = await t.query(internal.users.getUser, { userId });
     expect(user!.credits).toBe(30);
   });
+
+  it("still resets credits for inactive users (no lastMessageAt) — just skips notification", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // User whose reset is due but has no lastMessageAt (inactive cold contact)
+    await t.mutation(internal.users.updateUser, {
+      userId,
+      fields: {
+        credits: 5,
+        creditsResetAt: Date.now() - 1000,
+      },
+    });
+
+    // No lastMessageAt set — simulates cold contact; credit reset runs but skips notification
+    await t.mutation(internal.credits.resetCredits, {});
+
+    // Credits should still be reset even though no notification will be sent
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(60);
+  });
 });

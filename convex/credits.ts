@@ -7,6 +7,7 @@ import {
   CREDITS_PRO,
   CREDIT_RESET_PERIOD_MS,
   WHATSAPP_SESSION_WINDOW_MS,
+  TEMPLATE_INACTIVITY_GATE_MS,
 } from "./constants";
 
 /**
@@ -81,13 +82,17 @@ export const resetCredits = internalMutation({
           creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
         });
 
-        // Notify user — guarded to respect outbound rate limits
+        // Notify user — guarded to respect outbound rate limits and inactivity gate
         const withinWindow =
           user.lastMessageAt &&
           now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+        const withinInactivityGate =
+          user.lastMessageAt &&
+          now - user.lastMessageAt < TEMPLATE_INACTIVITY_GATE_MS;
         const tierLabel = user.tier === "pro" ? "Pro" : "Basic";
 
         if (withinWindow) {
+          // Within 24h session — send free-form text
           await ctx.scheduler.runAfter(
             resetCount * 500,
             internal.whatsapp.guardedSendMessage,
@@ -97,7 +102,8 @@ export const resetCredits = internalMutation({
               body: `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`,
             }
           );
-        } else {
+        } else if (withinInactivityGate) {
+          // Outside 24h session but active within 7 days — use template
           await ctx.scheduler.runAfter(
             resetCount * 500,
             internal.whatsapp.guardedSendTemplate,
@@ -112,6 +118,7 @@ export const resetCredits = internalMutation({
             }
           );
         }
+        // else: user inactive >7 days — skip notification to avoid spam flags
 
         // Reset creditNotificationSent on all user's scheduled tasks
         await ctx.scheduler.runAfter(0, internal.scheduledTasks.resetCreditNotifications, {

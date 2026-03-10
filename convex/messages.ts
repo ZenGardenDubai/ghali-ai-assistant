@@ -357,6 +357,15 @@ export const generateResponse = internalAction({
       : await classifyCommand(body);
     const messageForCredits = canonicalCommand ?? body;
 
+    // Re-enable template delivery for opted-out users who send any non-STOP message.
+    // Rationale: if a user messages Ghali again after opting out, they've re-engaged.
+    // Opt-out was about unsolicited pushes, not blocking all future templates forever.
+    // START still works as before; this just makes any inbound message equivalent.
+    if (user.optedOut && canonicalCommand !== "stop") {
+      await ctx.runMutation(internal.accountControl.triggerOptIn, { userId: typedUserId });
+      user = { ...user, optedOut: false };
+    }
+
     // Send onboarding infographic before step 1 welcome (if configured and enabled)
     let sentInfographic = false;
     if (user.onboardingStep === 1) {

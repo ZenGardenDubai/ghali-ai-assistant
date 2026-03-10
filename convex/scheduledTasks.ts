@@ -11,6 +11,7 @@ import {
   SCHEDULED_TASKS_LIMIT_PRO,
   SCHEDULED_TASK_MAX_RESULT_LENGTH,
   WHATSAPP_SESSION_WINDOW_MS,
+  TEMPLATE_INACTIVITY_GATE_MS,
 } from "./constants";
 import { getNextCronRun } from "./lib/cronParser";
 import { getCurrentDateTime } from "./lib/utils";
@@ -235,9 +236,13 @@ export const executeScheduledTask = internalAction({
           { userId: task.userId }
         );
         if (guard.allowed) {
+          const now = Date.now();
           const withinWindow =
             user.lastMessageAt &&
-            Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+            now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+          const withinInactivityGate =
+            user.lastMessageAt &&
+            now - user.lastMessageAt < TEMPLATE_INACTIVITY_GATE_MS;
 
           try {
             if (withinWindow) {
@@ -245,13 +250,15 @@ export const executeScheduledTask = internalAction({
                 to: user.phone,
                 body: `Your scheduled task "${task.title}" couldn't run — you're out of credits. Send "upgrade" to get more.`,
               });
-            } else {
+            } else if (withinInactivityGate) {
+              // Outside 24h window but active within 7 days — use template
               await ctx.runAction(internal.whatsapp.sendTemplate, {
                 to: user.phone,
                 templateName: "ghali_credits_low",
                 variables: { "1": "0" },
               });
             }
+            // else: user inactive >7 days — skip template to avoid spam flags
             notificationSent = true;
           } catch (error) {
             console.error(`Failed to send credit notification for task ${taskId}:`, error);
@@ -418,29 +425,39 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
+    const nowDelivery = Date.now();
     const withinWindow =
       latestUser.lastMessageAt &&
-      Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      nowDelivery - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+    const withinInactivityGate =
+      latestUser.lastMessageAt &&
+      nowDelivery - latestUser.lastMessageAt < TEMPLATE_INACTIVITY_GATE_MS;
 
     let delivered = false;
-    try {
-      if (withinWindow) {
-        await ctx.runAction(internal.whatsapp.sendMessage, {
-          to: latestUser.phone,
-          body: responseText,
-        });
-      } else {
-        // Out of session — use template with truncation
-        const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
-        await ctx.runAction(internal.whatsapp.sendTemplate, {
-          to: latestUser.phone,
-          templateName: "ghali_scheduled_task",
-          variables: { "1": truncated },
-        });
+    if (!withinWindow && !withinInactivityGate) {
+      // User inactive >7 days — skip template to avoid spam flags
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} inactive for >7 days`);
+      delivered = true; // Treat as delivered so cron reschedules normally
+    } else {
+      try {
+        if (withinWindow) {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: latestUser.phone,
+            body: responseText,
+          });
+        } else {
+          // Out of session but within 7-day gate — use template with truncation
+          const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
+            to: latestUser.phone,
+            templateName: "ghali_scheduled_task",
+            variables: { "1": truncated },
+          });
+        }
+        delivered = true;
+      } catch (error) {
+        console.error(`Failed to deliver scheduled task ${taskId}:`, error);
       }
-      delivered = true;
-    } catch (error) {
-      console.error(`Failed to deliver scheduled task ${taskId}:`, error);
     }
 
     if (!delivered) {

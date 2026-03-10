@@ -4,7 +4,7 @@ import { internal } from "./_generated/api";
 import { ghaliAgent, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
-import { WHATSAPP_SESSION_WINDOW_MS } from "./constants";
+import { WHATSAPP_SESSION_WINDOW_MS, TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
 import { extractResponseText } from "./messages";
 
 /**
@@ -16,9 +16,15 @@ export const processHeartbeats = internalMutation({
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
 
+    const now = Date.now();
     for (const user of allUsers) {
       // Skip opted-out users
       if (user.optedOut) continue;
+
+      // 7-day inactivity gate — don't run heartbeat AI for cold contacts.
+      // If inactive >7 days, any delivery would require a template (outside 24h window),
+      // which we must not send to cold contacts. Skip entirely to save compute.
+      if (!user.lastMessageAt || now - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
 
       // Check heartbeat file
       const heartbeatFile = await ctx.db
@@ -135,9 +141,13 @@ ${SYSTEM_BLOCK}
         return;
       }
 
+      const now = Date.now();
       const latestWithinWindow =
         latestUser.lastMessageAt &&
-        Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+        now - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      const latestWithinInactivityGate =
+        latestUser.lastMessageAt &&
+        now - latestUser.lastMessageAt < TEMPLATE_INACTIVITY_GATE_MS;
 
       try {
         if (latestWithinWindow) {
@@ -145,13 +155,16 @@ ${SYSTEM_BLOCK}
             to: latestUser.phone,
             body: responseText,
           });
-        } else {
-          // Outside 24h window — use Content Template
+        } else if (latestWithinInactivityGate) {
+          // Outside 24h window but active within 7 days — use Content Template
           await ctx.runAction(internal.whatsapp.sendTemplate, {
             to: latestUser.phone,
             templateName: "ghali_heartbeat",
             variables: { "1": responseText },
           });
+        } else {
+          // User inactive >7 days — skip template to avoid spam flags
+          console.log(`[heartbeat] Delivery skipped — user ${userId} inactive for >7 days`);
         }
       } catch (error) {
         console.error(`Heartbeat delivery failed for user ${userId}:`, error);

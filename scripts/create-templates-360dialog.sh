@@ -144,7 +144,7 @@ submit_image_template "ghali_broadcast_image" "MARKETING" \
 
 # 5. ghali_credits_reset — UTILITY, 2 vars
 submit_template "ghali_credits_reset" "UTILITY" \
-  '"Your {{2}} credits have been refreshed. You now have {{1}} credits for this month."' \
+  '"Your {{2}} credits have been refreshed. You now have {{1}} credits for this month.\n\n_Reply STOP to unsubscribe from these notifications._"' \
   '["60", "Basic"]' || true
 
 # 6. ghali_credits_low — UTILITY, 1 var

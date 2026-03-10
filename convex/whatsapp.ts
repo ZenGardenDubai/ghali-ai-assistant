@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, downloadMedia } from "./lib/whatsappSend";
 import { buildTypingIndicatorPayload } from "./lib/whatsapp";
 import { TEMPLATE_DEFINITIONS } from "./admin";
+import { TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
 
 const ALLOWED_TEMPLATE_NAMES: Set<string> = new Set(TEMPLATE_DEFINITIONS.map((t) => t.name));
 
@@ -127,6 +128,15 @@ export const guardedSendTemplate = internalAction({
     // Re-check opt-out — user may have sent STOP between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user || user.optedOut) return;
+
+    // 7-day inactivity gate — never send proactive templates to cold contacts.
+    // Users inactive beyond this window have not engaged recently; unsolicited templates
+    // risk spam flags. Any re-engagement (inbound message) resets this gate automatically.
+    const now = Date.now();
+    if (!user.lastMessageAt || now - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) {
+      console.log(`[guardedSendTemplate] Skipped — user ${userId} inactive for >7 days`);
+      return;
+    }
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
