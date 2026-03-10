@@ -151,6 +151,24 @@ export function parseCloudApiWebhook(
 }
 
 // ============================================================================
+// Typing Indicator
+// ============================================================================
+
+/**
+ * Build the payload for the 360dialog typing indicator API call.
+ * Marks the incoming message as read (blue ticks) and shows typing dots
+ * for up to 25 seconds or until Ghali replies.
+ */
+export function buildTypingIndicatorPayload(messageId: string): Record<string, unknown> {
+  return {
+    messaging_product: "whatsapp",
+    status: "read",
+    message_id: messageId,
+    typing_indicator: { type: "text" },
+  };
+}
+
+// ============================================================================
 // Cloud API Webhook Payload Types
 // ============================================================================
 
