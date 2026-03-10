@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.2...v0.36.3) (2026-03-10)
+
+
+### Bug Fixes
+
+* revert 360dialog media URL to correct v2 format ([#183](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/183)) ([dbdf5c8](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/dbdf5c897aae664ce662030f3303833b18c92922)), closes [#182](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/182)
+
 ## [0.36.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.36.1...v0.36.2) (2026-03-10)
 
 
