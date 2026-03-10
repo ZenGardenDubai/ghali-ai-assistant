@@ -255,6 +255,35 @@ export const MEDIA_CATEGORY_PREFIX_MAP = {
 export type MediaCategory = keyof typeof MEDIA_CATEGORY_PREFIX_MAP;
 
 // ============================================================================
+// MIME Type Inference from Filename
+// ============================================================================
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  csv: "text/csv",
+  txt: "text/plain",
+  json: "application/json",
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+};
+
+/**
+ * Infer MIME type from a filename extension.
+ * Used as fallback when WhatsApp sends documents with generic
+ * `application/octet-stream` or missing MIME type.
+ */
+export function inferMimeTypeFromFilename(
+  filename: string | undefined
+): string | null {
+  if (!filename) return null;
+  const lastDot = filename.lastIndexOf(".");
+  if (lastDot === -1) return null;
+  const ext = filename.slice(lastDot + 1).toLowerCase();
+  return EXTENSION_TO_MIME[ext] ?? null;
+}
+
+// ============================================================================
 // Utilities
 // ============================================================================
 

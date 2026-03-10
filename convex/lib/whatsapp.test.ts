@@ -304,6 +304,188 @@ describe("parseCloudApiWebhook", () => {
     const messages = parseCloudApiWebhook(payload);
     expect(messages).toHaveLength(0);
   });
+
+  it("infers MIME type from filename when document has application/octet-stream", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                contacts: [],
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.csv1",
+                    timestamp: "123",
+                    type: "document",
+                    document: {
+                      id: "MEDIA_CSV",
+                      mime_type: "application/octet-stream",
+                      filename: "data.csv",
+                    },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const messages = parseCloudApiWebhook(payload);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].mediaContentType).toBe("text/csv");
+  });
+
+  it("infers MIME type from filename when document mime_type is missing", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                contacts: [],
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.docx1",
+                    timestamp: "123",
+                    type: "document",
+                    document: {
+                      id: "MEDIA_DOCX",
+                      filename: "report.docx",
+                    },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const messages = parseCloudApiWebhook(payload);
+    expect(messages).toHaveLength(1);
+    expect(messages[0].mediaContentType).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("keeps original MIME type when it is specific (not octet-stream)", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                contacts: [],
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.pdf1",
+                    timestamp: "123",
+                    type: "document",
+                    document: {
+                      id: "MEDIA_PDF",
+                      mime_type: "application/pdf",
+                      filename: "report.pdf",
+                    },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const messages = parseCloudApiWebhook(payload);
+    expect(messages[0].mediaContentType).toBe("application/pdf");
+  });
+
+  it("falls back to octet-stream when filename has unknown extension", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                contacts: [],
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.zip1",
+                    timestamp: "123",
+                    type: "document",
+                    document: {
+                      id: "MEDIA_ZIP",
+                      mime_type: "application/octet-stream",
+                      filename: "archive.zip",
+                    },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const messages = parseCloudApiWebhook(payload);
+    expect(messages[0].mediaContentType).toBe("application/octet-stream");
+  });
+
+  it("falls back to octet-stream when filename is missing", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                contacts: [],
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.noname",
+                    timestamp: "123",
+                    type: "document",
+                    document: {
+                      id: "MEDIA_NONAME",
+                      mime_type: "application/octet-stream",
+                    },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const messages = parseCloudApiWebhook(payload);
+    expect(messages[0].mediaContentType).toBe("application/octet-stream");
+  });
 });
 
 describe("buildTypingIndicatorPayload", () => {
