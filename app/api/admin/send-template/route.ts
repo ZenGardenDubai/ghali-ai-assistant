@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   return adminConvexFetch("/admin/send-template", {
     phone: body.phone,
-    templateEnvVar: body.templateEnvVar,
+    templateName: body.templateName,
     variables: body.variables,
     mediaUrl: body.mediaUrl,
   });

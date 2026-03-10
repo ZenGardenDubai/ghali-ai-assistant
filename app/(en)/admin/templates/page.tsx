@@ -101,8 +101,8 @@ export default function TemplatesPage() {
     }
   }, [selected, selectedTemplate]);
 
-  // Build ContentVariables as {"1": "val", "2": "val"}
-  function buildContentVariables(): Record<string, string> {
+  // Build template variables as {"1": "val", "2": "val"} for 360dialog Cloud API
+  function buildTemplateVariables(): Record<string, string> {
     if (!selectedTemplate) return {};
     const cv: Record<string, string> = {};
     selectedTemplate.variables.forEach((v, i) => {
@@ -116,7 +116,7 @@ export default function TemplatesPage() {
     setSending(mode);
     setResult(null);
 
-    const contentVars = buildContentVariables();
+    const templateVars = buildTemplateVariables();
     const media = imageUrl.trim() || undefined;
     let endpoint: string;
     let body: Record<string, unknown>;
@@ -124,15 +124,15 @@ export default function TemplatesPage() {
     switch (mode) {
       case "test":
         endpoint = "/api/admin/send-test-template";
-        body = { templateEnvVar: selected, variables: contentVars, adminPhone, mediaUrl: media };
+        body = { templateName: selected, variables: templateVars, adminPhone, mediaUrl: media };
         break;
       case "user":
         endpoint = "/api/admin/send-template";
-        body = { templateEnvVar: selected, variables: contentVars, phone: userPhone, mediaUrl: media };
+        body = { templateName: selected, variables: templateVars, phone: userPhone, mediaUrl: media };
         break;
       case "broadcast":
         endpoint = "/api/admin/send-template-broadcast";
-        body = { templateEnvVar: selected, variables: contentVars, messageBody: preview, mediaUrl: media };
+        body = { templateName: selected, variables: templateVars, messageBody: preview, mediaUrl: media };
         break;
     }
 
@@ -183,7 +183,7 @@ export default function TemplatesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-white">Template Messages</h1>
         <p className="mt-1 text-sm text-white/40">
-          Send pre-approved WhatsApp Content Templates to users
+          Send pre-approved WhatsApp template messages to users via 360dialog
         </p>
       </div>
 
@@ -231,8 +231,8 @@ export default function TemplatesPage() {
                     />
                     <span className="text-white/40">
                       {selectedTemplate.configured
-                        ? "Content SID configured"
-                        : `Missing env var: ${selectedTemplate.key}`}
+                        ? "Template configured"
+                        : `Template not found: ${selectedTemplate.key}`}
                     </span>
                   </div>
                 )}

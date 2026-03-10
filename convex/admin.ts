@@ -304,6 +304,7 @@ export const getTemplateStatus = internalQuery({
   args: {},
   handler: async () => {
     return TEMPLATE_DEFINITIONS.map((t) => ({
+      key: t.name, // 360dialog uses template names directly (no env var / ContentSid)
       name: t.name,
       description: t.description,
       variables: t.variables as unknown as string[],
@@ -314,7 +315,7 @@ export const getTemplateStatus = internalQuery({
 });
 
 /** Render a template preview by replacing {{1}}, {{2}}, etc. with variable values. */
-function renderTemplatePreview(preview: string, variables: Record<string, string>): string {
+export function renderTemplatePreview(preview: string, variables: Record<string, string>): string {
   let rendered = preview;
   for (const [key, value] of Object.entries(variables)) {
     rendered = rendered.replace(`{{${key}}}`, value);
