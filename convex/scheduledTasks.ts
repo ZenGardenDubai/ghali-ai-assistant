@@ -353,6 +353,15 @@ export const executeScheduledTask = internalAction({
       clearTraceId();
     }
 
+    // Guard: if AI succeeded but returned empty text, fall back to the task title.
+    // This prevents a completely silent failure where the one-off task is permanently
+    // disabled with no delivery and no user notification — which is the most likely
+    // cause of reminder non-delivery (agent produces only tool calls, no text output).
+    if (aiSucceeded && !responseText) {
+      console.warn(`[scheduled-task] Task ${taskId} produced empty response — falling back to title delivery`);
+      responseText = `⏰ ${task.title}`;
+    }
+
     if (!aiSucceeded || !responseText) {
       // Only notify on the FIRST consecutive AI failure (same discipline as messages.ts).
       // Suppresses notification during backoff AND on 2nd+ pre-breaker failures.

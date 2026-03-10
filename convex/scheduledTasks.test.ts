@@ -6,7 +6,7 @@ import {
   SCHEDULED_TASKS_LIMIT_BASIC,
   SCHEDULED_TASKS_LIMIT_PRO,
 } from "./constants";
-import { buildScheduledTaskPrompt, truncateForTemplate } from "./scheduledTasks";
+import { buildScheduledTaskPrompt, truncateForTemplate, shouldNotifyOnFailure } from "./scheduledTasks";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -640,6 +640,46 @@ describe("buildScheduledTaskPrompt", () => {
       "context"
     );
     expect(result).toContain("Respond in the user's preferred language");
+  });
+});
+
+describe("shouldNotifyOnFailure", () => {
+  it("returns false for null user", () => {
+    expect(shouldNotifyOnFailure(null)).toBe(false);
+  });
+
+  it("returns false when no errors have occurred (consecutiveErrors = 0)", () => {
+    // This is the silent failure case: AI succeeded but produced no text.
+    // Before the fix, this caused tasks to be disabled silently — no notification.
+    // After the fix, the empty-text path is bypassed via the title fallback.
+    expect(shouldNotifyOnFailure({ consecutiveErrors: 0 })).toBe(false);
+  });
+
+  it("returns true on the first consecutive AI failure (consecutiveErrors = 1)", () => {
+    expect(shouldNotifyOnFailure({ consecutiveErrors: 1 })).toBe(true);
+  });
+
+  it("returns false on 2nd+ consecutive failures (no spam)", () => {
+    expect(shouldNotifyOnFailure({ consecutiveErrors: 2 })).toBe(false);
+    expect(shouldNotifyOnFailure({ consecutiveErrors: 3 })).toBe(false);
+  });
+
+  it("returns false when in error backoff period", () => {
+    expect(
+      shouldNotifyOnFailure({
+        consecutiveErrors: 1,
+        errorBackoffUntil: Date.now() + 60_000,
+      })
+    ).toBe(false);
+  });
+
+  it("returns true when backoff has expired", () => {
+    expect(
+      shouldNotifyOnFailure({
+        consecutiveErrors: 1,
+        errorBackoffUntil: Date.now() - 1,
+      })
+    ).toBe(true);
   });
 });
 
