@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, downloadMedia } from "./lib/whatsappSend";
+import { buildTypingIndicatorPayload } from "./lib/whatsapp";
 import { TEMPLATE_DEFINITIONS } from "./admin";
 
 const ALLOWED_TEMPLATE_NAMES: Set<string> = new Set(TEMPLATE_DEFINITIONS.map((t) => t.name));
@@ -136,5 +137,31 @@ export const guardedSendTemplate = internalAction({
       return;
     }
     await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+  },
+});
+
+/**
+ * Send a typing indicator to the user immediately after receiving their message.
+ * Marks the incoming message as read (blue double-ticks) and shows the
+ * three-dot typing animation for up to 25 seconds or until Ghali replies.
+ * Errors are swallowed silently — a failed indicator must never block processing.
+ */
+export const sendTypingIndicator = internalAction({
+  args: { messageId: v.string() },
+  handler: async (_ctx, { messageId }) => {
+    try {
+      const apiKey = process.env.DIALOG360_API_KEY!;
+      const baseUrl = process.env.DIALOG360_API_URL ?? "https://waba-v2.360dialog.io";
+      await fetch(`${baseUrl}/messages`, {
+        method: "POST",
+        headers: {
+          "D360-API-KEY": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildTypingIndicatorPayload(messageId)),
+      });
+    } catch (err) {
+      console.warn("[typing-indicator] Failed to send typing indicator:", err);
+    }
   },
 });

@@ -134,6 +134,14 @@ http.route({
           }
         }
 
+        // Fire typing indicator immediately (non-blocking)
+        // Shows read receipt (blue ticks) + three-dot typing animation for up to 25s
+        if (message.messageId) {
+          ctx.scheduler.runAfter(0, internal.whatsapp.sendTypingIndicator, {
+            messageId: message.messageId,
+          });
+        }
+
         // Find or create user + schedule async processing
         const userId = await ctx.runMutation(internal.users.findOrCreateUser, {
           phone: message.from,

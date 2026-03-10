@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   validateWebhookSignature,
   parseCloudApiWebhook,
+  buildTypingIndicatorPayload,
 } from "./whatsapp";
 import { createHmac } from "crypto";
 
@@ -302,5 +303,33 @@ describe("parseCloudApiWebhook", () => {
 
     const messages = parseCloudApiWebhook(payload);
     expect(messages).toHaveLength(0);
+  });
+});
+
+describe("buildTypingIndicatorPayload", () => {
+  it("produces correct payload shape for a given message ID", () => {
+    const payload = buildTypingIndicatorPayload("wamid.abc123");
+    expect(payload).toEqual({
+      messaging_product: "whatsapp",
+      status: "read",
+      message_id: "wamid.abc123",
+      typing_indicator: { type: "text" },
+    });
+  });
+
+  it("includes the exact message ID provided", () => {
+    const messageId = "wamid.HBgM971501234567VjIyBAAGHiQA1234";
+    const payload = buildTypingIndicatorPayload(messageId);
+    expect(payload.message_id).toBe(messageId);
+  });
+
+  it("always sets status to read", () => {
+    const payload = buildTypingIndicatorPayload("wamid.test");
+    expect(payload.status).toBe("read");
+  });
+
+  it("always sets typing_indicator type to text", () => {
+    const payload = buildTypingIndicatorPayload("wamid.test");
+    expect((payload.typing_indicator as { type: string }).type).toBe("text");
   });
 });
