@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate } from "./whatsappSend";
+import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, rewriteToProxy } from "./whatsappSend";
 
 const options = {
   apiKey: "test_api_key_123",
@@ -129,5 +129,33 @@ describe("sendWhatsAppTemplate", () => {
     await expect(
       sendWhatsAppTemplate(options, "ghali_reminder", { "1": "test" })
     ).rejects.toThrow("360dialog API error");
+  });
+});
+
+describe("rewriteToProxy", () => {
+  const baseUrl = "https://waba-v2.360dialog.io";
+
+  it("rewrites Facebook CDN URL to 360dialog proxy", () => {
+    const fbUrl = "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=123&ext=456&hash=abc";
+    const result = rewriteToProxy(fbUrl, baseUrl);
+    expect(result).toContain("waba-v2.360dialog.io");
+    expect(result).toContain("mid=123");
+    expect(result).toContain("ext=456");
+    expect(result).not.toContain("lookaside.fbsbx.com");
+  });
+
+  it("preserves URL that already matches base hostname", () => {
+    const url = "https://waba-v2.360dialog.io/some/path?q=1";
+    expect(rewriteToProxy(url, baseUrl)).toBe(url);
+  });
+
+  it("returns original URL for invalid input", () => {
+    expect(rewriteToProxy("not-a-url", baseUrl)).toBe("not-a-url");
+  });
+
+  it("rewrites protocol and clears port", () => {
+    const url = "http://cdn.example.com:8080/path";
+    const result = rewriteToProxy(url, baseUrl);
+    expect(result).toBe("https://waba-v2.360dialog.io/path");
   });
 });
