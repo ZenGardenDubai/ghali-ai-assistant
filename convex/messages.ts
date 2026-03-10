@@ -835,36 +835,34 @@ export const generateResponse = internalAction({
         is_new_session: sessionStarted,
       });
 
-      // Low-credit warning — fires once when balance crosses below the threshold.
-      // User just messaged so we're within the 24h session window — use normal message.
-      // Routed through outbound guard to prevent bypassing rate limits.
-      if (
-        newCredits <= CREDITS_LOW_THRESHOLD &&
-        user.credits > CREDITS_LOW_THRESHOLD
-      ) {
-        const lowCreditMsg = fillTemplate(
-          TEMPLATES.credits_low_warning.template,
-          { credits: newCredits }
-        );
-        const lowCreditGuard = await ctx.runMutation(
-          internal.outboundGuard.checkAndRecordOutbound,
-          { userId: typedUserId }
-        );
-        if (lowCreditGuard.allowed) {
-          await ctx.runAction(internal.whatsapp.sendMessage, {
-            to: user.phone,
-            body: lowCreditMsg,
-          });
-        }
-      }
     }
 
+    // Send the primary reply first — this is what the user is waiting for
     if (convertedResult) {
       await guardedSendMedia(convertedResult.caption, convertedResult.fileUrl);
     } else if (imageResult) {
       await guardedSendMedia(imageResult.caption, imageResult.imageUrl);
     } else if (responseText) {
       await guardedSendMessage(responseText);
+    }
+
+    // Low-credit warning — fires AFTER the main reply so it can't pre-empt it.
+    // Best-effort: scheduled follow-up so failures don't affect the user's response.
+    if (
+      aiSucceeded &&
+      creditCheck.status === "available" &&
+      (Math.max(0, user.credits - 1)) <= CREDITS_LOW_THRESHOLD &&
+      user.credits > CREDITS_LOW_THRESHOLD
+    ) {
+      const lowCreditMsg = fillTemplate(
+        TEMPLATES.credits_low_warning.template,
+        { credits: Math.max(0, user.credits - 1) }
+      );
+      ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {
+        userId: typedUserId,
+        to: user.phone,
+        body: lowCreditMsg,
+      });
     }
   },
 });

@@ -73,18 +73,31 @@ export async function sendWhatsAppMessage(
   }
 }
 
+/**
+ * Infer Cloud API media type from URL or explicit type.
+ * Cloud API types: image, document, audio, video.
+ */
+function inferMediaType(mediaUrl: string): "image" | "document" {
+  const lower = mediaUrl.toLowerCase();
+  if (lower.endsWith(".pdf") || lower.endsWith(".docx") || lower.endsWith(".xlsx") || lower.endsWith(".pptx") || lower.endsWith(".doc") || lower.endsWith(".csv") || lower.endsWith(".txt")) {
+    return "document";
+  }
+  return "image";
+}
+
 export async function sendWhatsAppMedia(
   options: WhatsAppSendOptions,
   caption: string,
   mediaUrl: string
 ): Promise<void> {
   const to = normalizePhoneForApi(options.to);
+  const mediaType = inferMediaType(mediaUrl);
 
   await cloudApiCall(options.apiKey, {
     recipient_type: "individual",
     to,
-    type: "image",
-    image: {
+    type: mediaType,
+    [mediaType]: {
       link: mediaUrl,
       caption,
     },

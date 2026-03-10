@@ -383,6 +383,17 @@ export const executeScheduledTask = internalAction({
       userId: task.userId,
     });
 
+    // Re-fetch user before delivery — agent call above can take seconds/minutes,
+    // user may have opted out or sent a new message changing the 24h window
+    const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
+    if (!latestUser || latestUser.optedOut) {
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found or opted out`);
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      }
+      return;
+    }
+
     // Deliver via WhatsApp — guarded to respect outbound rate limits
     const deliveryGuard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
@@ -406,21 +417,21 @@ export const executeScheduledTask = internalAction({
     }
 
     const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      latestUser.lastMessageAt &&
+      Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     let delivered = false;
     try {
       if (withinWindow) {
         await ctx.runAction(internal.whatsapp.sendMessage, {
-          to: user.phone,
+          to: latestUser.phone,
           body: responseText,
         });
       } else {
         // Out of session — use template with truncation
         const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
         await ctx.runAction(internal.whatsapp.sendTemplate, {
-          to: user.phone,
+          to: latestUser.phone,
           templateName: "ghali_scheduled_task",
           variables: { "1": truncated },
         });

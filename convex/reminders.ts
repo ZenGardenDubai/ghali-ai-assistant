@@ -94,35 +94,35 @@ export const fireReminder = internalAction({
       internal.outboundGuard.checkAndRecordOutbound,
       { userId: job.userId }
     );
-    if (!guard.allowed) {
-      console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
-      await ctx.runMutation(internal.reminders.markJobFailed, { jobId });
-      return;
-    }
-
-    // Check WhatsApp 24h session window
-    const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     let sendSucceeded = false;
-    try {
-      if (withinWindow) {
-        await ctx.runAction(internal.whatsapp.sendMessage, {
-          to: user.phone,
-          body: `⏰ ${job.payload}`,
-        });
-      } else {
-        // Outside 24h window — use Content Template
-        await ctx.runAction(internal.whatsapp.sendTemplate, {
-          to: user.phone,
-          templateName: "ghali_reminder",
-          variables: { "1": job.payload },
-        });
+    if (!guard.allowed) {
+      console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
+      // Don't return — fall through to recurrence logic so recurring reminders keep their chain
+    } else {
+      // Check WhatsApp 24h session window
+      const withinWindow =
+        user.lastMessageAt &&
+        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+      try {
+        if (withinWindow) {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user.phone,
+            body: `⏰ ${job.payload}`,
+          });
+        } else {
+          // Outside 24h window — use Content Template
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
+            to: user.phone,
+            templateName: "ghali_reminder",
+            variables: { "1": job.payload },
+          });
+        }
+        sendSucceeded = true;
+      } catch (error) {
+        console.error(`Failed to send reminder ${jobId}:`, error);
       }
-      sendSucceeded = true;
-    } catch (error) {
-      console.error(`Failed to send reminder ${jobId}:`, error);
     }
 
     // Mark done on success, failed on delivery error

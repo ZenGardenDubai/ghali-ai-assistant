@@ -80,9 +80,9 @@ export const sendTemplate = internalAction({
 });
 
 /**
- * Guarded send: checks outbound rate limit before sending a text message.
- * Used by background senders (billing, credits, heartbeat, etc.) that can't
- * call the guard mutation themselves because they schedule sends from mutations.
+ * Guarded send: checks opt-out + outbound rate limit before sending a text message.
+ * Used by background senders (billing, credits, etc.) that schedule sends from mutations.
+ * Re-fetches user to catch opt-outs that happened after scheduling.
  */
 export const guardedSendMessage = internalAction({
   args: {
@@ -91,6 +91,10 @@ export const guardedSendMessage = internalAction({
     body: v.string(),
   },
   handler: async (ctx, { userId, to, body }) => {
+    // Re-check opt-out — user may have sent STOP between scheduling and execution
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+    if (!user || user.optedOut) return;
+
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
       { userId }
@@ -104,8 +108,9 @@ export const guardedSendMessage = internalAction({
 });
 
 /**
- * Guarded template send: checks outbound rate limit before sending a template.
+ * Guarded template send: checks opt-out + outbound rate limit before sending a template.
  * Used by background senders that schedule template sends from mutations.
+ * Re-fetches user to catch opt-outs that happened after scheduling.
  */
 export const guardedSendTemplate = internalAction({
   args: {
@@ -118,6 +123,10 @@ export const guardedSendTemplate = internalAction({
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
+    // Re-check opt-out — user may have sent STOP between scheduling and execution
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+    if (!user || user.optedOut) return;
+
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
       { userId }
