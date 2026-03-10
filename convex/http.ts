@@ -30,6 +30,7 @@ function normalizeWhatsappNumber(n: string | undefined): string {
 }
 
 let warnedMissingWhatsappNumber = false;
+let warnedMissingWebhookSecret = false;
 
 const http = httpRouter();
 
@@ -67,17 +68,19 @@ http.route({
       // Read raw body for signature validation
       const rawBody = await request.text();
 
-      // Validate webhook signature — mandatory in production
+      // Validate webhook signature if WEBHOOK_SECRET is configured.
+      // 360dialog v2 API may not send X-Hub-Signature-256 — signature validation
+      // is best-effort. When WEBHOOK_SECRET is set, unsigned requests are rejected.
       const webhookSecret = process.env.WEBHOOK_SECRET;
       const signatureHeader = request.headers.get("X-Hub-Signature-256") ?? "";
 
-      if (!webhookSecret) {
-        console.error("[whatsapp-webhook] WEBHOOK_SECRET not configured — rejecting request");
-        return ok();
-      }
-
-      if (!(await validateWebhookSignature(webhookSecret, signatureHeader, rawBody))) {
-        return new Response("Forbidden", { status: 403 });
+      if (webhookSecret) {
+        if (!(await validateWebhookSignature(webhookSecret, signatureHeader, rawBody))) {
+          return new Response("Forbidden", { status: 403 });
+        }
+      } else if (!warnedMissingWebhookSecret) {
+        console.warn("[whatsapp-webhook] WEBHOOK_SECRET not configured — signature validation disabled");
+        warnedMissingWebhookSecret = true;
       }
 
       // Parse JSON payload
