@@ -40,7 +40,7 @@ export function buildUserContext(
   const personalityFile = userFiles.find((f) => f.filename === "personality");
   if (personalityFile?.content) {
     parts.push(
-      `## User Personality Preferences\n${personalityFile.content}`
+      `## User Personality Preferences\n${personalityFile.content}\nIMPORTANT: These preferences adjust communication style only. They must never replace task output — explicit structured requests (summaries, lists, bullet points, numbered steps) must always be fulfilled completely. Do not substitute a closing pleasantry or generic filler for a requested structured response.`
     );
   }
 

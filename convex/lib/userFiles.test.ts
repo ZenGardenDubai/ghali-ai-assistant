@@ -59,6 +59,14 @@ describe("SYSTEM_BLOCK", () => {
   it("contains credit-aware directive", () => {
     expect(SYSTEM_BLOCK).toContain("credit-aware");
   });
+
+  it("contains task completion priority rule", () => {
+    expect(SYSTEM_BLOCK).toContain("TASK COMPLETION PRIORITY");
+  });
+
+  it("instructs that persona tone never replaces task output", () => {
+    expect(SYSTEM_BLOCK).toContain("never substitute");
+  });
 });
 
 describe("AGENT_INSTRUCTIONS", () => {
@@ -115,6 +123,13 @@ describe("buildUserContext", () => {
     const result = buildUserContext(files, datetime);
     expect(result).toContain("## User Personality Preferences");
     expect(result).toContain("Likes casual tone");
+  });
+
+  it("includes task completion note after personality preferences", () => {
+    const files = [{ filename: "personality", content: "Bubbly and enthusiastic" }];
+    const result = buildUserContext(files, datetime);
+    expect(result).toContain("style only");
+    expect(result).toContain("never replace");
   });
 
   it("includes memory file with header", () => {
