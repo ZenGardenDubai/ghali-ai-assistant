@@ -51,6 +51,26 @@ export async function validateWebhookSignature(
 }
 
 /**
+ * Infer a MIME type from a filename extension.
+ * Used to fix WhatsApp sending CSV and other documents as application/octet-stream.
+ * Returns null if the extension is unrecognized.
+ */
+export function inferMimeTypeFromFilename(filename: string): string | null {
+  const ext = filename.toLowerCase().split(".").pop();
+  if (!ext || ext === filename.toLowerCase()) return null;
+  const map: Record<string, string> = {
+    csv: "text/csv",
+    txt: "text/plain",
+    json: "application/json",
+    pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+  return map[ext] ?? null;
+}
+
+/**
  * Parse a Cloud API webhook payload into structured messages.
  * Returns an array because a single webhook can contain multiple messages.
  * Returns empty array for status updates or other non-message events.
@@ -107,12 +127,23 @@ export function parseCloudApiWebhook(
             mediaContentType = msg.video?.mime_type;
             hasMedia = true;
             break;
-          case "document":
+          case "document": {
             body = msg.document?.caption ?? "";
             mediaId = msg.document?.id;
-            mediaContentType = msg.document?.mime_type;
+            const rawMime = msg.document?.mime_type;
+            const filename = msg.document?.filename;
+            if (
+              (!rawMime || rawMime === "application/octet-stream") &&
+              filename
+            ) {
+              mediaContentType =
+                inferMimeTypeFromFilename(filename) ?? rawMime;
+            } else {
+              mediaContentType = rawMime;
+            }
             hasMedia = true;
             break;
+          }
           case "sticker":
             mediaId = msg.sticker?.id;
             mediaContentType = msg.sticker?.mime_type;
@@ -220,7 +251,7 @@ interface CloudApiMessage {
   video?: { id: string; mime_type: string; caption?: string };
   document?: {
     id: string;
-    mime_type: string;
+    mime_type?: string;
     filename?: string;
     caption?: string;
   };

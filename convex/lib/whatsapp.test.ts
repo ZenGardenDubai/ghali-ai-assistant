@@ -3,6 +3,7 @@ import {
   validateWebhookSignature,
   parseCloudApiWebhook,
   buildTypingIndicatorPayload,
+  inferMimeTypeFromFilename,
 } from "./whatsapp";
 import { createHmac } from "crypto";
 
@@ -303,6 +304,132 @@ describe("parseCloudApiWebhook", () => {
 
     const messages = parseCloudApiWebhook(payload);
     expect(messages).toHaveLength(0);
+  });
+});
+
+describe("inferMimeTypeFromFilename", () => {
+  it("infers text/csv from .csv", () => {
+    expect(inferMimeTypeFromFilename("data.csv")).toBe("text/csv");
+  });
+
+  it("infers docx MIME from .docx", () => {
+    expect(inferMimeTypeFromFilename("report.docx")).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("infers pptx MIME from .pptx", () => {
+    expect(inferMimeTypeFromFilename("slides.pptx")).toBe(
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    );
+  });
+
+  it("infers xlsx MIME from .xlsx", () => {
+    expect(inferMimeTypeFromFilename("sheet.xlsx")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  });
+
+  it("infers text/plain from .txt", () => {
+    expect(inferMimeTypeFromFilename("notes.txt")).toBe("text/plain");
+  });
+
+  it("infers application/json from .json", () => {
+    expect(inferMimeTypeFromFilename("config.json")).toBe("application/json");
+  });
+
+  it("infers application/pdf from .pdf", () => {
+    expect(inferMimeTypeFromFilename("document.pdf")).toBe("application/pdf");
+  });
+
+  it("returns null for unknown extension", () => {
+    expect(inferMimeTypeFromFilename("file.xyz")).toBeNull();
+  });
+
+  it("returns null when no extension", () => {
+    expect(inferMimeTypeFromFilename("noextension")).toBeNull();
+  });
+
+  it("is case-insensitive", () => {
+    expect(inferMimeTypeFromFilename("DATA.CSV")).toBe("text/csv");
+    expect(inferMimeTypeFromFilename("Report.DOCX")).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+});
+
+describe("parseCloudApiWebhook — document MIME inference", () => {
+  function makeDocumentPayload(mimeType: string | undefined, filename: string | undefined) {
+    return {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                contacts: [{ profile: { name: "Ahmad" }, wa_id: "971501234567" }],
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.doc001",
+                    timestamp: "1234567890",
+                    type: "document",
+                    document: {
+                      id: "MEDIA_DOC_001",
+                      mime_type: mimeType ?? "",
+                      filename,
+                      caption: "Please analyze this",
+                    },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  it("infers text/csv when mime_type is application/octet-stream and filename is .csv", () => {
+    const messages = parseCloudApiWebhook(makeDocumentPayload("application/octet-stream", "sales.csv"));
+    expect(messages[0].mediaContentType).toBe("text/csv");
+  });
+
+  it("infers docx MIME when mime_type is application/octet-stream and filename is .docx", () => {
+    const messages = parseCloudApiWebhook(makeDocumentPayload("application/octet-stream", "report.docx"));
+    expect(messages[0].mediaContentType).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("infers xlsx MIME when mime_type is application/octet-stream and filename is .xlsx", () => {
+    const messages = parseCloudApiWebhook(makeDocumentPayload("application/octet-stream", "data.xlsx"));
+    expect(messages[0].mediaContentType).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  });
+
+  it("keeps provided MIME when it is not application/octet-stream", () => {
+    const messages = parseCloudApiWebhook(makeDocumentPayload(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "report.docx"
+    ));
+    expect(messages[0].mediaContentType).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("keeps application/octet-stream when filename extension is unknown", () => {
+    const messages = parseCloudApiWebhook(makeDocumentPayload("application/octet-stream", "archive.zip"));
+    expect(messages[0].mediaContentType).toBe("application/octet-stream");
+  });
+
+  it("infers MIME when mime_type is missing and filename is .csv", () => {
+    const messages = parseCloudApiWebhook(makeDocumentPayload(undefined, "export.csv"));
+    expect(messages[0].mediaContentType).toBe("text/csv");
   });
 });
 

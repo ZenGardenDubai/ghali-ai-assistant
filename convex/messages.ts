@@ -754,17 +754,28 @@ export const generateResponse = internalAction({
       // For now, reply-to-text context is not available with 360dialog.
     }
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
-      const result = await ctx.runAction(
-        internal.documents.processMedia,
-        {
-          mediaUrl,
-          mediaType: mediaContentType,
-          userPrompt: body || undefined,
-          isReprocessing,
-        }
-      );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let result: any = null;
+      try {
+        console.log(`[Messages] processMedia start | type: ${mediaContentType} | user: ${userId}`);
+        result = await ctx.runAction(
+          internal.documents.processMedia,
+          {
+            mediaUrl,
+            mediaType: mediaContentType,
+            userPrompt: body || undefined,
+            isReprocessing,
+          }
+        );
+        console.log(`[Messages] processMedia complete | result: ${result ? "ok" : "null"} | user: ${userId}`);
+      } catch (error) {
+        console.error(`[Messages] processMedia threw for user ${userId} | type: ${mediaContentType}`, error);
+        await guardedSendMessage(TEMPLATES.document_extraction_failed.template);
+        return;
+      }
 
       if (!result) {
+        console.warn(`[Messages] processMedia returned null for user ${userId} | type: ${mediaContentType}`);
         await guardedSendMessage(TEMPLATES.document_extraction_failed.template);
         return;
       }
