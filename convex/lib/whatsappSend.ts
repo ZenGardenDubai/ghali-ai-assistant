@@ -104,7 +104,7 @@ export async function sendWhatsAppTemplate(
 
   // Convert variables map ({"1": "value1", "2": "value2"}) to Cloud API parameters array
   const parameters = Object.keys(variables)
-    .sort()
+    .sort((a, b) => Number(a) - Number(b))
     .map((key) => ({
       type: "text" as const,
       text: variables[key],

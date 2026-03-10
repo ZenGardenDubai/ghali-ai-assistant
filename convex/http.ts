@@ -67,14 +67,17 @@ http.route({
       // Read raw body for signature validation
       const rawBody = await request.text();
 
-      // Validate webhook signature (if WEBHOOK_SECRET is configured)
+      // Validate webhook signature — mandatory in production
       const webhookSecret = process.env.WEBHOOK_SECRET;
       const signatureHeader = request.headers.get("X-Hub-Signature-256") ?? "";
 
-      if (webhookSecret) {
-        if (!(await validateWebhookSignature(webhookSecret, signatureHeader, rawBody))) {
-          return new Response("Forbidden", { status: 403 });
-        }
+      if (!webhookSecret) {
+        console.error("[whatsapp-webhook] WEBHOOK_SECRET not configured — rejecting request");
+        return ok();
+      }
+
+      if (!(await validateWebhookSignature(webhookSecret, signatureHeader, rawBody))) {
+        return new Response("Forbidden", { status: 403 });
       }
 
       // Parse JSON payload
