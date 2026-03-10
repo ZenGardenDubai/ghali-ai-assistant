@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.1...v0.39.2) (2026-03-10)
+
+
+### Bug Fixes
+
+* prevent silent reply drops and inline reflection leaks in extractResponseText ([#204](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/204)) ([7ee6036](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/7ee6036345468d5b86831195521b444056cd26f8))
+
 ## [0.39.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.0...v0.39.1) (2026-03-10)
 
 
