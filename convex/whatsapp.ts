@@ -124,9 +124,10 @@ export const guardedSendTemplate = internalAction({
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
-    // Re-check opt-out — user may have sent STOP between scheduling and execution
+    // Re-check opt-out and dormant status — user state may have changed since scheduling
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user || user.optedOut) return;
+    if (user.dormant) return; // Never contact pre-360dialog users
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,

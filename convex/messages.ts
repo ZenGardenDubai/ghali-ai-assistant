@@ -195,8 +195,11 @@ export const saveIncoming = internalMutation({
     const user = await ctx.db.get(userId);
     const previousLastMessageAt = user?.lastMessageAt;
 
-    // Track last message time for WhatsApp 24h session window
-    await ctx.db.patch(userId, { lastMessageAt: Date.now() });
+    // Track last message time for WhatsApp 24h session window.
+    // If the user was dormant (pre-360dialog), reactivate them on first inbound message.
+    const patch: { lastMessageAt: number; dormant?: boolean } = { lastMessageAt: Date.now() };
+    if (user?.dormant) patch.dormant = false;
+    await ctx.db.patch(userId, patch);
 
     // Schedule async response generation
     await ctx.scheduler.runAfter(0, internal.messages.generateResponse, {

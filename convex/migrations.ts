@@ -750,6 +750,50 @@ export const migrateLanguageAndTimezone = internalAction({
   },
 });
 
+// ============================================================================
+// Dormant User Migration (v0.38)
+// ============================================================================
+
+/**
+ * Cutoff timestamp for the 360dialog migration (March 9, 2026 23:57:00 UTC).
+ * All users created before this point used Twilio and never opted in to the
+ * new 360dialog number — they must not receive outbound messages.
+ */
+export const DORMANT_CUTOFF_MS = 1741564620000;
+
+/**
+ * One-time migration: mark all pre-360dialog users as dormant.
+ *
+ * Sets `dormant: true` on every user with `createdAt < DORMANT_CUTOFF_MS`.
+ * Idempotent — safe to run multiple times; already-dormant users are skipped.
+ *
+ * Run manually via Convex dashboard after deploying PR #194.
+ */
+export const flagDormantUsers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    let flagged = 0;
+    let skipped = 0;
+
+    for (const user of users) {
+      if (user.createdAt < DORMANT_CUTOFF_MS) {
+        if (!user.dormant) {
+          await ctx.db.patch(user._id, { dormant: true });
+          flagged++;
+        } else {
+          skipped++;
+        }
+      }
+    }
+
+    console.log(
+      `Dormant migration: ${flagged} flagged as dormant, ${skipped} already dormant`
+    );
+    return { flagged, skipped };
+  },
+});
+
 /** One-off query: count scheduled tasks and unique users. Run from dashboard. */
 export const countScheduledTasks = internalQuery({
   args: {},

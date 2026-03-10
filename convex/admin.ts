@@ -218,22 +218,24 @@ export const grantCredits = internalMutation({
 });
 
 /**
- * Count users for broadcast: total users and those active within 24h session window.
+ * Count users for broadcast: total reachable users and those active within 24h session window.
+ * Dormant users (pre-360dialog migration) are excluded — they cannot receive any outbound messages.
  */
 export const getBroadcastCounts = internalQuery({
   args: {},
   handler: async (ctx) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.db.query("users").collect();
-    const activeCount = allUsers.filter(
+    const reachableUsers = allUsers.filter((u) => !u.dormant);
+    const activeCount = reachableUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= cutoff
     ).length;
-    return { totalUsers: allUsers.length, activeUsers: activeCount };
+    return { totalUsers: reachableUsers.length, activeUsers: activeCount };
   },
 });
 
 /**
- * Broadcast a message to all users active within 24h.
+ * Broadcast a message to all non-dormant users active within 24h.
  * Sends in parallel batches of BROADCAST_BATCH_SIZE with 500ms between batches.
  */
 export const broadcastMessage = internalAction({
@@ -242,8 +244,8 @@ export const broadcastMessage = internalAction({
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
     const activeUsers = allUsers.filter(
-      (u: { lastMessageAt?: number; phone: string }) =>
-        u.lastMessageAt && u.lastMessageAt >= cutoff
+      (u: { lastMessageAt?: number; phone: string; dormant?: boolean }) =>
+        !u.dormant && u.lastMessageAt && u.lastMessageAt >= cutoff
     ) as Array<{ phone: string; lastMessageAt?: number }>;
 
     const sentCount = await sendInBatches(activeUsers, (phone) =>
@@ -395,7 +397,7 @@ export const sendTemplateToUser = internalAction({
 });
 
 /**
- * Broadcast a template to ALL users.
+ * Broadcast a template to all non-dormant users.
  * Users active within 24h get a normal message; others get a template message.
  * Sends in parallel batches of BROADCAST_BATCH_SIZE with 500ms between batches.
  */
@@ -411,11 +413,14 @@ export const sendTemplateBroadcast = internalAction({
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
       phone: string;
       lastMessageAt?: number;
+      dormant?: boolean;
     }>;
 
-    const userByPhone = new Map(allUsers.map((u) => [u.phone, u]));
+    // Exclude dormant users — they never opted in to the new 360dialog number
+    const reachableUsers = allUsers.filter((u) => !u.dormant);
+    const userByPhone = new Map(reachableUsers.map((u) => [u.phone, u]));
 
-    const sentCount = await sendInBatches(allUsers, async (phone) => {
+    const sentCount = await sendInBatches(reachableUsers, async (phone) => {
       const user = userByPhone.get(phone)!;
       const isActive = user.lastMessageAt && user.lastMessageAt >= cutoff;
 

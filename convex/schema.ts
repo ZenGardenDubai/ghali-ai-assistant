@@ -36,6 +36,10 @@ export default defineSchema({
     consecutiveErrors: v.optional(v.number()),
     errorBackoffUntil: v.optional(v.number()),
     personalityBootstrapped: v.optional(v.boolean()),
+    /** True for users created before the 360dialog migration (March 9, 2026 23:57 UTC).
+     *  These users never opted in to the new number and must not receive outbound messages.
+     *  Cleared automatically when the user sends their first inbound message. */
+    dormant: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])

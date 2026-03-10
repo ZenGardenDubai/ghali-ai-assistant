@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import schema from "./schema";
+import { DORMANT_CUTOFF_MS } from "./migrations";
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -237,5 +238,94 @@ describe("countPendingReminders", () => {
     expect(counts.recurring).toBe(1);
     expect(counts.stale).toBe(1);
     expect(counts.willMigrate).toBe(2);
+  });
+});
+
+// ============================================================================
+// flagDormantUsers
+// ============================================================================
+
+describe("flagDormantUsers", () => {
+  it("marks pre-360dialog users as dormant", async () => {
+    const t = convexTest(schema, modules);
+
+    // Insert a pre-migration user directly (createdAt before cutoff)
+    const oldUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        phone: "+971501110001",
+        language: "en",
+        timezone: "Asia/Dubai",
+        tier: "basic",
+        isAdmin: false,
+        credits: 60,
+        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        onboardingStep: null,
+        createdAt: DORMANT_CUTOFF_MS - 1,
+      });
+    });
+
+    // Insert a post-migration user (createdAt at or after cutoff)
+    const newUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        phone: "+971501110002",
+        language: "en",
+        timezone: "Asia/Dubai",
+        tier: "basic",
+        isAdmin: false,
+        credits: 60,
+        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        onboardingStep: null,
+        createdAt: DORMANT_CUTOFF_MS,
+      });
+    });
+
+    const result = await t.mutation(internal.migrations.flagDormantUsers, {});
+
+    expect(result.flagged).toBe(1);
+    expect(result.skipped).toBe(0);
+
+    const oldUser = await t.run(async (ctx) => ctx.db.get(oldUserId));
+    expect(oldUser?.dormant).toBe(true);
+
+    const newUser = await t.run(async (ctx) => ctx.db.get(newUserId));
+    expect(newUser?.dormant).toBeUndefined();
+  });
+
+  it("is idempotent — already-dormant users are counted as skipped", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("users", {
+        phone: "+971501110003",
+        language: "en",
+        timezone: "Asia/Dubai",
+        tier: "basic",
+        isAdmin: false,
+        credits: 60,
+        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        onboardingStep: null,
+        createdAt: DORMANT_CUTOFF_MS - 1,
+        dormant: true,
+      });
+    });
+
+    const result1 = await t.mutation(internal.migrations.flagDormantUsers, {});
+    expect(result1.flagged).toBe(0);
+    expect(result1.skipped).toBe(1);
+
+    const result2 = await t.mutation(internal.migrations.flagDormantUsers, {});
+    expect(result2.flagged).toBe(0);
+    expect(result2.skipped).toBe(1);
+  });
+
+  it("DORMANT_CUTOFF_MS matches the expected 360dialog migration timestamp", () => {
+    expect(DORMANT_CUTOFF_MS).toBe(1741564620000);
+    // Verify it represents March 9, 2026 23:57:00 UTC
+    const d = new Date(DORMANT_CUTOFF_MS);
+    expect(d.getUTCFullYear()).toBe(2026);
+    expect(d.getUTCMonth()).toBe(2); // 0-indexed: 2 = March
+    expect(d.getUTCDate()).toBe(9);
+    expect(d.getUTCHours()).toBe(23);
+    expect(d.getUTCMinutes()).toBe(57);
   });
 });
