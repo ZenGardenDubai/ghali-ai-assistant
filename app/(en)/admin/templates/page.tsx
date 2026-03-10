@@ -28,7 +28,6 @@ import {
 import { Send, Radio, TestTube, Loader2, CheckCircle2, XCircle, ImageIcon, Upload, X } from "lucide-react";
 
 interface TemplateInfo {
-  key: string;
   name: string;
   description: string;
   variables: string[];
@@ -70,9 +69,9 @@ export default function TemplatesPage() {
     if (res.ok) {
       const data: TemplateInfo[] = await res.json();
       setTemplates(data);
-      if (data.length > 0 && !selected) setSelected(data[0].key);
+      setSelected((prev) => prev || data[0]?.name || "");
     }
-  }, [selected]);
+  }, []);
 
   const fetchBroadcastCounts = useCallback(async () => {
     const res = await fetch("/api/admin/broadcast-counts", { method: "POST" });
@@ -88,7 +87,7 @@ export default function TemplatesPage() {
     fetchBroadcastCounts();
   }, [fetchTemplates, fetchBroadcastCounts]);
 
-  const selectedTemplate = templates?.find((t) => t.key === selected);
+  const selectedTemplate = templates?.find((t) => t.name === selected);
 
   // Reset variables when template changes
   useEffect(() => {
@@ -101,7 +100,7 @@ export default function TemplatesPage() {
     }
   }, [selected, selectedTemplate]);
 
-  // Build ContentVariables as {"1": "val", "2": "val"}
+  // Build template variables as {"1": "val", "2": "val"}
   function buildContentVariables(): Record<string, string> {
     if (!selectedTemplate) return {};
     const cv: Record<string, string> = {};
@@ -111,8 +110,15 @@ export default function TemplatesPage() {
     return cv;
   }
 
+  const hasMissingVariables =
+    !!selectedTemplate && selectedTemplate.variables.some((v) => !variables[v]?.trim());
+
   async function handleSend(mode: "test" | "user" | "broadcast") {
     if (!selectedTemplate) return;
+    if (hasMissingVariables) {
+      setResult({ success: false, error: "Fill in all template variables before sending." });
+      return;
+    }
     setSending(mode);
     setResult(null);
 
@@ -124,15 +130,15 @@ export default function TemplatesPage() {
     switch (mode) {
       case "test":
         endpoint = "/api/admin/send-test-template";
-        body = { templateEnvVar: selected, variables: contentVars, adminPhone, mediaUrl: media };
+        body = { templateName: selected, variables: contentVars, adminPhone, mediaUrl: media };
         break;
       case "user":
         endpoint = "/api/admin/send-template";
-        body = { templateEnvVar: selected, variables: contentVars, phone: userPhone, mediaUrl: media };
+        body = { templateName: selected, variables: contentVars, phone: userPhone, mediaUrl: media };
         break;
       case "broadcast":
         endpoint = "/api/admin/send-template-broadcast";
-        body = { templateEnvVar: selected, variables: contentVars, messageBody: preview, mediaUrl: media };
+        body = { templateName: selected, variables: contentVars, messageBody: preview, mediaUrl: media };
         break;
     }
 
@@ -183,7 +189,7 @@ export default function TemplatesPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-white">Template Messages</h1>
         <p className="mt-1 text-sm text-white/40">
-          Send pre-approved WhatsApp Content Templates to users
+          Send pre-approved WhatsApp templates to users
         </p>
       </div>
 
@@ -208,7 +214,7 @@ export default function TemplatesPage() {
                   </SelectTrigger>
                   <SelectContent className="border-white/[0.1] bg-[#131a32] text-white/80">
                     {templates.map((t) => (
-                      <SelectItem key={t.key} value={t.key} className="focus:bg-white/[0.06]">
+                      <SelectItem key={t.name} value={t.name} className="focus:bg-white/[0.06]">
                         <span className="flex items-center gap-2">
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
@@ -231,8 +237,8 @@ export default function TemplatesPage() {
                     />
                     <span className="text-white/40">
                       {selectedTemplate.configured
-                        ? "Content SID configured"
-                        : `Missing env var: ${selectedTemplate.key}`}
+                        ? "Template registered"
+                        : `Template not found: ${selectedTemplate.name}`}
                     </span>
                   </div>
                 )}
@@ -353,7 +359,7 @@ export default function TemplatesPage() {
                       />
                       <Button
                         onClick={() => handleSend("test")}
-                        disabled={!adminPhone || sending !== null || !selectedTemplate.configured}
+                        disabled={!adminPhone || sending !== null || !selectedTemplate.configured || hasMissingVariables}
                         className="bg-[#ED6B23]/15 text-[#ED6B23] border border-[#ED6B23]/20 hover:bg-[#ED6B23]/25 disabled:opacity-40"
                       >
                         {sending === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube className="h-4 w-4" />}
@@ -378,7 +384,7 @@ export default function TemplatesPage() {
                       />
                       <Button
                         onClick={() => handleSend("user")}
-                        disabled={!userPhone || sending !== null || !selectedTemplate.configured}
+                        disabled={!userPhone || sending !== null || !selectedTemplate.configured || hasMissingVariables}
                         className="bg-[#ED6B23]/15 text-[#ED6B23] border border-[#ED6B23]/20 hover:bg-[#ED6B23]/25 disabled:opacity-40"
                       >
                         {sending === "user" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -397,7 +403,7 @@ export default function TemplatesPage() {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
-                          disabled={sending !== null || !selectedTemplate.configured}
+                          disabled={sending !== null || !selectedTemplate.configured || hasMissingVariables}
                           className="w-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 disabled:opacity-40"
                         >
                           <Radio className="mr-2 h-4 w-4" />
