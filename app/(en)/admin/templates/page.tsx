@@ -69,9 +69,9 @@ export default function TemplatesPage() {
     if (res.ok) {
       const data: TemplateInfo[] = await res.json();
       setTemplates(data);
-      if (data.length > 0 && !selected) setSelected(data[0].name);
+      setSelected((prev) => prev || data[0]?.name || "");
     }
-  }, [selected]);
+  }, []);
 
   const fetchBroadcastCounts = useCallback(async () => {
     const res = await fetch("/api/admin/broadcast-counts", { method: "POST" });
@@ -110,8 +110,15 @@ export default function TemplatesPage() {
     return cv;
   }
 
+  const hasMissingVariables =
+    !!selectedTemplate && selectedTemplate.variables.some((v) => !variables[v]?.trim());
+
   async function handleSend(mode: "test" | "user" | "broadcast") {
     if (!selectedTemplate) return;
+    if (hasMissingVariables) {
+      setResult({ success: false, error: "Fill in all template variables before sending." });
+      return;
+    }
     setSending(mode);
     setResult(null);
 
@@ -352,7 +359,7 @@ export default function TemplatesPage() {
                       />
                       <Button
                         onClick={() => handleSend("test")}
-                        disabled={!adminPhone || sending !== null || !selectedTemplate.configured}
+                        disabled={!adminPhone || sending !== null || !selectedTemplate.configured || hasMissingVariables}
                         className="bg-[#ED6B23]/15 text-[#ED6B23] border border-[#ED6B23]/20 hover:bg-[#ED6B23]/25 disabled:opacity-40"
                       >
                         {sending === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <TestTube className="h-4 w-4" />}
@@ -377,7 +384,7 @@ export default function TemplatesPage() {
                       />
                       <Button
                         onClick={() => handleSend("user")}
-                        disabled={!userPhone || sending !== null || !selectedTemplate.configured}
+                        disabled={!userPhone || sending !== null || !selectedTemplate.configured || hasMissingVariables}
                         className="bg-[#ED6B23]/15 text-[#ED6B23] border border-[#ED6B23]/20 hover:bg-[#ED6B23]/25 disabled:opacity-40"
                       >
                         {sending === "user" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -396,7 +403,7 @@ export default function TemplatesPage() {
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
-                          disabled={sending !== null || !selectedTemplate.configured}
+                          disabled={sending !== null || !selectedTemplate.configured || hasMissingVariables}
                           className="w-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 disabled:opacity-40"
                         >
                           <Radio className="mr-2 h-4 w-4" />
