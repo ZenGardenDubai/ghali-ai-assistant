@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.8](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.7...v0.39.8) (2026-03-11)
+
+
+### Bug Fixes
+
+* add query attribution to web search results ([#223](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/223)) ([4c0c354](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/4c0c354268e88811e297bb98f2c872e7ecee4c16))
+
 ## [0.39.7](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.6...v0.39.7) (2026-03-11)
 
 
