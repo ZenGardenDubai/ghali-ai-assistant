@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.8...v0.40.0) (2026-03-11)
+
+
+### Features
+
+* add batched background reflection agent ([#228](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/228)) ([26c83f5](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/26c83f5b9172cb21672385a1166d09051dd87b1c))
+
 ## [0.39.8](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.7...v0.39.8) (2026-03-11)
 
 
