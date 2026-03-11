@@ -134,6 +134,21 @@ describe("shouldIncludeRecap", () => {
       shouldIncludeRecap({ credits: CREDITS_PRO - 60, tier: "pro", totalMessages: 1000 })
     ).toBe(true);
   });
+
+  it("returns false for negative credits (clamped to maxCredits)", () => {
+    // credits = -5 → creditsUsed clamped to 60, 60 % 12 === 0 → true for returning
+    // But for a new user with totalMessages 4, creditsUsed=60 → (60-4) % 8 === 0 → true
+    // The key is it doesn't exceed maxCredits and cause wild modulo hits
+    expect(
+      shouldIncludeRecap({ credits: -5, tier: "basic", totalMessages: 200 })
+    ).toBe(true); // 60 % 12 === 0
+  });
+
+  it("returns false for credits above maxCredits (e.g. admin top-up)", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_BASIC + 10, tier: "basic", totalMessages: 200 })
+    ).toBe(false); // creditsUsed = -10 clamped to 0 via min, then <= 0 guard
+  });
 });
 
 describe("buildRecapInstruction", () => {

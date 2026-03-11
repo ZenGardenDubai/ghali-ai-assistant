@@ -24,7 +24,7 @@ type UserForRecap = {
  */
 export function shouldIncludeRecap(user: UserForRecap): boolean {
   const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
-  const creditsUsed = maxCredits - user.credits;
+  const creditsUsed = Math.min(maxCredits, maxCredits - user.credits);
 
   if (creditsUsed <= 0) return false;
 
@@ -44,7 +44,7 @@ export function shouldIncludeRecap(user: UserForRecap): boolean {
  */
 export function buildRecapInstruction(creditsUsed: number): string {
   return (
-    `\n\n🎯 ENGAGEMENT RECAP: This is the user's message #${creditsUsed} this cycle. ` +
+    `🎯 ENGAGEMENT RECAP: This is the user's message #${creditsUsed} this cycle. ` +
     `Weave a brief, natural recap or insight into your response. ` +
     `Options: summarize topics discussed so far, share a behavioral observation about the user, ` +
     `or suggest something new they could try with Ghali. ` +
@@ -60,6 +60,6 @@ export function buildRecapInstruction(creditsUsed: number): string {
 export function getRecapInstruction(user: UserForRecap): string {
   if (!shouldIncludeRecap(user)) return "";
   const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
-  const creditsUsed = maxCredits - user.credits;
+  const creditsUsed = Math.min(maxCredits, maxCredits - user.credits);
   return buildRecapInstruction(creditsUsed);
 }

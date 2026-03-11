@@ -822,7 +822,7 @@ export const generateResponse = internalAction({
         { threadId },
         {
           prompt: userContext
-            ? `${userContext}${recapContext}\n\n---\n<user_message>\n${prompt}\n</user_message>`
+            ? `${userContext}${recapContext ? "\n\n" + recapContext : ""}\n\n---\n<user_message>\n${prompt}\n</user_message>`
             : `${recapContext ? recapContext + "\n\n" : ""}${prompt}`,
         }
       );
