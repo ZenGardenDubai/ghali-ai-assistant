@@ -5,7 +5,6 @@ import { ghaliAgent, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { WHATSAPP_SESSION_WINDOW_MS, TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
-import { extractResponseText } from "./messages";
 
 /**
  * Cron target: find all users with non-empty heartbeat files
@@ -109,8 +108,7 @@ ${SYSTEM_BLOCK}
     let responseText: string | undefined;
     try {
       const result = await ghaliAgent.generateText(ctx, { threadId }, { prompt });
-      // Suppress reflection text (internal reasoning after memory/profile updates)
-      responseText = extractResponseText(result.steps);
+      responseText = result.text;
       await ctx.runMutation(internal.users.resetApiErrors, { userId });
     } catch (error) {
       console.error(`Heartbeat AI failed for user ${userId}:`, error);
