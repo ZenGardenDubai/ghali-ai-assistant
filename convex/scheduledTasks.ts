@@ -17,7 +17,6 @@ import { getNextCronRun } from "./lib/cronParser";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { ghaliAgent, setTraceId, clearTraceId } from "./agent";
-import { extractResponseText } from "./messages";
 
 /**
  * Pure helper: determine if a failure notification should be sent.
@@ -337,8 +336,7 @@ export const executeScheduledTask = internalAction({
         { threadId },
         { prompt: fullPrompt }
       );
-      // Suppress reflection text (internal reasoning after memory/profile updates)
-      responseText = extractResponseText(result.steps);
+      responseText = result.text;
       aiSucceeded = true;
       // Reset circuit breaker on success
       await ctx.runMutation(internal.users.resetApiErrors, { userId: task.userId });
