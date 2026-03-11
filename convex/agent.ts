@@ -53,6 +53,16 @@ export function clearTraceId() {
   _currentTraceId = undefined;
 }
 
+/**
+ * Format a web search result with query attribution.
+ * Prefixes the result so the conversation history unambiguously records
+ * which query triggered the search — prevents the agent from confusing
+ * web-searched topics with topics answered from its own knowledge.
+ */
+export function formatWebSearchResult(query: string, text: string): string {
+  return `[Web search: "${query}"]\n\n${text}`;
+}
+
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
 - Never generate harmful, illegal, or abusive content. Refuse politely.
 - Privacy-first: never share one user's data, conversations, or documents with another.
@@ -501,7 +511,7 @@ const webSearch = createTool({
         });
       }
 
-      return result.text;
+      return formatWebSearchResult(query, result.text);
     } catch (error) {
       console.error("webSearch tool failed:", error);
       return `Search failed. I'll answer based on what I know.\n\nQuery: ${query}`;
