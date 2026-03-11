@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.5...v0.39.6) (2026-03-11)
+
+
+### Bug Fixes
+
+* change 'Active' label to 'Users' in admin stats All Time section ([#216](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/216)) ([cb29e69](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/cb29e690af68149b4e78b7f7875e3e497651e015))
+
 ## [0.39.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.4...v0.39.5) (2026-03-10)
 
 
