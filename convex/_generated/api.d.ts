@@ -54,6 +54,7 @@ import type * as outboundGuard from "../outboundGuard.js";
 import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
 import type * as rateLimiting from "../rateLimiting.js";
+import type * as reflection from "../reflection.js";
 import type * as reminders from "../reminders.js";
 import type * as scheduledTasks from "../scheduledTasks.js";
 import type * as templates from "../templates.js";
@@ -115,6 +116,7 @@ declare const fullApi: ApiFromModules<{
   proWrite: typeof proWrite;
   rag: typeof rag;
   rateLimiting: typeof rateLimiting;
+  reflection: typeof reflection;
   reminders: typeof reminders;
   scheduledTasks: typeof scheduledTasks;
   templates: typeof templates;

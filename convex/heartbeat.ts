@@ -5,6 +5,7 @@ import { ghaliAgent, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { WHATSAPP_SESSION_WINDOW_MS, TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
+import { REFLECTION_TIME_FALLBACK_MS } from "./reflection";
 
 /**
  * Cron target: find all users with non-empty heartbeat files
@@ -20,7 +21,7 @@ export const processHeartbeats = internalMutation({
       if (user.optedOut || user.dormant) continue;
       if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
 
-      // Check heartbeat file
+      // Check heartbeat file and schedule processing if non-empty
       const heartbeatFile = await ctx.db
         .query("userFiles")
         .withIndex("by_userId_filename", (q) =>
@@ -28,12 +29,24 @@ export const processHeartbeats = internalMutation({
         )
         .unique();
 
-      if (!heartbeatFile?.content?.trim()) continue;
+      if (heartbeatFile?.content?.trim()) {
+        await ctx.scheduler.runAfter(0, internal.heartbeat.processUserHeartbeat, {
+          userId: user._id,
+        });
+      }
 
-      // Schedule async processing
-      await ctx.scheduler.runAfter(0, internal.heartbeat.processUserHeartbeat, {
-        userId: user._id,
-      });
+      // Time-based reflection fallback: trigger reflection for users with
+      // unreflected messages older than 4 hours (catches quiet users who
+      // never hit the counter threshold)
+      if (
+        (user.messagesSinceReflection ?? 0) > 0 &&
+        Date.now() - user.lastMessageAt > REFLECTION_TIME_FALLBACK_MS
+      ) {
+        await ctx.scheduler.runAfter(0, internal.reflection.runReflection, {
+          userId: user._id,
+          trigger: "time_fallback",
+        });
+      }
     }
   },
 });

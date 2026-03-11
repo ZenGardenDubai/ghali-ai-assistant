@@ -82,9 +82,9 @@ describe("AGENT_INSTRUCTIONS", () => {
     expect(AGENT_INSTRUCTIONS).toContain("appendToMemory");
   });
 
-  it("instructs to never ask about remembering", () => {
+  it("mentions background reflection agent", () => {
     expect(AGENT_INSTRUCTIONS).toContain(
-      'NEVER ask "should I remember this?"'
+      "background reflection agent"
     );
   });
 });

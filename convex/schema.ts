@@ -37,6 +37,12 @@ export default defineSchema({
     consecutiveErrors: v.optional(v.number()),
     errorBackoffUntil: v.optional(v.number()),
     personalityBootstrapped: v.optional(v.boolean()),
+    /** Number of user messages since last reflection agent run */
+    messagesSinceReflection: v.optional(v.number()),
+    /** Timestamp of last reflection agent run */
+    lastReflectionAt: v.optional(v.number()),
+    /** Lifetime message count (used for adaptive reflection threshold) */
+    totalMessages: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])
