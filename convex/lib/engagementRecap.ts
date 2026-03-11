@@ -1,0 +1,61 @@
+import { CREDITS_BASIC, CREDITS_PRO } from "../constants";
+
+/** Recap trigger for new users (first billing cycle) */
+const NEW_USER_TRIGGER = 4;
+
+/** Recap trigger interval for returning users (every Nth credit) */
+const RETURNING_USER_INTERVAL = 12;
+
+type UserForRecap = {
+  credits: number;
+  tier: "basic" | "pro";
+  totalMessages?: number;
+};
+
+/**
+ * Determines whether the agent should weave an engagement recap/insight
+ * into the current response.
+ *
+ * - New users (first cycle): trigger on the 4th credit spent
+ * - Returning users (post-reset): trigger every 12th credit spent
+ */
+export function shouldIncludeRecap(user: UserForRecap): boolean {
+  const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
+  const creditsUsed = maxCredits - user.credits;
+
+  if (creditsUsed <= 0) return false;
+
+  // New user: totalMessages equals creditsUsed (no history before this cycle)
+  const isNewUser = (user.totalMessages ?? 0) <= creditsUsed;
+
+  if (isNewUser) {
+    return creditsUsed === NEW_USER_TRIGGER;
+  }
+
+  return creditsUsed % RETURNING_USER_INTERVAL === 0;
+}
+
+/**
+ * Builds the recap instruction block to append to the agent's system prompt.
+ */
+export function buildRecapInstruction(creditsUsed: number): string {
+  return (
+    `\n\n🎯 ENGAGEMENT RECAP: This is the user's message #${creditsUsed} this cycle. ` +
+    `Weave a brief, natural recap or insight into your response. ` +
+    `Options: summarize topics discussed so far, share a behavioral observation about the user, ` +
+    `or suggest something new they could try with Ghali. ` +
+    `Keep it 1-3 sentences, warm and genuine. ` +
+    `Don't label it as a "recap" — make it feel organic, like a natural aside.`
+  );
+}
+
+/**
+ * Returns the recap instruction string if the user should receive one,
+ * or an empty string otherwise. Combines check + build in one call.
+ */
+export function getRecapInstruction(user: UserForRecap): string {
+  if (!shouldIncludeRecap(user)) return "";
+  const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
+  const creditsUsed = maxCredits - user.credits;
+  return buildRecapInstruction(creditsUsed);
+}
