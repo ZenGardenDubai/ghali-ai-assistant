@@ -17,6 +17,7 @@ import {
   isVoiceNote,
 } from "./lib/media";
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
+import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
 
 /**
@@ -806,6 +807,9 @@ export const generateResponse = internalAction({
     // Set per-request trace ID for PostHog LLM analytics
     setTraceId(crypto.randomUUID());
 
+    // Engagement recap: check if we should weave an insight into this response
+    const recapContext = getRecapInstruction({ credits: user.credits, tier: user.tier, totalMessages: user.totalMessages });
+
     // Generate response
     let responseText: string | undefined;
     let imageResult: { imageUrl: string; caption: string } | null = null;
@@ -818,8 +822,8 @@ export const generateResponse = internalAction({
         { threadId },
         {
           prompt: userContext
-            ? `${userContext}\n\n---\n<user_message>\n${prompt}\n</user_message>`
-            : prompt,
+            ? `${userContext}${recapContext ? "\n\n" + recapContext : ""}\n\n---\n<user_message>\n${prompt}\n</user_message>`
+            : `${recapContext ? recapContext + "\n\n" : ""}${prompt}`,
         }
       );
       responseText = result.text;

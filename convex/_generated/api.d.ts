@@ -32,6 +32,7 @@ import type * as lib_analytics from "../lib/analytics.js";
 import type * as lib_clerk from "../lib/clerk.js";
 import type * as lib_cronParser from "../lib/cronParser.js";
 import type * as lib_dateUtils from "../lib/dateUtils.js";
+import type * as lib_engagementRecap from "../lib/engagementRecap.js";
 import type * as lib_formatter from "../lib/formatter.js";
 import type * as lib_items from "../lib/items.js";
 import type * as lib_media from "../lib/media.js";
@@ -94,6 +95,7 @@ declare const fullApi: ApiFromModules<{
   "lib/clerk": typeof lib_clerk;
   "lib/cronParser": typeof lib_cronParser;
   "lib/dateUtils": typeof lib_dateUtils;
+  "lib/engagementRecap": typeof lib_engagementRecap;
   "lib/formatter": typeof lib_formatter;
   "lib/items": typeof lib_items;
   "lib/media": typeof lib_media;
