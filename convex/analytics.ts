@@ -159,6 +159,7 @@ export const trackAIGeneration = internalAction({
     cachedInputTokens: v.optional(v.number()),
     tier: v.string(),
     traceId: v.optional(v.string()),
+    source: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     await captureEvent(args.phone, "$ai_generation", {
@@ -171,6 +172,45 @@ export const trackAIGeneration = internalAction({
       cached_input_tokens: args.cachedInputTokens,
       phone_country: detectCountryFromPhone(args.phone),
       tier: args.tier,
+      source: args.source,
+    });
+  },
+});
+
+export const trackReflectionRan = internalAction({
+  args: {
+    phone: v.string(),
+    tier: v.string(),
+    messages_reviewed: v.number(),
+    tools_called: v.array(v.string()),
+    tools_called_count: v.number(),
+    trigger: v.string(),
+    threshold: v.number(),
+    duration_ms: v.number(),
+  },
+  handler: async (_ctx, args) => {
+    await captureEvent(args.phone, "reflection_agent_ran", {
+      tier: args.tier,
+      messages_reviewed: args.messages_reviewed,
+      tools_called: args.tools_called,
+      tools_called_count: args.tools_called_count,
+      trigger: args.trigger,
+      threshold: args.threshold,
+      duration_ms: args.duration_ms,
+      phone_country: detectCountryFromPhone(args.phone),
+    });
+  },
+});
+
+export const trackReflectionSkipped = internalAction({
+  args: {
+    phone: v.string(),
+    reason: v.string(),
+  },
+  handler: async (_ctx, { phone, reason }) => {
+    await captureEvent(phone, "reflection_agent_skipped", {
+      reason,
+      phone_country: detectCountryFromPhone(phone),
     });
   },
 });

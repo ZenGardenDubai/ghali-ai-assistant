@@ -18,6 +18,7 @@ export const scheduleTrackAIGeneration = internalMutation({
     cachedInputTokens: v.optional(v.number()),
     tier: v.string(),
     traceId: v.optional(v.string()),
+    source: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.scheduler.runAfter(0, internal.analytics.trackAIGeneration, args);

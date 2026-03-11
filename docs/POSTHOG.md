@@ -21,8 +21,9 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 | File | Purpose |
 |---|---|
-| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 15 internal actions |
+| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 17 internal actions |
 | `convex/analyticsHelper.ts` | Scheduling mutation for agent's usageHandler (no Node.js deps) |
+| `convex/reflection.ts` | Background reflection agent — usageHandler captures `$ai_generation` with `source: "reflection"` |
 | `convex/lib/analytics.ts` | `detectCountryFromPhone()` pure function |
 | `convex/agent.ts` | `usageHandler` — captures `$ai_generation` for every LLM call; scheduled task tool analytics |
 | `convex/scheduledTasks.ts` | Scheduled task execution analytics (executed, skipped, credit notification) |
@@ -70,11 +71,13 @@ PostHog standard event for LLM calls. Shows in LLM Analytics dashboard.
 | `$ai_is_error` | boolean? | Whether generation failed (image gen only) |
 | `cached_input_tokens` | number? | Cached input tokens |
 | `generation_type` | string? | `image` for image generation |
+| `source` | string? | `reflection` for background reflection agent calls, omitted for user-facing calls |
 | `phone_country` | string | ISO country code |
 | `tier` | string | `basic` or `pro` |
 
 **Triggered in**:
 - `convex/agent.ts` usageHandler — every LLM call (Flash, embeddings, deep reasoning)
+- `convex/reflection.ts` usageHandler — reflection agent LLM calls (with `source: "reflection"`)
 - `convex/images.ts` — image generation (with estimated tokens: 1290 output)
 - `convex/proWrite.ts` — each LLM pipeline step (BRIEF, ENRICH, RESEARCH, SYNTHESIZE, DRAFT, ELEVATE, REFINE, HUMANIZE) with providers `anthropic`, `google`, `openrouter`, `openai`. Note: the RAG step is a non-LLM retrieval step and does not emit `$ai_generation`.
 
@@ -231,6 +234,34 @@ Fired when a user submits feedback via any channel.
 
 **Triggered in**: `convex/feedback.ts` — feedback submission mutations (all sources: whatsapp_link, web, agent_tool) fire via scheduler.
 
+### `reflection_agent_ran`
+
+Fired after every background reflection agent execution. Token usage is tracked separately via `$ai_generation` with `source: "reflection"`.
+
+| Property | Type | Description |
+|---|---|---|
+| `tier` | string | `basic` or `pro` |
+| `messages_reviewed` | number | Number of messages in the batch |
+| `tools_called` | string[] | Tools the reflection agent called (e.g. `["appendToMemory", "updateProfile"]`) |
+| `tools_called_count` | number | Total number of tool calls made |
+| `trigger` | string | `counter` (message threshold reached) or `time_fallback` (4h heartbeat cron) |
+| `threshold` | number | Threshold used (5 for new users, 15 for established) |
+| `duration_ms` | number | Total execution time |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/reflection.ts` — `runReflection` action on success
+
+### `reflection_agent_skipped`
+
+Fired when reflection is triggered but skipped.
+
+| Property | Type | Description |
+|---|---|---|
+| `reason` | string | `opted_out`, `dormant`, or `error` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/reflection.ts` — `runReflection` action when user is opted out, dormant, or agent errors
+
 ## Client Events (Landing Page)
 
 Captured via `posthog-js` on ghali.ae:
@@ -253,6 +284,9 @@ Captured via `posthog-js` on ghali.ae:
 | Token Usage (Input vs Output) | Line | Sum of `$ai_input_tokens` and `$ai_output_tokens` |
 | Credits Exhausted | Line | `credits_exhausted` events per day |
 | Feature Usage | Bar | `feature_used` broken down by `feature` property (insight ID `7113417`) |
+| Reflection Agent Activity | Line | `reflection_agent_ran` per day, broken down by `trigger` |
+| Reflection Token Cost | Line | `$ai_generation` filtered by `source: "reflection"` — sum of input + output tokens |
+| Reflection Tools per Run | Number | Average `tools_called_count` from `reflection_agent_ran` |
 
 ## Country Code Mapping
 

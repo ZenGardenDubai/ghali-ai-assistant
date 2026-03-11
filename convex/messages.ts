@@ -887,6 +887,19 @@ export const generateResponse = internalAction({
         is_new_session: sessionStarted,
       });
 
+      // Increment reflection counter and trigger background reflection if threshold reached
+      // Counter is reset atomically inside the mutation to prevent duplicate triggers
+      const reflectionState = await ctx.runMutation(
+        internal.reflection.incrementReflectionCounter,
+        { userId: typedUserId }
+      );
+      if (reflectionState.shouldReflect) {
+        await ctx.scheduler.runAfter(0, internal.reflection.runReflection, {
+          userId: typedUserId,
+          trigger: "counter",
+          messagesReviewed: reflectionState.count,
+        });
+      }
     }
 
     // Send the primary reply first — this is what the user is waiting for
