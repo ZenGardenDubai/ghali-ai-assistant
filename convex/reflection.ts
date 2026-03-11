@@ -13,6 +13,8 @@ import { isFileTooLarge } from "./lib/userFiles";
 // Constants
 // ---------------------------------------------------------------------------
 
+/** Title used to tag reflection threads (excluded from chat thread lookups) */
+const REFLECTION_THREAD_TITLE = "__reflection__";
 /** Reflection threshold for new users (first 30 messages) */
 export const REFLECTION_THRESHOLD_NEW = 5;
 /** Reflection threshold for established users (30+ messages) */
@@ -101,13 +103,17 @@ const reflectionUpdateProfile = createTool({
   }),
   handler: async (ctx, { category, content }) => {
     if (!ctx.userId) return JSON.stringify({ status: "error", code: "NO_USER_CONTEXT" });
-    if (isFileTooLarge(content)) {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return JSON.stringify({ status: "error", code: "EMPTY_CONTENT", message: "Profile section cannot be empty." });
+    }
+    if (isFileTooLarge(trimmed)) {
       return JSON.stringify({ status: "error", code: "FILE_TOO_LARGE", message: "Profile section exceeds limit." });
     }
     await ctx.runMutation(internal.users.internalUpdateProfileSection, {
       userId: ctx.userId as Id<"users">,
       category,
-      content,
+      content: trimmed,
     });
     return JSON.stringify({ status: "success", action: "profile_updated", category });
   },
@@ -252,8 +258,9 @@ export const runReflection = internalAction({
   args: {
     userId: v.id("users"),
     trigger: v.optional(v.string()), // "counter" or "time_fallback"
+    messagesReviewed: v.optional(v.number()), // passed by counter trigger (counter already reset to 0)
   },
-  handler: async (ctx, { userId, trigger }) => {
+  handler: async (ctx, { userId, trigger, messagesReviewed: passedCount }) => {
     const triggerType = trigger ?? "counter";
     const startMs = Date.now();
 
@@ -281,7 +288,9 @@ export const runReflection = internalAction({
       return;
     }
 
-    const messagesReviewed = user.messagesSinceReflection ?? 0;
+    // Counter triggers pass the count directly (counter is already reset to 0 in DB).
+    // Time-fallback triggers read from the DB.
+    const messagesReviewed = passedCount ?? (user.messagesSinceReflection ?? 0);
     if (messagesReviewed === 0) {
       return; // Nothing to reflect on
     }
@@ -294,23 +303,27 @@ export const runReflection = internalAction({
       { userId }
     ) as Array<{ filename: string; content: string }>;
 
-    // Find the user's existing chat threads (created by the main agent)
+    // Find the user's existing chat threads (exclude reflection threads)
     const threadsResult = await ctx.runQuery(
       components.agent.threads.listThreadsByUserId,
       {
         userId: userId as string,
         order: "desc",
-        paginationOpts: { numItems: 5, cursor: null },
+        paginationOpts: { numItems: 10, cursor: null },
       }
     );
 
-    if (threadsResult.page.length === 0) {
+    const chatThreads = threadsResult.page.filter(
+      (t) => t.title !== REFLECTION_THREAD_TITLE
+    );
+
+    if (chatThreads.length === 0) {
       await ctx.runMutation(internal.reflection.resetReflectionCounter, { userId });
       return;
     }
 
     // Read recent messages from the user's most recent chat thread
-    const userThreadId = threadsResult.page[0]._id;
+    const userThreadId = chatThreads[0]._id;
     const messagesResult = await ctx.runQuery(
       components.agent.messages.listMessagesByThreadId,
       {
@@ -347,12 +360,14 @@ export const runReflection = internalAction({
 
     const prompt = `${fileContext}\n\n---\n\n## Recent conversation (${recentMessages.length} messages)\n\n${conversationText}`;
 
-    // Run reflection agent in its own dedicated thread (separate from user's chat)
+    // Run reflection agent in its own dedicated thread (tagged to exclude from chat lookups)
     const { threadId: reflectionThreadId } = await reflectionAgent.createThread(ctx, {
       userId: userId as string,
+      title: REFLECTION_THREAD_TITLE,
     });
 
     let toolsUsed: string[] = [];
+    let totalToolCalls = 0;
     try {
       const result = await reflectionAgent.generateText(
         ctx,
@@ -361,13 +376,12 @@ export const runReflection = internalAction({
       );
 
       // Extract tools used
-      toolsUsed = [
-        ...new Set(
-          result.steps.flatMap((s: { toolCalls: Array<{ toolName: string }> }) =>
-            s.toolCalls.map((tc: { toolName: string }) => tc.toolName)
-          )
-        ),
-      ];
+      const allToolCalls = result.steps.flatMap(
+        (s: { toolCalls: Array<{ toolName: string }> }) =>
+          s.toolCalls.map((tc: { toolName: string }) => tc.toolName)
+      );
+      totalToolCalls = allToolCalls.length;
+      toolsUsed = [...new Set(allToolCalls)];
     } catch (error) {
       console.error(`[reflection] Failed for user ${userId}:`, error);
       await ctx.runAction(internal.analytics.trackReflectionSkipped, {
@@ -393,7 +407,7 @@ export const runReflection = internalAction({
       tier: user.tier,
       messages_reviewed: recentMessages.length,
       tools_called: toolsUsed,
-      tools_called_count: toolsUsed.length,
+      tools_called_count: totalToolCalls,
       trigger: triggerType,
       threshold,
       duration_ms: Date.now() - startMs,

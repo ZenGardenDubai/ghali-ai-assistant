@@ -897,6 +897,7 @@ export const generateResponse = internalAction({
         await ctx.scheduler.runAfter(0, internal.reflection.runReflection, {
           userId: typedUserId,
           trigger: "counter",
+          messagesReviewed: reflectionState.count,
         });
       }
     }
