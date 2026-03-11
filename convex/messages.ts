@@ -170,17 +170,28 @@ export const REFLECTION_TOOL_NAMES = new Set([
  * instead of emitting it in a separate step. These patterns match the known
  * headers the model uses, and everything from the first match to the end of
  * the text is stripped.
+ *
+ * Each pattern has two variants:
+ *   - mid-text: requires a leading `\n` (existing behaviour)
+ *   - start-of-string: no leading `\n` required, for steps whose entire text
+ *     is a reflection header. Negative lookaheads prevent false-positives on
+ *     conversational openers like "Reflecting on your question…".
  */
 const INLINE_REFLECTION_PATTERNS: RegExp[] = [
   /\n\s*\*{0,2}Reflecting on\b/i,
+  /^\s*\*{0,2}Reflecting on\b(?! your)/i,
   /\n\s*\*{0,2}Silent reflection\b/i,
+  /^\s*\*{0,2}Silent reflection\b/i,
   /\n\s*\*{0,2}Identity and memory update/i,
+  /^\s*\*{0,2}Identity and memory update/i,
   // Require "..." or a newline after the colon to avoid matching legitimate
   // agent replies like "Memory update: your preference was saved".
   /\n\s*\*{0,2}Memory update\s*[:—]\s*\n/i,
   /\n\s*\*{0,2}Profile update\s*[:—]\s*\n/i,
   /\n\s*\*{0,2}Behavioral pattern/i,
+  /^\s*\*{0,2}Behavioral pattern/i,
   /\n\s*\*{0,2}Internal note/i,
+  /^\s*\*{0,2}Internal note/i,
 ];
 
 /**
@@ -215,57 +226,65 @@ export function stripInlineReflection(text: string): string {
  * "Reflecting on Hesham's profile: Professional: Still ED at UAE PMO…"
  * This internal narration must never be sent to the user.
  *
- * Algorithm: walk steps in order, tracking the last "user-facing" text.
+ * Algorithm: walk steps in order, applying inline-reflection stripping per step,
+ * then tracking the last "user-facing" text.
  * A step's text is suppressed when ALL of the following are true:
  *   1. The step has no tool calls (it is a terminating text-only step).
  *   2. The immediately preceding step called ONLY reflection tools.
- *   3. A user-facing response was already captured from an earlier step.
+ *   3. A pure-text step (text with no tool calls) was already seen earlier.
  *
- * Condition 3 prevents false suppression when the agent does real work
- * (e.g. addItem) in an earlier step, then reflects, then emits the reply
- * as the first text — since no prior text was captured, it must be the
- * actual response, not a reflection leak.
+ * Condition 3 (tracked via `hasPureTextStep`) is stricter than the old
+ * `lastGoodText !== ""` guard.  It prevents false suppression in Pattern G:
+ *   webSearch (step 0) → "Based on search…" + appendToMemory (step 1)
+ *     → "[Actual answer]" (step 2, no tools)  ← must NOT be suppressed.
+ * Because step 1 has tool calls it is never a pure-text step, so
+ * `hasPureTextStep` is still false when step 2 is evaluated.
  *
- * This covers the two common reflection-leak patterns:
+ * Inline reflection is stripped per step rather than only at the end so that
+ * a step whose entire text is a reflection header (e.g. "Reflecting on …")
+ * is treated as empty and never overwrites `lastGoodText`.
+ *
+ * This covers the common reflection-leak patterns:
  *   Pattern A — main response + reflection tool in step 0, reflection text in step 1.
  *   Pattern C — web search (step 0) → response + reflection tool (step 1) → reflection text (step 2).
+ *   Pattern G — web search (step 0) → intermediate text + reflection tool (step 1) → real answer (step 2).
  *
- * But correctly preserves the reply in patterns like:
+ * And correctly preserves the reply in patterns like:
  *   addItem (step 0) → appendToMemory (step 1) → reply text (step 2).
- *
- * The function also recovers the user-facing text when the model produces an
- * empty final step (no text) after reflection tools, returning the text from
- * the last substantive response step instead.
- *
- * As a final safety net, inline reflection blocks are stripped from the
- * returned text via {@link stripInlineReflection}.
  */
 export function extractResponseText(
   steps: Array<{ text: string; toolCalls: Array<{ toolName: string }> }>
 ): string {
   let lastGoodText = "";
+  let hasPureTextStep = false;
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
-    if (!step.text?.trim()) continue;
+
+    // Strip inline reflection first — if the whole step is reflection narration
+    // it becomes empty and does not overwrite lastGoodText.
+    const text = stripInlineReflection(step.text ?? "");
+    if (!text?.trim()) continue;
 
     // Detect reflection-leak: this step has no tool calls (terminating step)
     // and the previous step called only reflection tools.
-    // But only suppress if we already captured user-facing text earlier —
-    // if lastGoodText is still empty, this must be the actual reply
-    // (e.g. addItem → appendToMemory → reply text).
-    if (step.toolCalls.length === 0 && i > 0) {
+    // Only suppress once we've already captured a pure-text step — before that,
+    // the next text-only step may still be the actual response (Pattern G).
+    if (step.toolCalls.length === 0 && i > 0 && hasPureTextStep) {
       const prev = steps[i - 1];
       const prevOnlyReflection =
         prev.toolCalls.length > 0 &&
         prev.toolCalls.every((tc) => REFLECTION_TOOL_NAMES.has(tc.toolName));
-      if (prevOnlyReflection && lastGoodText) continue; // suppress reflection text
+      if (prevOnlyReflection) continue; // suppress reflection text
     }
 
-    lastGoodText = step.text;
+    lastGoodText = text;
+    if (step.toolCalls.length === 0) {
+      hasPureTextStep = true;
+    }
   }
 
-  return stripInlineReflection(lastGoodText);
+  return lastGoodText;
 }
 
 /**

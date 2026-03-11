@@ -168,6 +168,61 @@ describe("extractResponseText", () => {
     expect(extractResponseText(steps)).toBe("Some text.");
   });
 
+  // Pattern G regression tests
+  it("Pattern G: does not suppress actual response that follows intermediate text+reflection step", () => {
+    // Step 0: webSearch (no text)
+    // Step 1: intermediate summary + appendToMemory  ← sets lastGoodText but NOT a pure-text step
+    // Step 2: actual detailed answer (no tools)  ← must NOT be suppressed
+    const steps = [
+      step("", ["webSearch"]),
+      step("Based on my search, here's a quick summary.", ["appendToMemory"]),
+      step("Here is the detailed answer you asked for."),
+    ];
+    expect(extractResponseText(steps)).toBe(
+      "Here is the detailed answer you asked for."
+    );
+  });
+
+  it("Pattern G: strips reflection text at string start in intermediate step, returns subsequent real answer", () => {
+    // Step 0: webSearch (no text)
+    // Step 1: entire text is reflection narration at string start (stripped to empty)
+    // Step 2: actual answer (no tools) — should not be suppressed since no pure-text step seen
+    const steps = [
+      step("", ["webSearch"]),
+      step("Reflecting on the user's preferences: prefers detailed answers.", [
+        "appendToMemory",
+      ]),
+      step("Here is your detailed answer."),
+    ];
+    expect(extractResponseText(steps)).toBe("Here is your detailed answer.");
+  });
+
+  it("Pattern G: returns real answer after multiple intermediate text+reflection steps", () => {
+    // Multiple intermediate steps with both text and tool calls — none are pure-text steps,
+    // so the final pure-text step must not be suppressed.
+    const steps = [
+      step("", ["webSearch"]),
+      step("Searching for results...", ["appendToMemory"]),
+      step("Processing the data...", ["updateProfile"]),
+      step("The final answer is here!"),
+    ];
+    expect(extractResponseText(steps)).toBe("The final answer is here!");
+  });
+
+  it("Pattern G: still suppresses genuine reflection leak when a pure-text step was already seen", () => {
+    // Step 0: webSearch (no text)
+    // Step 1: "Let me look that up…" (no tools) ← pure-text step seen
+    // Step 2: full answer + appendToMemory
+    // Step 3: reflection leak (no tools, after reflection-only step 2) ← must be suppressed
+    const steps = [
+      step("", ["webSearch"]),
+      step("Let me look that up..."),
+      step("Here is the full answer!", ["appendToMemory"]),
+      step("Reflecting on the user's interests."),
+    ];
+    expect(extractResponseText(steps)).toBe("Here is the full answer!");
+  });
+
   it("strips inline reflection from response text", () => {
     const steps = [
       step(
