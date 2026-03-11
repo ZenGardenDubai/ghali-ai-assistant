@@ -28,8 +28,8 @@ export function shouldIncludeRecap(user: UserForRecap): boolean {
 
   if (creditsUsed <= 0) return false;
 
-  // New user: totalMessages equals creditsUsed (no history before this cycle)
-  const isNewUser = (user.totalMessages ?? 0) <= creditsUsed;
+  // New user: fewer than 60 lifetime messages means still new to Ghali
+  const isNewUser = (user.totalMessages ?? 0) < CREDITS_BASIC;
 
   if (isNewUser) {
     if (creditsUsed < NEW_USER_FIRST_TRIGGER) return false;
