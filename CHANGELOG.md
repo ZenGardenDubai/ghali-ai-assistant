@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.40.0...v0.41.0) (2026-03-11)
+
+
+### Features
+
+* add engagement recap woven into agent responses ([#231](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/231)) ([e39a25e](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/e39a25e3b66c59a75fdddca52a790015a5c0a4bc))
+
 ## [0.40.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.8...v0.40.0) (2026-03-11)
 
 
