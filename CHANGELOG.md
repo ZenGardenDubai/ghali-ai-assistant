@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.39.7](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.6...v0.39.7) (2026-03-11)
+
+
+### Bug Fixes
+
+* remove reflection suppression that caused silent response drops ([#219](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/219)) ([a0e0e7a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/a0e0e7a0585cf7897ababde7b6d2c0dc404360fc))
+
 ## [0.39.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.39.5...v0.39.6) (2026-03-11)
 
 
