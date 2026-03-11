@@ -3,45 +3,65 @@ import { shouldIncludeRecap, buildRecapInstruction, getRecapInstruction } from "
 import { CREDITS_BASIC, CREDITS_PRO } from "../constants";
 
 describe("shouldIncludeRecap", () => {
-  // --- New users (first cycle): trigger at 4th credit ---
+  // --- New users (first cycle): trigger at 4, 12, 20, 28, ... ---
 
   it("returns true for new user on 4th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 4,
-        tier: "basic",
-        totalMessages: 4,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 4, tier: "basic", totalMessages: 4 })
     ).toBe(true);
   });
 
   it("returns false for new user on 3rd credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 3,
-        tier: "basic",
-        totalMessages: 3,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 3, tier: "basic", totalMessages: 3 })
     ).toBe(false);
   });
 
   it("returns false for new user on 5th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 5,
-        tier: "basic",
-        totalMessages: 5,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 5, tier: "basic", totalMessages: 5 })
+    ).toBe(false);
+  });
+
+  it("returns true for new user on 12th credit (4 + 8)", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 12, tier: "basic", totalMessages: 12 })
+    ).toBe(true);
+  });
+
+  it("returns true for new user on 20th credit (4 + 16)", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 20, tier: "basic", totalMessages: 20 })
+    ).toBe(true);
+  });
+
+  it("returns true for new user on 28th credit (4 + 24)", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 28, tier: "basic", totalMessages: 28 })
+    ).toBe(true);
+  });
+
+  it("returns false for new user on 8th credit (not a trigger)", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 8, tier: "basic", totalMessages: 8 })
+    ).toBe(false);
+  });
+
+  it("returns false for new user on 16th credit (not a trigger)", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 16, tier: "basic", totalMessages: 16 })
     ).toBe(false);
   });
 
   it("returns true for new pro user on 4th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_PRO - 4,
-        tier: "pro",
-        totalMessages: 4,
-      })
+      shouldIncludeRecap({ credits: CREDITS_PRO - 4, tier: "pro", totalMessages: 4 })
+    ).toBe(true);
+  });
+
+  it("returns true for new pro user on 20th credit", () => {
+    expect(
+      shouldIncludeRecap({ credits: CREDITS_PRO - 20, tier: "pro", totalMessages: 20 })
     ).toBe(true);
   });
 
@@ -49,113 +69,69 @@ describe("shouldIncludeRecap", () => {
 
   it("returns true for returning user on 12th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 12,
-        tier: "basic",
-        totalMessages: 200,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 12, tier: "basic", totalMessages: 200 })
     ).toBe(true);
   });
 
   it("returns true for returning user on 24th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 24,
-        tier: "basic",
-        totalMessages: 300,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 24, tier: "basic", totalMessages: 300 })
     ).toBe(true);
   });
 
   it("returns true for returning user on 36th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 36,
-        tier: "basic",
-        totalMessages: 500,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 36, tier: "basic", totalMessages: 500 })
     ).toBe(true);
   });
 
   it("returns false for returning user on 11th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 11,
-        tier: "basic",
-        totalMessages: 200,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 11, tier: "basic", totalMessages: 200 })
     ).toBe(false);
   });
 
   it("returns false for returning user on 13th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 13,
-        tier: "basic",
-        totalMessages: 200,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 13, tier: "basic", totalMessages: 200 })
     ).toBe(false);
   });
 
   it("returns true for returning pro user on 12th credit", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_PRO - 12,
-        tier: "pro",
-        totalMessages: 1000,
-      })
+      shouldIncludeRecap({ credits: CREDITS_PRO - 12, tier: "pro", totalMessages: 1000 })
     ).toBe(true);
   });
 
   // --- Edge cases ---
 
-  it("returns false for user with 0 credits used (first message not yet sent)", () => {
+  it("returns false for user with 0 credits used", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC,
-        tier: "basic",
-        totalMessages: 0,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC, tier: "basic", totalMessages: 0 })
     ).toBe(false);
   });
 
   it("returns true for user with undefined totalMessages (treated as new user at 4th credit)", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 4,
-        tier: "basic",
-        totalMessages: undefined,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 4, tier: "basic", totalMessages: undefined })
     ).toBe(true);
   });
 
   it("returns true when credits is 0 (exhausted basic) because 60 % 12 === 0", () => {
     expect(
-      shouldIncludeRecap({
-        credits: 0,
-        tier: "basic",
-        totalMessages: 200,
-      })
+      shouldIncludeRecap({ credits: 0, tier: "basic", totalMessages: 200 })
     ).toBe(true);
   });
 
   it("returns false for returning user on a non-trigger credit count", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_BASIC - 7,
-        tier: "basic",
-        totalMessages: 200,
-      })
+      shouldIncludeRecap({ credits: CREDITS_BASIC - 7, tier: "basic", totalMessages: 200 })
     ).toBe(false);
   });
 
   it("returns true for returning pro user at 60th credit (60 % 12 === 0)", () => {
     expect(
-      shouldIncludeRecap({
-        credits: CREDITS_PRO - 60,
-        tier: "pro",
-        totalMessages: 1000,
-      })
+      shouldIncludeRecap({ credits: CREDITS_PRO - 60, tier: "pro", totalMessages: 1000 })
     ).toBe(true);
   });
 });

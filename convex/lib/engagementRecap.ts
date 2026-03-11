@@ -1,7 +1,10 @@
 import { CREDITS_BASIC, CREDITS_PRO } from "../constants";
 
-/** Recap trigger for new users (first billing cycle) */
-const NEW_USER_TRIGGER = 4;
+/** Recap trigger for new users — first recap at this credit */
+const NEW_USER_FIRST_TRIGGER = 4;
+
+/** Recap interval for new users after the first trigger (every Nth credit after the 4th) */
+const NEW_USER_INTERVAL = 8;
 
 /** Recap trigger interval for returning users (every Nth credit) */
 const RETURNING_USER_INTERVAL = 12;
@@ -16,8 +19,8 @@ type UserForRecap = {
  * Determines whether the agent should weave an engagement recap/insight
  * into the current response.
  *
- * - New users (first cycle): trigger on the 4th credit spent
- * - Returning users (post-reset): trigger every 12th credit spent
+ * - New users (first cycle): trigger at 4th credit, then every 8th (4, 12, 20, 28, 36, ...)
+ * - Returning users (post-reset): trigger every 12th credit (12, 24, 36, ...)
  */
 export function shouldIncludeRecap(user: UserForRecap): boolean {
   const maxCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
@@ -29,7 +32,8 @@ export function shouldIncludeRecap(user: UserForRecap): boolean {
   const isNewUser = (user.totalMessages ?? 0) <= creditsUsed;
 
   if (isNewUser) {
-    return creditsUsed === NEW_USER_TRIGGER;
+    if (creditsUsed < NEW_USER_FIRST_TRIGGER) return false;
+    return (creditsUsed - NEW_USER_FIRST_TRIGGER) % NEW_USER_INTERVAL === 0;
   }
 
   return creditsUsed % RETURNING_USER_INTERVAL === 0;
