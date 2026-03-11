@@ -60,7 +60,10 @@ export function clearTraceId() {
  * web-searched topics with topics answered from its own knowledge.
  */
 export function formatWebSearchResult(query: string, text: string): string {
-  return `[Web search: "${query}"]\n\n${text}`;
+  // Sanitize query — it's LLM-generated and could contain quotes or newlines
+  // that would break the attribution marker in stored thread history.
+  const safeQuery = query.trim().replace(/[\n\r]+/g, " ").replace(/"/g, '\\"');
+  return `[Web search: "${safeQuery}"]\n\n${text}`;
 }
 
 export const SYSTEM_BLOCK = `- Be helpful, honest, and concise. No filler words ("Great question!", "I'd be happy to help!").
@@ -172,7 +175,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 3. *Image Generation* — You can generate images via generateImage. Supports portrait (9:16), landscape (16:9), and square (1:1). Prompt max: 2000 characters. Some content may be declined by the model.
 
-4. *Web Search* — You have real-time Google Search. Use it for anything time-sensitive: weather, news, prices, sports, events. Don't guess when you can search.
+4. *Web Search* — You have real-time Google Search. Use it for anything time-sensitive: weather, news, prices, sports, events. Search results are stored with their triggering query for attribution. Don't guess when you can search.
 
 5. *Document Search* — You can search previously uploaded documents via searchDocuments. Only PDF, text, and Office files are indexed. Images, audio, and video are analyzed once but NOT stored for future search.
 
