@@ -16,7 +16,7 @@ import {
 import { getNextCronRun } from "./lib/cronParser";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
-import { ghaliAgent, setTraceId, clearTraceId } from "./agent";
+import { ghaliAgent, getOrCreateChatThread, setTraceId, clearTraceId } from "./agent";
 
 /**
  * Pure helper: determine if a failure notification should be sent.
@@ -320,12 +320,10 @@ export const executeScheduledTask = internalAction({
     const { date, time, tz } = getCurrentDateTime(user.timezone);
     const userContext = buildUserContext(userFiles, { date, time, tz });
 
-    // Get/create thread for this user.
-    // Thread scoping (one thread per userId) is enforced by @convex-dev/agent.
-    // We pass userId explicitly so the library can scope the thread correctly.
-    const { threadId } = await ghaliAgent.createThread(ctx, {
-      userId: task.userId as string,
-    });
+    // Get the user's existing chat thread, or create one if none exists yet.
+    // Using getOrCreateChatThread instead of createThread directly, because
+    // createThread always inserts a new thread and would lose all history.
+    const threadId = await getOrCreateChatThread(ctx, task.userId as string);
 
     // Build prompt (personality/memory language preferences are in userContext)
     const fullPrompt = buildScheduledTaskPrompt(task, userContext);

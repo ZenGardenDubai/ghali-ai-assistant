@@ -8,13 +8,12 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { MODELS } from "./models";
 import { isFileTooLarge } from "./lib/userFiles";
+import { REFLECTION_THREAD_TITLE } from "./constants";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Title used to tag reflection threads (excluded from chat thread lookups) */
-const REFLECTION_THREAD_TITLE = "__reflection__";
 /** Reflection threshold for new users (first 30 messages) */
 export const REFLECTION_THRESHOLD_NEW = 5;
 /** Reflection threshold for established users (30+ messages) */

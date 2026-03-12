@@ -98,6 +98,12 @@ export const AGENT_MAX_STEPS = 8;
 /** Number of recent thread messages loaded into context */
 export const AGENT_RECENT_MESSAGES = 100;
 
+/**
+ * Thread title used to tag reflection threads so they are excluded from
+ * chat thread lookups. Regular chat threads never have this title.
+ */
+export const REFLECTION_THREAD_TITLE = "__reflection__";
+
 /** Default image aspect ratio (portrait, optimized for phones) */
 export const DEFAULT_IMAGE_ASPECT_RATIO = "9:16" as const;
 
