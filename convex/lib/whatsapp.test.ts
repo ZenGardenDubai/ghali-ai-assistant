@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   validateWebhookSignature,
   parseCloudApiWebhook,
+  parseCloudApiStatuses,
   buildTypingIndicatorPayload,
 } from "./whatsapp";
 import { createHmac } from "crypto";
@@ -222,7 +223,7 @@ describe("parseCloudApiWebhook", () => {
               value: {
                 messaging_product: "whatsapp",
                 statuses: [
-                  { id: "wamid.xxx", status: "delivered", timestamp: "123" },
+                  { id: "wamid.xxx", status: "delivered" as const, timestamp: "123", recipient_id: "971501234567" },
                 ],
               },
               field: "messages",
@@ -485,6 +486,247 @@ describe("parseCloudApiWebhook", () => {
 
     const messages = parseCloudApiWebhook(payload);
     expect(messages[0].mediaContentType).toBe("application/octet-stream");
+  });
+});
+
+describe("parseCloudApiStatuses", () => {
+  it("parses delivered status", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "delivered",
+                    timestamp: "1700000000",
+                    recipient_id: "971501234567",
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0]).toEqual({
+      recipientPhone: "+971501234567",
+      status: "delivered",
+      timestamp: 1700000000000,
+      isBlocked: false,
+      errorCode: undefined,
+      errorMessage: undefined,
+    });
+  });
+
+  it("parses read status", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "read",
+                    timestamp: "1700000100",
+                    recipient_id: "971501234567",
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0].status).toBe("read");
+    expect(statuses[0].isBlocked).toBe(false);
+  });
+
+  it("detects blocked user from error code 131049", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "failed",
+                    timestamp: "1700000200",
+                    recipient_id: "971501234567",
+                    errors: [
+                      {
+                        code: 131049,
+                        title: "Message failed because user blocked the business",
+                      },
+                    ],
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0].isBlocked).toBe(true);
+    expect(statuses[0].errorCode).toBe(131049);
+    expect(statuses[0].status).toBe("failed");
+  });
+
+  it("detects blocked user from error code 131047", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "failed",
+                    timestamp: "1700000300",
+                    recipient_id: "971501234567",
+                    errors: [{ code: 131047, title: "Re-engagement message" }],
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses[0].isBlocked).toBe(true);
+  });
+
+  it("does not flag non-block error codes as blocked", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "failed",
+                    timestamp: "1700000400",
+                    recipient_id: "971501234567",
+                    errors: [{ code: 500, title: "Internal server error" }],
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses[0].isBlocked).toBe(false);
+    expect(statuses[0].errorCode).toBe(500);
+  });
+
+  it("skips 'sent' statuses", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "sent",
+                    timestamp: "1700000500",
+                    recipient_id: "971501234567",
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses).toHaveLength(0);
+  });
+
+  it("returns empty for non-whatsapp object", () => {
+    const payload = { object: "something_else" };
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses).toHaveLength(0);
+  });
+
+  it("returns empty when no statuses present", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                messages: [
+                  {
+                    from: "971501234567",
+                    id: "wamid.msg",
+                    timestamp: "123",
+                    type: "text",
+                    text: { body: "Hi" },
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
+    expect(statuses).toHaveLength(0);
   });
 });
 

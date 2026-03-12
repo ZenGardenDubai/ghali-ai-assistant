@@ -156,6 +156,12 @@ export const createScheduledTask = internalMutation({
 
     await ctx.db.patch(taskId, { schedulerJobId });
 
+    // Record proactive opt-in (only sets once)
+    const userForOptIn = await ctx.db.get(userId);
+    if (userForOptIn && !userForOptIn.proactiveOptInAt) {
+      await ctx.db.patch(userId, { proactiveOptInAt: Date.now() });
+    }
+
     return taskId;
   },
 });
@@ -188,10 +194,10 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Skip opted-out, dormant, or inactive (>7 days) users — but reschedule cron so it resumes on reactivation
+    // Skip opted-out, dormant, blocked, or inactive (>7 days) users — but reschedule cron so it resumes on reactivation
     const isInactive = !user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
-    if (user.optedOut || user.dormant || isInactive) {
-      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out, dormant, or inactive >7 days`);
+    if (user.optedOut || user.dormant || user.blocked || isInactive) {
+      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out, dormant, blocked, or inactive >7 days`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       } else {
@@ -389,17 +395,34 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Deduct credit
-    await ctx.runMutation(internal.credits.deductCredit, {
-      userId: task.userId,
-    });
-
     // Re-fetch user before delivery — agent call above can take seconds/minutes,
     // user may have opted out, gone dormant, or crossed the 7-day inactivity boundary
     const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
     const latestInactive = !latestUser?.lastMessageAt || Date.now() - latestUser.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
-    if (!latestUser || latestUser.optedOut || latestUser.dormant || latestInactive) {
-      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, dormant, or inactive >7 days`);
+    if (!latestUser || latestUser.optedOut || latestUser.dormant || latestUser.blocked || latestInactive) {
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, dormant, blocked, or inactive >7 days`);
+      if (task.schedule.kind === "cron") {
+        await rescheduleNextRun(ctx, taskId);
+      } else {
+        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+          taskId,
+          updates: { enabled: false },
+        });
+      }
+      return;
+    }
+
+    // Check daily proactive limit
+    const proactiveGuard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordProactiveSend,
+      { userId: task.userId }
+    );
+    if (!proactiveGuard.allowed) {
+      console.warn(`[proactive-guard] Task ${taskId} delivery blocked: ${proactiveGuard.reason}`);
+      await ctx.runMutation(internal.scheduledTasks.markLastRun, {
+        taskId,
+        lastStatus: "error",
+      });
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       } else {
@@ -445,15 +468,25 @@ export const executeScheduledTask = internalAction({
           body: responseText,
         });
       } else {
-        // Out of session — use template with truncation
-        const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
-        await ctx.runAction(internal.whatsapp.sendTemplate, {
-          to: latestUser.phone,
-          templateName: "ghali_scheduled_task",
-          variables: { "1": truncated },
-        });
+        // Out of session — check daily template cap before sending
+        const templateGuard = await ctx.runMutation(
+          internal.outboundGuard.checkAndRecordTemplateSend,
+          { userId: task.userId }
+        );
+        if (!templateGuard.allowed) {
+          console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
+          // Fall through to the !delivered path below
+        } else {
+          const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
+            to: latestUser.phone,
+            templateName: "ghali_scheduled_task",
+            variables: { "1": truncated },
+          });
+          delivered = true;
+        }
       }
-      delivered = true;
+      if (withinWindow) delivered = true;
     } catch (error) {
       console.error(`Failed to deliver scheduled task ${taskId}:`, error);
     }
@@ -474,6 +507,11 @@ export const executeScheduledTask = internalAction({
       }
       return;
     }
+
+    // Deduct credit after successful delivery
+    await ctx.runMutation(internal.credits.deductCredit, {
+      userId: task.userId,
+    });
 
     // Mark success + clear credit notification flag
     await ctx.runMutation(internal.scheduledTasks.markLastRun, {

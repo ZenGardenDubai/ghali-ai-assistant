@@ -99,9 +99,9 @@ export const guardedSendMessage = internalAction({
     body: v.string(),
   },
   handler: async (ctx, { userId, to, body }) => {
-    // Re-check opt-out/dormant — user may have changed state between scheduling and execution
+    // Re-check opt-out/dormant/blocked — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.optedOut || user.dormant) return;
+    if (!user || user.optedOut || user.dormant || user.blocked) return;
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
@@ -132,14 +132,24 @@ export const guardedSendTemplate = internalAction({
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
-    // Re-check opt-out/dormant — user may have changed state between scheduling and execution
+    // Re-check opt-out/dormant/blocked — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.optedOut || user.dormant) return;
+    if (!user || user.optedOut || user.dormant || user.blocked) return;
 
     // 7-day inactivity gate — don't send templates to cold contacts
     // Skipped for user-initiated events (e.g. billing) where the notification is expected
     if (!skipInactivityGate && (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS)) {
       console.log(`[template-gate] Skipped template to ${userId} — inactive >7 days`);
+      return;
+    }
+
+    // Check daily template cap (Meta limits ~2 templates/day per user)
+    const templateGuard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordTemplateSend,
+      { userId }
+    );
+    if (!templateGuard.allowed) {
+      console.warn(`[template-guard] Blocked background template to ${userId}: ${templateGuard.reason}`);
       return;
     }
 

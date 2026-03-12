@@ -384,6 +384,10 @@ const updateHeartbeat = createTool({
       filename: "heartbeat",
       content,
     });
+    // Record proactive opt-in (only sets once)
+    await ctx.runMutation(internal.users.recordProactiveOptIn, {
+      userId: ctx.userId as Id<"users">,
+    });
     return JSON.stringify({ status: "success", action: "heartbeat_updated" });
   },
 });
