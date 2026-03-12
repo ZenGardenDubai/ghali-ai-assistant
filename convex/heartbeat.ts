@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { ghaliAgent, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
+import { ghaliAgent, getOrCreateChatThread, SYSTEM_BLOCK, setTraceId, clearTraceId } from "./agent";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { WHATSAPP_SESSION_WINDOW_MS, TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
@@ -91,10 +91,10 @@ export const processUserHeartbeat = internalAction({
       { language: user.language, timezone: user.timezone }
     );
 
-    // Get or create thread (shared with normal conversation)
-    const { threadId } = await ghaliAgent.createThread(ctx, {
-      userId: userId as string,
-    });
+    // Get the user's existing chat thread, or create one if none exists yet.
+    // Using getOrCreateChatThread instead of createThread directly, because
+    // createThread always inserts a new thread and would lose all history.
+    const threadId = await getOrCreateChatThread(ctx, userId as string);
 
     const prompt = `${userContext}
 

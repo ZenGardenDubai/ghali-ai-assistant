@@ -18,6 +18,7 @@ import {
   DEFAULT_IMAGE_ASPECT_RATIO,
   IMAGE_PROMPT_MAX_LENGTH,
   ITEMS_LIMIT_BASIC,
+  REFLECTION_THREAD_TITLE,
   SCHEDULED_TASKS_LIMIT_BASIC,
   SCHEDULED_TASKS_LIMIT_PRO,
   PRO_FEATURES,
@@ -1808,6 +1809,12 @@ export const ghaliAgent = new Agent(components.agent, {
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {
     recentMessages: AGENT_RECENT_MESSAGES,
+    searchOptions: {
+      limit: 10,
+      vectorSearch: true,
+      textSearch: true,
+      messageRange: { before: 2, after: 1 },
+    },
   },
   usageHandler: async (ctx, { userId, usage, providerMetadata, model, provider }) => {
     if (!userId) return;
@@ -1843,3 +1850,61 @@ export const ghaliAgent = new Agent(components.agent, {
     }
   },
 });
+
+// ---------------------------------------------------------------------------
+// Thread helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Selects the most recent non-reflection thread from an ordered list.
+ * Returns the `_id` of the first thread whose title is not
+ * REFLECTION_THREAD_TITLE, or `null` if no chat thread is found.
+ *
+ * Extracted as a pure function for unit-testability.
+ */
+export function pickChatThread(
+  threads: Array<{ _id: string; title?: string }>,
+): string | null {
+  const chat = threads.find((t) => t.title !== REFLECTION_THREAD_TITLE);
+  return chat ? chat._id : null;
+}
+
+/**
+ * Returns the threadId of the user's existing primary chat thread, or creates
+ * a new one if none exists yet.
+ *
+ * `@convex-dev/agent`'s `createThread` always inserts a brand-new thread —
+ * it has no "get or create" semantics.  Calling it on every turn therefore
+ * creates a fresh thread each time and discards all prior conversation
+ * history, which is the root cause of the in-session context-drop bug.
+ *
+ * This helper fixes that by querying the user's threads first.  Reflection
+ * threads (tagged with REFLECTION_THREAD_TITLE) are excluded so the agent
+ * always continues the real chat thread.
+ *
+ * @param ctx  A Convex action context (has runQuery / runMutation).
+ * @param userId  The user's Convex document ID string.
+ * @returns The threadId to pass to `ghaliAgent.generateText`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getOrCreateChatThread(ctx: any, userId: string): Promise<string> {
+  const threadsResult = await ctx.runQuery(
+    components.agent.threads.listThreadsByUserId,
+    {
+      userId,
+      order: "desc" as const,
+      paginationOpts: { numItems: 10, cursor: null },
+    },
+  );
+
+  const existingId = pickChatThread(
+    threadsResult.page as Array<{ _id: string; title?: string }>,
+  );
+  if (existingId) {
+    return existingId;
+  }
+
+  // No existing thread — first message from this user.
+  const { threadId } = await ghaliAgent.createThread(ctx, { userId });
+  return threadId;
+}

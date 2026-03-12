@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { formatWebSearchResult } from "./agent";
+import { formatWebSearchResult, pickChatThread } from "./agent";
+import { REFLECTION_THREAD_TITLE } from "./constants";
 
 describe("formatWebSearchResult", () => {
   it("prefixes result with the search query label", () => {
@@ -30,5 +31,52 @@ describe("formatWebSearchResult", () => {
   it("trims whitespace from query", () => {
     const result = formatWebSearchResult("  padded query  ", "Results.");
     expect(result).toBe('[Web search: "padded query"]\n\nResults.');
+  });
+});
+
+describe("pickChatThread", () => {
+  it("returns null for an empty thread list", () => {
+    expect(pickChatThread([])).toBeNull();
+  });
+
+  it("returns the _id of the first non-reflection thread", () => {
+    const threads = [
+      { _id: "thread1", title: undefined },
+      { _id: "thread2", title: "some chat" },
+    ];
+    expect(pickChatThread(threads)).toBe("thread1");
+  });
+
+  it("skips reflection threads and returns the next chat thread", () => {
+    const threads = [
+      { _id: "reflect1", title: REFLECTION_THREAD_TITLE },
+      { _id: "reflect2", title: REFLECTION_THREAD_TITLE },
+      { _id: "chat1", title: undefined },
+    ];
+    expect(pickChatThread(threads)).toBe("chat1");
+  });
+
+  it("returns null when all threads are reflection threads", () => {
+    const threads = [
+      { _id: "reflect1", title: REFLECTION_THREAD_TITLE },
+      { _id: "reflect2", title: REFLECTION_THREAD_TITLE },
+    ];
+    expect(pickChatThread(threads)).toBeNull();
+  });
+
+  it("returns the most recent chat thread (first element) when multiple exist", () => {
+    const threads = [
+      { _id: "newest", title: undefined },
+      { _id: "older", title: undefined },
+      { _id: "oldest", title: undefined },
+    ];
+    expect(pickChatThread(threads)).toBe("newest");
+  });
+
+  it("handles threads with a non-reflection title correctly", () => {
+    const threads = [
+      { _id: "thread1", title: "My Chat" },
+    ];
+    expect(pickChatThread(threads)).toBe("thread1");
   });
 });
