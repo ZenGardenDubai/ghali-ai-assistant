@@ -1809,6 +1809,12 @@ export const ghaliAgent = new Agent(components.agent, {
   maxSteps: AGENT_MAX_STEPS,
   contextOptions: {
     recentMessages: AGENT_RECENT_MESSAGES,
+    searchOptions: {
+      limit: 10,
+      vectorSearch: true,
+      textSearch: true,
+      messageRange: { before: 2, after: 1 },
+    },
   },
   usageHandler: async (ctx, { userId, usage, providerMetadata, model, provider }) => {
     if (!userId) return;
