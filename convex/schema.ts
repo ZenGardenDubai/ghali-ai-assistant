@@ -36,6 +36,22 @@ export default defineSchema({
     outboundWindowStart: v.optional(v.number()),
     consecutiveErrors: v.optional(v.number()),
     errorBackoffUntil: v.optional(v.number()),
+    /** Daily proactive outbound count (heartbeat, reminders, tasks, broadcasts) */
+    dailyProactiveSentCount: v.optional(v.number()),
+    /** Next reset time for daily proactive window (epoch ms, next Dubai midnight) */
+    dailyProactiveResetAt: v.optional(v.number()),
+    /** Daily template message count (Meta enforces ~2/day cross-brand cap) */
+    dailyTemplateSentCount: v.optional(v.number()),
+    /** Next reset time for daily template window (epoch ms, next Dubai midnight) */
+    dailyTemplateResetAt: v.optional(v.number()),
+    /** Set when WhatsApp reports user blocked our number */
+    blocked: v.optional(v.boolean()),
+    /** Timestamp of last confirmed message delivery (from status webhook) */
+    lastDeliveredAt: v.optional(v.number()),
+    /** Timestamp of last confirmed message read (from status webhook) */
+    lastReadAt: v.optional(v.number()),
+    /** When user first opted into proactive messages (created reminder/task/heartbeat) */
+    proactiveOptInAt: v.optional(v.number()),
     personalityBootstrapped: v.optional(v.boolean()),
     /** Number of user messages since last reflection agent run */
     messagesSinceReflection: v.optional(v.number()),

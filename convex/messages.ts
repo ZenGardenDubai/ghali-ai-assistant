@@ -170,13 +170,11 @@ export const saveIncoming = internalMutation({
     const user = await ctx.db.get(userId);
     const previousLastMessageAt = user?.lastMessageAt;
 
-    // Reactivate dormant users on inbound message — they found the new number
-    if (user?.dormant) {
-      await ctx.db.patch(userId, { dormant: false, lastMessageAt: Date.now() });
-    } else {
-      // Track last message time for WhatsApp 24h session window
-      await ctx.db.patch(userId, { lastMessageAt: Date.now() });
-    }
+    // Reactivate dormant/blocked users on inbound message
+    const reactivateFields: Record<string, unknown> = { lastMessageAt: Date.now() };
+    if (user?.dormant) reactivateFields.dormant = false;
+    if (user?.blocked) reactivateFields.blocked = false;
+    await ctx.db.patch(userId, reactivateFields);
 
     // Schedule async response generation
     await ctx.scheduler.runAfter(0, internal.messages.generateResponse, {

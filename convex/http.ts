@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { validateWebhookSignature, parseCloudApiWebhook } from "./lib/whatsapp";
+import { validateWebhookSignature, parseCloudApiWebhook, parseCloudApiStatuses } from "./lib/whatsapp";
 import type { CloudApiWebhookPayload } from "./lib/whatsapp";
 import { isBlockedCountryCode } from "./lib/utils";
 import { validateClerkWebhook } from "./lib/clerk";
@@ -93,10 +93,28 @@ http.route({
         return ok();
       }
 
+      // Process status updates (delivery tracking + block detection)
+      const statusUpdates = parseCloudApiStatuses(payload);
+      for (const statusUpdate of statusUpdates) {
+        if (statusUpdate.isBlocked) {
+          await ctx.runMutation(internal.users.markUserBlocked, {
+            phone: statusUpdate.recipientPhone,
+            errorCode: statusUpdate.errorCode,
+            errorMessage: statusUpdate.errorMessage,
+            timestamp: statusUpdate.timestamp,
+          });
+        } else if (statusUpdate.status === "delivered" || statusUpdate.status === "read") {
+          await ctx.runMutation(internal.users.trackDeliveryStatus, {
+            phone: statusUpdate.recipientPhone,
+            status: statusUpdate.status,
+            timestamp: statusUpdate.timestamp,
+          });
+        }
+      }
+
       // Parse Cloud API messages
       const messages = parseCloudApiWebhook(payload);
       if (messages.length === 0) {
-        // Status update or empty — acknowledge silently
         return ok();
       }
 
@@ -372,6 +390,7 @@ http.route({
         activeUsers,
         proUsers: all.proUsers,
         basicUsers: all.basicUsers,
+        blockedUsers: all.blockedUsers,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );

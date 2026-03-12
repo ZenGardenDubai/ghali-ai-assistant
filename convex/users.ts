@@ -448,6 +448,88 @@ export const resetApiErrors = internalMutation({
 });
 
 // ============================================================================
+// Block & Delivery Tracking (from WhatsApp status webhooks)
+// ============================================================================
+
+/**
+ * Mark a user as blocked (WhatsApp reported block/failure error).
+ * Blocked users will not receive any further outbound messages.
+ */
+export const markUserBlocked = internalMutation({
+  args: {
+    phone: v.string(),
+    errorCode: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
+  },
+  handler: async (ctx, { phone, errorCode, errorMessage, timestamp }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", phone))
+      .unique();
+    if (!user || user.blocked) return;
+
+    // Ignore stale block webhooks that arrived after the user re-engaged
+    if (timestamp && user.lastMessageAt && timestamp < user.lastMessageAt) {
+      console.log(
+        `[block-detection] Ignoring stale block for ${phone} — ` +
+          `webhook ts ${timestamp} < lastMessageAt ${user.lastMessageAt}`
+      );
+      return;
+    }
+
+    console.warn(
+      `[block-detection] User ${phone} blocked our number. ` +
+        `Error: ${errorCode} — ${errorMessage}`
+    );
+    await ctx.db.patch(user._id, { blocked: true });
+  },
+});
+
+/**
+ * Track message delivery/read status from WhatsApp webhooks.
+ * Used to monitor engagement quality and inform proactive messaging decisions.
+ */
+export const trackDeliveryStatus = internalMutation({
+  args: {
+    phone: v.string(),
+    status: v.union(v.literal("delivered"), v.literal("read")),
+    timestamp: v.number(),
+  },
+  handler: async (ctx, { phone, status, timestamp }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", phone))
+      .unique();
+    if (!user) return;
+
+    if (status === "delivered") {
+      // Only update if newer
+      if (!user.lastDeliveredAt || timestamp > user.lastDeliveredAt) {
+        await ctx.db.patch(user._id, { lastDeliveredAt: timestamp });
+      }
+    } else if (status === "read") {
+      if (!user.lastReadAt || timestamp > user.lastReadAt) {
+        await ctx.db.patch(user._id, { lastReadAt: timestamp });
+      }
+    }
+  },
+});
+
+/**
+ * Record proactive opt-in timestamp (first time user creates a reminder/task/heartbeat).
+ * Only sets once — never overwrites.
+ */
+export const recordProactiveOptIn = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user || user.proactiveOptInAt) return; // Already recorded
+    await ctx.db.patch(userId, { proactiveOptInAt: Date.now() });
+  },
+});
+
+// ============================================================================
 // Profile Section Replace
 // ============================================================================
 

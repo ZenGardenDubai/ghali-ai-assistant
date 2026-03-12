@@ -162,6 +162,79 @@ export function parseCloudApiWebhook(
 }
 
 // ============================================================================
+// Status Webhook Parsing
+// ============================================================================
+
+/**
+ * Error codes that indicate the user has blocked our number.
+ * - 131049: Message failed because user blocked the business
+ * - 131026: Message undeliverable (recipient not on WhatsApp or blocked)
+ *
+ * Excluded:
+ * - 131047: Re-engagement message (session expired, not a block — user simply hasn't replied in 24h)
+ * - 63018: Pair rate limit (transient throttle, not a block signal)
+ */
+const BLOCK_ERROR_CODES = new Set([131049, 131026]);
+
+export interface ParsedStatusUpdate {
+  recipientPhone: string; // E.164 with + prefix
+  status: "delivered" | "read" | "failed";
+  timestamp: number;
+  isBlocked: boolean;
+  errorCode?: number;
+  errorMessage?: string;
+}
+
+/**
+ * Parse Cloud API status updates from a webhook payload.
+ * Returns structured status updates for delivery tracking and block detection.
+ */
+export function parseCloudApiStatuses(
+  payload: CloudApiWebhookPayload
+): ParsedStatusUpdate[] {
+  const updates: ParsedStatusUpdate[] = [];
+
+  if (payload.object !== "whatsapp_business_account") return updates;
+
+  for (const entry of payload.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") continue;
+
+      const statuses = change.value?.statuses;
+      if (!statuses) continue;
+
+      for (const status of statuses) {
+        // Only process delivery, read, and failure statuses
+        if (status.status === "sent") continue;
+        if (status.status !== "delivered" && status.status !== "read" && status.status !== "failed") continue;
+
+        const recipientPhone = status.recipient_id
+          ? `+${status.recipient_id}`
+          : "";
+        if (!recipientPhone) continue;
+
+        const firstError = status.errors?.[0];
+        const isBlocked =
+          status.status === "failed" &&
+          !!firstError &&
+          BLOCK_ERROR_CODES.has(firstError.code);
+
+        updates.push({
+          recipientPhone,
+          status: status.status as "delivered" | "read" | "failed",
+          timestamp: parseInt(status.timestamp, 10) * 1000, // seconds → ms
+          isBlocked,
+          errorCode: firstError?.code,
+          errorMessage: firstError?.title ?? firstError?.message,
+        });
+      }
+    }
+  }
+
+  return updates;
+}
+
+// ============================================================================
 // Typing Indicator
 // ============================================================================
 
@@ -209,10 +282,18 @@ interface CloudApiChangeValue {
     wa_id: string;
   }>;
   messages?: CloudApiMessage[];
-  statuses?: Array<{
-    id: string;
-    status: string;
-    timestamp: string;
+  statuses?: CloudApiStatus[];
+}
+
+export interface CloudApiStatus {
+  id: string;
+  status: string;
+  timestamp: string;
+  recipient_id: string;
+  errors?: Array<{
+    code: number;
+    title: string;
+    message?: string;
   }>;
 }
 

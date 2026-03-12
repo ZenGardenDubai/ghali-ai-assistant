@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
+import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS, BROADCAST_BATCH_SIZE, BROADCAST_BATCH_DELAY_MS } from "./constants";
 import { getDubaiMidnightMs, getDubaiWeekStartMs, getDubaiMonthStartMs } from "./lib/dateUtils";
 
 /**
@@ -24,11 +24,10 @@ export const getStorageUrl = internalQuery({
   },
 });
 
-/** Number of users to send to concurrently in each broadcast batch */
-const BROADCAST_BATCH_SIZE = 50;
-
 /**
  * Send messages in parallel batches with throttling between batches.
+ * Uses BROADCAST_BATCH_SIZE (10) and BROADCAST_BATCH_DELAY_MS (2000ms)
+ * for pacing to stay well under Meta's 80 MPS default throughput limit.
  * Returns the number of successfully sent messages.
  */
 async function sendInBatches(
@@ -47,9 +46,9 @@ async function sendInBatches(
         console.error(`Broadcast send failed for ${batch[index].phone}:`, r.reason);
       }
     });
-    // Throttle between batches
+    // Throttle between batches — pacing to avoid throughput spikes
     if (i + BROADCAST_BATCH_SIZE < users.length) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, BROADCAST_BATCH_DELAY_MS));
     }
   }
   return sentCount;
@@ -96,6 +95,7 @@ export const getStats = internalQuery({
     const allUsers = await ctx.db.query("users").collect();
 
     const dormantUsers = allUsers.filter((u) => u.dormant === true).length;
+    const blockedUsers = allUsers.filter((u) => u.blocked === true).length;
     const totalUsers = allUsers.length - dormantUsers;
     const proUsers = allUsers.filter((u) => u.tier === "pro").length;
     const basicUsers = allUsers.filter((u) => u.tier === "basic").length;
@@ -141,6 +141,7 @@ export const getStats = internalQuery({
     return {
       totalUsers,
       dormantUsers,
+      blockedUsers,
       proUsers,
       basicUsers,
       // Rolling windows
@@ -227,7 +228,7 @@ export const getBroadcastCounts = internalQuery({
   handler: async (ctx) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.db.query("users").collect();
-    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut);
+    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut && !u.blocked);
     const activeCount = eligibleUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= cutoff
     ).length;
@@ -237,7 +238,7 @@ export const getBroadcastCounts = internalQuery({
 
 /**
  * Broadcast a message to all users active within 24h.
- * Sends in parallel batches of BROADCAST_BATCH_SIZE with 500ms between batches.
+ * Sends in parallel batches of BROADCAST_BATCH_SIZE with BROADCAST_BATCH_DELAY_MS between batches.
  */
 export const broadcastMessage = internalAction({
   args: { message: v.string() },
@@ -245,8 +246,8 @@ export const broadcastMessage = internalAction({
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
     const activeUsers = allUsers.filter(
-      (u: { lastMessageAt?: number; phone: string; dormant?: boolean; optedOut?: boolean }) =>
-        !u.dormant && !u.optedOut && u.lastMessageAt && u.lastMessageAt >= cutoff
+      (u: { lastMessageAt?: number; phone: string; dormant?: boolean; optedOut?: boolean; blocked?: boolean }) =>
+        !u.dormant && !u.optedOut && !u.blocked && u.lastMessageAt && u.lastMessageAt >= cutoff
     ) as Array<{ phone: string; lastMessageAt?: number }>;
 
     const sentCount = await sendInBatches(activeUsers, (phone) =>
@@ -369,7 +370,7 @@ export const sendTemplateToUser = internalAction({
   handler: async (ctx, { phone, templateName, variables, mediaUrl }) => {
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
-    if (user.dormant || user.optedOut) return { success: true, sentCount: 0 };
+    if (user.dormant || user.optedOut || user.blocked) return { success: true, sentCount: 0 };
 
     const isActive =
       !!user.lastMessageAt &&
@@ -401,7 +402,7 @@ export const sendTemplateToUser = internalAction({
 /**
  * Broadcast a template to ALL users.
  * Users active within 24h get a normal message; others get a template message.
- * Sends in parallel batches of BROADCAST_BATCH_SIZE with 500ms between batches.
+ * Sends in parallel batches of BROADCAST_BATCH_SIZE with BROADCAST_BATCH_DELAY_MS between batches.
  */
 export const sendTemplateBroadcast = internalAction({
   args: {
@@ -417,9 +418,10 @@ export const sendTemplateBroadcast = internalAction({
       lastMessageAt?: number;
       dormant?: boolean;
       optedOut?: boolean;
+      blocked?: boolean;
     }>;
 
-    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut);
+    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut && !u.blocked);
     const userByPhone = new Map(eligibleUsers.map((u) => [u.phone, u]));
 
     const sentCount = await sendInBatches(eligibleUsers, async (phone) => {

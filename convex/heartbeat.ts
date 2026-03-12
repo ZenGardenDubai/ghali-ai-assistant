@@ -17,8 +17,8 @@ export const processHeartbeats = internalMutation({
     const allUsers = await ctx.db.query("users").collect();
 
     for (const user of allUsers) {
-      // Skip opted-out, dormant, or inactive (>7 days) users
-      if (user.optedOut || user.dormant) continue;
+      // Skip opted-out, dormant, blocked, or inactive (>7 days) users
+      if (user.optedOut || user.dormant || user.blocked) continue;
       if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
 
       // Check heartbeat file and schedule processing if non-empty
@@ -64,8 +64,8 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
-    // Re-check opt-out/dormant/inactivity (user may have changed state after processHeartbeats enqueued this)
-    if (user.optedOut || user.dormant) return;
+    // Re-check opt-out/dormant/blocked/inactivity (user may have changed state after processHeartbeats enqueued this)
+    if (user.optedOut || user.dormant || user.blocked) return;
     if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) return;
 
     // Circuit breaker: skip if user is in error backoff
@@ -136,8 +136,18 @@ ${SYSTEM_BLOCK}
     if (responseText && !responseText.includes("__SKIP__")) {
       // Re-fetch user to catch STOP sent or inactivity crossed during AI generation
       const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
-      if (!latestUser || latestUser.optedOut || latestUser.dormant) return;
+      if (!latestUser || latestUser.optedOut || latestUser.dormant || latestUser.blocked) return;
       if (!latestUser.lastMessageAt || Date.now() - latestUser.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) return;
+
+      // Check daily proactive limit before outbound rate guard
+      const proactiveGuard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordProactiveSend,
+        { userId }
+      );
+      if (!proactiveGuard.allowed) {
+        console.warn(`[proactive-guard] Heartbeat blocked for ${userId}: ${proactiveGuard.reason}`);
+        return;
+      }
 
       // Check outbound rate guard before sending
       const guard = await ctx.runMutation(
@@ -146,6 +156,7 @@ ${SYSTEM_BLOCK}
       );
       if (!guard.allowed) {
         console.warn(`[outbound-guard] Heartbeat blocked for ${userId}: ${guard.reason}`);
+        await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
         return;
       }
 
@@ -160,14 +171,29 @@ ${SYSTEM_BLOCK}
             body: responseText,
           });
         } else {
-          // Outside 24h window — use Content Template
-          await ctx.runAction(internal.whatsapp.sendTemplate, {
-            to: latestUser.phone,
-            templateName: "ghali_heartbeat",
-            variables: { "1": responseText },
-          });
+          // Outside 24h window — check daily template cap before sending
+          const templateGuard = await ctx.runMutation(
+            internal.outboundGuard.checkAndRecordTemplateSend,
+            { userId }
+          );
+          if (!templateGuard.allowed) {
+            console.warn(`[template-guard] Heartbeat template blocked for ${userId}: ${templateGuard.reason}`);
+            await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
+            return;
+          }
+          try {
+            await ctx.runAction(internal.whatsapp.sendTemplate, {
+              to: latestUser.phone,
+              templateName: "ghali_heartbeat",
+              variables: { "1": responseText },
+            });
+          } catch (error) {
+            await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
+            throw error;
+          }
         }
       } catch (error) {
+        await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
         console.error(`Heartbeat delivery failed for user ${userId}:`, error);
       }
     }

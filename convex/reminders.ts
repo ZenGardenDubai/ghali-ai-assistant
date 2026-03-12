@@ -64,6 +64,14 @@ export const createReminder = internalMutation({
     // Store scheduler job ID for cancellation
     await ctx.db.patch(jobId, { schedulerJobId });
 
+    // Record proactive opt-in (only sets once)
+    if (!isReschedule) {
+      const userForOptIn = await ctx.db.get(userId);
+      if (userForOptIn && !userForOptIn.proactiveOptInAt) {
+        await ctx.db.patch(userId, { proactiveOptInAt: Date.now() });
+      }
+    }
+
     return jobId;
   },
 });
@@ -90,9 +98,9 @@ export const fireReminder = internalAction({
       return;
     }
 
-    // Skip opted-out, dormant, or inactive (>7 days) users
+    // Skip opted-out, dormant, blocked, or inactive (>7 days) users
     const isInactive = !user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
-    if (user.optedOut || user.dormant || isInactive) {
+    if (user.optedOut || user.dormant || user.blocked || isInactive) {
       console.log(`[reminder] Reminder ${jobId} skipped — user ${job.userId} opted out, dormant, or inactive >7 days`);
       // Still mark done so it doesn't retry, but schedule next recurrence
       await ctx.runMutation(internal.reminders.markJobDone, { jobId });
@@ -114,39 +122,67 @@ export const fireReminder = internalAction({
       return;
     }
 
-    // Check outbound rate guard before sending
-    const guard = await ctx.runMutation(
-      internal.outboundGuard.checkAndRecordOutbound,
+    // Check daily proactive limit
+    const proactiveGuard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordProactiveSend,
       { userId: job.userId }
     );
 
     let sendSucceeded = false;
-    if (!guard.allowed) {
-      console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
+    if (!proactiveGuard.allowed) {
+      console.warn(`[proactive-guard] Reminder ${jobId} blocked: ${proactiveGuard.reason}`);
       // Don't return — fall through to recurrence logic so recurring reminders keep their chain
     } else {
-      // Check WhatsApp 24h session window
-      const withinWindow =
-        user.lastMessageAt &&
-        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      // Check outbound rate guard before sending
+      const guard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordOutbound,
+        { userId: job.userId }
+      );
 
-      try {
-        if (withinWindow) {
-          await ctx.runAction(internal.whatsapp.sendMessage, {
-            to: user.phone,
-            body: `⏰ ${job.payload}`,
-          });
-        } else {
-          // Outside 24h window — use Content Template
-          await ctx.runAction(internal.whatsapp.sendTemplate, {
-            to: user.phone,
-            templateName: "ghali_reminder",
-            variables: { "1": job.payload },
-          });
+      if (!guard.allowed) {
+        console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
+        await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+        // Don't return — fall through to recurrence logic
+      } else {
+        // Check WhatsApp 24h session window
+        const withinWindow =
+          user.lastMessageAt &&
+          Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+        try {
+          if (withinWindow) {
+            await ctx.runAction(internal.whatsapp.sendMessage, {
+              to: user.phone,
+              body: `⏰ ${job.payload}`,
+            });
+            sendSucceeded = true;
+          } else {
+            // Outside 24h window — check daily template cap
+            const templateGuard = await ctx.runMutation(
+              internal.outboundGuard.checkAndRecordTemplateSend,
+              { userId: job.userId }
+            );
+            if (!templateGuard.allowed) {
+              console.warn(`[template-guard] Reminder ${jobId} template blocked: ${templateGuard.reason}`);
+              await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+            } else {
+              try {
+                await ctx.runAction(internal.whatsapp.sendTemplate, {
+                  to: user.phone,
+                  templateName: "ghali_reminder",
+                  variables: { "1": job.payload },
+                });
+                sendSucceeded = true;
+              } catch (error) {
+                await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: job.userId });
+                throw error;
+              }
+            }
+          }
+        } catch (error) {
+          await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+          console.error(`Failed to send reminder ${jobId}:`, error);
         }
-        sendSucceeded = true;
-      } catch (error) {
-        console.error(`Failed to send reminder ${jobId}:`, error);
       }
     }
 

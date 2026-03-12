@@ -236,6 +236,18 @@ export const OUTBOUND_MIN_INTERVAL_MS = 2_000;
 /** Maximum outbound messages to the same user per minute */
 export const OUTBOUND_MAX_PER_MINUTE = 10;
 
+/** Max proactive outbound messages per user per day (heartbeat + reminders + tasks) */
+export const MAX_PROACTIVE_PER_DAY = 5;
+
+/** Max template messages per user per day (Meta cross-brand limit is ~2; we cap at 2 to stay safe) */
+export const MAX_TEMPLATES_PER_DAY = 2;
+
+/** Broadcast batch size — small batches to avoid throughput spikes */
+export const BROADCAST_BATCH_SIZE = 10;
+
+/** Delay between broadcast batches (ms) — pacing to stay under 80 MPS default */
+export const BROADCAST_BATCH_DELAY_MS = 2000;
+
 /** Number of consecutive AI API errors before the circuit breaker trips */
 export const ERROR_CIRCUIT_BREAKER_THRESHOLD = 3;
 

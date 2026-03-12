@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Users, UserPlus, Crown, User } from "lucide-react";
+import { Users, UserPlus, Crown, User, ShieldBan } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -22,6 +22,7 @@ interface Stats {
   activeUsers: number;
   proUsers: number;
   basicUsers: number;
+  blockedUsers: number;
 }
 
 interface RecentUser {
@@ -109,6 +110,7 @@ export default function AdminDashboard() {
     { label: "New Users", value: stats?.newUsers, icon: UserPlus, color: "#22c55e" },
     { label: "Pro Users", value: stats?.proUsers, icon: Crown, color: "#f59e0b" },
     { label: "Basic Users", value: stats?.basicUsers, icon: User, color: "#6b7280" },
+    { label: "Blocked", value: stats?.blockedUsers, icon: ShieldBan, color: "#ef4444" },
   ];
 
   return (
@@ -140,7 +142,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {STAT_CARDS.map((card) => (
           <Card
             key={card.label}
