@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.41.0...v0.42.0) (2026-03-12)
+
+
+### Features
+
+* add WhatsApp policy compliance guards ([#233](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/233)) ([1c236f0](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/1c236f0fa8e34dee360ae83b5e1fa09a30a49ffd))
+
 ## [0.41.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.40.0...v0.41.0) (2026-03-11)
 
 
