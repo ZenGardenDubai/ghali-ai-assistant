@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.0...v0.42.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* reuse chat thread and enable semantic recall ([#239](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/239)) ([1ed2d42](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/1ed2d42c10f9fd57061a6f7473651f47249cf4b3))
+
 ## [0.42.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.41.0...v0.42.0) (2026-03-12)
 
 
