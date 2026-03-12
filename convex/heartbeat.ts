@@ -156,6 +156,7 @@ ${SYSTEM_BLOCK}
       );
       if (!guard.allowed) {
         console.warn(`[outbound-guard] Heartbeat blocked for ${userId}: ${guard.reason}`);
+        await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
         return;
       }
 
@@ -177,15 +178,22 @@ ${SYSTEM_BLOCK}
           );
           if (!templateGuard.allowed) {
             console.warn(`[template-guard] Heartbeat template blocked for ${userId}: ${templateGuard.reason}`);
+            await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
             return;
           }
-          await ctx.runAction(internal.whatsapp.sendTemplate, {
-            to: latestUser.phone,
-            templateName: "ghali_heartbeat",
-            variables: { "1": responseText },
-          });
+          try {
+            await ctx.runAction(internal.whatsapp.sendTemplate, {
+              to: latestUser.phone,
+              templateName: "ghali_heartbeat",
+              variables: { "1": responseText },
+            });
+          } catch (error) {
+            await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
+            throw error;
+          }
         }
       } catch (error) {
+        await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
         console.error(`Heartbeat delivery failed for user ${userId}:`, error);
       }
     }

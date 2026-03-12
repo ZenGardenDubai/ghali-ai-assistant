@@ -441,6 +441,7 @@ export const executeScheduledTask = internalAction({
     );
     if (!deliveryGuard.allowed) {
       console.warn(`[outbound-guard] Task ${taskId} delivery blocked: ${deliveryGuard.reason}`);
+      await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
@@ -467,6 +468,7 @@ export const executeScheduledTask = internalAction({
           to: latestUser.phone,
           body: responseText,
         });
+        delivered = true;
       } else {
         // Out of session — check daily template cap before sending
         const templateGuard = await ctx.runMutation(
@@ -477,17 +479,22 @@ export const executeScheduledTask = internalAction({
           console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
           // Fall through to the !delivered path below
         } else {
-          const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
-          await ctx.runAction(internal.whatsapp.sendTemplate, {
-            to: latestUser.phone,
-            templateName: "ghali_scheduled_task",
-            variables: { "1": truncated },
-          });
-          delivered = true;
+          try {
+            const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
+            await ctx.runAction(internal.whatsapp.sendTemplate, {
+              to: latestUser.phone,
+              templateName: "ghali_scheduled_task",
+              variables: { "1": truncated },
+            });
+            delivered = true;
+          } catch (error) {
+            await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: task.userId });
+            throw error;
+          }
         }
       }
-      if (withinWindow) delivered = true;
     } catch (error) {
+      await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
       console.error(`Failed to deliver scheduled task ${taskId}:`, error);
     }
 

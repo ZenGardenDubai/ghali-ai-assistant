@@ -143,6 +143,22 @@ export const checkAndRecordProactiveSend = internalMutation({
  *
  * Returns { allowed: true } and increments the daily count, or { allowed: false, reason }.
  */
+/**
+ * Rollback a proactive send counter — called when a send fails after the guard passed.
+ * Prevents failed sends from consuming daily quota.
+ */
+export const rollbackProactiveSend = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return;
+    const count = user.dailyProactiveSentCount ?? 0;
+    if (count > 0) {
+      await ctx.db.patch(userId, { dailyProactiveSentCount: count - 1 });
+    }
+  },
+});
+
 export const checkAndRecordTemplateSend = internalMutation({
   args: { userId: v.id("users") },
   handler: async (
@@ -176,5 +192,21 @@ export const checkAndRecordTemplateSend = internalMutation({
     });
 
     return { allowed: true };
+  },
+});
+
+/**
+ * Rollback a template send counter — called when a send fails after the guard passed.
+ * Prevents failed sends from consuming daily quota.
+ */
+export const rollbackTemplateSend = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return;
+    const count = user.dailyTemplateSentCount ?? 0;
+    if (count > 0) {
+      await ctx.db.patch(userId, { dailyTemplateSentCount: count - 1 });
+    }
   },
 });

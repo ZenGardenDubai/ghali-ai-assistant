@@ -141,6 +141,7 @@ export const fireReminder = internalAction({
 
       if (!guard.allowed) {
         console.warn(`[outbound-guard] Reminder ${jobId} blocked: ${guard.reason}`);
+        await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
         // Don't return — fall through to recurrence logic
       } else {
         // Check WhatsApp 24h session window
@@ -163,16 +164,23 @@ export const fireReminder = internalAction({
             );
             if (!templateGuard.allowed) {
               console.warn(`[template-guard] Reminder ${jobId} template blocked: ${templateGuard.reason}`);
+              await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
             } else {
-              await ctx.runAction(internal.whatsapp.sendTemplate, {
-                to: user.phone,
-                templateName: "ghali_reminder",
-                variables: { "1": job.payload },
-              });
-              sendSucceeded = true;
+              try {
+                await ctx.runAction(internal.whatsapp.sendTemplate, {
+                  to: user.phone,
+                  templateName: "ghali_reminder",
+                  variables: { "1": job.payload },
+                });
+                sendSucceeded = true;
+              } catch (error) {
+                await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: job.userId });
+                throw error;
+              }
             }
           }
         } catch (error) {
+          await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
           console.error(`Failed to send reminder ${jobId}:`, error);
         }
       }

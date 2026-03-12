@@ -159,9 +159,15 @@ export const guardedSendTemplate = internalAction({
     );
     if (!guard.allowed) {
       console.warn(`[outbound-guard] Blocked background template to ${userId}: ${guard.reason}`);
+      await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
       return;
     }
-    await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+    try {
+      await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+    } catch (error) {
+      await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
+      throw error;
+    }
   },
 });
 

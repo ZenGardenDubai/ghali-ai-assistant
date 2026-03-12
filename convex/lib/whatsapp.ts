@@ -167,12 +167,14 @@ export function parseCloudApiWebhook(
 
 /**
  * Error codes that indicate the user has blocked our number.
- * - 131047: Re-engagement message (user hasn't responded recently)
  * - 131049: Message failed because user blocked the business
  * - 131026: Message undeliverable (recipient not on WhatsApp or blocked)
- * Note: 63018 (pair rate limit) is excluded — it's a transient throttle, not a block signal.
+ *
+ * Excluded:
+ * - 131047: Re-engagement message (session expired, not a block — user simply hasn't replied in 24h)
+ * - 63018: Pair rate limit (transient throttle, not a block signal)
  */
-const BLOCK_ERROR_CODES = new Set([131047, 131049, 131026]);
+const BLOCK_ERROR_CODES = new Set([131049, 131026]);
 
 export interface ParsedStatusUpdate {
   recipientPhone: string; // E.164 with + prefix

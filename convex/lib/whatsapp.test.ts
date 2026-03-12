@@ -599,7 +599,7 @@ describe("parseCloudApiStatuses", () => {
     expect(statuses[0].status).toBe("failed");
   });
 
-  it("detects blocked user from error code 131047", () => {
+  it("does not flag session-expiry error 131047 as blocked", () => {
     const payload = {
       object: "whatsapp_business_account",
       entry: [
@@ -627,7 +627,40 @@ describe("parseCloudApiStatuses", () => {
     };
 
     const statuses = parseCloudApiStatuses(payload);
+    expect(statuses[0].isBlocked).toBe(false);
+    expect(statuses[0].errorCode).toBe(131047);
+  });
+
+  it("detects blocked user from error code 131026", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {
+          id: "WABA_123",
+          changes: [
+            {
+              value: {
+                messaging_product: "whatsapp",
+                statuses: [
+                  {
+                    id: "wamid.xxx",
+                    status: "failed",
+                    timestamp: "1700000350",
+                    recipient_id: "971501234567",
+                    errors: [{ code: 131026, title: "Message undeliverable" }],
+                  },
+                ],
+              },
+              field: "messages",
+            },
+          ],
+        },
+      ],
+    };
+
+    const statuses = parseCloudApiStatuses(payload);
     expect(statuses[0].isBlocked).toBe(true);
+    expect(statuses[0].errorCode).toBe(131026);
   });
 
   it("does not flag non-block error codes as blocked", () => {

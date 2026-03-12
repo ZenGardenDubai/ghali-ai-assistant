@@ -101,6 +101,7 @@ http.route({
             phone: statusUpdate.recipientPhone,
             errorCode: statusUpdate.errorCode,
             errorMessage: statusUpdate.errorMessage,
+            timestamp: statusUpdate.timestamp,
           });
         } else if (statusUpdate.status === "delivered" || statusUpdate.status === "read") {
           await ctx.runMutation(internal.users.trackDeliveryStatus, {

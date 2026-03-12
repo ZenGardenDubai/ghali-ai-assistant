@@ -460,13 +460,23 @@ export const markUserBlocked = internalMutation({
     phone: v.string(),
     errorCode: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
   },
-  handler: async (ctx, { phone, errorCode, errorMessage }) => {
+  handler: async (ctx, { phone, errorCode, errorMessage, timestamp }) => {
     const user = await ctx.db
       .query("users")
       .withIndex("by_phone", (q) => q.eq("phone", phone))
       .unique();
     if (!user || user.blocked) return;
+
+    // Ignore stale block webhooks that arrived after the user re-engaged
+    if (timestamp && user.lastMessageAt && timestamp < user.lastMessageAt) {
+      console.log(
+        `[block-detection] Ignoring stale block for ${phone} — ` +
+          `webhook ts ${timestamp} < lastMessageAt ${user.lastMessageAt}`
+      );
+      return;
+    }
 
     console.warn(
       `[block-detection] User ${phone} blocked our number. ` +
