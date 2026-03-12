@@ -3,6 +3,9 @@ import {
   MAX_USER_FILE_SIZE,
   isFileTooLarge,
   buildUserContext,
+  classifyQueryComplexity,
+  summarizeMemoryL0,
+  MEMORY_L0_MAX_CHARS,
 } from "./userFiles";
 import { SYSTEM_BLOCK, AGENT_INSTRUCTIONS } from "../agent";
 
@@ -171,5 +174,119 @@ describe("buildUserContext", () => {
     const result = buildUserContext(files, datetime);
     expect(result).not.toContain("## User Memory");
     expect(result).toContain("## User Personality Preferences");
+  });
+
+  it("uses full memory when memoryTier is 'full'", () => {
+    const longMemory = "## Preferences\n" + "- preference item\n".repeat(60);
+    const files = [{ filename: "memory", content: longMemory }];
+    const result = buildUserContext(files, datetime, undefined, "full");
+    expect(result).toContain(longMemory);
+    expect(result).not.toContain("[... abbreviated]");
+  });
+
+  it("uses compact memory when memoryTier is 'compact' and memory is long", () => {
+    const longMemory = "## Preferences\n" + "- preference item\n".repeat(60);
+    const files = [{ filename: "memory", content: longMemory }];
+    const result = buildUserContext(files, datetime, undefined, "compact");
+    expect(result).toContain("## User Memory");
+    expect(result).toContain("[... abbreviated]");
+    // Should be much shorter than the full memory
+    expect(result.length).toBeLessThan(longMemory.length);
+  });
+
+  it("uses full memory when memoryTier is omitted (backwards compat)", () => {
+    const longMemory = "## Preferences\n" + "- preference item\n".repeat(60);
+    const files = [{ filename: "memory", content: longMemory }];
+    const result = buildUserContext(files, datetime);
+    expect(result).toContain(longMemory);
+    expect(result).not.toContain("[... abbreviated]");
+  });
+
+  it("does not abbreviate short memory even with compact tier", () => {
+    const shortMemory = "## Preferences\n- Likes coffee";
+    const files = [{ filename: "memory", content: shortMemory }];
+    const result = buildUserContext(files, datetime, undefined, "compact");
+    expect(result).toContain(shortMemory);
+    expect(result).not.toContain("[... abbreviated]");
+  });
+});
+
+describe("classifyQueryComplexity", () => {
+  it("returns 'simple' for a short query with no personal markers", () => {
+    expect(classifyQueryComplexity("what is 15% of 500")).toBe("simple");
+  });
+
+  it("returns 'simple' for a translation request", () => {
+    expect(classifyQueryComplexity("translate hello to french")).toBe("simple");
+  });
+
+  it("returns 'simple' for a general knowledge question", () => {
+    expect(classifyQueryComplexity("who wrote hamlet")).toBe("simple");
+  });
+
+  it("returns 'complex' for a query with 'my'", () => {
+    expect(classifyQueryComplexity("what are my expenses")).toBe("complex");
+  });
+
+  it("returns 'complex' for a query with 'me'", () => {
+    expect(classifyQueryComplexity("remind me at 3pm")).toBe("complex");
+  });
+
+  it("returns 'complex' for a query with \"i'm\"", () => {
+    expect(classifyQueryComplexity("i'm working on a project")).toBe("complex");
+  });
+
+  it("returns 'complex' for a query with \"i've\"", () => {
+    expect(classifyQueryComplexity("i've been busy")).toBe("complex");
+  });
+
+  it("returns 'complex' for a long query (> 6 words)", () => {
+    expect(classifyQueryComplexity("what is the weather in dubai today")).toBe("complex");
+  });
+
+  it("returns 'complex' for empty string", () => {
+    expect(classifyQueryComplexity("")).toBe("complex");
+  });
+
+  it("returns 'complex' for whitespace-only string", () => {
+    expect(classifyQueryComplexity("   ")).toBe("complex");
+  });
+
+  it("is case-insensitive for personal markers", () => {
+    expect(classifyQueryComplexity("What are MY plans")).toBe("complex");
+    expect(classifyQueryComplexity("Help ME with this")).toBe("complex");
+  });
+
+  it("returns 'simple' for a 6-word query with no personal markers", () => {
+    expect(classifyQueryComplexity("what is two plus two equal")).toBe("simple");
+  });
+});
+
+describe("summarizeMemoryL0", () => {
+  it("returns content unchanged when under maxChars", () => {
+    const content = "## Preferences\n- Likes coffee\n- Early riser";
+    expect(summarizeMemoryL0(content)).toBe(content);
+  });
+
+  it("truncates at a line boundary and appends abbreviation note", () => {
+    const line = "- this is a memory bullet point item\n";
+    const content = line.repeat(30); // well over 600 chars
+    const result = summarizeMemoryL0(content);
+    expect(result.length).toBeLessThanOrEqual(MEMORY_L0_MAX_CHARS + 30); // a bit over due to appended note
+    expect(result).toContain("[... abbreviated]");
+    // Should end cleanly at a line boundary before the note
+    const beforeNote = result.split("[... abbreviated]")[0]!;
+    expect(beforeNote.endsWith("\n")).toBe(true);
+  });
+
+  it("respects custom maxChars parameter", () => {
+    const content = "a".repeat(200);
+    const result = summarizeMemoryL0(content, 100);
+    expect(result.length).toBeLessThanOrEqual(120); // 100 + abbreviation note length
+    expect(result).toContain("[... abbreviated]");
+  });
+
+  it("exports MEMORY_L0_MAX_CHARS as a positive number", () => {
+    expect(MEMORY_L0_MAX_CHARS).toBeGreaterThan(0);
   });
 });

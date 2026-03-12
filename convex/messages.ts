@@ -5,7 +5,7 @@ import { Id } from "./_generated/dataModel";
 import { ghaliAgent, setTraceId, clearTraceId } from "./agent";
 import { MODELS } from "./models";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
-import { buildUserContext } from "./lib/userFiles";
+import { buildUserContext, classifyQueryComplexity } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
 import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
 import { PENDING_ACTION_EXPIRY_MS } from "./constants";
@@ -631,12 +631,15 @@ export const generateResponse = internalAction({
 
 
 
-    // Build user context from per-user files + datetime
+    // Build user context from per-user files + datetime.
+    // Use compact L0 memory for simple queries to reduce token consumption.
     const { date, time, tz } = getCurrentDateTime(user.timezone);
+    const memoryTier = classifyQueryComplexity(body) === "simple" ? "compact" : "full";
     const userContext = buildUserContext(
       userFiles,
       { date, time, tz },
-      { language: user.language, timezone: user.timezone, optedOut: !!user.optedOut }
+      { language: user.language, timezone: user.timezone, optedOut: !!user.optedOut },
+      memoryTier
     );
 
     // Voice note intercept — transcribe and use as text prompt
