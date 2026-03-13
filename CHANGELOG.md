@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.3...v0.42.4) (2026-03-13)
+
+
+### Bug Fixes
+
+* rename ghali_credits_refresh template to ghali_credits_refreshed ([#246](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/246)) ([886767f](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/886767f074e52569cc7cb18c8d27d786d17d7814)), closes [#243](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/243)
+
 ## [0.42.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.2...v0.42.3) (2026-03-13)
 
 
