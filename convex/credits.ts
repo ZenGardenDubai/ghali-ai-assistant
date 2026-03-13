@@ -119,7 +119,7 @@ export const resetCredits = internalMutation({
             {
               userId: user._id,
               to: user.phone,
-              templateName: "ghali_credits_refresh",
+              templateName: "ghali_credits_refreshed",
               variables: {
                 "1": String(tierCredits),
                 "2": tierLabel,

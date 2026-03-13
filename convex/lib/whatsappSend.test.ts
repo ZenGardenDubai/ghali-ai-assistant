@@ -146,10 +146,10 @@ describe("sendWhatsAppTemplate", () => {
       new Response(JSON.stringify({ messages: [{ id: "wamid.multi" }] }), { status: 200 })
     );
 
-    await sendWhatsAppTemplate(options, "ghali_credits_refresh", { "1": "60", "2": "Basic" });
+    await sendWhatsAppTemplate(options, "ghali_credits_refreshed", { "1": "60", "2": "Basic" });
 
     const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
-    expect(body.template.name).toBe("ghali_credits_refresh");
+    expect(body.template.name).toBe("ghali_credits_refreshed");
     expect(body.template.components[0].parameters).toHaveLength(2);
     expect(body.template.components[0].parameters[0].text).toBe("60");
     expect(body.template.components[0].parameters[1].text).toBe("Basic");
