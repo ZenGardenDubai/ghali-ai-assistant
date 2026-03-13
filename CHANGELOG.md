@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.1...v0.42.2) (2026-03-13)
+
+
+### Bug Fixes
+
+* use 30-day inactivity gate for credit reset notifications ([#241](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/241)) ([b27e5a1](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/b27e5a18782463fc75428c842d57dbd4fded10a2))
+
 ## [0.42.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.0...v0.42.1) (2026-03-12)
 
 
