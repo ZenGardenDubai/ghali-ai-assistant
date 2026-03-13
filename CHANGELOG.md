@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.2...v0.42.3) (2026-03-13)
+
+
+### Bug Fixes
+
+* update ghali_credits_refresh template footer with STOP, DELETE, and HELP options ([#244](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/244)) ([854e61a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/854e61a4aea72a702dfe27d7cd5046ca6ae12caf))
+
 ## [0.42.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.1...v0.42.2) (2026-03-13)
 
 
