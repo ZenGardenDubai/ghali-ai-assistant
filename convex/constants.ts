@@ -168,6 +168,9 @@ export const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
 /** Template inactivity gate (7 days) — do not send proactive templates to users inactive longer than this */
 export const TEMPLATE_INACTIVITY_GATE_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** Credit reset inactivity gate (30 days) — skip credit reset notifications for users inactive longer than this */
+export const CREDIT_RESET_INACTIVITY_GATE_MS = 30 * 24 * 60 * 60 * 1000;
+
 // ============================================================================
 // Structured Data (Items & Collections)
 // ============================================================================

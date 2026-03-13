@@ -7,7 +7,7 @@ import {
   CREDITS_PRO,
   CREDIT_RESET_PERIOD_MS,
   WHATSAPP_SESSION_WINDOW_MS,
-  TEMPLATE_INACTIVITY_GATE_MS,
+  CREDIT_RESET_INACTIVITY_GATE_MS,
 } from "./constants";
 
 /**
@@ -86,8 +86,8 @@ export const resetCredits = internalMutation({
         });
 
         // Notify user — guarded to respect outbound rate limits
-        // Skip notification for inactive users (>7 days since last message)
-        const isInactive = !user.lastMessageAt || now - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
+        // Skip notification for inactive users (>30 days since last message)
+        const isInactive = !user.lastMessageAt || now - user.lastMessageAt > CREDIT_RESET_INACTIVITY_GATE_MS;
         if (isInactive) {
           // Reset creditNotificationSent on all user's scheduled tasks
           await ctx.scheduler.runAfter(0, internal.scheduledTasks.resetCreditNotifications, {
