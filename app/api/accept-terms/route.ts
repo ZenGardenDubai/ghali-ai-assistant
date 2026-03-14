@@ -57,15 +57,15 @@ export async function POST() {
       }),
     });
 
-    if (!response.ok) {
-      console.error("accept-terms HTTP endpoint failed:", response.status);
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      console.error("accept-terms failed:", response.status, result.error);
       return NextResponse.json(
-        { success: false, error: "Failed to record acceptance. Please try again." },
-        { status: 500 }
+        { success: false, error: result.error ?? "Failed to record acceptance. Please try again." },
+        { status: response.ok ? 400 : response.status }
       );
     }
 
-    const result = await response.json();
     return NextResponse.json(result);
   } catch (err) {
     console.error("Failed to accept terms:", err);

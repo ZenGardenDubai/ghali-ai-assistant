@@ -45,8 +45,8 @@ export const acceptTermsForUser = internalMutation({
       email?: string;
     } = {
       clerkUserId,
-      termsAcceptedAt: now,
-      // Set proactiveOptInAt only if not already set (preserves earlier opt-in time)
+      // Preserve original timestamps if already set (idempotent on re-acceptance)
+      termsAcceptedAt: user.termsAcceptedAt ?? now,
       proactiveOptInAt: user.proactiveOptInAt ?? now,
     };
     if (email) updates.email = email;
