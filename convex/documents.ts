@@ -11,6 +11,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { MODELS } from "./models";
@@ -19,6 +20,7 @@ import {
   MEDIA_MAX_SIZE_BYTES,
   MAX_EXTRACTION_LENGTH,
   CLOUDCONVERT_TIMEOUT_MS,
+  MEDIA_RETENTION_MS,
 } from "./constants";
 import {
   normalizeMimeType,
@@ -306,12 +308,16 @@ export const processMedia = internalAction({
     mediaType: v.string(),
     userPrompt: v.optional(v.string()),
     isReprocessing: v.optional(v.boolean()),
+    /** When provided, registers the file in mediaStorage immediately after download
+     * (before CloudConvert) so concurrent convertFile calls can find it. */
+    userId: v.optional(v.id("users")),
+    messageSid: v.optional(v.string()),
   },
   returns: v.union(
     v.object({ extracted: v.string(), storageId: v.union(v.id("_storage"), v.null()) }),
     v.null()
   ),
-  handler: async (ctx, { mediaUrl, mediaType, userPrompt, isReprocessing }) => {
+  handler: async (ctx, { mediaUrl, mediaType, userPrompt, isReprocessing, userId, messageSid }) => {
     const startTime = Date.now();
     console.log(`[Documents] processing | type: ${mediaType} | reprocessing: ${!!isReprocessing}`);
 
@@ -350,6 +356,19 @@ export const processMedia = internalAction({
       try {
         const blob = new Blob([data], { type: mediaType });
         storageId = await ctx.storage.store(blob);
+
+        // Early media registration: track the file in mediaStorage *before* CloudConvert
+        // so concurrent "convert to PDF" requests can find it immediately.
+        if (storageId && userId && messageSid) {
+          await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+            userId,
+            storageId,
+            messageSid,
+            mediaType,
+            expiresAt: Date.now() + MEDIA_RETENTION_MS,
+          });
+          console.log(`[Documents] early media tracking | storageId: ${storageId}`);
+        }
       } catch (error) {
         console.error("[Documents] Storage store failed:", error);
         // Non-fatal — continue with extraction

@@ -738,6 +738,11 @@ export const generateResponse = internalAction({
             mediaType: mediaContentType,
             userPrompt: body || undefined,
             isReprocessing,
+            // Pass userId + messageSid so processMedia can register the file
+            // in mediaStorage early (before CloudConvert), fixing the race condition
+            // where a concurrent "Convert to pdf" message finds no files.
+            userId: !isReprocessing ? typedUserId : undefined,
+            messageSid: !isReprocessing ? messageSid : undefined,
           }
         );
       } catch (error) {
@@ -765,16 +770,9 @@ export const generateResponse = internalAction({
         tier: user.tier,
       });
 
-      // Store media file for future reply-to-media (first-time only, not voice notes)
-      if (messageSid && storageId) {
-        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
-          userId: typedUserId,
-          storageId,
-          messageSid,
-          mediaType: mediaContentType,
-          expiresAt: Date.now() + MEDIA_RETENTION_MS,
-        });
-      }
+      // Media tracking is now handled inside processMedia immediately after storage
+      // (before CloudConvert), so concurrent convertFile calls can find the file.
+      // Re-processing never sets a new storageId, so no tracking is needed here.
 
       const effectiveStorageId = storageId ?? replyStorageId;
       const isImage = mediaContentType.startsWith("image/");
@@ -847,7 +845,9 @@ export const generateResponse = internalAction({
         imageResult = extractImageFromSteps(result.steps);
       }
     } catch (error) {
-      console.error("Agent generateText failed:", error);
+      const errName = error instanceof Error ? error.name : "UnknownError";
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error(`Agent generateText failed [${errName}]: ${errMsg}`, error);
       // Record the error — increments consecutive error count and trips circuit
       // breaker (sets errorBackoffUntil) once the threshold is reached.
       const errorState = await ctx.runMutation(internal.users.recordApiError, {

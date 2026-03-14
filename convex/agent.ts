@@ -1024,11 +1024,20 @@ const convertFile = createTool({
         sourceMediaType = match.mediaType;
       } else {
         // Use most recent media file
-        const recentFiles: Array<{ storageId: string; mediaType: string; createdAt: number }> =
+        let recentFiles: Array<{ storageId: string; mediaType: string; createdAt: number }> =
           await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
             userId,
             limit: 1,
           });
+        if (recentFiles.length === 0) {
+          // Retry once after a short delay — handles the race condition where a file
+          // was uploaded in the same second and early tracking hasn't completed yet.
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          recentFiles = await ctx.runQuery(internal.mediaStorage.getRecentUserMedia, {
+            userId,
+            limit: 1,
+          });
+        }
         if (recentFiles.length === 0) {
           return "I don't have any recent files from you. Please send a file first, then ask me to convert it.";
         }

@@ -601,4 +601,26 @@ describe("inferMimeTypeFromFilename", () => {
   it("handles filenames with multiple dots", () => {
     expect(inferMimeTypeFromFilename("my.report.2024.csv")).toBe("text/csv");
   });
+
+  it("infers MIME type from Arabic filename with .docx extension", () => {
+    expect(
+      inferMimeTypeFromFilename(
+        "2026-001-اتفاقية تمويل مشروع لوحة تحكم للرصد اللحظي لتجارب المستخدم.docx"
+      )
+    ).toBe(
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+
+  it("infers MIME type from Arabic filename with .pdf extension", () => {
+    expect(inferMimeTypeFromFilename("تقرير_مالي_2026.pdf")).toBe(
+      "application/pdf"
+    );
+  });
+
+  it("infers MIME type from mixed Arabic-English filename", () => {
+    expect(inferMimeTypeFromFilename("contract-عقد-2026.xlsx")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+  });
 });
