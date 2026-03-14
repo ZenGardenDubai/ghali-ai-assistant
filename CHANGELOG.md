@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.43.0...v0.43.1) (2026-03-14)
+
+
+### Bug Fixes
+
+* eliminate WhatsApp message splitting to reduce spam risk ([#253](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/253)) ([4eb8466](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/4eb84662249de2aa2080fb67b22f9c045be88436))
+
 ## [0.43.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.5...v0.43.0) (2026-03-14)
 
 
