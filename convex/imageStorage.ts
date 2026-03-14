@@ -30,6 +30,28 @@ export const getGeneratedImageUrl = internalQuery({
   },
 });
 
+/** Get recent generated images for a user (for resolveMedia fallback) */
+export const getRecentGeneratedImages = internalQuery({
+  args: {
+    userId: v.id("users"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, limit }) => {
+    const maxResults = limit ?? 5;
+    const images = await ctx.db
+      .query("generatedImages")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(maxResults);
+
+    return images.map((img) => ({
+      storageId: img.storageId,
+      mediaType: "image/png" as const,
+      createdAt: img._creationTime,
+    }));
+  },
+});
+
 /** Delete expired generated images from storage */
 export const cleanupExpiredImages = internalMutation({
   handler: async (ctx) => {

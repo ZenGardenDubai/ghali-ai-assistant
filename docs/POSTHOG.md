@@ -148,7 +148,7 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 
 | Property | Type | Description |
 |---|---|---|
-| `feature` | string | Feature name: `prowrite`, `image_generation`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback`, `scheduled_tasks` |
+| `feature` | string | Feature name: `prowrite`, `image_generation`, `image_editing`, `deep_reasoning`, `document_processing`, `document_conversion`, `items`, `voice_note`, `web_search`, `feedback`, `scheduled_tasks` |
 | `tier` | string | `basic` or `pro` |
 | `phone_country` | string | ISO country code |
 | `steps` | number? | Pipeline steps completed (ProWrite only) |
@@ -156,7 +156,7 @@ Generic event for comparing feature adoption across ProWrite, image gen, items, 
 
 **Triggered in**:
 - `convex/proWrite.ts` — on pipeline completion (`prowrite`)
-- `convex/images.ts` — on successful image generation (`image_generation`)
+- `convex/images.ts` — on successful image generation (`image_generation`) or editing (`image_editing`)
 - `convex/agent.ts` — `deepReasoning` tool (`deep_reasoning`), `addItem` tool (`items`), `webSearch` tool (`web_search`), `convertFile` tool (`document_conversion`)
 - `convex/messages.ts` — document processing (`document_processing`), voice note transcription (`voice_note`)
 - `convex/feedback.ts` — feedback submission (`feedback`)

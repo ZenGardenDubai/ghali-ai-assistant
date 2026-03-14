@@ -777,7 +777,10 @@ export const generateResponse = internalAction({
       }
 
       const effectiveStorageId = storageId ?? replyStorageId;
-      const storageIdNote = effectiveStorageId ? `\n[File storageId: ${effectiveStorageId} — pass this to convertFile if user wants conversion]` : "";
+      const isImage = mediaContentType.startsWith("image/");
+      const storageIdNote = effectiveStorageId
+        ? `\n[File storageId: ${effectiveStorageId} — pass this to convertFile if user wants conversion${isImage ? ", or to generateImage as referenceImageStorageId if user wants to edit/modify this image" : ""}]`
+        : "";
       prompt = body
         ? `[User sent a file (${mediaContentType})]${storageIdNote}\nUser's question: "${body}"\n\nExtracted content:\n${extracted}`
         : `[User sent a file (${mediaContentType})]${storageIdNote}\n\nExtracted content:\n${extracted}`;
