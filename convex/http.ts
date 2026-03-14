@@ -308,7 +308,7 @@ http.route({
     });
 
     return new Response(JSON.stringify(result), {
-      status: 200,
+      status: result.success ? 200 : 400,
       headers: { "Content-Type": "application/json" },
     });
   }),

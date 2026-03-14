@@ -321,8 +321,8 @@ export const generateResponse = internalAction({
     // Sent free (no credit deduction). On every message until accepted.
     if (needsTermsAcceptance(user)) {
       const acceptUrl = buildAcceptUrl(user.phone);
-      const isNewUser = user.onboardingStep != null; // new user: still in onboarding
-      const termsPrompt = isNewUser
+      const isOnboardingUser = user.onboardingStep != null; // new user: still in onboarding
+      const termsPrompt = isOnboardingUser
         ? buildTermsPromptForNewUser(acceptUrl)
         : buildTermsPromptForExistingUser(user.name, acceptUrl);
       await guardedSendMessage(termsPrompt);

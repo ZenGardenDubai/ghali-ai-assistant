@@ -34,6 +34,13 @@ To get started, please:
 
 To continue using Ghali, we need you to accept our Terms of Service and verify your identity.
 
+🔗 {{acceptUrl}}
+
+─────────────────────
+مرحباً {{name}} 👋
+
+للاستمرار في استخدام غالي، يرجى قبول شروط الخدمة والتحقق من هويتك.
+
 🔗 {{acceptUrl}}`,
     variables: ["name", "acceptUrl"],
   },

@@ -208,7 +208,16 @@ function AcceptTermsContent() {
 
 export default function AcceptTermsPage() {
   return (
-    <Suspense>
+    <Suspense fallback={
+      <AcceptTermsLayout>
+        <StateCard>
+          <div className="flex items-center justify-center gap-3">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#ED6B23] border-t-transparent" />
+            <p className="text-white/50">Loading...</p>
+          </div>
+        </StateCard>
+      </AcceptTermsLayout>
+    }>
       <AcceptTermsContent />
     </Suspense>
   );
