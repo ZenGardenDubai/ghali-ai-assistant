@@ -348,16 +348,25 @@ export const generateResponse = internalAction({
           }
         }
 
-        // Send terms acceptance template with "Accept & Verify" button
-        // The template URL is https://ghali.ae/accept-terms?phone={{1}}
-        // We pass the URL-encoded phone as the button suffix
+        // Send terms acceptance template with "Accept & Verify" button.
+        // Falls back to free-form text if template messaging is blocked.
+        const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
         const phoneSuffix = encodeURIComponent(user.phone);
-        await ctx.runAction(internal.whatsapp.sendTemplate, {
-          to: user.phone,
-          templateName: "ghali_accept_terms",
-          variables: {},
-          buttonUrlSuffix: phoneSuffix,
-        });
+        try {
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
+            to: user.phone,
+            templateName: "ghali_accept_terms",
+            variables: {},
+            buttonUrlSuffix: phoneSuffix,
+          });
+        } catch (error) {
+          console.warn("[terms-gate] Template send failed, falling back to text:", error);
+          const acceptUrl = `${baseUrl}/accept-terms?phone=${phoneSuffix}`;
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user.phone,
+            body: `Welcome to Ghali — your personal productivity assistant on WhatsApp.\n\nTo get started, please accept our Terms of Service and verify your WhatsApp number:\n\n${acceptUrl}`,
+          });
+        }
 
         // Track terms prompt sent (fire-and-forget)
         await ctx.scheduler.runAfter(0, internal.analytics.trackTermsPromptSent, {
