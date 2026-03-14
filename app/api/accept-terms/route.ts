@@ -26,14 +26,18 @@ export async function POST() {
   const clerk = await clerkClient();
   const clerkUser = await clerk.users.getUser(clerkUserId);
 
-  // Find the primary phone number (verified via OTP sign-in)
+  // Find a verified phone number — check primary first, then fall back to any verified phone
   const primaryPhone = clerkUser.primaryPhoneNumberId
     ? clerkUser.phoneNumbers.find((p) => p.id === clerkUser.primaryPhoneNumberId)
-    : clerkUser.phoneNumbers[0];
+    : undefined;
+  const verifiedPhone =
+    primaryPhone?.verification?.status === "verified"
+      ? primaryPhone
+      : clerkUser.phoneNumbers.find((p) => p.verification?.status === "verified");
 
-  if (!primaryPhone?.phoneNumber) {
+  if (!verifiedPhone?.phoneNumber) {
     return NextResponse.json(
-      { success: false, error: "No phone number found on your account" },
+      { success: false, error: "No verified phone number found on your account" },
       { status: 400 }
     );
   }
@@ -51,13 +55,20 @@ export async function POST() {
         Authorization: `Bearer ${INTERNAL_API_SECRET}`,
       },
       body: JSON.stringify({
-        phone: primaryPhone.phoneNumber,
+        phone: verifiedPhone.phoneNumber,
         clerkUserId,
         email: primaryEmail?.emailAddress,
       }),
     });
 
-    const result = await response.json();
+    const raw = await response.text();
+    let result: { success?: boolean; error?: string };
+    try {
+      result = raw ? JSON.parse(raw) : {};
+    } catch {
+      result = { success: false, error: raw || "Unexpected upstream response" };
+    }
+
     if (!response.ok || !result.success) {
       console.error("accept-terms failed:", response.status, result.error);
       return NextResponse.json(

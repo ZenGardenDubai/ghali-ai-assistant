@@ -8,5 +8,5 @@
 
 /** Returns true if the user has not yet accepted the Terms of Service. */
 export function needsTermsAcceptance(user: { termsAcceptedAt?: number }): boolean {
-  return !user.termsAcceptedAt;
+  return user.termsAcceptedAt === undefined;
 }

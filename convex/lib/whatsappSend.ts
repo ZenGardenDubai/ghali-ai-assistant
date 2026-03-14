@@ -139,14 +139,18 @@ export async function sendWhatsAppTemplate(
     });
   }
 
+  const templatePayload: Record<string, unknown> = {
+    name: templateName,
+    language: { code: "en" },
+  };
+  if (components.length > 0) {
+    templatePayload.components = components;
+  }
+
   await cloudApiCall(options.apiKey, {
     to,
     type: "template",
-    template: {
-      name: templateName,
-      language: { code: "en" },
-      components,
-    },
+    template: templatePayload,
   });
 }
 

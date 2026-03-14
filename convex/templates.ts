@@ -12,7 +12,24 @@ export const TEMPLATES = {
   terms_accepted: {
     template: `Thanks for signing up, {{name}}! 🎉
 
-You're all set. Just send me a message to get started — ask anything, send a file, or say "remind me to..." to try it out.`,
+Here's what I can do:
+💬 Answer questions and have conversations
+📄 Process documents, images, and voice notes
+⏰ Set reminders and scheduled tasks
+🖼️ Generate and edit images
+🔍 Search the web for real-time info
+📊 Track expenses, tasks, notes, and more
+✍️ Write professional content with ProWrite
+
+*Commands:*
+• *help* — see what I can do
+• *credits* — check your balance
+• *account* — manage your account
+• *upgrade* — get more credits
+• *stop* / *start* — pause or resume messages
+• *delete* — delete your account and data
+
+Just send me a message to get started!`,
     variables: ["name"],
   },
 

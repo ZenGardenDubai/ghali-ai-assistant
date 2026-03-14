@@ -119,8 +119,9 @@ export const cleanupStaleUsers = internalAction({
     console.log(`[cleanupStaleUsers] Found ${staleUserIds.length} stale users to delete`);
 
     for (const userId of staleUserIds) {
-      await ctx.scheduler.runAfter(0, internal.accountControl.deleteAccount, {
+      await ctx.scheduler.runAfter(0, internal.accountControl.deleteIfStillStale, {
         userId,
+        createdBefore: cutoff,
       });
     }
   },
@@ -137,6 +138,27 @@ export const findStaleUsers = internalQuery({
       .filter((u) => !u.termsAcceptedAt && u.createdAt < createdBefore)
       .slice(0, 50)
       .map((u) => u._id);
+  },
+});
+
+/**
+ * Re-check staleness before deleting — prevents race condition where a user
+ * accepts terms between findStaleUsers and the scheduled deletion.
+ */
+export const deleteIfStillStale = internalAction({
+  args: { userId: v.id("users"), createdBefore: v.number() },
+  handler: async (ctx, { userId, createdBefore }) => {
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+    if (!user) return; // Already deleted
+    if (user.termsAcceptedAt) {
+      console.log(`[cleanupStaleUsers] User ${userId} accepted terms — skipping deletion`);
+      return;
+    }
+    if (user.createdAt >= createdBefore) {
+      console.log(`[cleanupStaleUsers] User ${userId} too recent — skipping deletion`);
+      return;
+    }
+    await ctx.runAction(internal.accountControl.deleteAccount, { userId });
   },
 });
 
