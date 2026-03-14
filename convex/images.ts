@@ -18,11 +18,12 @@ export const generateAndStoreImage = internalAction({
     aspectRatio: v.optional(
       v.union(v.literal("9:16"), v.literal("16:9"), v.literal("1:1"))
     ),
+    referenceImageStorageId: v.optional(v.id("_storage")),
     traceId: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { userId, prompt, aspectRatio = "9:16", traceId }
+    { userId, prompt, aspectRatio = "9:16", referenceImageStorageId, traceId }
   ): Promise<{
     success: boolean;
     imageUrl?: string;
@@ -34,10 +35,11 @@ export const generateAndStoreImage = internalAction({
       return { success: false, error: "Google API key not configured" };
     }
 
+    const isEditing = !!referenceImageStorageId;
     const truncatedPrompt =
       prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
     console.log(
-      `[generateAndStoreImage] Prompt: "${truncatedPrompt}", Aspect: ${aspectRatio}`
+      `[generateAndStoreImage] ${isEditing ? "EDIT" : "NEW"} — Prompt: "${truncatedPrompt}", Aspect: ${aspectRatio}`
     );
 
     // Fetch user for analytics (phone + tier)
@@ -49,9 +51,61 @@ export const generateAndStoreImage = internalAction({
     try {
       const ai = new GoogleGenAI({ apiKey });
 
+      // Build contents: for editing, include the reference image + text prompt
+      // For new generation, just the text prompt
+      let contents: Parameters<typeof ai.models.generateContent>[0]["contents"];
+      if (referenceImageStorageId) {
+        // Ownership check: verify the storageId belongs to this user
+        // (could be in mediaFiles from uploads or generatedImages from prior generations)
+        const [mediaUrl, generatedUrl] = await Promise.all([
+          ctx.runQuery(internal.mediaStorage.getStorageUrl, { storageId: referenceImageStorageId, userId }),
+          ctx.runQuery(internal.imageStorage.getGeneratedImageUrl, { storageId: referenceImageStorageId, userId }),
+        ]);
+        if (!mediaUrl && !generatedUrl) {
+          return { success: false, error: "Reference image not found or does not belong to you." };
+        }
+
+        // Fetch the reference image from Convex storage
+        const imageBlob = await ctx.storage.get(referenceImageStorageId);
+        if (!imageBlob) {
+          return { success: false, error: "Reference image not found in storage." };
+        }
+
+        // Enforce max size to avoid OOM in serverless (5MB)
+        const MAX_REF_IMAGE_BYTES = 5 * 1024 * 1024;
+        const imageBytes = new Uint8Array(await imageBlob.arrayBuffer());
+        if (imageBytes.length > MAX_REF_IMAGE_BYTES) {
+          return { success: false, error: "Reference image is too large (max 5MB). Please send a smaller image." };
+        }
+
+        // Chunk to avoid stack overflow with large images
+        const chunks: string[] = [];
+        const chunkSize = 8192;
+        for (let i = 0; i < imageBytes.length; i += chunkSize) {
+          chunks.push(String.fromCharCode(...imageBytes.subarray(i, i + chunkSize)));
+        }
+        const base64Image = btoa(chunks.join(""));
+        contents = [
+          {
+            role: "user" as const,
+            parts: [
+              {
+                inlineData: {
+                  data: base64Image,
+                  mimeType: imageBlob.type || "image/jpeg",
+                },
+              },
+              { text: prompt },
+            ],
+          },
+        ];
+      } else {
+        contents = prompt;
+      }
+
       const response = await ai.models.generateContent({
         model: MODELS.IMAGE_GENERATION,
-        contents: prompt,
+        contents,
         config: {
           responseModalities: ["TEXT", "IMAGE"],
           imageConfig: { aspectRatio },
@@ -128,7 +182,7 @@ export const generateAndStoreImage = internalAction({
         });
         await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
           phone: user.phone,
-          feature: "image_generation",
+          feature: isEditing ? "image_editing" : "image_generation",
           tier: user.tier,
         });
       }
@@ -148,7 +202,9 @@ export const generateAndStoreImage = internalAction({
       }
       return {
         success: false,
-        error: "Image generation failed. Please try again with a different prompt.",
+        error: isEditing
+          ? "Image editing failed. Please try again with a different prompt."
+          : "Image generation failed. Please try again with a different prompt.",
       };
     }
   },

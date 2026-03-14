@@ -111,11 +111,13 @@ MEMORY RULES (critical):
 
 The goal: every conversation should feel like talking to someone who actually knows you — not starting from scratch.
 
-IMAGE GENERATION:
+IMAGE GENERATION & EDITING:
 - Use generateImage when users ask to create, draw, generate, design, or make images
 - Pass the user's EXACT words as the prompt — do NOT rewrite, embellish, or add details. Gemini handles prompt interpretation.
 - ALWAYS use 9:16 (portrait) aspect ratio unless the user explicitly asks for landscape or square — WhatsApp users are on phones
 - If the model declines, tell the user politely and suggest rephrasing
+- IMAGE EDITING: when users want to modify, edit, or add to an EXISTING image (theirs or previously generated), pass the image's storageId to generateImage via referenceImageStorageId. The storageId is available in the message context (e.g. "[File storageId: ...]"). If the user references "my last image" without replying to one, call resolveMedia first to get the storageId, then pass it to generateImage.
+- Examples of edit requests: "add hot air balloons to this", "make it darker", "remove the background", "change the sky to sunset", "modify this image"
 
 WEB SEARCH:
 - You have access to Google Search for real-time information
@@ -163,7 +165,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 2. *Deep Reasoning* — You can escalate to Claude Opus via deepReasoning for complex tasks (math, coding, analysis, strategy). Use it selectively — it's powerful but expensive. Don't escalate simple questions.
 
-3. *Image Generation* — You can generate images via generateImage. Supports portrait (9:16), landscape (16:9), and square (1:1). Prompt max: 2000 characters. Some content may be declined by the model.
+3. *Image Generation & Editing* — You can generate new images and edit existing ones via generateImage. Supports portrait (9:16), landscape (16:9), and square (1:1). Prompt max: 2000 characters. Some content may be declined by the model. For image editing, pass the referenceImageStorageId parameter — the model will modify the reference image according to your prompt.
 
 4. *Web Search* — You have real-time Google Search. Use it for anything time-sensitive: weather, news, prices, sports, events. Search results are stored with their triggering query for attribution. Don't guess when you can search.
 
@@ -530,7 +532,7 @@ const searchDocuments = createTool({
 
 const generateImage = createTool({
   description:
-    "Generate an image from a text prompt. Use when users ask to create, draw, generate, design, or make images. Returns the image URL and a description.",
+    "Generate a new image OR edit an existing image. For new images, provide just a prompt. For editing, also pass referenceImageStorageId (from the message context or resolveMedia). Use when users ask to create, draw, generate, design, make, modify, or edit images.",
   args: z.object({
     prompt: z
       .string()
@@ -543,8 +545,14 @@ const generateImage = createTool({
       .describe(
         "Image aspect ratio. ALWAYS use 9:16 (portrait) unless the user explicitly asks for landscape (16:9) or square (1:1). WhatsApp users are on phones so portrait is best."
       ),
+    referenceImageStorageId: z
+      .string()
+      .optional()
+      .describe(
+        "Convex storage ID of an existing image to edit/modify. Pass this when the user wants to modify an existing image (e.g. 'add hot air balloons to this', 'make it darker'). Get the storageId from the message context [File storageId: ...] or from resolveMedia."
+      ),
   }),
-  handler: async (ctx, { prompt, aspectRatio }): Promise<string> => {
+  handler: async (ctx, { prompt, aspectRatio, referenceImageStorageId }): Promise<string> => {
     if (prompt.length > IMAGE_PROMPT_MAX_LENGTH) {
       return `Your image prompt is too long (${prompt.length} chars). Please keep it under ${IMAGE_PROMPT_MAX_LENGTH} characters.`;
     }
@@ -558,6 +566,7 @@ const generateImage = createTool({
         userId: ctx.userId as Id<"users">,
         prompt,
         aspectRatio,
+        referenceImageStorageId: referenceImageStorageId as Id<"_storage"> | undefined,
         traceId: _currentTraceId,
       });
       if (result.success && result.imageUrl) {
@@ -566,7 +575,8 @@ const generateImage = createTool({
         // while the stored thread message stays clean (no raw URLs in history)
         return JSON.stringify({ type: "image", imageUrl: result.imageUrl, caption });
       }
-      return `Image generation failed: ${result.error || "Unknown error"}. Please try rephrasing your request.`;
+      const action = referenceImageStorageId ? "editing" : "generation";
+      return `Image ${action} failed: ${result.error || "Unknown error"}. Please try rephrasing your request.`;
     } catch (error) {
       console.error("generateImage tool failed:", error);
       return "I encountered an error generating the image. Please try again.";
@@ -883,6 +893,18 @@ const resolveMedia = createTool({
         limit: pos,
         mediaTypePrefixes: categoryPrefixes ? [...categoryPrefixes] : undefined,
       });
+
+    // Also search generated images when looking for images or any media
+    const includeGenerated = mediaCategory === "image" || mediaCategory === "any";
+    if (includeGenerated) {
+      const generated = await ctx.runQuery(internal.imageStorage.getRecentGeneratedImages, {
+        userId,
+        limit: pos,
+      });
+      // Merge and sort by createdAt descending (most recent first)
+      files.push(...generated);
+      files.sort((a, b) => b.createdAt - a.createdAt);
+    }
 
     if (files.length < pos) {
       const categoryLabel = mediaCategory === "any" ? "media" : mediaCategory;
