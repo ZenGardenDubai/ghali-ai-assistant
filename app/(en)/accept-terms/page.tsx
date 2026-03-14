@@ -134,7 +134,15 @@ function AcceptTermsContent() {
           title="Something went wrong"
           description={error}
         >
-          <WhatsAppButton />
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <button
+              onClick={() => { setError(null); setAccepted(false); }}
+              className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 font-semibold transition-all hover:bg-white/10"
+            >
+              Try again
+            </button>
+            <WhatsAppButton />
+          </div>
         </StateCard>
       </AcceptTermsLayout>
     );

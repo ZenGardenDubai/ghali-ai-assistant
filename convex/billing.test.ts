@@ -230,6 +230,39 @@ describe("acceptTermsForUser", () => {
     const user = await t.query(internal.users.getUser, { userId });
     expect(user!.email).toBe("test@example.com");
   });
+
+  it("is idempotent — re-acceptance preserves original termsAcceptedAt", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // First acceptance
+    await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+    });
+
+    const userAfterFirst = await t.query(internal.users.getUser, { userId });
+    const originalTermsAt = userAfterFirst!.termsAcceptedAt;
+    const originalOptInAt = userAfterFirst!.proactiveOptInAt;
+    expect(originalTermsAt).toBeGreaterThan(0);
+
+    // Wait a tick so Date.now() would differ
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Second acceptance (re-acceptance)
+    const result = await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+    });
+
+    expect(result.success).toBe(true);
+    const userAfterSecond = await t.query(internal.users.getUser, { userId });
+    expect(userAfterSecond!.termsAcceptedAt).toBe(originalTermsAt);
+    expect(userAfterSecond!.proactiveOptInAt).toBe(originalOptInAt);
+  });
 });
 
 // ============================================================================
