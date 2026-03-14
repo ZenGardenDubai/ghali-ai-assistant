@@ -4,6 +4,59 @@ import { internalMutation } from "./_generated/server";
 import { CREDITS_BASIC, CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
 // ============================================================================
+// Terms Acceptance
+// ============================================================================
+
+/**
+ * Record that a user has accepted the Terms of Service and link their Clerk account.
+ * Sets termsAcceptedAt, proactiveOptInAt, and clerkUserId on the user record.
+ */
+export const acceptTermsForUser = internalMutation({
+  args: {
+    phone: v.string(),
+    clerkUserId: v.string(),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, { phone, clerkUserId, email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", phone))
+      .unique();
+
+    if (!user) {
+      return { success: false, error: "No account found for this phone number" };
+    }
+
+    // Guard: check if clerkUserId is already linked to a different Convex user
+    const existingLink = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+
+    if (existingLink && existingLink._id !== user._id) {
+      return { success: false, error: "This account is already linked to another user" };
+    }
+
+    const now = Date.now();
+    const updates: {
+      clerkUserId: string;
+      termsAcceptedAt: number;
+      proactiveOptInAt: number;
+      email?: string;
+    } = {
+      clerkUserId,
+      termsAcceptedAt: now,
+      // Set proactiveOptInAt only if not already set (preserves earlier opt-in time)
+      proactiveOptInAt: user.proactiveOptInAt ?? now,
+    };
+    if (email) updates.email = email;
+    await ctx.db.patch(user._id, updates);
+
+    return { success: true };
+  },
+});
+
+// ============================================================================
 // Phone-Based Account Linking
 // ============================================================================
 

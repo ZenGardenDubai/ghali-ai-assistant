@@ -8,6 +8,36 @@ import { PRO_FEATURES } from "./constants";
 const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
 
 export const TEMPLATES = {
+  // === Terms Acceptance ===
+  terms_required_new: {
+    template: `*Welcome to Ghali!* 👋
+
+Ghali is your AI assistant on WhatsApp — for conversations, documents, reminders, scheduled tasks, and more.
+
+To get started, please:
+1️⃣ Read our Terms of Service: ghali.ae/terms
+2️⃣ Accept & verify your identity: {{acceptUrl}}
+
+─────────────────────
+*مرحباً بك في غالي!* 👋
+
+غالي هو مساعدك الذكي على واتساب — للمحادثات والمستندات والتذكيرات والمهام المجدولة والمزيد.
+
+للبدء، يرجى:
+1️⃣ قراءة شروط الخدمة: ghali.ae/ar/terms
+2️⃣ القبول والتحقق من هويتك: {{acceptUrl}}`,
+    variables: ["acceptUrl"],
+  },
+
+  terms_required_existing: {
+    template: `Hi {{name}} 👋
+
+To continue using Ghali, we need you to accept our Terms of Service and verify your identity.
+
+🔗 {{acceptUrl}}`,
+    variables: ["name", "acceptUrl"],
+  },
+
   // === Onboarding ===
   onboarding_welcome: {
     template: `Hey {{name}}! 👋 Ready when you are, just ask me anything, send a file, or say "remind me to..." to start.

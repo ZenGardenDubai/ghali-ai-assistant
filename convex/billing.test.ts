@@ -130,6 +130,109 @@ describe("linkClerkUserByPhone", () => {
 });
 
 // ============================================================================
+// acceptTermsForUser
+// ============================================================================
+
+describe("acceptTermsForUser", () => {
+  it("sets termsAcceptedAt, clerkUserId, and proactiveOptInAt", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const result = await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+    });
+
+    expect(result.success).toBe(true);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.clerkUserId).toBe("user_clerk123");
+    expect(user!.termsAcceptedAt).toBeGreaterThan(0);
+    expect(user!.proactiveOptInAt).toBeGreaterThan(0);
+  });
+
+  it("returns error when phone not found", async () => {
+    const t = convexTest(schema, modules);
+
+    const result = await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971509999999",
+      clerkUserId: "user_clerk123",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("No account found");
+  });
+
+  it("rejects when clerkUserId is already linked to a different user", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501111111",
+    });
+    await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971502222222",
+    });
+
+    // Accept terms for user1 with a clerkUserId
+    await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971501111111",
+      clerkUserId: "user_clerk_shared",
+    });
+
+    // Try to accept terms for user2 with same clerkUserId
+    const result = await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971502222222",
+      clerkUserId: "user_clerk_shared",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("already linked");
+  });
+
+  it("preserves existing proactiveOptInAt if already set", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Manually set proactiveOptInAt to a specific time
+    const earlierTime = Date.now() - 10000;
+    await t.run(async (ctx) => {
+      await ctx.db.patch(userId, { proactiveOptInAt: earlierTime });
+    });
+
+    await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+    });
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.proactiveOptInAt).toBe(earlierTime);
+  });
+
+  it("stores email when provided", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.billing.acceptTermsForUser, {
+      phone: "+971501234567",
+      clerkUserId: "user_clerk123",
+      email: "test@example.com",
+    });
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.email).toBe("test@example.com");
+  });
+});
+
+// ============================================================================
 // Subscription Handlers
 // ============================================================================
 

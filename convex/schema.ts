@@ -52,6 +52,8 @@ export default defineSchema({
     lastReadAt: v.optional(v.number()),
     /** When user first opted into proactive messages (created reminder/task/heartbeat) */
     proactiveOptInAt: v.optional(v.number()),
+    /** Timestamp when user accepted the Terms of Service (required before service access) */
+    termsAcceptedAt: v.optional(v.number()),
     personalityBootstrapped: v.optional(v.boolean()),
     /** Number of user messages since last reflection agent run */
     messagesSinceReflection: v.optional(v.number()),

@@ -19,6 +19,7 @@ import {
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
+import { needsTermsAcceptance, buildAcceptUrl, buildTermsPromptForNewUser, buildTermsPromptForExistingUser } from "./lib/termsGating";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -313,6 +314,18 @@ export const generateResponse = internalAction({
         `[circuit-breaker] User ${userId} in error backoff until ` +
           `${new Date(user.errorBackoffUntil).toISOString()}, skipping`
       );
+      return;
+    }
+
+    // Terms acceptance gate — blocks ALL service access until user accepts terms.
+    // Sent free (no credit deduction). On every message until accepted.
+    if (needsTermsAcceptance(user)) {
+      const acceptUrl = buildAcceptUrl(user.phone);
+      const isNewUser = user.onboardingStep != null; // new user: still in onboarding
+      const termsPrompt = isNewUser
+        ? buildTermsPromptForNewUser(acceptUrl)
+        : buildTermsPromptForExistingUser(user.name, acceptUrl);
+      await guardedSendMessage(termsPrompt);
       return;
     }
 
