@@ -40,6 +40,10 @@ describe("sendWhatsAppMessage", () => {
 
     // With MAX_MESSAGE_CHUNKS=1, should be exactly 1 API call (truncated)
     expect(fetchSpy.mock.calls.length).toBe(1);
+    const [, init] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(init?.body as string);
+    expect(body.text.body.length).toBeLessThanOrEqual(4096);
+    expect(body.text.body).toContain("_(Message truncated — too long)_");
   });
 
   it("throws on API error", async () => {

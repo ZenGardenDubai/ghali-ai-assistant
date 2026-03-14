@@ -6,13 +6,13 @@ System architecture overview for Ghali. See [SPEC.md](SPEC.md) for full build sp
 
 ```text
 WhatsApp message
-  → Twilio webhook (Convex HTTP route, POST /twilio/webhook)
-  → Validate signature (Web Crypto HMAC-SHA1) + check country blocklist
-  → Deduplicate (MessageSid check)
+  → 360dialog webhook (Convex HTTP route, POST /whatsapp-webhook)
+  → Validate signature (Web Crypto HMAC-SHA256) + check country blocklist
+  → Deduplicate (message ID check)
   → Find or create user + thread
   → Save message (Convex mutation, transactional)
   → Schedule async response (ctx.scheduler.runAfter)
-  → Return 200 + empty TwiML immediately
+  → Return 200 immediately
 
 Background action:
   → Load user files (profile, memory, personality, heartbeat)
