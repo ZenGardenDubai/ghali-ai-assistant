@@ -17,8 +17,8 @@ export const processHeartbeats = internalMutation({
     const allUsers = await ctx.db.query("users").collect();
 
     for (const user of allUsers) {
-      // Skip opted-out, dormant, blocked, or inactive (>7 days) users
-      if (user.optedOut || user.dormant || user.blocked) continue;
+      // Skip opted-out, blocked, or inactive (>7 days) users
+      if (user.optedOut || user.blocked) continue;
       if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
 
       // Check heartbeat file and schedule processing if non-empty
@@ -64,8 +64,8 @@ export const processUserHeartbeat = internalAction({
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return;
 
-    // Re-check opt-out/dormant/blocked/inactivity (user may have changed state after processHeartbeats enqueued this)
-    if (user.optedOut || user.dormant || user.blocked) return;
+    // Re-check opt-out/blocked/inactivity (user may have changed state after processHeartbeats enqueued this)
+    if (user.optedOut || user.blocked) return;
     if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) return;
 
     // Circuit breaker: skip if user is in error backoff
@@ -136,7 +136,7 @@ ${SYSTEM_BLOCK}
     if (responseText && !responseText.includes("__SKIP__")) {
       // Re-fetch user to catch STOP sent or inactivity crossed during AI generation
       const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
-      if (!latestUser || latestUser.optedOut || latestUser.dormant || latestUser.blocked) return;
+      if (!latestUser || latestUser.optedOut || latestUser.blocked) return;
       if (!latestUser.lastMessageAt || Date.now() - latestUser.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) return;
 
       // Check daily proactive limit before outbound rate guard

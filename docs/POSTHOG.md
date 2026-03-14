@@ -257,10 +257,10 @@ Fired when reflection is triggered but skipped.
 
 | Property | Type | Description |
 |---|---|---|
-| `reason` | string | `opted_out`, `dormant`, or `error` |
+| `reason` | string | `opted_out` or `error` |
 | `phone_country` | string | ISO country code |
 
-**Triggered in**: `convex/reflection.ts` — `runReflection` action when user is opted out, dormant, or agent errors
+**Triggered in**: `convex/reflection.ts` — `runReflection` action when user is opted out or agent errors
 
 ### `terms_prompt_sent`
 

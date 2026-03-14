@@ -171,9 +171,8 @@ export const saveIncoming = internalMutation({
     const user = await ctx.db.get(userId);
     const previousLastMessageAt = user?.lastMessageAt;
 
-    // Reactivate dormant/blocked users on inbound message
+    // Reactivate blocked users on inbound message
     const reactivateFields: Record<string, unknown> = { lastMessageAt: Date.now() };
-    if (user?.dormant) reactivateFields.dormant = false;
     if (user?.blocked) reactivateFields.blocked = false;
     await ctx.db.patch(userId, reactivateFields);
 

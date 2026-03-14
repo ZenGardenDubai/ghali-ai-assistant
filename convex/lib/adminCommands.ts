@@ -61,7 +61,7 @@ export async function handleAdminCommand(
     case "stats": {
       const stats = (await ctx.runQuery(internal.admin.getStats, {})) as {
         totalUsers: number;
-        dormantUsers: number;
+        pendingAcceptance: number;
         proUsers: number;
         basicUsers: number;
         // Rolling windows: from (now - X) to now
@@ -85,7 +85,7 @@ export async function handleAdminCommand(
           "admin_stats",
           {
             totalUsers: stats.totalUsers,
-            dormantUsers: stats.dormantUsers,
+            pendingAcceptance: stats.pendingAcceptance,
             activeToday: stats.activeToday,
             activeWeek: stats.activeWeek,
             activeMonth: stats.activeMonth,

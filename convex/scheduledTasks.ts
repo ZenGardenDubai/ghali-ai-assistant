@@ -194,10 +194,10 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Skip opted-out, dormant, blocked, or inactive (>7 days) users — but reschedule cron so it resumes on reactivation
+    // Skip opted-out, blocked, or inactive (>7 days) users — but reschedule cron so it resumes on reactivation
     const isInactive = !user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
-    if (user.optedOut || user.dormant || user.blocked || isInactive) {
-      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out, dormant, blocked, or inactive >7 days`);
+    if (user.optedOut || user.blocked || isInactive) {
+      console.log(`[scheduled-task] Task ${taskId} skipped — user ${task.userId} opted out, blocked, or inactive >7 days`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       } else {
@@ -394,11 +394,11 @@ export const executeScheduledTask = internalAction({
     }
 
     // Re-fetch user before delivery — agent call above can take seconds/minutes,
-    // user may have opted out, gone dormant, or crossed the 7-day inactivity boundary
+    // user may have opted out or crossed the 7-day inactivity boundary
     const latestUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
     const latestInactive = !latestUser?.lastMessageAt || Date.now() - latestUser.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
-    if (!latestUser || latestUser.optedOut || latestUser.dormant || latestUser.blocked || latestInactive) {
-      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, dormant, blocked, or inactive >7 days`);
+    if (!latestUser || latestUser.optedOut || latestUser.blocked || latestInactive) {
+      console.log(`[scheduled-task] Task ${taskId} delivery skipped — user ${task.userId} not found, opted out, blocked, or inactive >7 days`);
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       } else {

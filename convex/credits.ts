@@ -75,9 +75,6 @@ export const resetCredits = internalMutation({
 
     let resetCount = 0;
     for (const user of users) {
-      // Skip dormant users — no outbound messages for pre-migration users
-      // (credits still reset for opted-out users, but notification is skipped below)
-      if (user.dormant) continue;
       if (user.creditsResetAt <= now) {
         const tierCredits = user.tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
         await ctx.db.patch(user._id, {

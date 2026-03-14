@@ -5,7 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import { getNextCronRun } from "./lib/cronParser";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
-import { MODELS, DORMANT_MIGRATION_CUTOFF_MS } from "./constants";
+import { MODELS } from "./constants";
 import { parseProfileSections, replaceProfileSection, type ProfileCategory } from "./lib/profile";
 import { isFileTooLarge } from "./lib/userFiles";
 import { resolveCityToTimezone, buildDefaultPersonality } from "./lib/onboarding";
@@ -766,61 +766,183 @@ export const countScheduledTasks = internalQuery({
 });
 
 // ============================================================================
-// Dormant User Migration (v0.37 — 360dialog migration)
+// Clean Slate — Delete users who haven't accepted terms (v0.44)
 // ============================================================================
 
+
+/** Immutable admin phone — second safety guard alongside isAdmin for destructive migrations. */
+const PROTECTED_ADMIN_PHONE = "+971552500009";
+
+function shouldKeepUser(u: { isAdmin: boolean; phone: string; termsAcceptedAt?: number }): boolean {
+  return u.isAdmin || u.phone === PROTECTED_ADMIN_PHONE || u.termsAcceptedAt !== undefined;
+}
+
 /**
- * Dry-run: count users that would be flagged as dormant.
- * Run from Convex dashboard before the actual migration.
+ * Dry-run: count users that would be deleted by the clean slate migration.
+ * Users with termsAcceptedAt set, isAdmin flag, or matching the admin phone are kept.
  */
-export const countDormantCandidates = internalQuery({
+export const countCleanSlateCandidates = internalQuery({
   args: {},
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
-    const candidates = allUsers.filter(
-      (u) =>
-        u.createdAt < DORMANT_MIGRATION_CUTOFF_MS &&
-        (!u.lastMessageAt || u.lastMessageAt < DORMANT_MIGRATION_CUTOFF_MS)
-    );
-    const alreadyDormant = allUsers.filter((u) => u.dormant === true);
+    const toDelete = allUsers.filter((u) => !shouldKeepUser(u));
+    const toKeep = allUsers.filter((u) => shouldKeepUser(u));
     return {
       total: allUsers.length,
-      candidates: candidates.length,
-      alreadyDormant: alreadyDormant.length,
-      willFlag: candidates.filter((u) => u.dormant !== true).length,
+      toDelete: toDelete.length,
+      toKeep: toKeep.length,
+      deletedPhones: toDelete.map((u) => u.phone),
+      keptPhones: toKeep.map((u) => u.phone),
     };
   },
 });
 
-/**
- * One-time migration: flag pre-360dialog users as dormant.
- *
- * Flags users where:
- * - createdAt < DORMANT_MIGRATION_CUTOFF_MS (before 360dialog migration)
- * - lastMessageAt is missing or also before the cutoff (no post-migration activity)
- *
- * Idempotent: skips users already flagged. Safe to run multiple times.
- * Run from Convex dashboard after deployment.
- */
-export const flagDormantUsers = internalMutation({
+/** Find user IDs eligible for clean slate deletion. */
+export const findCleanSlateCandidates = internalQuery({
   args: {},
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
-    let flagged = 0;
+    return allUsers
+      .filter((u) => !shouldKeepUser(u))
+      .map((u) => u._id);
+  },
+});
 
-    for (const user of allUsers) {
-      if (
-        user.createdAt < DORMANT_MIGRATION_CUTOFF_MS &&
-        (!user.lastMessageAt || user.lastMessageAt < DORMANT_MIGRATION_CUTOFF_MS) &&
-        user.dormant !== true
-      ) {
-        await ctx.db.patch(user._id, { dormant: true });
-        flagged++;
+/**
+ * Clean slate: delete all users who haven't accepted terms (except admin).
+ * Uses deleteAccount for full cascade (threads, files, RAG, media, Clerk, etc.).
+ * Run from Convex dashboard after deployment.
+ */
+export const cleanSlateDeleteUsers = internalAction({
+  args: {},
+  handler: async (ctx): Promise<{ deleted: number; total: number; errors: string[] }> => {
+    const candidates = await ctx.runQuery(
+      internal.migrations.findCleanSlateCandidates
+    ) as Id<"users">[];
+
+    console.log(
+      `[clean-slate] Deleting ${candidates.length} users who haven't accepted terms`
+    );
+
+    let deleted = 0;
+    const errors: string[] = [];
+
+    for (const userId of candidates) {
+      try {
+        // Re-check: user may have accepted terms or gained admin since the initial query
+        const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+        if (!user || shouldKeepUser(user)) {
+          console.log(`[clean-slate] Skipping ${userId} — accepted terms, admin, or already deleted`);
+          continue;
+        }
+        await ctx.runAction(internal.accountControl.deleteAccount, { userId });
+        deleted++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`${userId}: ${msg}`);
+        console.error(`[clean-slate] Failed to delete ${userId}:`, msg);
       }
     }
 
-    console.log(`Dormant migration: ${flagged} users flagged out of ${allUsers.length} total`);
-    return { flagged, total: allUsers.length };
+    console.log(
+      `[clean-slate] Done: ${deleted}/${candidates.length} deleted` +
+        (errors.length > 0 ? `, ${errors.length} errors` : "")
+    );
+    return { deleted, total: candidates.length, errors };
+  },
+});
+
+/**
+ * PostHog reset: delete persons for users that were cleaned up.
+ * Uses PostHog HTTP API to delete person profiles by phone (distinct_id).
+ * Run from Convex dashboard after cleanSlateDeleteUsers completes.
+ */
+export const posthogResetDeletedUsers = internalAction({
+  args: {
+    phones: v.array(v.string()),
+  },
+  handler: async (_ctx, { phones }) => {
+    const projectId = process.env.POSTHOG_PROJECT_ID;
+    if (!projectId) {
+      throw new Error("Missing POSTHOG_PROJECT_ID env var");
+    }
+
+    // PostHog Personal API key is needed for DELETE operations
+    const personalApiKey = process.env.POSTHOG_PERSONAL_API_KEY;
+    if (!personalApiKey) {
+      throw new Error(
+        "Missing POSTHOG_PERSONAL_API_KEY env var (needed for person deletion)"
+      );
+    }
+
+    const host = process.env.POSTHOG_HOST ?? "https://us.posthog.com";
+    const TIMEOUT_MS = 10_000;
+
+    async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        return await fetch(url, { ...init, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    let deleted = 0;
+    let notFound = 0;
+    const errors: string[] = [];
+
+    for (const phone of phones) {
+      try {
+        // Step 1: Find the person by distinct_id
+        const searchRes = await fetchWithTimeout(
+          `${host}/api/projects/${projectId}/persons?distinct_id=${encodeURIComponent(phone)}`,
+          {
+            headers: { Authorization: `Bearer ${personalApiKey}` },
+          }
+        );
+
+        if (!searchRes.ok) {
+          errors.push(`${phone}: search HTTP ${searchRes.status}`);
+          continue;
+        }
+
+        const searchData = await searchRes.json();
+        const results = searchData.results;
+
+        if (!results || results.length === 0) {
+          notFound++;
+          continue;
+        }
+
+        // Step 2: Delete the person
+        const personId = results[0].id;
+        const deleteRes = await fetchWithTimeout(
+          `${host}/api/projects/${projectId}/persons/${personId}/`,
+          {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${personalApiKey}` },
+          }
+        );
+
+        if (deleteRes.status === 204 || deleteRes.ok) {
+          deleted++;
+        } else {
+          errors.push(`${phone}: delete HTTP ${deleteRes.status}`);
+        }
+
+        // Throttle to avoid rate limits
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`${phone}: ${msg}`);
+      }
+    }
+
+    console.log(
+      `[posthog-reset] Done: ${deleted} deleted, ${notFound} not found, ${errors.length} errors`
+    );
+    return { deleted, notFound, errors, total: phones.length };
   },
 });
 

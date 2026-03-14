@@ -100,9 +100,9 @@ export const guardedSendMessage = internalAction({
     body: v.string(),
   },
   handler: async (ctx, { userId, to, body }) => {
-    // Re-check opt-out/dormant/blocked — user may have changed state between scheduling and execution
+    // Re-check opt-out/blocked — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.optedOut || user.dormant || user.blocked) return;
+    if (!user || user.optedOut || user.blocked) return;
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
@@ -133,9 +133,9 @@ export const guardedSendTemplate = internalAction({
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
-    // Re-check opt-out/dormant/blocked — user may have changed state between scheduling and execution
+    // Re-check opt-out/blocked — user may have changed state between scheduling and execution
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-    if (!user || user.optedOut || user.dormant || user.blocked) return;
+    if (!user || user.optedOut || user.blocked) return;
 
     // 7-day inactivity gate — don't send templates to cold contacts
     // Skipped for user-initiated events (e.g. billing) where the notification is expected

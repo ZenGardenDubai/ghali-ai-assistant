@@ -225,13 +225,6 @@ export const SCHEDULED_TASK_MAX_RESULT_LENGTH = 1400;
 export const CREDITS_LOW_THRESHOLD = 10;
 
 // ============================================================================
-// Migration
-// ============================================================================
-
-/** Pre-360dialog migration cutoff — users created before this are dormant (2026-03-09T23:57:00.000Z) */
-export const DORMANT_MIGRATION_CUTOFF_MS = 1773100620000;
-
-// ============================================================================
 // Security
 // ============================================================================
 

@@ -270,18 +270,17 @@ export const runReflection = internalAction({
       phone: string;
       tier: string;
       optedOut?: boolean;
-      dormant?: boolean;
       totalMessages?: number;
       messagesSinceReflection?: number;
     } | null;
 
     if (!user) return;
 
-    // Skip opted-out or dormant users
-    if (user.optedOut || user.dormant) {
+    // Skip opted-out users
+    if (user.optedOut) {
       await ctx.runAction(internal.analytics.trackReflectionSkipped, {
         phone: user.phone,
-        reason: user.optedOut ? "opted_out" : "dormant",
+        reason: "opted_out",
       });
       await ctx.runMutation(internal.reflection.resetReflectionCounter, { userId });
       return;

@@ -257,12 +257,12 @@ Fired after every reflection agent execution.
 
 ### `reflection_agent_skipped`
 
-Fired when reflection is triggered but skipped (user opted out, dormant, etc).
+Fired when reflection is triggered but skipped (user opted out, etc.).
 
 | Property | Type | Description |
 |----------|------|-------------|
 | `phone` | string | User phone |
-| `reason` | string | "opted_out", "dormant", "no_messages", "error" |
+| `reason` | string | "opted_out" or "error" |
 
 ### Dashboard Queries
 
