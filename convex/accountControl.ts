@@ -130,8 +130,9 @@ export const cleanupStaleUsers = internalAction({
 export const findStaleUsers = internalQuery({
   args: { createdBefore: v.number() },
   handler: async (ctx, { createdBefore }) => {
-    // Use take() to avoid full table scan — processes up to 50 stale users per hourly cron run
-    const candidates = await ctx.db.query("users").order("asc").take(200);
+    // Scan newest first — stale users are always recently created.
+    // Caps at 200 candidates / 50 deletions per hourly cron run.
+    const candidates = await ctx.db.query("users").order("desc").take(200);
     return candidates
       .filter((u) => !u.termsAcceptedAt && u.createdAt < createdBefore)
       .slice(0, 50)

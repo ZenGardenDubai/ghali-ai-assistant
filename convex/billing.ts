@@ -58,10 +58,16 @@ export const acceptTermsForUser = internalMutation({
     if (!user.termsAcceptedAt) {
       const name = user.name || "there";
       const thankYouMsg = fillTemplate(TEMPLATES.terms_accepted.template, { name });
-      await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
-        to: phone,
-        body: thankYouMsg,
-      });
+      // Check 24h session window — use free-form within window, skip outside
+      // (no template exists for thank-you, so we only send within the session)
+      const withinWindow = user.lastMessageAt &&
+        now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      if (withinWindow) {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
+          to: phone,
+          body: thankYouMsg,
+        });
+      }
       await ctx.scheduler.runAfter(0, internal.analytics.trackTermsAccepted, {
         phone,
         tier: user.tier,
