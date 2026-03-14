@@ -71,6 +71,12 @@ export const generateAndStoreImage = internalAction({
           return { success: false, error: "Reference image not found in storage." };
         }
 
+        // Validate MIME type — only images can be used as references
+        const referenceMimeType = imageBlob.type || "application/octet-stream";
+        if (!referenceMimeType.startsWith("image/")) {
+          return { success: false, error: "Reference file must be an image." };
+        }
+
         // Enforce max size to avoid OOM in serverless (5MB)
         const MAX_REF_IMAGE_BYTES = 5 * 1024 * 1024;
         const imageBytes = new Uint8Array(await imageBlob.arrayBuffer());
@@ -92,7 +98,7 @@ export const generateAndStoreImage = internalAction({
               {
                 inlineData: {
                   data: base64Image,
-                  mimeType: imageBlob.type || "image/jpeg",
+                  mimeType: referenceMimeType,
                 },
               },
               { text: prompt },
