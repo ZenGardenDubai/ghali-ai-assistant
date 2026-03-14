@@ -12,6 +12,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { MODELS } from "./models";
@@ -362,7 +363,7 @@ export const processMedia = internalAction({
         if (storageId && userId && messageSid) {
           await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
             userId,
-            storageId,
+            storageId: storageId as Id<"_storage">,
             messageSid,
             mediaType,
             expiresAt: Date.now() + MEDIA_RETENTION_MS,
