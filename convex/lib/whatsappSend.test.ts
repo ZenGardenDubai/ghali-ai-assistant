@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, rewriteToProxy } from "./whatsappSend";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { sendWhatsAppMessage, sendWhatsAppMedia, sendWhatsAppTemplate, rewriteToProxy, downloadMedia } from "./whatsappSend";
 
 const options = {
   apiKey: "test_api_key_123",
@@ -163,6 +163,111 @@ describe("sendWhatsAppTemplate", () => {
     await expect(
       sendWhatsAppTemplate(options, "ghali_reminder", { "1": "test" })
     ).rejects.toThrow("360dialog API error");
+  });
+});
+
+describe("downloadMedia", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns data on first successful attempt", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/file", mime_type: "image/jpeg" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(new ArrayBuffer(8), { status: 200 }));
+
+    const result = await downloadMedia("api_key", "media_id_123");
+
+    expect(result).not.toBeNull();
+    expect(result?.mimeType).toBe("image/jpeg");
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries Step 2 on transient failure and succeeds on second attempt", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/file", mime_type: "image/jpeg" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response("Service Unavailable", { status: 503 }))
+      .mockResolvedValueOnce(new Response(new ArrayBuffer(8), { status: 200 }));
+
+    const promise = downloadMedia("api_key", "media_id_123");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result).not.toBeNull();
+    expect(result?.mimeType).toBe("image/jpeg");
+    expect(fetchSpy).toHaveBeenCalledTimes(3); // 1 meta + 2 data attempts
+  });
+
+  it("returns null when Step 2 fails all retries", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/file", mime_type: "image/jpeg" }), { status: 200 })
+      )
+      .mockResolvedValue(new Response("Service Unavailable", { status: 503 }));
+
+    const promise = downloadMedia("api_key", "media_id_123");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(5); // 1 meta + 4 data attempts (initial + 3 retries)
+  });
+
+  it("retries Step 1 on transient failure and succeeds on second attempt", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("Service Unavailable", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/file", mime_type: "image/jpeg" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(new ArrayBuffer(8), { status: 200 }));
+
+    const promise = downloadMedia("api_key", "media_id_123");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result).not.toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(3); // 2 meta attempts + 1 data
+  });
+
+  it("returns null when Step 1 fails all retries", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("Unauthorized", { status: 401 }));
+
+    const promise = downloadMedia("api_key", "media_id_123");
+    await vi.runAllTimersAsync();
+    const result = await promise;
+
+    expect(result).toBeNull();
+    expect(fetchSpy).toHaveBeenCalledTimes(4); // 4 meta attempts (initial + 3 retries)
+  });
+
+  it("returns null when metadata has no download URL", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ mime_type: "image/jpeg" }), { status: 200 })
+    );
+
+    const result = await downloadMedia("api_key", "media_id_123");
+    expect(result).toBeNull();
+  });
+
+  it("defaults mimeType to application/octet-stream when absent from metadata", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ url: "https://lookaside.fbsbx.com/file" }), { status: 200 })
+      )
+      .mockResolvedValueOnce(new Response(new ArrayBuffer(4), { status: 200 }));
+
+    const result = await downloadMedia("api_key", "media_id_123");
+    expect(result?.mimeType).toBe("application/octet-stream");
   });
 });
 
