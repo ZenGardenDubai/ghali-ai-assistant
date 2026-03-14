@@ -359,6 +359,12 @@ export const generateResponse = internalAction({
           const termsPrompt = buildTermsPromptForExistingUser(user.name, acceptUrl);
           await guardedSendMessage(termsPrompt);
         }
+
+        // Track terms prompt sent (fire-and-forget)
+        await ctx.scheduler.runAfter(0, internal.analytics.trackTermsPromptSent, {
+          phone: user.phone,
+          user_type: isOnboardingUser ? "new" as const : "existing" as const,
+        });
       }
       // Silently ignore — terms prompt already sent within 24h
       return;

@@ -52,6 +52,14 @@ export const acceptTermsForUser = internalMutation({
     if (email) updates.email = email;
     await ctx.db.patch(user._id, updates);
 
+    // Track terms acceptance (fire-and-forget) — only on first acceptance
+    if (!user.termsAcceptedAt) {
+      await ctx.scheduler.runAfter(0, internal.analytics.trackTermsAccepted, {
+        phone,
+        tier: user.tier,
+      });
+    }
+
     return { success: true };
   },
 });
