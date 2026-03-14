@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.42.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.4...v0.42.5) (2026-03-14)
+
+
+### Bug Fixes
+
+* retry media download on transient failures ([#249](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/249)) ([76491c4](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/76491c4262b12ec5f2ea60a4fbf09d22400ab99e))
+
 ## [0.42.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.3...v0.42.4) (2026-03-13)
 
 
