@@ -112,7 +112,8 @@ export async function sendWhatsAppMedia(
 export async function sendWhatsAppTemplate(
   options: WhatsAppSendOptions,
   templateName: string,
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  buttonUrlSuffix?: string
 ): Promise<void> {
   const to = normalizePhoneForApi(options.to);
 
@@ -124,16 +125,32 @@ export async function sendWhatsAppTemplate(
       text: variables[key],
     }));
 
+  const components: Array<Record<string, unknown>> = [];
+  if (parameters.length > 0) {
+    components.push({ type: "body", parameters });
+  }
+  // URL button with dynamic suffix (e.g. phone number appended to base URL)
+  if (buttonUrlSuffix) {
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [{ type: "text", text: buttonUrlSuffix }],
+    });
+  }
+
+  const templatePayload: Record<string, unknown> = {
+    name: templateName,
+    language: { code: "en" },
+  };
+  if (components.length > 0) {
+    templatePayload.components = components;
+  }
+
   await cloudApiCall(options.apiKey, {
     to,
     type: "template",
-    template: {
-      name: templateName,
-      language: { code: "en" },
-      components: parameters.length > 0
-        ? [{ type: "body", parameters }]
-        : [],
-    },
+    template: templatePayload,
   });
 }
 

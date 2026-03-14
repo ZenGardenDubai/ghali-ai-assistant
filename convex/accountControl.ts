@@ -6,7 +6,7 @@
  */
 
 import { v } from "convex/values";
-import { internalMutation, internalAction } from "./_generated/server";
+import { internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getNextCronRun } from "./lib/cronParser";
 
@@ -92,6 +92,77 @@ export const triggerOptIn = internalMutation({
     }
 
     console.log(`[accountControl] opt-in for user ${userId}, re-enabled ${reenabledCount} task(s)`);
+  },
+});
+
+// ============================================================================
+// Stale User Cleanup (cron)
+// ============================================================================
+
+const STALE_USER_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Cleanup users who messaged but never completed terms acceptance.
+ * Runs hourly via cron. Deletes users created >24h ago without termsAcceptedAt.
+ * Schedules deleteAccount for each stale user (handles all associated data).
+ */
+export const cleanupStaleUsers = internalAction({
+  handler: async (ctx) => {
+    const cutoff = Date.now() - STALE_USER_THRESHOLD_MS;
+    const staleUserIds = await ctx.runQuery(
+      internal.accountControl.findStaleUsers,
+      { promptedBefore: cutoff }
+    );
+
+    if (staleUserIds.length === 0) return;
+
+    console.log(`[cleanupStaleUsers] Found ${staleUserIds.length} stale users to delete`);
+
+    for (const userId of staleUserIds) {
+      await ctx.scheduler.runAfter(0, internal.accountControl.deleteIfStillStale, {
+        userId,
+        promptedBefore: cutoff,
+      });
+    }
+  },
+});
+
+/** Find user IDs who were prompted >24h ago but never accepted terms. Capped at 50 per run. */
+export const findStaleUsers = internalQuery({
+  args: { promptedBefore: v.number() },
+  handler: async (ctx, { promptedBefore }) => {
+    // Scan newest first. Caps at 200 candidates / 50 deletions per hourly cron run.
+    const candidates = await ctx.db.query("users").order("desc").take(200);
+    return candidates
+      .filter(
+        (u) =>
+          u.termsAcceptedAt === undefined &&
+          u.termsPromptSentAt !== undefined &&
+          u.termsPromptSentAt < promptedBefore
+      )
+      .slice(0, 50)
+      .map((u) => u._id);
+  },
+});
+
+/**
+ * Re-check staleness before deleting — prevents race condition where a user
+ * accepts terms between findStaleUsers and the scheduled deletion.
+ */
+export const deleteIfStillStale = internalAction({
+  args: { userId: v.id("users"), promptedBefore: v.number() },
+  handler: async (ctx, { userId, promptedBefore }) => {
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+    if (!user) return; // Already deleted
+    if (user.termsAcceptedAt !== undefined) {
+      console.log(`[cleanupStaleUsers] User ${userId} accepted terms — skipping deletion`);
+      return;
+    }
+    if (user.termsPromptSentAt === undefined || user.termsPromptSentAt >= promptedBefore) {
+      console.log(`[cleanupStaleUsers] User ${userId} not yet eligible — skipping deletion`);
+      return;
+    }
+    await ctx.runAction(internal.accountControl.deleteAccount, { userId });
   },
 });
 

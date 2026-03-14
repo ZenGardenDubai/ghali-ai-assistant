@@ -210,3 +210,30 @@ export const rollbackTemplateSend = internalMutation({
     }
   },
 });
+
+const TERMS_PROMPT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Atomic check-and-record for terms prompt sending.
+ * Returns { allowed: true } if the prompt hasn't been sent in the last 24h,
+ * and atomically records termsPromptSentAt to prevent race conditions.
+ */
+export const checkAndRecordTermsPrompt = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (
+    ctx,
+    { userId }
+  ): Promise<{ allowed: true } | { allowed: false; reason: string }> => {
+    const user = await ctx.db.get(userId);
+    if (!user) return { allowed: false, reason: "user_not_found" };
+
+    const now = Date.now();
+    if (user.termsPromptSentAt && now - user.termsPromptSentAt < TERMS_PROMPT_COOLDOWN_MS) {
+      return { allowed: false, reason: "cooldown" };
+    }
+
+    // Atomically record the send time — prevents double-send from concurrent actions
+    await ctx.db.patch(userId, { termsPromptSentAt: now });
+    return { allowed: true };
+  },
+});

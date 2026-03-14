@@ -502,3 +502,29 @@ export const trackAccountDeleted = internalAction({
     });
   },
 });
+
+export const trackTermsPromptSent = internalAction({
+  args: {
+    phone: v.string(),
+    user_type: v.union(v.literal("new"), v.literal("existing")),
+  },
+  handler: async (_ctx, { phone, user_type }) => {
+    await captureEvent(phone, "terms_prompt_sent", {
+      user_type,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackTermsAccepted = internalAction({
+  args: {
+    phone: v.string(),
+    tier: v.string(),
+  },
+  handler: async (_ctx, { phone, tier }) => {
+    await captureEvent(phone, "terms_accepted", {
+      tier,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});

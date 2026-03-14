@@ -8,6 +8,31 @@ import { PRO_FEATURES } from "./constants";
 const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
 
 export const TEMPLATES = {
+  // === Terms Acceptance ===
+  terms_accepted: {
+    template: `Thanks for signing up, {{name}}! 🎉
+
+Here's what I can do:
+💬 Answer questions and have conversations
+📄 Process documents, images, and voice notes
+⏰ Set reminders and scheduled tasks
+🖼️ Generate and edit images
+🔍 Search the web for real-time info
+📊 Track expenses, tasks, notes, and more
+✍️ Write professional content with ProWrite
+
+*Commands:*
+• *help* — see what I can do
+• *credits* — check your balance
+• *account* — manage your account
+• *upgrade* — get more credits
+• *stop* / *start* — pause or resume messages
+• *delete* — delete your account and data
+
+Just send me a message to get started!`,
+    variables: ["name"],
+  },
+
   // === Onboarding ===
   onboarding_welcome: {
     template: `Hey {{name}}! 👋 Ready when you are, just ask me anything, send a file, or say "remind me to..." to start.

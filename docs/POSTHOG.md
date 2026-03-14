@@ -262,6 +262,28 @@ Fired when reflection is triggered but skipped.
 
 **Triggered in**: `convex/reflection.ts` — `runReflection` action when user is opted out, dormant, or agent errors
 
+### `terms_prompt_sent`
+
+Fired when the terms acceptance prompt is sent to a user (new or existing).
+
+| Property | Type | Description |
+|---|---|---|
+| `user_type` | string | `new` (first message) or `existing` (migration) |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/messages.ts` — terms acceptance gate, after sending the prompt
+
+### `terms_accepted`
+
+Fired when a user accepts the Terms of Service and completes authentication.
+
+| Property | Type | Description |
+|---|---|---|
+| `tier` | string | `basic` or `pro` |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/billing.ts` — `acceptTermsForUser` mutation (first acceptance only)
+
 ## Client Events (Landing Page)
 
 Captured via `posthog-js` on ghali.ae:
@@ -287,6 +309,8 @@ Captured via `posthog-js` on ghali.ae:
 | Reflection Agent Activity | Line | `reflection_agent_ran` per day, broken down by `trigger` |
 | Reflection Token Cost | Line | `$ai_generation` filtered by `source: "reflection"` — sum of input + output tokens |
 | Reflection Tools per Run | Number | Average `tools_called_count` from `reflection_agent_ran` |
+| Terms Prompt vs Accepted per Day | Line | `terms_prompt_sent` vs `terms_accepted` daily (insight ID `7357130`) |
+| Terms Acceptance Funnel | Funnel | `terms_prompt_sent` → `terms_accepted` conversion rate, 7-day window (insight ID `7357132`) |
 
 ## Country Code Mapping
 

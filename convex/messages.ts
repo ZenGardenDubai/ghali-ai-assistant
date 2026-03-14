@@ -19,6 +19,7 @@ import {
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
+import { needsTermsAcceptance } from "./lib/termsGating";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -316,6 +317,67 @@ export const generateResponse = internalAction({
       return;
     }
 
+    // Terms acceptance gate — blocks ALL service access until user accepts terms.
+    // Sends the prompt once, then silently ignores messages. Re-sends after 24h.
+    // Uses atomic check-and-record to prevent double-send from concurrent actions.
+    if (needsTermsAcceptance(user)) {
+      const termsGuard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordTermsPrompt,
+        { userId: typedUserId }
+      );
+      if (termsGuard.allowed) {
+        const isOnboardingUser = user.onboardingStep != null;
+
+        // New user: send infographic first (if configured)
+        if (isOnboardingUser) {
+          const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+          if (onboardingConfig) {
+            let parsed: { enabled?: boolean; url?: string } | null = null;
+            try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
+            if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
+              try {
+                await ctx.runAction(internal.whatsapp.sendMedia, {
+                  to: user.phone,
+                  caption: "",
+                  mediaUrl: parsed.url,
+                });
+              } catch (error) {
+                console.error("Failed to send onboarding infographic:", error);
+              }
+            }
+          }
+        }
+
+        // Send terms acceptance template with "Accept & Verify" button.
+        // Falls back to free-form text if template messaging is blocked.
+        const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+        const phoneSuffix = encodeURIComponent(user.phone);
+        try {
+          await ctx.runAction(internal.whatsapp.sendTemplate, {
+            to: user.phone,
+            templateName: "ghali_accept_terms",
+            variables: {},
+            buttonUrlSuffix: phoneSuffix,
+          });
+        } catch (error) {
+          console.warn("[terms-gate] Template send failed, falling back to text:", error);
+          const acceptUrl = `${baseUrl}/accept-terms?phone=${phoneSuffix}`;
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user.phone,
+            body: `Welcome to Ghali — your personal productivity assistant on WhatsApp.\n\nTo get started, please accept our Terms of Service and verify your WhatsApp number:\n\n${acceptUrl}`,
+          });
+        }
+
+        // Track terms prompt sent (fire-and-forget)
+        await ctx.scheduler.runAfter(0, internal.analytics.trackTermsPromptSent, {
+          phone: user.phone,
+          user_type: isOnboardingUser ? "new" as const : "existing" as const,
+        });
+      }
+      // Silently ignore — terms prompt already sent within 24h
+      return;
+    }
+
     // Track session-start for returning users (fire-and-forget).
     // user_returning fires only when the gap since their last message exceeds SESSION_GAP_MS.
     // trackUserNew was moved to findOrCreateUser so new users appear in PostHog at creation time.
@@ -336,32 +398,6 @@ export const generateResponse = internalAction({
       ? (isSystemCommand(body) ? body.toLowerCase().trim() : null)
       : await classifyCommand(body);
     const messageForCredits = canonicalCommand ?? body;
-
-    // Send onboarding infographic before step 1 welcome (if configured and enabled)
-    let sentInfographic = false;
-    if (user.onboardingStep === 1) {
-      const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
-      if (onboardingConfig) {
-        let parsed: { enabled?: boolean; url?: string } | null = null;
-        try {
-          parsed = JSON.parse(onboardingConfig.value);
-        } catch {
-          // Invalid config JSON — skip silently
-        }
-        if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
-          try {
-            await ctx.runAction(internal.whatsapp.sendMedia, {
-              to: user.phone,
-              caption: "",
-              mediaUrl: parsed.url,
-            });
-            sentInfographic = true;
-          } catch (error) {
-            console.error("Failed to send onboarding infographic:", error);
-          }
-        }
-      }
-    }
 
     // Onboarding intercept — before credit check (onboarding is free)
     // Skip onboarding only if the message is an actual system command.
@@ -409,10 +445,6 @@ export const generateResponse = internalAction({
         // Translate onboarding response to the user's language
         const lang = result.updates?.language ?? user.language ?? "en";
         const translatedResponse = await translateMessage(result.response, lang);
-        // Brief delay so the infographic arrives before the welcome text
-        if (sentInfographic) {
-          await new Promise((r) => setTimeout(r, 2000));
-        }
         await guardedSendMessage(translatedResponse);
         return;
       }
