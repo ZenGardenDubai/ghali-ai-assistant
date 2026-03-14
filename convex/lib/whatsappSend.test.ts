@@ -30,7 +30,7 @@ describe("sendWhatsAppMessage", () => {
     expect(body.text.body).toBe("Hello!");
   });
 
-  it("splits long messages into multiple API calls", async () => {
+  it("truncates long messages to a single API call (no splitting)", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({ messages: [{ id: "wamid.123" }] }), { status: 200 })
     );
@@ -38,7 +38,12 @@ describe("sendWhatsAppMessage", () => {
     const longText = "A".repeat(5000) + "\n\n" + "B".repeat(2000);
     await sendWhatsAppMessage(options, longText);
 
-    expect(fetchSpy.mock.calls.length).toBeGreaterThan(1);
+    // With MAX_MESSAGE_CHUNKS=1, should be exactly 1 API call (truncated)
+    expect(fetchSpy.mock.calls.length).toBe(1);
+    const [, init] = fetchSpy.mock.calls[0];
+    const body = JSON.parse(init?.body as string);
+    expect(body.text.body.length).toBeLessThanOrEqual(4096);
+    expect(body.text.body).toContain("_(Message truncated — too long)_");
   });
 
   it("throws on API error", async () => {

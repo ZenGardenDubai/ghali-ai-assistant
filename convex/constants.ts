@@ -57,21 +57,23 @@ export const MEMORY_COMPACTION_TARGET = Math.floor(MAX_USER_FILE_SIZE * 0.5);
 // ============================================================================
 
 /**
- * Max characters per WhatsApp message segment.
- * WhatsApp Cloud API limit = 4096. Set to 1500 for safety and readability.
+ * Max characters per WhatsApp message.
+ * WhatsApp Cloud API limit = 4096. Using the full limit to avoid splitting
+ * responses into multiple messages, which inflates the outbound-to-inbound
+ * ratio and can trigger WhatsApp's spam detection.
  */
-export const WHATSAPP_MAX_LENGTH = 1500;
+export const WHATSAPP_MAX_LENGTH = 4096;
 
 /** Delay between multi-part WhatsApp messages (ms) to preserve ordering */
 export const WHATSAPP_MESSAGE_DELAY_MS = 500;
 
 /**
  * Maximum number of WhatsApp message chunks per outbound send.
- * Prevents runaway splitting from flooding a recipient.
- * 3 chunks × 1500 chars = 4500 chars — plenty for any reasonable response.
- * Anything beyond this is truncated with a "message too long" footer.
+ * Set to 1 to eliminate message splitting entirely — every response is a
+ * single message. Anything over 4096 chars is truncated with a notice.
+ * This keeps the outbound-to-inbound ratio at ~1:1.
  */
-export const MAX_MESSAGE_CHUNKS = 3;
+export const MAX_MESSAGE_CHUNKS = 1;
 
 // ============================================================================
 // Voice Notes
