@@ -36,6 +36,13 @@ To continue using Ghali, we need you to accept our Terms of Service and verify y
     variables: ["name", "acceptUrl"],
   },
 
+  terms_accepted: {
+    template: `Thanks for signing up, {{name}}! 🎉
+
+You're all set. Just send me a message to get started — ask anything, send a file, or say "remind me to..." to try it out.`,
+    variables: ["name"],
+  },
+
   // === Onboarding ===
   onboarding_welcome: {
     template: `Hey {{name}}! 👋 Ready when you are, just ask me anything, send a file, or say "remind me to..." to start.

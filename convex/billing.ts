@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { CREDITS_BASIC, CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
+import { TEMPLATES } from "./templates";
+import { fillTemplate } from "./lib/utils";
 
 // ============================================================================
 // Terms Acceptance
@@ -52,8 +54,14 @@ export const acceptTermsForUser = internalMutation({
     if (email) updates.email = email;
     await ctx.db.patch(user._id, updates);
 
-    // Track terms acceptance (fire-and-forget) — only on first acceptance
+    // First acceptance only: send thank you message + track analytics
     if (!user.termsAcceptedAt) {
+      const name = user.name || "there";
+      const thankYouMsg = fillTemplate(TEMPLATES.terms_accepted.template, { name });
+      await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
+        to: phone,
+        body: thankYouMsg,
+      });
       await ctx.scheduler.runAfter(0, internal.analytics.trackTermsAccepted, {
         phone,
         tier: user.tier,
