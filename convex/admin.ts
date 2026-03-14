@@ -95,9 +95,9 @@ export const getStats = internalQuery({
 
     const allUsers = await ctx.db.query("users").collect();
 
-    const dormantUsers = allUsers.filter((u) => u.dormant === true).length;
+    const pendingAcceptance = allUsers.filter((u) => u.termsAcceptedAt === undefined).length;
     const blockedUsers = allUsers.filter((u) => u.blocked === true).length;
-    const totalUsers = allUsers.length - dormantUsers;
+    const totalUsers = allUsers.length;
     const proUsers = allUsers.filter((u) => u.tier === "pro").length;
     const basicUsers = allUsers.filter((u) => u.tier === "basic").length;
 
@@ -141,7 +141,7 @@ export const getStats = internalQuery({
 
     return {
       totalUsers,
-      dormantUsers,
+      pendingAcceptance,
       blockedUsers,
       proUsers,
       basicUsers,
@@ -229,7 +229,7 @@ export const getBroadcastCounts = internalQuery({
   handler: async (ctx) => {
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.db.query("users").collect();
-    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut && !u.blocked);
+    const eligibleUsers = allUsers.filter((u) => u.termsAcceptedAt !== undefined && !u.optedOut && !u.blocked);
     const activeCount = eligibleUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= cutoff
     ).length;
@@ -247,8 +247,8 @@ export const broadcastMessage = internalAction({
     const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers);
     const activeUsers = allUsers.filter(
-      (u: { lastMessageAt?: number; phone: string; dormant?: boolean; optedOut?: boolean; blocked?: boolean }) =>
-        !u.dormant && !u.optedOut && !u.blocked && u.lastMessageAt && u.lastMessageAt >= cutoff
+      (u: { lastMessageAt?: number; phone: string; termsAcceptedAt?: number; optedOut?: boolean; blocked?: boolean }) =>
+        u.termsAcceptedAt !== undefined && !u.optedOut && !u.blocked && u.lastMessageAt && u.lastMessageAt >= cutoff
     ) as Array<{ phone: string; lastMessageAt?: number }>;
 
     const sentCount = await sendInBatches(activeUsers, (phone) =>
@@ -371,7 +371,7 @@ export const sendTemplateToUser = internalAction({
   handler: async (ctx, { phone, templateName, variables, mediaUrl }) => {
     const user = await ctx.runQuery(internal.admin.searchUser, { phone });
     if (!user) return { success: false, reason: "User not found", sentCount: 0 };
-    if (user.dormant || user.optedOut || user.blocked) return { success: true, sentCount: 0 };
+    if (user.termsAcceptedAt === undefined || user.optedOut || user.blocked) return { success: true, sentCount: 0 };
 
     const isActive =
       !!user.lastMessageAt &&
@@ -417,12 +417,12 @@ export const sendTemplateBroadcast = internalAction({
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
       phone: string;
       lastMessageAt?: number;
-      dormant?: boolean;
+      termsAcceptedAt?: number;
       optedOut?: boolean;
       blocked?: boolean;
     }>;
 
-    const eligibleUsers = allUsers.filter((u) => !u.dormant && !u.optedOut && !u.blocked);
+    const eligibleUsers = allUsers.filter((u) => u.termsAcceptedAt !== undefined && !u.optedOut && !u.blocked);
     const userByPhone = new Map(eligibleUsers.map((u) => [u.phone, u]));
 
     const sentCount = await sendInBatches(eligibleUsers, async (phone) => {

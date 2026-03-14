@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { internal } from "./_generated/api";
 import { Doc } from "./_generated/dataModel";
 import schema from "./schema";
-import { DORMANT_MIGRATION_CUTOFF_MS } from "./constants";
+
 
 const modules = import.meta.glob("./**/*.ts");
 
@@ -188,122 +188,6 @@ describe("migrateRemindersToScheduledTasks", () => {
       return await ctx.db.get(itemId) as Doc<"items"> | null;
     });
     expect(item?.scheduledTaskId).toBeTruthy();
-  });
-});
-
-describe("flagDormantUsers", () => {
-  /** Helper: create a user with specific createdAt and lastMessageAt */
-  async function insertUser(
-    t: ReturnType<typeof convexTest>,
-    phone: string,
-    createdAt: number,
-    lastMessageAt?: number,
-  ) {
-    return await t.run(async (ctx) => {
-      return await ctx.db.insert("users", {
-        phone,
-        language: "en",
-        timezone: "Asia/Dubai",
-        tier: "basic",
-        isAdmin: false,
-        credits: 60,
-        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        onboardingStep: null,
-        createdAt,
-        ...(lastMessageAt ? { lastMessageAt } : {}),
-      });
-    });
-  }
-
-  it("flags users created before cutoff with no post-migration activity", async () => {
-    const t = convexTest(schema, modules);
-
-    const preMigrationId = await insertUser(t, "+971501111111", DORMANT_MIGRATION_CUTOFF_MS - 1000);
-    const postMigrationId = await insertUser(t, "+971502222222", DORMANT_MIGRATION_CUTOFF_MS + 1000);
-
-    const result = await t.mutation(internal.migrations.flagDormantUsers, {});
-
-    expect(result.flagged).toBe(1);
-
-    const preMigration = await t.run(async (ctx) => ctx.db.get(preMigrationId));
-    const postMigration = await t.run(async (ctx) => ctx.db.get(postMigrationId));
-
-    expect(preMigration?.dormant).toBe(true);
-    expect(postMigration?.dormant).toBeUndefined();
-  });
-
-  it("does not flag pre-migration users who messaged after cutoff", async () => {
-    const t = convexTest(schema, modules);
-
-    // Created before cutoff but messaged after
-    const activeId = await insertUser(
-      t,
-      "+971501111111",
-      DORMANT_MIGRATION_CUTOFF_MS - 1000,
-      DORMANT_MIGRATION_CUTOFF_MS + 5000,
-    );
-
-    const result = await t.mutation(internal.migrations.flagDormantUsers, {});
-
-    expect(result.flagged).toBe(0);
-
-    const active = await t.run(async (ctx) => ctx.db.get(activeId));
-    expect(active?.dormant).toBeUndefined();
-  });
-
-  it("is idempotent — running twice does not double-flag", async () => {
-    const t = convexTest(schema, modules);
-
-    await insertUser(t, "+971501111111", DORMANT_MIGRATION_CUTOFF_MS - 1000);
-
-    const result1 = await t.mutation(internal.migrations.flagDormantUsers, {});
-    const result2 = await t.mutation(internal.migrations.flagDormantUsers, {});
-
-    expect(result1.flagged).toBe(1);
-    expect(result2.flagged).toBe(0);
-  });
-});
-
-describe("countDormantCandidates", () => {
-  it("returns correct counts", async () => {
-    const t = convexTest(schema, modules);
-
-    // Pre-migration, no activity
-    await t.run(async (ctx) => {
-      await ctx.db.insert("users", {
-        phone: "+971501111111",
-        language: "en",
-        timezone: "Asia/Dubai",
-        tier: "basic",
-        isAdmin: false,
-        credits: 60,
-        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        onboardingStep: null,
-        createdAt: DORMANT_MIGRATION_CUTOFF_MS - 1000,
-      });
-    });
-
-    // Post-migration
-    await t.run(async (ctx) => {
-      await ctx.db.insert("users", {
-        phone: "+971502222222",
-        language: "en",
-        timezone: "Asia/Dubai",
-        tier: "basic",
-        isAdmin: false,
-        credits: 60,
-        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-        onboardingStep: null,
-        createdAt: DORMANT_MIGRATION_CUTOFF_MS + 1000,
-      });
-    });
-
-    const counts = await t.query(internal.migrations.countDormantCandidates, {});
-
-    expect(counts.total).toBe(2);
-    expect(counts.candidates).toBe(1);
-    expect(counts.alreadyDormant).toBe(0);
-    expect(counts.willFlag).toBe(1);
   });
 });
 

@@ -98,10 +98,10 @@ export const fireReminder = internalAction({
       return;
     }
 
-    // Skip opted-out, dormant, blocked, or inactive (>7 days) users
+    // Skip opted-out, blocked, or inactive (>7 days) users
     const isInactive = !user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS;
-    if (user.optedOut || user.dormant || user.blocked || isInactive) {
-      console.log(`[reminder] Reminder ${jobId} skipped — user ${job.userId} opted out, dormant, or inactive >7 days`);
+    if (user.optedOut || user.blocked || isInactive) {
+      console.log(`[reminder] Reminder ${jobId} skipped — user ${job.userId} opted out, blocked, or inactive >7 days`);
       // Still mark done so it doesn't retry, but schedule next recurrence
       await ctx.runMutation(internal.reminders.markJobDone, { jobId });
       if (job.cronExpr && job.timezone) {

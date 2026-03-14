@@ -312,7 +312,7 @@ Active: {{activeWeekDubai}}
 Active: {{activeMonthDubai}}
 
 *All Time*
-Users: {{totalUsers}} | Dormant: {{dormantUsers}} | Pro: {{proUsers}}`,
+Users: {{totalUsers}} | Pending Acceptance: {{pendingAcceptance}} | Pro: {{proUsers}}`,
     variables: [
       "newTodayDubai",
       "activeTodayDubai",
@@ -323,7 +323,7 @@ Users: {{totalUsers}} | Dormant: {{dormantUsers}} | Pro: {{proUsers}}`,
       "activeWeekDubai",
       "activeMonthDubai",
       "totalUsers",
-      "dormantUsers",
+      "pendingAcceptance",
       "proUsers",
     ],
   },
