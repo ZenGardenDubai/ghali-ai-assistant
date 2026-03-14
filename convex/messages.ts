@@ -19,7 +19,7 @@ import {
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
-import { needsTermsAcceptance, buildAcceptUrl, buildTermsPromptForNewUser, buildTermsPromptForExistingUser } from "./lib/termsGating";
+import { needsTermsAcceptance } from "./lib/termsGating";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -326,15 +326,11 @@ export const generateResponse = internalAction({
         { userId: typedUserId }
       );
       if (termsGuard.allowed) {
-        const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
-        const acceptUrl = buildAcceptUrl(user.phone, baseUrl);
         const isOnboardingUser = user.onboardingStep != null;
 
+        // New user: send infographic first (if configured)
         if (isOnboardingUser) {
-          // New user: send infographic + welcome as a single media message (if configured)
-          const termsCaption = buildTermsPromptForNewUser(acceptUrl, baseUrl);
           const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
-          let sentAsMedia = false;
           if (onboardingConfig) {
             let parsed: { enabled?: boolean; url?: string } | null = null;
             try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
@@ -342,23 +338,26 @@ export const generateResponse = internalAction({
               try {
                 await ctx.runAction(internal.whatsapp.sendMedia, {
                   to: user.phone,
-                  caption: termsCaption,
+                  caption: "",
                   mediaUrl: parsed.url,
                 });
-                sentAsMedia = true;
               } catch (error) {
-                console.error("Failed to send terms infographic, falling back to text:", error);
+                console.error("Failed to send onboarding infographic:", error);
               }
             }
           }
-          if (!sentAsMedia) {
-            await guardedSendMessage(termsCaption);
-          }
-        } else {
-          // Existing user: text-only terms prompt
-          const termsPrompt = buildTermsPromptForExistingUser(user.name, acceptUrl);
-          await guardedSendMessage(termsPrompt);
         }
+
+        // Send terms acceptance template with "Accept & Verify" button
+        // The template URL is https://ghali.ae/accept-terms?phone={{1}}
+        // We pass the URL-encoded phone as the button suffix
+        const phoneSuffix = encodeURIComponent(user.phone);
+        await ctx.runAction(internal.whatsapp.sendTemplate, {
+          to: user.phone,
+          templateName: "ghali_accept_terms",
+          variables: {},
+          buttonUrlSuffix: phoneSuffix,
+        });
 
         // Track terms prompt sent (fire-and-forget)
         await ctx.scheduler.runAfter(0, internal.analytics.trackTermsPromptSent, {

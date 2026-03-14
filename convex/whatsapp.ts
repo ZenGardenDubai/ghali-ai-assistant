@@ -78,12 +78,13 @@ export const sendTemplate = internalAction({
     to: v.string(),
     templateName: v.string(),
     variables: v.record(v.string(), v.string()),
+    buttonUrlSuffix: v.optional(v.string()),
   },
-  handler: async (_ctx, { to, templateName, variables }) => {
+  handler: async (_ctx, { to, templateName, variables, buttonUrlSuffix }) => {
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
-    await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+    await sendWhatsAppTemplate(getSendOptions(to), templateName, variables, buttonUrlSuffix);
   },
 });
 
