@@ -54,6 +54,8 @@ export default defineSchema({
     proactiveOptInAt: v.optional(v.number()),
     /** Timestamp when user accepted the Terms of Service (required before service access) */
     termsAcceptedAt: v.optional(v.number()),
+    /** Timestamp when terms prompt was last sent (re-sent after 24h if not accepted) */
+    termsPromptSentAt: v.optional(v.number()),
     personalityBootstrapped: v.optional(v.boolean()),
     /** Number of user messages since last reflection agent run */
     messagesSinceReflection: v.optional(v.number()),

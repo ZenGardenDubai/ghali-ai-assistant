@@ -19,7 +19,7 @@ import {
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
-import { needsTermsAcceptance, buildAcceptUrl, buildTermsPromptForNewUser, buildTermsPromptForExistingUser } from "./lib/termsGating";
+import { needsTermsAcceptance, shouldSendTermsPrompt, buildAcceptUrl, buildTermsPromptForNewUser, buildTermsPromptForExistingUser } from "./lib/termsGating";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -318,42 +318,50 @@ export const generateResponse = internalAction({
     }
 
     // Terms acceptance gate — blocks ALL service access until user accepts terms.
-    // Sent free (no credit deduction). On every message until accepted.
+    // Sends the prompt once, then silently ignores messages. Re-sends after 24h.
     if (needsTermsAcceptance(user)) {
-      const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
-      const acceptUrl = buildAcceptUrl(user.phone, baseUrl);
-      const isOnboardingUser = user.onboardingStep != null; // new user: still in onboarding
+      if (shouldSendTermsPrompt(user)) {
+        const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+        const acceptUrl = buildAcceptUrl(user.phone, baseUrl);
+        const isOnboardingUser = user.onboardingStep != null;
 
-      if (isOnboardingUser) {
-        // New user: send infographic + welcome as a single media message (if configured)
-        const termsCaption = buildTermsPromptForNewUser(acceptUrl, baseUrl);
-        const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
-        let sentAsMedia = false;
-        if (onboardingConfig) {
-          let parsed: { enabled?: boolean; url?: string } | null = null;
-          try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
-          if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
-            try {
-              await ctx.runAction(internal.whatsapp.sendMedia, {
-                to: user.phone,
-                caption: termsCaption,
-                mediaUrl: parsed.url,
-              });
-              sentAsMedia = true;
-            } catch (error) {
-              console.error("Failed to send terms infographic, falling back to text:", error);
+        if (isOnboardingUser) {
+          // New user: send infographic + welcome as a single media message (if configured)
+          const termsCaption = buildTermsPromptForNewUser(acceptUrl, baseUrl);
+          const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+          let sentAsMedia = false;
+          if (onboardingConfig) {
+            let parsed: { enabled?: boolean; url?: string } | null = null;
+            try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
+            if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
+              try {
+                await ctx.runAction(internal.whatsapp.sendMedia, {
+                  to: user.phone,
+                  caption: termsCaption,
+                  mediaUrl: parsed.url,
+                });
+                sentAsMedia = true;
+              } catch (error) {
+                console.error("Failed to send terms infographic, falling back to text:", error);
+              }
             }
           }
+          if (!sentAsMedia) {
+            await guardedSendMessage(termsCaption);
+          }
+        } else {
+          // Existing user: text-only terms prompt
+          const termsPrompt = buildTermsPromptForExistingUser(user.name, acceptUrl);
+          await guardedSendMessage(termsPrompt);
         }
-        // Fallback: send as text if infographic not configured or failed
-        if (!sentAsMedia) {
-          await guardedSendMessage(termsCaption);
-        }
-      } else {
-        // Existing user: text-only terms prompt
-        const termsPrompt = buildTermsPromptForExistingUser(user.name, acceptUrl);
-        await guardedSendMessage(termsPrompt);
+
+        // Record that we sent the prompt — won't re-send for 24h
+        await ctx.runMutation(internal.users.updateUser, {
+          userId: typedUserId,
+          fields: { termsPromptSentAt: Date.now() },
+        });
       }
+      // Silently ignore — terms prompt already sent within 24h
       return;
     }
 

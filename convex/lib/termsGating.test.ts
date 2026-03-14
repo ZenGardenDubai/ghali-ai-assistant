@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   needsTermsAcceptance,
+  shouldSendTermsPrompt,
   buildAcceptUrl,
   buildTermsPromptForNewUser,
   buildTermsPromptForExistingUser,
@@ -25,6 +26,30 @@ describe("needsTermsAcceptance", () => {
 
   it("returns false when termsAcceptedAt is a past timestamp", () => {
     expect(needsTermsAcceptance({ termsAcceptedAt: 1000000 })).toBe(false);
+  });
+});
+
+// ============================================================================
+// shouldSendTermsPrompt
+// ============================================================================
+
+describe("shouldSendTermsPrompt", () => {
+  it("returns true when termsPromptSentAt is undefined (never sent)", () => {
+    expect(shouldSendTermsPrompt({})).toBe(true);
+  });
+
+  it("returns false when sent less than 24h ago", () => {
+    expect(shouldSendTermsPrompt({ termsPromptSentAt: Date.now() - 1000 })).toBe(false);
+  });
+
+  it("returns true when sent more than 24h ago", () => {
+    const over24h = Date.now() - (25 * 60 * 60 * 1000);
+    expect(shouldSendTermsPrompt({ termsPromptSentAt: over24h })).toBe(true);
+  });
+
+  it("returns true when sent exactly 24h ago", () => {
+    const exactly24h = Date.now() - (24 * 60 * 60 * 1000);
+    expect(shouldSendTermsPrompt({ termsPromptSentAt: exactly24h })).toBe(true);
   });
 });
 
