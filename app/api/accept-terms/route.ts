@@ -69,13 +69,19 @@ export async function POST() {
     try {
       result = raw ? JSON.parse(raw) : {};
     } catch {
-      result = { success: false, error: raw || "Unexpected upstream response" };
+      // Log the raw body server-side but never echo it to the client
+      console.error("accept-terms: non-JSON upstream response:", response.status, raw);
+      result = { success: false };
     }
 
     if (!response.ok || !result.success) {
       console.error("accept-terms failed:", response.status, result.error);
+      // For 5xx or non-JSON responses, return a safe generic message
+      const clientError = response.status >= 500 || !result.error
+        ? "Failed to record acceptance. Please try again."
+        : result.error;
       return NextResponse.json(
-        { success: false, error: result.error ?? "Failed to record acceptance. Please try again." },
+        { success: false, error: clientError },
         { status: response.ok ? 400 : response.status }
       );
     }
