@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.5...v0.43.0) (2026-03-14)
+
+
+### Features
+
+* add image editing support to generateImage tool ([#251](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/251)) ([b35abb7](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/b35abb739253f47c87da3ebfd1a4f0890f28ec7b))
+
 ## [0.42.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.42.4...v0.42.5) (2026-03-14)
 
 
