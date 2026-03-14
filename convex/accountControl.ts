@@ -6,7 +6,7 @@
  */
 
 import { v } from "convex/values";
-import { internalMutation, internalAction } from "./_generated/server";
+import { internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getNextCronRun } from "./lib/cronParser";
 
@@ -92,6 +92,48 @@ export const triggerOptIn = internalMutation({
     }
 
     console.log(`[accountControl] opt-in for user ${userId}, re-enabled ${reenabledCount} task(s)`);
+  },
+});
+
+// ============================================================================
+// Stale User Cleanup (cron)
+// ============================================================================
+
+const STALE_USER_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
+ * Cleanup users who messaged but never completed terms acceptance.
+ * Runs hourly via cron. Deletes users created >24h ago without termsAcceptedAt.
+ * Schedules deleteAccount for each stale user (handles all associated data).
+ */
+export const cleanupStaleUsers = internalAction({
+  handler: async (ctx) => {
+    const cutoff = Date.now() - STALE_USER_THRESHOLD_MS;
+    const staleUserIds = await ctx.runQuery(
+      internal.accountControl.findStaleUsers,
+      { createdBefore: cutoff }
+    );
+
+    if (staleUserIds.length === 0) return;
+
+    console.log(`[cleanupStaleUsers] Found ${staleUserIds.length} stale users to delete`);
+
+    for (const userId of staleUserIds) {
+      await ctx.scheduler.runAfter(0, internal.accountControl.deleteAccount, {
+        userId,
+      });
+    }
+  },
+});
+
+/** Find user IDs created before the cutoff who never accepted terms. */
+export const findStaleUsers = internalQuery({
+  args: { createdBefore: v.number() },
+  handler: async (ctx, { createdBefore }) => {
+    const allUsers = await ctx.db.query("users").collect();
+    return allUsers
+      .filter((u) => !u.termsAcceptedAt && u.createdAt < createdBefore)
+      .map((u) => u._id);
   },
 });
 

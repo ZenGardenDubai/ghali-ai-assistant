@@ -52,4 +52,11 @@ crons.daily(
   internal.feedback.cleanupExpiredTokens
 );
 
+// Hourly cleanup of users who never completed terms acceptance (>24h old)
+crons.cron(
+  "stale-user-cleanup",
+  "30 * * * *",
+  internal.accountControl.cleanupStaleUsers
+);
+
 export default crons;
