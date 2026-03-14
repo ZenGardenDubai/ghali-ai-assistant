@@ -137,10 +137,39 @@ export async function sendWhatsAppTemplate(
   });
 }
 
+const MAX_RETRIES = 3;
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
+
+/**
+ * Fetch with exponential backoff retry on non-2xx responses.
+ * Returns the successful Response, or null if all attempts fail.
+ */
+async function fetchWithRetry(
+  fetchFn: () => Promise<Response>,
+  label: string
+): Promise<Response | null> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const response = await fetchFn();
+    if (response.ok) return response;
+
+    if (attempt < MAX_RETRIES) {
+      console.warn(
+        `[whatsappSend] ${label} attempt ${attempt + 1} failed (${response.status}), retrying...`
+      );
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+    } else {
+      console.error(
+        `[whatsappSend] ${label} failed after ${MAX_RETRIES + 1} attempts: ${response.status}`
+      );
+    }
+  }
+  return null;
+}
+
 /**
  * Download media from 360dialog Cloud API.
- * Step 1: GET media URL from 360dialog
- * Step 2: Download binary data from the returned URL
+ * Step 1: GET media URL from 360dialog (with retry)
+ * Step 2: Download binary data from the returned URL (with retry)
  */
 export async function downloadMedia(
   apiKey: string,
@@ -148,19 +177,14 @@ export async function downloadMedia(
 ): Promise<{ data: ArrayBuffer; mimeType: string } | null> {
   try {
     // Step 1: Get media URL
-    const metaResponse = await fetch(
-      `${DIALOG360_BASE_URL}/${mediaId}`,
-      {
+    const metaResponse = await fetchWithRetry(
+      () => fetch(`${DIALOG360_BASE_URL}/${mediaId}`, {
         headers: { "D360-API-KEY": apiKey },
-      }
+      }),
+      "Media metadata fetch"
     );
 
-    if (!metaResponse.ok) {
-      console.error(
-        `[whatsappSend] Media metadata fetch failed: ${metaResponse.status}`
-      );
-      return null;
-    }
+    if (!metaResponse) return null;
 
     const meta = await metaResponse.json();
     const downloadUrl = meta.url;
@@ -172,16 +196,14 @@ export async function downloadMedia(
     }
 
     // Step 2: Download binary data via 360dialog proxy
-    const dataResponse = await fetch(rewriteToProxy(downloadUrl, DIALOG360_BASE_URL), {
-      headers: { "D360-API-KEY": apiKey },
-    });
+    const dataResponse = await fetchWithRetry(
+      () => fetch(rewriteToProxy(downloadUrl, DIALOG360_BASE_URL), {
+        headers: { "D360-API-KEY": apiKey },
+      }),
+      "Media download"
+    );
 
-    if (!dataResponse.ok) {
-      console.error(
-        `[whatsappSend] Media download failed: ${dataResponse.status}`
-      );
-      return null;
-    }
+    if (!dataResponse) return null;
 
     const data = await dataResponse.arrayBuffer();
     return { data, mimeType };
