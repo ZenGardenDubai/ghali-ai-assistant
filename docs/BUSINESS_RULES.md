@@ -89,8 +89,8 @@ Usage and cost tracking is handled by PostHog analytics, not stored in Convex.
 
 | Rule | Value | Constant |
 |------|-------|----------|
-| Max message segment length | 1500 chars | `WHATSAPP_MAX_LENGTH` |
-| Multi-part message delay | 500ms | `TWILIO_MESSAGE_DELAY_MS` |
+| Max message length | 4096 chars | `WHATSAPP_MAX_LENGTH` |
+| Max message chunks | 1 (no splitting) | `MAX_MESSAGE_CHUNKS` |
 
 ## Voice Notes
 

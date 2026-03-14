@@ -213,7 +213,18 @@ export function splitLongMessage(
   if (remaining.length > 0) {
     // If we hit the chunk limit and there's still more text, truncate with notice
     if (chunks.length >= maxChunks - 1 && remaining.length > maxLength) {
-      const truncated = remaining.slice(0, maxLength - 40);
+      const budget = maxLength - 40; // reserve space for truncation notice
+      let cutoff = budget;
+      // Try to find a clean break point (paragraph > sentence > newline > word)
+      const paragraphBreak = remaining.lastIndexOf("\n\n", budget);
+      const sentenceBreak = remaining.lastIndexOf(". ", budget);
+      const newlineBreak = remaining.lastIndexOf("\n", budget);
+      const wordBreak = remaining.lastIndexOf(" ", budget);
+      if (paragraphBreak > budget * 0.6) cutoff = paragraphBreak;
+      else if (sentenceBreak > budget * 0.6) cutoff = sentenceBreak + 1;
+      else if (newlineBreak > budget * 0.6) cutoff = newlineBreak;
+      else if (wordBreak > budget * 0.6) cutoff = wordBreak;
+      const truncated = remaining.slice(0, cutoff);
       chunks.push(truncated.trim() + "\n\n_(Message truncated — too long)_");
       console.warn(
         `[splitLongMessage] Truncated: ${text.length} chars → ${chunks.length} chunks ` +

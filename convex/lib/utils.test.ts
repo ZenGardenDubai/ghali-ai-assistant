@@ -209,9 +209,9 @@ describe("splitLongMessage", () => {
     expect(splitLongMessage("Hello")).toEqual(["Hello"]);
   });
 
-  it("splits at paragraph boundaries", () => {
+  it("splits at paragraph boundaries when maxChunks allows", () => {
     const text = "A".repeat(3000) + "\n\n" + "B".repeat(2000);
-    const chunks = splitLongMessage(text, 4096);
+    const chunks = splitLongMessage(text, 4096, 3);
     expect(chunks.length).toBe(2);
     expect(chunks[0]).toBe("A".repeat(3000));
     expect(chunks[1]).toBe("B".repeat(2000));
@@ -232,10 +232,26 @@ describe("splitLongMessage", () => {
     expect(chunks[2]).toContain("_(Message truncated — too long)_");
   });
 
-  it("respects default maxChunks of 3", () => {
+  it("respects default maxChunks of 1 (no splitting)", () => {
     const text = "A".repeat(10000);
-    const chunks = splitLongMessage(text, 1500);
-    expect(chunks.length).toBeLessThanOrEqual(3);
+    const chunks = splitLongMessage(text);
+    // With maxChunks=1, should be a single truncated message
+    expect(chunks.length).toBe(1);
+    expect(chunks[0]).toContain("_(Message truncated — too long)_");
+  });
+
+  it("fits within 4096 default without splitting", () => {
+    const text = "A".repeat(4000);
+    const chunks = splitLongMessage(text);
+    expect(chunks.length).toBe(1);
+    expect(chunks[0]).toBe(text);
+  });
+
+  it("handles exactly 4096 characters without truncation", () => {
+    const text = "A".repeat(4096);
+    const chunks = splitLongMessage(text);
+    expect(chunks.length).toBe(1);
+    expect(chunks[0]).toBe(text);
   });
 });
 

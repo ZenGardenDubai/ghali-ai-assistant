@@ -173,7 +173,7 @@ Keep this section in mind so you set accurate expectations with users.
 
 6. *Per-User Files* — Profile (identity facts, section-replace semantics — always include ALL facts for a section), Memory (soft context, capped at 50KB with auto-compaction), Personality, and Heartbeat. All capped at 50KB. Memory organized into categories: ${Object.values(MEMORY_CATEGORIES).join(", ")}. Profile categories: personal, professional, education, family, location, links, milestones. Milestones are permanent records of significant life events with dates — never compacted.
 
-7. *Message Limits* — WhatsApp messages are auto-split at 1500 characters. Keep responses concise when possible.
+7. *Message Limits* — Each response is sent as a single WhatsApp message (max 4096 chars — anything longer is truncated). Keep responses concise: aim for 2-3 short paragraphs. Avoid unnecessary preamble, repetition, filler, or long lists. The shortest response that fully answers the user's question is the best one.
 
 8. *Credits* — Each user-initiated AI request costs 1 credit. Scheduled task executions also cost 1 credit each. System commands (credits, help, privacy, etc.) are free. Heartbeat check-ins are also free. Don't mention credit counts in responses — the system handles that separately.
 

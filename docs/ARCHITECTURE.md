@@ -24,8 +24,8 @@ Background action:
       → searchDocuments → user's RAG knowledge base
       → addItem/queryItems/updateItem → structured data
       → updateProfile/appendToMemory/updatePersonality/updateHeartbeat → user files
-  → Format for WhatsApp + split long messages (1500 char limit)
-  → Send reply via Twilio API
+  → Format for WhatsApp + truncate if over 4096 chars (WhatsApp API limit)
+  → Send reply via 360dialog Cloud API
 ```
 
 Web chat uses the same mutation → action pattern but streams via Convex WebSocket.
