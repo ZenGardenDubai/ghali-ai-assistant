@@ -94,14 +94,18 @@ function AcceptTermsContent() {
   const phone = searchParams.get("phone");
   const { isSignedIn } = useAuth();
 
-  // If already signed in on mount (returning from Clerk redirect), skip to recording
-  const [step, setStep] = useState<Step>(() => isSignedIn ? "recording" : "terms");
+  const [step, setStep] = useState<Step>("terms");
   const [error, setError] = useState<string | null>(null);
 
-  // After sign-in (on verify step or returning from Clerk redirect),
-  // call /api/accept-terms to record acceptance
+  // Derive the effective step: if signed in and on terms/verify, jump to recording.
+  // This handles both: returning from Clerk redirect and in-page sign-up completion.
+  const effectiveStep = (isSignedIn && (step === "terms" || step === "verify"))
+    ? "recording" as const
+    : step;
+
+  // Record acceptance in Convex
   useEffect(() => {
-    if (!isSignedIn || (step !== "verify" && step !== "recording")) return;
+    if (effectiveStep !== "recording" || !isSignedIn) return;
     let cancelled = false;
 
     (async () => {
@@ -124,7 +128,21 @@ function AcceptTermsContent() {
     })();
 
     return () => { cancelled = true; };
-  }, [step, isSignedIn]);
+  }, [effectiveStep, isSignedIn]);
+
+  // ─── Recording (spinner while API call runs)
+  if (effectiveStep === "recording") {
+    return (
+      <AcceptTermsLayout>
+        <StateCard>
+          <div className="flex items-center justify-center gap-3">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#ED6B23] border-t-transparent" />
+            <p className="text-white/50">Recording your acceptance...</p>
+          </div>
+        </StateCard>
+      </AcceptTermsLayout>
+    );
+  }
 
   // ─── Success
   if (step === "complete") {
@@ -165,7 +183,7 @@ function AcceptTermsContent() {
   }
 
   // ─── Step 2: Verify identity (Clerk sign-up)
-  if (step === "verify") {
+  if (effectiveStep === "verify") {
     return (
       <AcceptTermsLayout>
         <StepIndicator current={2} />
@@ -179,6 +197,7 @@ function AcceptTermsContent() {
               routing="hash"
               forceRedirectUrl="/accept-terms"
               fallbackRedirectUrl="/accept-terms"
+              signInForceRedirectUrl="/accept-terms"
               initialValues={phone ? { phoneNumber: phone } : undefined}
               appearance={{ baseTheme: dark }}
             />
