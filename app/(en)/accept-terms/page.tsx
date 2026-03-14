@@ -144,44 +144,45 @@ function AcceptTermsContent() {
   return (
     <AcceptTermsLayout>
       <SignedOut>
-        {/* Terms summary card shown above sign-up form */}
-        <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 backdrop-blur-sm">
+        {/* Abridged terms summary */}
+        <div className="mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 sm:p-6 backdrop-blur-sm">
           <div className="mb-4 flex items-center justify-center gap-3">
             <span className="text-3xl">👋</span>
             <h1 className="font-[family-name:var(--font-display)] text-xl sm:text-2xl">
               Welcome to Ghali
             </h1>
           </div>
-          <p className="text-sm text-white/50 leading-relaxed text-center">
-            Your AI assistant for conversations, documents, reminders, and more — all on WhatsApp.
+          <p className="text-sm text-white/50 leading-relaxed text-center mb-5">
+            Your personal productivity assistant on WhatsApp — for reminders, tasks, documents, and more.
           </p>
-          <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-sm">
-            <p className="font-medium text-white/70 mb-2">Before you begin:</p>
-            <ul className="space-y-2 text-white/50">
-              <li>
-                📄 Read our{" "}
-                <a
-                  href="/terms"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#ED6B23] hover:underline"
-                >
-                  Terms of Service
-                </a>{" "}
-                /{" "}
-                <a
-                  href="/ar/terms"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#ED6B23] hover:underline"
-                >
-                  شروط الخدمة
-                </a>
-              </li>
-              <li>📱 Verify your WhatsApp number via OTP</li>
-              <li>✅ By signing up, you accept the Terms of Service and consent to receive proactive messages</li>
-            </ul>
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-3 items-start rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <span className="text-lg shrink-0">🤖</span>
+              <p className="text-white/60"><span className="text-white/80 font-medium">AI Processing</span> — Your messages are processed by AI models (Google, Anthropic, OpenAI) to generate responses.</p>
+            </div>
+            <div className="flex gap-3 items-start rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <span className="text-lg shrink-0">🔒</span>
+              <p className="text-white/60"><span className="text-white/80 font-medium">Your Data</span> — We store your messages, profile, and files to personalize your experience. You can delete your data anytime.</p>
+            </div>
+            <div className="flex gap-3 items-start rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <span className="text-lg shrink-0">💳</span>
+              <p className="text-white/60"><span className="text-white/80 font-medium">Credits</span> — You get 60 free credits/month. Each message costs 1 credit. Pro plan available for more.</p>
+            </div>
+            <div className="flex gap-3 items-start rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+              <span className="text-lg shrink-0">🔔</span>
+              <p className="text-white/60"><span className="text-white/80 font-medium">Proactive Messages</span> — Ghali may send you check-ins, reminders, and follow-ups you set up. You can turn these off anytime.</p>
+            </div>
           </div>
+          <div className="mt-4 flex items-center justify-center gap-4 text-xs text-white/40">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[#ED6B23] hover:underline">Full Terms</a>
+            <span>·</span>
+            <a href="/ar/terms" target="_blank" rel="noopener noreferrer" className="text-[#ED6B23] hover:underline">شروط الخدمة</a>
+            <span>·</span>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[#ED6B23] hover:underline">Privacy Policy</a>
+          </div>
+          <p className="mt-4 text-center text-xs text-white/40">
+            By signing up below, you accept the Terms of Service and consent to receive proactive messages.
+          </p>
         </div>
         <SignUp
           routing="hash"
