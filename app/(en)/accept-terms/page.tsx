@@ -94,7 +94,8 @@ function AcceptTermsContent() {
   const phone = searchParams.get("phone");
   const { isSignedIn } = useAuth();
 
-  const [step, setStep] = useState<Step>("terms");
+  // If already signed in on mount (returning from Clerk redirect), skip to recording
+  const [step, setStep] = useState<Step>(() => isSignedIn ? "recording" : "terms");
   const [error, setError] = useState<string | null>(null);
 
   // After sign-in (on verify step or returning from Clerk redirect),
