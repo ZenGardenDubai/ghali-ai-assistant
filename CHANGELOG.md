@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.43.1...v0.44.0) (2026-03-14)
+
+
+### Features
+
+* require terms acceptance and authentication before service access ([#260](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/260)) ([5c8ade6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/5c8ade6154b2e09697d591f147ae002906dc1036))
+
 ## [0.43.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.43.0...v0.43.1) (2026-03-14)
 
 
