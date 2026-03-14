@@ -126,13 +126,15 @@ export const cleanupStaleUsers = internalAction({
   },
 });
 
-/** Find user IDs created before the cutoff who never accepted terms. */
+/** Find user IDs created before the cutoff who never accepted terms. Capped at 50 per run. */
 export const findStaleUsers = internalQuery({
   args: { createdBefore: v.number() },
   handler: async (ctx, { createdBefore }) => {
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers
+    // Use take() to avoid full table scan — processes up to 50 stale users per hourly cron run
+    const candidates = await ctx.db.query("users").order("asc").take(200);
+    return candidates
       .filter((u) => !u.termsAcceptedAt && u.createdAt < createdBefore)
+      .slice(0, 50)
       .map((u) => u._id);
   },
 });

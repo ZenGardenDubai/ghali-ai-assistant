@@ -9,33 +9,6 @@ const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
 
 export const TEMPLATES = {
   // === Terms Acceptance ===
-  terms_required_new: {
-    template: `*Welcome to Ghali!* 👋
-
-Ghali is your personal productivity assistant on WhatsApp — for reminders, tasks, documents, and more.
-
-To get started, please:
-1️⃣ Read our Terms of Service: {{termsUrl}}
-2️⃣ Accept & verify your identity: {{acceptUrl}}`,
-    variables: ["acceptUrl", "termsUrl"],
-  },
-
-  terms_required_existing: {
-    template: `Hi {{name}} 👋
-
-To continue using Ghali, we need you to accept our Terms of Service and verify your identity.
-
-🔗 {{acceptUrl}}
-
-─────────────────────
-مرحباً {{name}} 👋
-
-للاستمرار في استخدام غالي، يرجى قبول شروط الخدمة والتحقق من هويتك.
-
-🔗 {{acceptUrl}}`,
-    variables: ["name", "acceptUrl"],
-  },
-
   terms_accepted: {
     template: `Thanks for signing up, {{name}}! 🎉
 
