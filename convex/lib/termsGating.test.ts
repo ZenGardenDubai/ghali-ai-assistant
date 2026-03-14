@@ -62,22 +62,19 @@ describe("buildTermsPromptForNewUser", () => {
     expect(msg).toContain("https://ghali.ae/accept-terms?phone=%2B971");
   });
 
-  it("includes English and Arabic content", () => {
+  it("includes English welcome content", () => {
     const msg = buildTermsPromptForNewUser("https://ghali.ae/accept-terms?phone=test");
     expect(msg).toContain("Welcome to Ghali");
-    expect(msg).toContain("مرحباً بك في غالي");
   });
 
-  it("includes terms links using default base URL", () => {
+  it("includes terms link using default base URL", () => {
     const msg = buildTermsPromptForNewUser("https://ghali.ae/accept-terms?phone=test");
     expect(msg).toContain("https://ghali.ae/terms");
-    expect(msg).toContain("https://ghali.ae/ar/terms");
   });
 
-  it("includes terms links using custom base URL", () => {
+  it("includes terms link using custom base URL", () => {
     const msg = buildTermsPromptForNewUser("http://localhost:3000/accept-terms?phone=test", "http://localhost:3000");
     expect(msg).toContain("http://localhost:3000/terms");
-    expect(msg).toContain("http://localhost:3000/ar/terms");
   });
 });
 

@@ -36,7 +36,6 @@ export function buildTermsPromptForNewUser(acceptUrl: string, baseUrl: string = 
   return fillTemplate(TEMPLATES.terms_required_new.template, {
     acceptUrl,
     termsUrl: `${baseUrl}/terms`,
-    termsUrlAr: `${baseUrl}/ar/terms`,
   });
 }
 

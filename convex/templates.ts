@@ -12,21 +12,12 @@ export const TEMPLATES = {
   terms_required_new: {
     template: `*Welcome to Ghali!* 👋
 
-Ghali is your AI assistant on WhatsApp — for conversations, documents, reminders, scheduled tasks, and more.
+Ghali is your personal productivity assistant on WhatsApp — for reminders, tasks, documents, and more.
 
 To get started, please:
 1️⃣ Read our Terms of Service: {{termsUrl}}
-2️⃣ Accept & verify your identity: {{acceptUrl}}
-
-─────────────────────
-*مرحباً بك في غالي!* 👋
-
-غالي هو مساعدك الذكي على واتساب — للمحادثات والمستندات والتذكيرات والمهام المجدولة والمزيد.
-
-للبدء، يرجى:
-1️⃣ قراءة شروط الخدمة: {{termsUrlAr}}
-2️⃣ القبول والتحقق من هويتك: {{acceptUrl}}`,
-    variables: ["acceptUrl", "termsUrl", "termsUrlAr"],
+2️⃣ Accept & verify your identity: {{acceptUrl}}`,
+    variables: ["acceptUrl", "termsUrl"],
   },
 
   terms_required_existing: {
