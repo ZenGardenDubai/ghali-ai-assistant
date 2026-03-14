@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
+const FETCH_TIMEOUT_MS = 10_000;
 
 export async function POST() {
   const { userId: clerkUserId } = await auth();
@@ -22,32 +23,33 @@ export async function POST() {
     );
   }
 
-  // Get the user's phone number from Clerk
-  const clerk = await clerkClient();
-  const clerkUser = await clerk.users.getUser(clerkUserId);
-
-  // Find a verified phone number — check primary first, then fall back to any verified phone
-  const primaryPhone = clerkUser.primaryPhoneNumberId
-    ? clerkUser.phoneNumbers.find((p) => p.id === clerkUser.primaryPhoneNumberId)
-    : undefined;
-  const verifiedPhone =
-    primaryPhone?.verification?.status === "verified"
-      ? primaryPhone
-      : clerkUser.phoneNumbers.find((p) => p.verification?.status === "verified");
-
-  if (!verifiedPhone?.phoneNumber) {
-    return NextResponse.json(
-      { success: false, error: "No verified phone number found on your account" },
-      { status: 400 }
-    );
-  }
-
-  // Get email if available
-  const primaryEmail = clerkUser.primaryEmailAddressId
-    ? clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
-    : clerkUser.emailAddresses[0];
-
   try {
+    // Get the user's phone number from Clerk
+    const clerk = await clerkClient();
+    const clerkUser = await clerk.users.getUser(clerkUserId);
+
+    // Find a verified phone number — check primary first, then fall back to any verified phone
+    const primaryPhone = clerkUser.primaryPhoneNumberId
+      ? clerkUser.phoneNumbers.find((p) => p.id === clerkUser.primaryPhoneNumberId)
+      : undefined;
+    const verifiedPhone =
+      primaryPhone?.verification?.status === "verified"
+        ? primaryPhone
+        : clerkUser.phoneNumbers.find((p) => p.verification?.status === "verified");
+
+    if (!verifiedPhone?.phoneNumber) {
+      return NextResponse.json(
+        { success: false, error: "No verified phone number found on your account" },
+        { status: 400 }
+      );
+    }
+
+    // Get email if available
+    const primaryEmail = clerkUser.primaryEmailAddressId
+      ? clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
+      : clerkUser.emailAddresses[0];
+
+    // Call Convex to record acceptance
     const response = await fetch(`${CONVEX_SITE_URL}/accept-terms`, {
       method: "POST",
       headers: {
@@ -59,6 +61,7 @@ export async function POST() {
         clerkUserId,
         email: primaryEmail?.emailAddress,
       }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
 
     const raw = await response.text();
@@ -79,6 +82,12 @@ export async function POST() {
 
     return NextResponse.json(result);
   } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      return NextResponse.json(
+        { success: false, error: "Request timed out. Please try again." },
+        { status: 504 }
+      );
+    }
     console.error("Failed to accept terms:", err);
     return NextResponse.json(
       { success: false, error: "Failed to record acceptance. Please try again." },

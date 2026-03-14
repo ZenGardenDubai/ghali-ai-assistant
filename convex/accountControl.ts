@@ -111,7 +111,7 @@ export const cleanupStaleUsers = internalAction({
     const cutoff = Date.now() - STALE_USER_THRESHOLD_MS;
     const staleUserIds = await ctx.runQuery(
       internal.accountControl.findStaleUsers,
-      { createdBefore: cutoff }
+      { promptedBefore: cutoff }
     );
 
     if (staleUserIds.length === 0) return;
@@ -121,21 +121,25 @@ export const cleanupStaleUsers = internalAction({
     for (const userId of staleUserIds) {
       await ctx.scheduler.runAfter(0, internal.accountControl.deleteIfStillStale, {
         userId,
-        createdBefore: cutoff,
+        promptedBefore: cutoff,
       });
     }
   },
 });
 
-/** Find user IDs created before the cutoff who never accepted terms. Capped at 50 per run. */
+/** Find user IDs who were prompted >24h ago but never accepted terms. Capped at 50 per run. */
 export const findStaleUsers = internalQuery({
-  args: { createdBefore: v.number() },
-  handler: async (ctx, { createdBefore }) => {
-    // Scan newest first — stale users are always recently created.
-    // Caps at 200 candidates / 50 deletions per hourly cron run.
+  args: { promptedBefore: v.number() },
+  handler: async (ctx, { promptedBefore }) => {
+    // Scan newest first. Caps at 200 candidates / 50 deletions per hourly cron run.
     const candidates = await ctx.db.query("users").order("desc").take(200);
     return candidates
-      .filter((u) => !u.termsAcceptedAt && u.createdAt < createdBefore)
+      .filter(
+        (u) =>
+          u.termsAcceptedAt === undefined &&
+          u.termsPromptSentAt !== undefined &&
+          u.termsPromptSentAt < promptedBefore
+      )
       .slice(0, 50)
       .map((u) => u._id);
   },
@@ -146,16 +150,16 @@ export const findStaleUsers = internalQuery({
  * accepts terms between findStaleUsers and the scheduled deletion.
  */
 export const deleteIfStillStale = internalAction({
-  args: { userId: v.id("users"), createdBefore: v.number() },
-  handler: async (ctx, { userId, createdBefore }) => {
+  args: { userId: v.id("users"), promptedBefore: v.number() },
+  handler: async (ctx, { userId, promptedBefore }) => {
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user) return; // Already deleted
-    if (user.termsAcceptedAt) {
+    if (user.termsAcceptedAt !== undefined) {
       console.log(`[cleanupStaleUsers] User ${userId} accepted terms — skipping deletion`);
       return;
     }
-    if (user.createdAt >= createdBefore) {
-      console.log(`[cleanupStaleUsers] User ${userId} too recent — skipping deletion`);
+    if (user.termsPromptSentAt === undefined || user.termsPromptSentAt >= promptedBefore) {
+      console.log(`[cleanupStaleUsers] User ${userId} not yet eligible — skipping deletion`);
       return;
     }
     await ctx.runAction(internal.accountControl.deleteAccount, { userId });
