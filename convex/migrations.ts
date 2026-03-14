@@ -770,20 +770,23 @@ export const countScheduledTasks = internalQuery({
 // ============================================================================
 
 
+/** Immutable admin phone — second safety guard alongside isAdmin for destructive migrations. */
+const PROTECTED_ADMIN_PHONE = "+971552500009";
+
+function shouldKeepUser(u: { isAdmin: boolean; phone: string; termsAcceptedAt?: number }): boolean {
+  return u.isAdmin || u.phone === PROTECTED_ADMIN_PHONE || u.termsAcceptedAt !== undefined;
+}
+
 /**
  * Dry-run: count users that would be deleted by the clean slate migration.
- * Users with termsAcceptedAt set OR matching the admin phone are kept.
+ * Users with termsAcceptedAt set, isAdmin flag, or matching the admin phone are kept.
  */
 export const countCleanSlateCandidates = internalQuery({
   args: {},
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
-    const toDelete = allUsers.filter(
-      (u) => u.termsAcceptedAt === undefined && !u.isAdmin
-    );
-    const toKeep = allUsers.filter(
-      (u) => u.termsAcceptedAt !== undefined || u.isAdmin
-    );
+    const toDelete = allUsers.filter((u) => !shouldKeepUser(u));
+    const toKeep = allUsers.filter((u) => shouldKeepUser(u));
     return {
       total: allUsers.length,
       toDelete: toDelete.length,
@@ -800,7 +803,7 @@ export const findCleanSlateCandidates = internalQuery({
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
     return allUsers
-      .filter((u) => u.termsAcceptedAt === undefined && !u.isAdmin)
+      .filter((u) => !shouldKeepUser(u))
       .map((u) => u._id);
   },
 });
@@ -828,7 +831,7 @@ export const cleanSlateDeleteUsers = internalAction({
       try {
         // Re-check: user may have accepted terms or gained admin since the initial query
         const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-        if (!user || user.termsAcceptedAt !== undefined || user.isAdmin) {
+        if (!user || shouldKeepUser(user)) {
           console.log(`[clean-slate] Skipping ${userId} — accepted terms, admin, or already deleted`);
           continue;
         }
@@ -872,7 +875,19 @@ export const posthogResetDeletedUsers = internalAction({
       );
     }
 
-    const host = "https://us.posthog.com";
+    const host = process.env.POSTHOG_HOST ?? "https://us.posthog.com";
+    const TIMEOUT_MS = 10_000;
+
+    async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        return await fetch(url, { ...init, signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     let deleted = 0;
     let notFound = 0;
     const errors: string[] = [];
@@ -880,7 +895,7 @@ export const posthogResetDeletedUsers = internalAction({
     for (const phone of phones) {
       try {
         // Step 1: Find the person by distinct_id
-        const searchRes = await fetch(
+        const searchRes = await fetchWithTimeout(
           `${host}/api/projects/${projectId}/persons?distinct_id=${encodeURIComponent(phone)}`,
           {
             headers: { Authorization: `Bearer ${personalApiKey}` },
@@ -902,7 +917,7 @@ export const posthogResetDeletedUsers = internalAction({
 
         // Step 2: Delete the person
         const personId = results[0].id;
-        const deleteRes = await fetch(
+        const deleteRes = await fetchWithTimeout(
           `${host}/api/projects/${projectId}/persons/${personId}/`,
           {
             method: "DELETE",

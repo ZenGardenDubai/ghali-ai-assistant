@@ -257,7 +257,7 @@ Fired after every reflection agent execution.
 
 ### `reflection_agent_skipped`
 
-Fired when reflection is triggered but skipped (user opted out, etc).
+Fired when reflection is triggered but skipped (user opted out, etc.).
 
 | Property | Type | Description |
 |----------|------|-------------|
