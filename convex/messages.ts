@@ -323,10 +323,37 @@ export const generateResponse = internalAction({
       const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
       const acceptUrl = buildAcceptUrl(user.phone, baseUrl);
       const isOnboardingUser = user.onboardingStep != null; // new user: still in onboarding
-      const termsPrompt = isOnboardingUser
-        ? buildTermsPromptForNewUser(acceptUrl, baseUrl)
-        : buildTermsPromptForExistingUser(user.name, acceptUrl);
-      await guardedSendMessage(termsPrompt);
+
+      if (isOnboardingUser) {
+        // New user: send infographic + welcome as a single media message (if configured)
+        const termsCaption = buildTermsPromptForNewUser(acceptUrl, baseUrl);
+        const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+        let sentAsMedia = false;
+        if (onboardingConfig) {
+          let parsed: { enabled?: boolean; url?: string } | null = null;
+          try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
+          if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
+            try {
+              await ctx.runAction(internal.whatsapp.sendMedia, {
+                to: user.phone,
+                caption: termsCaption,
+                mediaUrl: parsed.url,
+              });
+              sentAsMedia = true;
+            } catch (error) {
+              console.error("Failed to send terms infographic, falling back to text:", error);
+            }
+          }
+        }
+        // Fallback: send as text if infographic not configured or failed
+        if (!sentAsMedia) {
+          await guardedSendMessage(termsCaption);
+        }
+      } else {
+        // Existing user: text-only terms prompt
+        const termsPrompt = buildTermsPromptForExistingUser(user.name, acceptUrl);
+        await guardedSendMessage(termsPrompt);
+      }
       return;
     }
 
@@ -350,32 +377,6 @@ export const generateResponse = internalAction({
       ? (isSystemCommand(body) ? body.toLowerCase().trim() : null)
       : await classifyCommand(body);
     const messageForCredits = canonicalCommand ?? body;
-
-    // Send onboarding infographic before step 1 welcome (if configured and enabled)
-    let sentInfographic = false;
-    if (user.onboardingStep === 1) {
-      const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
-      if (onboardingConfig) {
-        let parsed: { enabled?: boolean; url?: string } | null = null;
-        try {
-          parsed = JSON.parse(onboardingConfig.value);
-        } catch {
-          // Invalid config JSON — skip silently
-        }
-        if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
-          try {
-            await ctx.runAction(internal.whatsapp.sendMedia, {
-              to: user.phone,
-              caption: "",
-              mediaUrl: parsed.url,
-            });
-            sentInfographic = true;
-          } catch (error) {
-            console.error("Failed to send onboarding infographic:", error);
-          }
-        }
-      }
-    }
 
     // Onboarding intercept — before credit check (onboarding is free)
     // Skip onboarding only if the message is an actual system command.
@@ -423,10 +424,6 @@ export const generateResponse = internalAction({
         // Translate onboarding response to the user's language
         const lang = result.updates?.language ?? user.language ?? "en";
         const translatedResponse = await translateMessage(result.response, lang);
-        // Brief delay so the infographic arrives before the welcome text
-        if (sentInfographic) {
-          await new Promise((r) => setTimeout(r, 2000));
-        }
         await guardedSendMessage(translatedResponse);
         return;
       }
