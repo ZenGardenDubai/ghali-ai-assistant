@@ -7,7 +7,6 @@ import { TEMPLATES } from "../templates";
 import { fillTemplate } from "./utils";
 
 const DEFAULT_BASE_URL = "https://ghali.ae";
-const TERMS_PROMPT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // ============================================================================
 // needsTermsAcceptance — check if user must accept terms before service access
@@ -16,12 +15,6 @@ const TERMS_PROMPT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 /** Returns true if the user has not yet accepted the Terms of Service. */
 export function needsTermsAcceptance(user: { termsAcceptedAt?: number }): boolean {
   return !user.termsAcceptedAt;
-}
-
-/** Returns true if the terms prompt should be sent (never sent, or last sent >24h ago). */
-export function shouldSendTermsPrompt(user: { termsPromptSentAt?: number }): boolean {
-  if (!user.termsPromptSentAt) return true;
-  return Date.now() - user.termsPromptSentAt >= TERMS_PROMPT_COOLDOWN_MS;
 }
 
 // ============================================================================

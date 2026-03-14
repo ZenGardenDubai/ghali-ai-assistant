@@ -19,7 +19,7 @@ import {
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
-import { needsTermsAcceptance, shouldSendTermsPrompt, buildAcceptUrl, buildTermsPromptForNewUser, buildTermsPromptForExistingUser } from "./lib/termsGating";
+import { needsTermsAcceptance, buildAcceptUrl, buildTermsPromptForNewUser, buildTermsPromptForExistingUser } from "./lib/termsGating";
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption).
@@ -319,8 +319,13 @@ export const generateResponse = internalAction({
 
     // Terms acceptance gate — blocks ALL service access until user accepts terms.
     // Sends the prompt once, then silently ignores messages. Re-sends after 24h.
+    // Uses atomic check-and-record to prevent double-send from concurrent actions.
     if (needsTermsAcceptance(user)) {
-      if (shouldSendTermsPrompt(user)) {
+      const termsGuard = await ctx.runMutation(
+        internal.outboundGuard.checkAndRecordTermsPrompt,
+        { userId: typedUserId }
+      );
+      if (termsGuard.allowed) {
         const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
         const acceptUrl = buildAcceptUrl(user.phone, baseUrl);
         const isOnboardingUser = user.onboardingStep != null;
@@ -354,12 +359,6 @@ export const generateResponse = internalAction({
           const termsPrompt = buildTermsPromptForExistingUser(user.name, acceptUrl);
           await guardedSendMessage(termsPrompt);
         }
-
-        // Record that we sent the prompt — won't re-send for 24h
-        await ctx.runMutation(internal.users.updateUser, {
-          userId: typedUserId,
-          fields: { termsPromptSentAt: Date.now() },
-        });
       }
       // Silently ignore — terms prompt already sent within 24h
       return;

@@ -102,7 +102,6 @@ export const updateUser = internalMutation({
       creditsResetAt: v.optional(v.number()),
       onboardingStep: v.optional(v.union(v.number(), v.null())),
       clerkUserId: v.optional(v.string()),
-      termsPromptSentAt: v.optional(v.number()),
     }),
   },
   handler: async (ctx, args) => {
