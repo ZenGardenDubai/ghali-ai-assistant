@@ -33,16 +33,20 @@ describe("needsTermsAcceptance", () => {
 // ============================================================================
 
 describe("buildAcceptUrl", () => {
-  it("builds URL with phone number", () => {
+  it("builds URL with phone number using default base URL", () => {
     const url = buildAcceptUrl("+971501234567");
     expect(url).toContain("ghali.ae/accept-terms");
     expect(url).toContain("phone=");
     expect(url).toContain("%2B971501234567");
   });
 
+  it("uses custom base URL when provided", () => {
+    const url = buildAcceptUrl("+971501234567", "http://localhost:3000");
+    expect(url).toBe("http://localhost:3000/accept-terms?phone=%2B971501234567");
+  });
+
   it("encodes special characters in phone number", () => {
     const url = buildAcceptUrl("+1 555 123-4567");
-    // encodeURIComponent encodes spaces and + signs
     expect(url).not.toContain(" ");
     expect(url).not.toContain("+");
   });
@@ -64,10 +68,16 @@ describe("buildTermsPromptForNewUser", () => {
     expect(msg).toContain("مرحباً بك في غالي");
   });
 
-  it("includes terms links for both languages", () => {
+  it("includes terms links using default base URL", () => {
     const msg = buildTermsPromptForNewUser("https://ghali.ae/accept-terms?phone=test");
-    expect(msg).toContain("ghali.ae/terms");
-    expect(msg).toContain("ghali.ae/ar/terms");
+    expect(msg).toContain("https://ghali.ae/terms");
+    expect(msg).toContain("https://ghali.ae/ar/terms");
+  });
+
+  it("includes terms links using custom base URL", () => {
+    const msg = buildTermsPromptForNewUser("http://localhost:3000/accept-terms?phone=test", "http://localhost:3000");
+    expect(msg).toContain("http://localhost:3000/terms");
+    expect(msg).toContain("http://localhost:3000/ar/terms");
   });
 });
 

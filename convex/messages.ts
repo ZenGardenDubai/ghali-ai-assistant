@@ -320,10 +320,11 @@ export const generateResponse = internalAction({
     // Terms acceptance gate — blocks ALL service access until user accepts terms.
     // Sent free (no credit deduction). On every message until accepted.
     if (needsTermsAcceptance(user)) {
-      const acceptUrl = buildAcceptUrl(user.phone);
+      const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
+      const acceptUrl = buildAcceptUrl(user.phone, baseUrl);
       const isOnboardingUser = user.onboardingStep != null; // new user: still in onboarding
       const termsPrompt = isOnboardingUser
-        ? buildTermsPromptForNewUser(acceptUrl)
+        ? buildTermsPromptForNewUser(acceptUrl, baseUrl)
         : buildTermsPromptForExistingUser(user.name, acceptUrl);
       await guardedSendMessage(termsPrompt);
       return;

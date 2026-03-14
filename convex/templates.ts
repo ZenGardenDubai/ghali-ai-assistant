@@ -15,7 +15,7 @@ export const TEMPLATES = {
 Ghali is your AI assistant on WhatsApp — for conversations, documents, reminders, scheduled tasks, and more.
 
 To get started, please:
-1️⃣ Read our Terms of Service: ghali.ae/terms
+1️⃣ Read our Terms of Service: {{termsUrl}}
 2️⃣ Accept & verify your identity: {{acceptUrl}}
 
 ─────────────────────
@@ -24,9 +24,9 @@ To get started, please:
 غالي هو مساعدك الذكي على واتساب — للمحادثات والمستندات والتذكيرات والمهام المجدولة والمزيد.
 
 للبدء، يرجى:
-1️⃣ قراءة شروط الخدمة: ghali.ae/ar/terms
+1️⃣ قراءة شروط الخدمة: {{termsUrlAr}}
 2️⃣ القبول والتحقق من هويتك: {{acceptUrl}}`,
-    variables: ["acceptUrl"],
+    variables: ["acceptUrl", "termsUrl", "termsUrlAr"],
   },
 
   terms_required_existing: {
