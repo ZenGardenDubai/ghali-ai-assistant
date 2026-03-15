@@ -476,6 +476,7 @@ export const executeScheduledTask = internalAction({
         );
         if (!templateGuard.allowed) {
           console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
+          await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
           // Fall through to the !delivered path below (policy block, not transport failure)
         } else {
           try {
@@ -705,6 +706,15 @@ export const updateScheduledTask = internalMutation({
 
     if (updates.schedule !== undefined) patch.schedule = updates.schedule;
     if (updates.enabled !== undefined) patch.enabled = updates.enabled;
+
+    // Reset retryCount when a one-off task is rescheduled or re-enabled
+    const effectiveSchedule = updates.schedule ?? task.schedule;
+    if (
+      effectiveSchedule.kind === "once" &&
+      (scheduleChanged || (updates.enabled === true && !task.enabled))
+    ) {
+      patch.retryCount = undefined;
+    }
 
     // Cancel existing scheduler job if schedule or enabled state changed
     if ((scheduleChanged || enabledChanged) && task.schedulerJobId) {
