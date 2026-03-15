@@ -29,7 +29,7 @@ Here's what I can do:
 By continuing to chat, you agree to these terms:
 • Your messages are processed by AI (Google, Anthropic, OpenAI)
 • We store your messages, files & preferences to personalize the experience
-• You get 60 free credits/month (1 per message) — upgrade for more
+• You get 60 free credits/month (1 per AI request, commands like *help* are free) — upgrade for more
 • Ghali may send proactive check-ins & reminders you set up
 • You can delete all your data anytime by sending *delete*
 • Service provided "as is" — verify AI outputs before relying on them

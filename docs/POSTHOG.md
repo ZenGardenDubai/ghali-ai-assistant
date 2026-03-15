@@ -275,7 +275,7 @@ Fired when the terms acceptance prompt is sent to a user (new or existing).
 
 ### `terms_accepted`
 
-Fired when a user auto-accepts terms by sending their second WhatsApp message (after receiving the terms prompt on their first message).
+Fired when a user who has already received the terms prompt sends another WhatsApp message, which auto-accepts the terms.
 
 | Property | Type | Description |
 |---|---|---|
