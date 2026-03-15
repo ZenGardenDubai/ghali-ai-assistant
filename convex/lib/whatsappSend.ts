@@ -23,7 +23,7 @@ function normalizePhoneForApi(phone: string): string {
 async function cloudApiCall(
   apiKey: string,
   body: Record<string, unknown>
-): Promise<void> {
+): Promise<string | undefined> {
   const response = await fetch(`${DIALOG360_BASE_URL}/messages`, {
     method: "POST",
     headers: {
@@ -39,6 +39,14 @@ async function cloudApiCall(
   if (!response.ok) {
     const error = await response.text();
     throw new Error(`360dialog API error (${response.status}): ${error}`);
+  }
+
+  // Extract wamid from response: { messages: [{ id: "wamid.xxx" }] }
+  try {
+    const data = await response.json();
+    return data?.messages?.[0]?.id as string | undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -114,7 +122,7 @@ export async function sendWhatsAppTemplate(
   templateName: string,
   variables: Record<string, string>,
   buttonUrlSuffix?: string
-): Promise<void> {
+): Promise<string | undefined> {
   const to = normalizePhoneForApi(options.to);
 
   // Convert variables map ({"1": "value1", "2": "value2"}) to Cloud API parameters array
@@ -147,7 +155,7 @@ export async function sendWhatsAppTemplate(
     templatePayload.components = components;
   }
 
-  await cloudApiCall(options.apiKey, {
+  return await cloudApiCall(options.apiKey, {
     to,
     type: "template",
     template: templatePayload,

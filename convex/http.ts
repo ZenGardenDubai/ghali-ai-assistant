@@ -96,6 +96,13 @@ http.route({
       // Process status updates (delivery tracking + block detection + analytics)
       const statusUpdates = parseCloudApiStatuses(payload);
       for (const statusUpdate of statusUpdates) {
+        // Look up template name from wamid (null for non-template messages)
+        const templateName = statusUpdate.wamid
+          ? await ctx.runQuery(internal.outboundMessages.getTemplateByWamid, {
+              wamid: statusUpdate.wamid,
+            })
+          : null;
+
         if (statusUpdate.isBlocked) {
           await ctx.runMutation(internal.users.markUserBlocked, {
             phone: statusUpdate.recipientPhone,
@@ -108,12 +115,14 @@ http.route({
             phone: statusUpdate.recipientPhone,
             error_code: statusUpdate.errorCode,
             error_message: statusUpdate.errorMessage,
+            template_name: templateName ?? undefined,
           });
           ctx.scheduler.runAfter(0, internal.analytics.trackWhatsAppFailed, {
             phone: statusUpdate.recipientPhone,
             error_code: statusUpdate.errorCode,
             error_message: statusUpdate.errorMessage,
             is_blocked: true,
+            template_name: templateName ?? undefined,
           });
         } else if (statusUpdate.status === "failed") {
           // Non-block failure (e.g. session expired, rate limit)
@@ -122,6 +131,7 @@ http.route({
             error_code: statusUpdate.errorCode,
             error_message: statusUpdate.errorMessage,
             is_blocked: false,
+            template_name: templateName ?? undefined,
           });
         } else if (statusUpdate.status === "delivered" || statusUpdate.status === "read") {
           await ctx.runMutation(internal.users.trackDeliveryStatus, {
@@ -137,6 +147,7 @@ http.route({
             timestamp: statusUpdate.timestamp
               ? new Date(statusUpdate.timestamp).toISOString()
               : undefined,
+            template_name: templateName ?? undefined,
           });
         }
       }

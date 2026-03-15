@@ -228,8 +228,9 @@ WhatsApp confirmed message was delivered to user's device.
 | Property | Type | Description |
 |---|---|---|
 | `phone_country` | string | ISO country code |
+| `template_name` | string? | Template name if sent via template (e.g. `ghali_reminder_v2`), absent for free-form messages |
 
-**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler). Template name resolved via `outboundMessages` table lookup by wamid.
 
 ### `whatsapp_message_read`
 
@@ -238,8 +239,9 @@ WhatsApp confirmed message was read by the user.
 | Property | Type | Description |
 |---|---|---|
 | `phone_country` | string | ISO country code |
+| `template_name` | string? | Template name if sent via template, absent for free-form messages |
 
-**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler). Template name resolved via `outboundMessages` table lookup by wamid.
 
 ### `whatsapp_message_failed`
 
@@ -250,9 +252,10 @@ WhatsApp message delivery failed (block or other error).
 | `error_code` | number? | WhatsApp error code (e.g. 131049, 131026, 131047) |
 | `error_message` | string? | Error description |
 | `is_blocked` | boolean | Whether the failure indicates a user block |
+| `template_name` | string? | Template name if sent via template, absent for free-form messages |
 | `phone_country` | string | ISO country code |
 
-**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler). Template name resolved via `outboundMessages` table lookup by wamid.
 
 ### `whatsapp_user_blocked`
 
@@ -262,9 +265,10 @@ User blocked Ghali's WhatsApp number (subset of `whatsapp_message_failed` where 
 |---|---|---|
 | `error_code` | number? | WhatsApp error code (131049 or 131026) |
 | `error_message` | string? | Error description |
+| `template_name` | string? | Template name if sent via template, absent for free-form messages |
 | `phone_country` | string | ISO country code |
 
-**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler). Template name resolved via `outboundMessages` table lookup by wamid.
 
 ### `broadcast_sent`
 

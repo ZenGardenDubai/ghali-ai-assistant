@@ -59,4 +59,11 @@ crons.cron(
   internal.accountControl.cleanupStaleUsers
 );
 
+// Daily cleanup of outbound message tracking records (>48h old)
+crons.daily(
+  "outbound-message-cleanup",
+  { hourUTC: 3, minuteUTC: 30 },
+  internal.outboundMessages.cleanupOldRecords
+);
+
 export default crons;

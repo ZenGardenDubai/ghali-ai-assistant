@@ -470,10 +470,12 @@ export const trackWhatsAppDelivered = internalAction({
   args: {
     phone: v.string(),
     timestamp: v.optional(v.string()),
+    template_name: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, timestamp }) => {
+  handler: async (_ctx, { phone, timestamp, template_name }) => {
     await captureEvent(phone, "whatsapp_message_delivered", {
       phone_country: detectCountryFromPhone(phone),
+      template_name,
     }, timestamp);
   },
 });
@@ -482,10 +484,12 @@ export const trackWhatsAppRead = internalAction({
   args: {
     phone: v.string(),
     timestamp: v.optional(v.string()),
+    template_name: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, timestamp }) => {
+  handler: async (_ctx, { phone, timestamp, template_name }) => {
     await captureEvent(phone, "whatsapp_message_read", {
       phone_country: detectCountryFromPhone(phone),
+      template_name,
     }, timestamp);
   },
 });
@@ -496,12 +500,14 @@ export const trackWhatsAppFailed = internalAction({
     error_code: v.optional(v.number()),
     error_message: v.optional(v.string()),
     is_blocked: v.boolean(),
+    template_name: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, error_code, error_message, is_blocked }) => {
+  handler: async (_ctx, { phone, error_code, error_message, is_blocked, template_name }) => {
     await captureEvent(phone, "whatsapp_message_failed", {
       error_code,
       error_message,
       is_blocked,
+      template_name,
       phone_country: detectCountryFromPhone(phone),
     });
   },
@@ -512,11 +518,13 @@ export const trackWhatsAppBlocked = internalAction({
     phone: v.string(),
     error_code: v.optional(v.number()),
     error_message: v.optional(v.string()),
+    template_name: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, error_code, error_message }) => {
+  handler: async (_ctx, { phone, error_code, error_message, template_name }) => {
     await captureEvent(phone, "whatsapp_user_blocked", {
       error_code,
       error_message,
+      template_name,
       phone_country: detectCountryFromPhone(phone),
     });
   },

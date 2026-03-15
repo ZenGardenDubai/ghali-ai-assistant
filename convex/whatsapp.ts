@@ -80,11 +80,18 @@ export const sendTemplate = internalAction({
     variables: v.record(v.string(), v.string()),
     buttonUrlSuffix: v.optional(v.string()),
   },
-  handler: async (_ctx, { to, templateName, variables, buttonUrlSuffix }) => {
+  handler: async (ctx, { to, templateName, variables, buttonUrlSuffix }) => {
     if (!ALLOWED_TEMPLATE_NAMES.has(templateName)) {
       throw new Error(`Invalid template name: ${templateName}`);
     }
-    await sendWhatsAppTemplate(getSendOptions(to), templateName, variables, buttonUrlSuffix);
+    const wamid = await sendWhatsAppTemplate(getSendOptions(to), templateName, variables, buttonUrlSuffix);
+    if (wamid) {
+      await ctx.runMutation(internal.outboundMessages.recordTemplateSend, {
+        wamid,
+        templateName,
+        phone: to,
+      });
+    }
   },
 });
 
@@ -164,7 +171,14 @@ export const guardedSendTemplate = internalAction({
       return;
     }
     try {
-      await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+      const wamid = await sendWhatsAppTemplate(getSendOptions(to), templateName, variables);
+      if (wamid) {
+        await ctx.runMutation(internal.outboundMessages.recordTemplateSend, {
+          wamid,
+          templateName,
+          phone: to,
+        });
+      }
     } catch (error) {
       await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
       throw error;

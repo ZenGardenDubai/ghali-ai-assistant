@@ -53,6 +53,7 @@ import type * as messages from "../messages.js";
 import type * as migrations from "../migrations.js";
 import type * as models from "../models.js";
 import type * as outboundGuard from "../outboundGuard.js";
+import type * as outboundMessages from "../outboundMessages.js";
 import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
 import type * as rateLimiting from "../rateLimiting.js";
@@ -117,6 +118,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   models: typeof models;
   outboundGuard: typeof outboundGuard;
+  outboundMessages: typeof outboundMessages;
   proWrite: typeof proWrite;
   rag: typeof rag;
   rateLimiting: typeof rateLimiting;

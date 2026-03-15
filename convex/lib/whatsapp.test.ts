@@ -520,6 +520,7 @@ describe("parseCloudApiStatuses", () => {
     expect(statuses).toHaveLength(1);
     expect(statuses[0]).toEqual({
       recipientPhone: "+971501234567",
+      wamid: "wamid.xxx",
       status: "delivered",
       timestamp: 1700000000000,
       isBlocked: false,
