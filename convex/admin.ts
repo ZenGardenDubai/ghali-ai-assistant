@@ -467,15 +467,13 @@ export const sendTemplateBroadcast = internalAction({
     });
 
     // Fire PostHog broadcast analytics (best-effort — don't block return on analytics failure)
-    try {
-      await ctx.runAction(internal.analytics.trackBroadcastSent, {
-        templateName,
-        recipientCount: eligibleUsers.length,
-        successCount: sentCount,
-      });
-    } catch (e) {
+    void ctx.runAction(internal.analytics.trackBroadcastSent, {
+      templateName,
+      recipientCount: eligibleUsers.length,
+      successCount: sentCount,
+    }).catch((e) => {
       console.error("[analytics] trackBroadcastSent failed:", e);
-    }
+    });
 
     return { sentCount };
   },
