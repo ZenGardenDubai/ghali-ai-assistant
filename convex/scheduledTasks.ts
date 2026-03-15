@@ -460,6 +460,7 @@ export const executeScheduledTask = internalAction({
       Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     let delivered = false;
+    let transportFailed = false; // true only when sendMessage/sendTemplate actually throws
     try {
       if (withinWindow) {
         await ctx.runAction(internal.whatsapp.sendMessage, {
@@ -475,7 +476,8 @@ export const executeScheduledTask = internalAction({
         );
         if (!templateGuard.allowed) {
           console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
-          // Fall through to the !delivered path below
+          await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
+          // Fall through to the !delivered path below (policy block, not transport failure)
         } else {
           try {
             const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
@@ -492,12 +494,13 @@ export const executeScheduledTask = internalAction({
         }
       }
     } catch (error) {
+      transportFailed = true;
       await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
       console.error(`Failed to deliver scheduled task ${taskId}:`, error);
     }
 
     if (!delivered) {
-      // Delivery failed — mark error, reschedule cron, disable one-off
+      // Delivery failed — mark error, reschedule cron, retry or disable one-off
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
@@ -505,10 +508,21 @@ export const executeScheduledTask = internalAction({
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       } else {
-        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
-          taskId,
-          updates: { enabled: false },
-        });
+        const retries = task.retryCount ?? 0;
+        if (transportFailed && retries < 1) {
+          // One-off: transport failed — retry once after 5 minutes
+          console.log(`[scheduled-task] One-off task ${taskId} delivery failed, scheduling retry (attempt ${retries + 1})`);
+          await ctx.runMutation(internal.scheduledTasks.scheduleOneOffRetry, {
+            taskId,
+          });
+        } else {
+          // Policy block or already retried — permanently disable
+          console.warn(`[scheduled-task] One-off task ${taskId} delivery failed${retries > 0 ? " after retry" : " (policy block)"}, disabling`);
+          await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+            taskId,
+            updates: { enabled: false },
+          });
+        }
       }
       return;
     }
@@ -620,6 +634,35 @@ export const updateSchedulerJobId = internalMutation({
   },
 });
 
+const ONEOFF_RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Schedule a one-off retry after delivery failure.
+ * Increments retryCount and reschedules execution after a 5-minute delay.
+ */
+export const scheduleOneOffRetry = internalMutation({
+  args: { taskId: v.id("scheduledTasks") },
+  handler: async (ctx, { taskId }) => {
+    const task = await ctx.db.get(taskId);
+    if (!task || !task.enabled || task.schedule.kind !== "once") return;
+    if ((task.retryCount ?? 0) >= 1) return;
+
+    const retryCount = (task.retryCount ?? 0) + 1;
+    const retryAt = Date.now() + ONEOFF_RETRY_DELAY_MS;
+
+    const jobId = await ctx.scheduler.runAt(
+      retryAt,
+      internal.scheduledTasks.executeScheduledTask,
+      { taskId }
+    );
+
+    await ctx.db.patch(taskId, {
+      retryCount,
+      schedulerJobId: jobId,
+    });
+  },
+});
+
 /**
  * Update a scheduled task. Reschedules if schedule changes or task is re-enabled.
  *
@@ -663,6 +706,15 @@ export const updateScheduledTask = internalMutation({
 
     if (updates.schedule !== undefined) patch.schedule = updates.schedule;
     if (updates.enabled !== undefined) patch.enabled = updates.enabled;
+
+    // Reset retryCount when a one-off task is rescheduled or re-enabled
+    const effectiveSchedule = updates.schedule ?? task.schedule;
+    if (
+      effectiveSchedule.kind === "once" &&
+      (scheduleChanged || (updates.enabled === true && !task.enabled))
+    ) {
+      patch.retryCount = undefined;
+    }
 
     // Cancel existing scheduler job if schedule or enabled state changed
     if ((scheduleChanged || enabledChanged) && task.schedulerJobId) {

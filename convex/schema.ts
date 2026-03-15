@@ -225,6 +225,7 @@ export default defineSchema({
     ),
     creditNotificationSent: v.optional(v.boolean()),
     disabledByOptOut: v.optional(v.boolean()),
+    retryCount: v.optional(v.number()),
     schedulerJobId: v.optional(v.id("_scheduled_functions")),
     createdAt: v.number(),
   })
