@@ -16,10 +16,17 @@ export const processHeartbeats = internalMutation({
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
 
+    // Stagger AI calls to avoid bursting the Gemini API rate limit.
+    // Each user's heartbeat + reflection is offset by STAGGER_MS to spread load.
+    const STAGGER_MS = 5_000; // 5 seconds between users
+    let userIndex = 0;
+
     for (const user of allUsers) {
       // Skip opted-out, blocked, or inactive (>7 days) users
       if (user.optedOut || user.blocked) continue;
       if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
+
+      const delayMs = userIndex * STAGGER_MS;
 
       // Check heartbeat file and schedule processing if non-empty
       const heartbeatFile = await ctx.db
@@ -30,7 +37,7 @@ export const processHeartbeats = internalMutation({
         .unique();
 
       if (heartbeatFile?.content?.trim()) {
-        await ctx.scheduler.runAfter(0, internal.heartbeat.processUserHeartbeat, {
+        await ctx.scheduler.runAfter(delayMs, internal.heartbeat.processUserHeartbeat, {
           userId: user._id,
         });
       }
@@ -42,11 +49,13 @@ export const processHeartbeats = internalMutation({
         (user.messagesSinceReflection ?? 0) > 0 &&
         Date.now() - user.lastMessageAt > REFLECTION_TIME_FALLBACK_MS
       ) {
-        await ctx.scheduler.runAfter(0, internal.reflection.runReflection, {
+        await ctx.scheduler.runAfter(delayMs, internal.reflection.runReflection, {
           userId: user._id,
           trigger: "time_fallback",
         });
       }
+
+      userIndex++;
     }
   },
 });
