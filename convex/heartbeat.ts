@@ -27,6 +27,7 @@ export const processHeartbeats = internalMutation({
       if (!user.lastMessageAt || Date.now() - user.lastMessageAt > TEMPLATE_INACTIVITY_GATE_MS) continue;
 
       const delayMs = userIndex * STAGGER_MS;
+      let scheduledAny = false;
 
       // Check heartbeat file and schedule processing if non-empty
       const heartbeatFile = await ctx.db
@@ -40,6 +41,7 @@ export const processHeartbeats = internalMutation({
         await ctx.scheduler.runAfter(delayMs, internal.heartbeat.processUserHeartbeat, {
           userId: user._id,
         });
+        scheduledAny = true;
       }
 
       // Time-based reflection fallback: trigger reflection for users with
@@ -53,9 +55,10 @@ export const processHeartbeats = internalMutation({
           userId: user._id,
           trigger: "time_fallback",
         });
+        scheduledAny = true;
       }
 
-      userIndex++;
+      if (scheduledAny) userIndex++;
     }
   },
 });
