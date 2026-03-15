@@ -497,7 +497,7 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!delivered) {
-      // Delivery failed — mark error, reschedule cron, disable one-off
+      // Delivery failed — mark error, reschedule cron, retry or disable one-off
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
@@ -505,10 +505,21 @@ export const executeScheduledTask = internalAction({
       if (task.schedule.kind === "cron") {
         await rescheduleNextRun(ctx, taskId);
       } else {
-        await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
-          taskId,
-          updates: { enabled: false },
-        });
+        const retries = task.retryCount ?? 0;
+        if (retries < 1) {
+          // One-off: retry once after 5 minutes
+          console.log(`[scheduled-task] One-off task ${taskId} delivery failed, scheduling retry (attempt ${retries + 1})`);
+          await ctx.runMutation(internal.scheduledTasks.scheduleOneOffRetry, {
+            taskId,
+          });
+        } else {
+          // Already retried — permanently disable
+          console.warn(`[scheduled-task] One-off task ${taskId} delivery failed after retry, disabling`);
+          await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
+            taskId,
+            updates: { enabled: false },
+          });
+        }
       }
       return;
     }
@@ -617,6 +628,34 @@ export const updateSchedulerJobId = internalMutation({
   },
   handler: async (ctx, { taskId, schedulerJobId }) => {
     await ctx.db.patch(taskId, { schedulerJobId });
+  },
+});
+
+const ONEOFF_RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Schedule a one-off retry after delivery failure.
+ * Increments retryCount and reschedules execution after a 5-minute delay.
+ */
+export const scheduleOneOffRetry = internalMutation({
+  args: { taskId: v.id("scheduledTasks") },
+  handler: async (ctx, { taskId }) => {
+    const task = await ctx.db.get(taskId);
+    if (!task) return;
+
+    const retryCount = (task.retryCount ?? 0) + 1;
+    const retryAt = Date.now() + ONEOFF_RETRY_DELAY_MS;
+
+    const jobId = await ctx.scheduler.runAt(
+      retryAt,
+      internal.scheduledTasks.executeScheduledTask,
+      { taskId }
+    );
+
+    await ctx.db.patch(taskId, {
+      retryCount,
+      schedulerJobId: jobId,
+    });
   },
 });
 

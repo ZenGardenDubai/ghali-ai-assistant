@@ -661,3 +661,58 @@ describe("truncateForTemplate", () => {
   });
 });
 
+describe("scheduleOneOffRetry", () => {
+  it("increments retryCount and reschedules the task", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t, "+971501234567");
+
+    const taskId = await t.mutation(
+      internal.scheduledTasks.createScheduledTask,
+      {
+        userId,
+        title: "Retry test",
+        description: "Test retry logic",
+        schedule: { kind: "once", runAt: Date.now() + 60_000 },
+        timezone: "Asia/Dubai",
+      }
+    );
+
+    // Before retry: retryCount should be undefined
+    let task = await t.query(internal.scheduledTasks.getTask, { taskId });
+    expect(task?.retryCount).toBeUndefined();
+
+    // Schedule retry
+    await t.mutation(internal.scheduledTasks.scheduleOneOffRetry, { taskId });
+
+    // After retry: retryCount should be 1 and task should still be enabled
+    task = await t.query(internal.scheduledTasks.getTask, { taskId });
+    expect(task?.retryCount).toBe(1);
+    expect(task?.enabled).toBe(true);
+    expect(task?.schedulerJobId).toBeTruthy();
+  });
+
+  it("does nothing if task does not exist", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createUser(t, "+971501234567");
+
+    // Create and delete a task to get a valid-shaped but nonexistent ID
+    const taskId = await t.mutation(
+      internal.scheduledTasks.createScheduledTask,
+      {
+        userId,
+        title: "Temp",
+        description: "Temp",
+        schedule: { kind: "once", runAt: Date.now() + 60_000 },
+        timezone: "Asia/Dubai",
+      }
+    );
+    await t.mutation(internal.scheduledTasks.deleteScheduledTask, {
+      taskId,
+      userId,
+    });
+
+    // Should not throw
+    await t.mutation(internal.scheduledTasks.scheduleOneOffRetry, { taskId });
+  });
+});
+
