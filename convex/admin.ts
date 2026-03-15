@@ -56,15 +56,15 @@ async function sendInBatches(
 
 /** Template definitions — referenced by name for WhatsApp Cloud API */
 export const TEMPLATE_DEFINITIONS = [
-  { name: "ghali_reminder", description: "Scheduled Reminder", variables: ["reminder_text"], preview: "Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { name: "ghali_heartbeat", description: "Proactive Check-in", variables: ["message"], preview: "Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { name: "ghali_broadcast", description: "Admin Announcement", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { name: "ghali_broadcast_image", description: "Admin Announcement (with Image)", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_reminder_v2", description: "Scheduled Reminder", variables: ["reminder_text"], preview: "Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe." },
+  { name: "ghali_heartbeat_v2", description: "Proactive Check-in", variables: ["message"], preview: "Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe." },
+  { name: "ghali_broadcast_v2", description: "Admin Announcement", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe." },
+  { name: "ghali_broadcast_image_v2", description: "Admin Announcement (with Image)", variables: ["announcement"], preview: "Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe." },
   { name: "ghali_credits_refreshed", description: "Monthly Credit Refresh", variables: ["credits", "tier"], preview: "Your {{2}} credits have been refreshed. You now have {{1}} credits for this month.\n\nReply *STOP* to unsubscribe, *DELETE* to completely delete your account, or *HELP* to learn more about Ghali's features." },
-  { name: "ghali_credits_low", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro." },
+  { name: "ghali_credits_low_v2", description: "Low Credit Warning", variables: ["remaining_credits"], preview: "You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro.\n\nReply STOP to unsubscribe." },
   { name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
   { name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },
-  { name: "ghali_scheduled_task", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant." },
+  { name: "ghali_scheduled_task_v2", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe." },
 ] as const;
 
 /**
@@ -465,6 +465,17 @@ export const sendTemplateBroadcast = internalAction({
         variables,
       });
     });
+
+    // Fire PostHog broadcast analytics (best-effort — don't block return on analytics failure)
+    try {
+      await ctx.runAction(internal.analytics.trackBroadcastSent, {
+        templateName,
+        recipientCount: eligibleUsers.length,
+        successCount: sentCount,
+      });
+    } catch (e) {
+      console.error("[analytics] trackBroadcastSent failed:", e);
+    }
 
     return { sentCount };
   },

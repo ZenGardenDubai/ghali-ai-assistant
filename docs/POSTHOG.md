@@ -21,7 +21,7 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 | File | Purpose |
 |---|---|
-| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 17 internal actions |
+| `convex/analytics.ts` | `"use node"` — PostHog client singleton + 30 internal actions |
 | `convex/analyticsHelper.ts` | Scheduling mutation for agent's usageHandler (no Node.js deps) |
 | `convex/reflection.ts` | Background reflection agent — usageHandler captures `$ai_generation` with `source: "reflection"` |
 | `convex/lib/analytics.ts` | `detectCountryFromPhone()` pure function |
@@ -221,6 +221,64 @@ A credit exhaustion notification was sent for a scheduled task.
 
 **Triggered in**: `convex/scheduledTasks.ts` — `executeScheduledTask` (first skip per credit cycle)
 
+### `whatsapp_message_delivered`
+
+WhatsApp confirmed message was delivered to user's device.
+
+| Property | Type | Description |
+|---|---|---|
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+
+### `whatsapp_message_read`
+
+WhatsApp confirmed message was read by the user.
+
+| Property | Type | Description |
+|---|---|---|
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+
+### `whatsapp_message_failed`
+
+WhatsApp message delivery failed (block or other error).
+
+| Property | Type | Description |
+|---|---|---|
+| `error_code` | number? | WhatsApp error code (e.g. 131049, 131026, 131047) |
+| `error_message` | string? | Error description |
+| `is_blocked` | boolean | Whether the failure indicates a user block |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+
+### `whatsapp_user_blocked`
+
+User blocked Ghali's WhatsApp number (subset of `whatsapp_message_failed` where `is_blocked=true`).
+
+| Property | Type | Description |
+|---|---|---|
+| `error_code` | number? | WhatsApp error code (131049 or 131026) |
+| `error_message` | string? | Error description |
+| `phone_country` | string | ISO country code |
+
+**Triggered in**: `convex/http.ts` — webhook status update handler (fire-and-forget via scheduler)
+
+### `broadcast_sent`
+
+Fired after an admin broadcast completes. `distinct_id` is `"system"` (not a user event).
+
+| Property | Type | Description |
+|---|---|---|
+| `template_name` | string | Template used (e.g. `ghali_broadcast_v2`) |
+| `recipient_count` | number | Total eligible recipients |
+| `success_count` | number | Successfully sent messages |
+| `failure_count` | number | Failed sends |
+
+**Triggered in**: `convex/admin.ts` — `sendTemplateBroadcast` action after batch sending completes
+
 ### `feedback_submitted`
 
 Fired when a user submits feedback via any channel.
@@ -311,6 +369,9 @@ Captured via `posthog-js` on ghali.ae:
 | Reflection Tools per Run | Number | Average `tools_called_count` from `reflection_agent_ran` |
 | Terms Prompt vs Accepted per Day | Line | `terms_prompt_sent` vs `terms_accepted` daily (insight ID `7357130`) |
 | Terms Acceptance Funnel | Funnel | `terms_prompt_sent` → `terms_accepted` conversion rate, 7-day window (insight ID `7357132`) |
+| WhatsApp Delivery Quality | Line | `whatsapp_message_delivered` + `whatsapp_message_read` + `whatsapp_message_failed` per day |
+| Block Rate | Line | `whatsapp_user_blocked` events per day |
+| Broadcast Performance | Table | `broadcast_sent` — template name, recipient count, success rate |
 
 ## Country Code Mapping
 

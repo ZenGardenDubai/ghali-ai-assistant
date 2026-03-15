@@ -196,7 +196,7 @@ ${SYSTEM_BLOCK}
           try {
             await ctx.runAction(internal.whatsapp.sendTemplate, {
               to: latestUser.phone,
-              templateName: "ghali_heartbeat",
+              templateName: "ghali_heartbeat_v2",
               variables: { "1": responseText },
             });
           } catch (error) {

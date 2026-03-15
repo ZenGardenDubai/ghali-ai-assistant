@@ -93,7 +93,7 @@ http.route({
         return ok();
       }
 
-      // Process status updates (delivery tracking + block detection)
+      // Process status updates (delivery tracking + block detection + analytics)
       const statusUpdates = parseCloudApiStatuses(payload);
       for (const statusUpdate of statusUpdates) {
         if (statusUpdate.isBlocked) {
@@ -103,11 +103,40 @@ http.route({
             errorMessage: statusUpdate.errorMessage,
             timestamp: statusUpdate.timestamp,
           });
+          // Fire PostHog blocked + failed events (fire-and-forget)
+          ctx.scheduler.runAfter(0, internal.analytics.trackWhatsAppBlocked, {
+            phone: statusUpdate.recipientPhone,
+            error_code: statusUpdate.errorCode,
+            error_message: statusUpdate.errorMessage,
+          });
+          ctx.scheduler.runAfter(0, internal.analytics.trackWhatsAppFailed, {
+            phone: statusUpdate.recipientPhone,
+            error_code: statusUpdate.errorCode,
+            error_message: statusUpdate.errorMessage,
+            is_blocked: true,
+          });
+        } else if (statusUpdate.status === "failed") {
+          // Non-block failure (e.g. session expired, rate limit)
+          ctx.scheduler.runAfter(0, internal.analytics.trackWhatsAppFailed, {
+            phone: statusUpdate.recipientPhone,
+            error_code: statusUpdate.errorCode,
+            error_message: statusUpdate.errorMessage,
+            is_blocked: false,
+          });
         } else if (statusUpdate.status === "delivered" || statusUpdate.status === "read") {
           await ctx.runMutation(internal.users.trackDeliveryStatus, {
             phone: statusUpdate.recipientPhone,
             status: statusUpdate.status,
             timestamp: statusUpdate.timestamp,
+          });
+          const analyticsFn = statusUpdate.status === "delivered"
+            ? internal.analytics.trackWhatsAppDelivered
+            : internal.analytics.trackWhatsAppRead;
+          ctx.scheduler.runAfter(0, analyticsFn, {
+            phone: statusUpdate.recipientPhone,
+            timestamp: statusUpdate.timestamp
+              ? new Date(statusUpdate.timestamp).toISOString()
+              : undefined,
           });
         }
       }
@@ -856,7 +885,7 @@ http.route({
       // Outside 24h window — use broadcast template as fallback
       await ctx.runAction(internal.whatsapp.sendTemplate, {
         to: feedback.phone,
-        templateName: "ghali_broadcast",
+        templateName: "ghali_broadcast_v2",
         variables: { "1": message },
       });
     }
