@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.46.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.45.1...v0.46.0) (2026-03-15)
+
+
+### Features
+
+* add opt-out text to marketing templates and PostHog delivery tracking ([#271](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/271)) ([2086fbf](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2086fbf6adc65fe172c5738d183cd37b267b4e8b))
+
 ## [0.45.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.45.0...v0.45.1) (2026-03-15)
 
 
