@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { internalQuery, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS, BROADCAST_BATCH_SIZE, BROADCAST_BATCH_DELAY_MS } from "./constants";
+import { CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS, CREDIT_RESET_INACTIVITY_GATE_MS, BROADCAST_BATCH_SIZE, BROADCAST_BATCH_DELAY_MS } from "./constants";
 import { getDubaiMidnightMs, getDubaiWeekStartMs, getDubaiMonthStartMs } from "./lib/dateUtils";
 
 /**
@@ -221,14 +221,21 @@ export const grantCredits = internalMutation({
 });
 
 /**
- * Count users for broadcast: total users and those active within 24h session window.
+ * Count users eligible for broadcast (active within 30 days) and those active within 24h.
  */
 export const getBroadcastCounts = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
+    const now = Date.now();
+    const cutoff = now - WHATSAPP_SESSION_WINDOW_MS;
+    const inactivityCutoff = now - CREDIT_RESET_INACTIVITY_GATE_MS;
     const allUsers = await ctx.db.query("users").collect();
-    const eligibleUsers = allUsers.filter((u) => u.termsAcceptedAt !== undefined && !u.optedOut && !u.blocked);
+    const eligibleUsers = allUsers.filter((u) =>
+      u.termsAcceptedAt !== undefined &&
+      !u.optedOut &&
+      !u.blocked &&
+      u.lastMessageAt && u.lastMessageAt >= inactivityCutoff
+    );
     const activeCount = eligibleUsers.filter(
       (u) => u.lastMessageAt && u.lastMessageAt >= cutoff
     ).length;
@@ -359,6 +366,7 @@ export const sendTestTemplate = internalAction({
 
 /**
  * Send a template message to a specific user by phone.
+ * No 30-day inactivity gate — admin explicitly targeting a user is a deliberate act.
  */
 export const sendTemplateToUser = internalAction({
   args: {
@@ -400,7 +408,7 @@ export const sendTemplateToUser = internalAction({
 });
 
 /**
- * Broadcast a template to ALL users.
+ * Broadcast a template to eligible users (active within 30 days).
  * Users active within 24h get a normal message; others get a template message.
  * Sends in parallel batches of BROADCAST_BATCH_SIZE with BROADCAST_BATCH_DELAY_MS between batches.
  */
@@ -412,7 +420,9 @@ export const sendTemplateBroadcast = internalAction({
     mediaUrl: v.optional(v.string()),
   },
   handler: async (ctx, { templateName, variables, messageBody, mediaUrl }) => {
-    const cutoff = Date.now() - WHATSAPP_SESSION_WINDOW_MS;
+    const now = Date.now();
+    const cutoff = now - WHATSAPP_SESSION_WINDOW_MS;
+    const inactivityCutoff = now - CREDIT_RESET_INACTIVITY_GATE_MS;
     const allUsers = await ctx.runQuery(internal.admin.getAllUsers) as Array<{
       phone: string;
       lastMessageAt?: number;
@@ -421,7 +431,12 @@ export const sendTemplateBroadcast = internalAction({
       blocked?: boolean;
     }>;
 
-    const eligibleUsers = allUsers.filter((u) => u.termsAcceptedAt !== undefined && !u.optedOut && !u.blocked);
+    const eligibleUsers = allUsers.filter((u) =>
+      u.termsAcceptedAt !== undefined &&
+      !u.optedOut &&
+      !u.blocked &&
+      u.lastMessageAt && u.lastMessageAt >= inactivityCutoff
+    );
     const userByPhone = new Map(eligibleUsers.map((u) => [u.phone, u]));
 
     const sentCount = await sendInBatches(eligibleUsers, async (phone) => {
