@@ -319,6 +319,13 @@ Active: {{activeWeekDubai}}
 *This Month (Dubai)*
 Active: {{activeMonthDubai}}
 
+*User Activity Levels*
+🟢 Active (7d): {{activityActive}}
+🟡 Inactive 7d+: {{activity7d}}
+🟠 Inactive 30d+: {{activity30d}}
+🔴 Inactive 60d+: {{activity60d}}
+⚫ Inactive 90d+: {{activity90d}}
+
 *All Time*
 Users: {{totalUsers}} | Pending Acceptance: {{pendingAcceptance}} | Pro: {{proUsers}}`,
     variables: [
@@ -330,6 +337,11 @@ Users: {{totalUsers}} | Pending Acceptance: {{pendingAcceptance}} | Pro: {{proUs
       "activeMonth",
       "activeWeekDubai",
       "activeMonthDubai",
+      "activityActive",
+      "activity7d",
+      "activity30d",
+      "activity60d",
+      "activity90d",
       "totalUsers",
       "pendingAcceptance",
       "proUsers",

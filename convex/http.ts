@@ -431,6 +431,13 @@ http.route({
         proUsers: all.proUsers,
         basicUsers: all.basicUsers,
         blockedUsers: all.blockedUsers,
+        activityLevels: {
+          active: all.activityActive,
+          inactive7d: all.activity7d,
+          inactive30d: all.activity30d,
+          inactive60d: all.activity60d,
+          inactive90d: all.activity90d,
+        },
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
