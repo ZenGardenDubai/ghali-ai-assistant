@@ -195,6 +195,14 @@ export const deleteAccount = internalAction({
       console.error(`[accountControl] clearEverything failed:`, err);
     }
 
+    // 1b. Cancel scheduled tasks independently — must not be skipped if clearEverything fails,
+    // otherwise tasks will continue firing for a deleted user (privacy + orphan rows risk).
+    try {
+      await ctx.runMutation(internal.scheduledTasks.cancelAllUserScheduledTasks, { userId });
+    } catch (err) {
+      console.error(`[accountControl] cancelAllUserScheduledTasks failed:`, err);
+    }
+
     // 2. Delete remaining user-linked records not covered by clearEverything
     try {
       await ctx.runMutation(internal.accountControl.deleteOrphanedUserData, { userId, phone });

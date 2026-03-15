@@ -764,7 +764,9 @@ export const getTask = internalQuery({
 });
 
 /**
- * Cancel and delete all scheduled tasks for a user (used by clearEverything).
+ * Cancel and delete all scheduled tasks for a user.
+ * Called by clearEverything and independently by deleteAccount to ensure
+ * tasks are always cancelled even if clearEverything fails.
  */
 export const cancelAllUserScheduledTasks = internalMutation({
   args: {
