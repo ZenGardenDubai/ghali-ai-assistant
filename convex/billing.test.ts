@@ -130,66 +130,56 @@ describe("linkClerkUserByPhone", () => {
 });
 
 // ============================================================================
-// acceptTermsForUser
+// recordTermsAcceptance
 // ============================================================================
 
-describe("acceptTermsForUser", () => {
-  it("sets termsAcceptedAt, clerkUserId, and proactiveOptInAt", async () => {
+describe("recordTermsAcceptance", () => {
+  it("sets termsAcceptedAt and proactiveOptInAt on first call", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.mutation(internal.users.findOrCreateUser, {
       phone: "+971501234567",
     });
 
-    const result = await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971501234567",
-      clerkUserId: "user_clerk123",
+    const result = await t.mutation(internal.billing.recordTermsAcceptance, {
+      userId,
     });
 
-    expect(result.success).toBe(true);
+    expect(result.accepted).toBe(true);
+    expect(result.alreadyAccepted).toBe(false);
 
     const user = await t.query(internal.users.getUser, { userId });
-    expect(user!.clerkUserId).toBe("user_clerk123");
     expect(user!.termsAcceptedAt).toBeGreaterThan(0);
     expect(user!.proactiveOptInAt).toBeGreaterThan(0);
   });
 
-  it("returns error when phone not found", async () => {
+  it("returns alreadyAccepted on second call (idempotent)", async () => {
     const t = convexTest(schema, modules);
 
-    const result = await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971509999999",
-      clerkUserId: "user_clerk123",
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
     });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("No account found");
-  });
+    // First call
+    await t.mutation(internal.billing.recordTermsAcceptance, { userId });
 
-  it("rejects when clerkUserId is already linked to a different user", async () => {
-    const t = convexTest(schema, modules);
+    const userAfterFirst = await t.query(internal.users.getUser, { userId });
+    const originalTermsAt = userAfterFirst!.termsAcceptedAt;
 
-    await t.mutation(internal.users.findOrCreateUser, {
-      phone: "+971501111111",
-    });
-    await t.mutation(internal.users.findOrCreateUser, {
-      phone: "+971502222222",
-    });
+    // Wait a tick so Date.now() would differ
+    await new Promise((r) => setTimeout(r, 10));
 
-    // Accept terms for user1 with a clerkUserId
-    await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971501111111",
-      clerkUserId: "user_clerk_shared",
+    // Second call
+    const result = await t.mutation(internal.billing.recordTermsAcceptance, {
+      userId,
     });
 
-    // Try to accept terms for user2 with same clerkUserId
-    const result = await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971502222222",
-      clerkUserId: "user_clerk_shared",
-    });
+    expect(result.accepted).toBe(false);
+    expect(result.alreadyAccepted).toBe(true);
 
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("already linked");
+    // Timestamps unchanged
+    const userAfterSecond = await t.query(internal.users.getUser, { userId });
+    expect(userAfterSecond!.termsAcceptedAt).toBe(originalTermsAt);
   });
 
   it("preserves existing proactiveOptInAt if already set", async () => {
@@ -205,63 +195,10 @@ describe("acceptTermsForUser", () => {
       await ctx.db.patch(userId, { proactiveOptInAt: earlierTime });
     });
 
-    await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971501234567",
-      clerkUserId: "user_clerk123",
-    });
+    await t.mutation(internal.billing.recordTermsAcceptance, { userId });
 
     const user = await t.query(internal.users.getUser, { userId });
     expect(user!.proactiveOptInAt).toBe(earlierTime);
-  });
-
-  it("stores email when provided", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(internal.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971501234567",
-      clerkUserId: "user_clerk123",
-      email: "test@example.com",
-    });
-
-    const user = await t.query(internal.users.getUser, { userId });
-    expect(user!.email).toBe("test@example.com");
-  });
-
-  it("is idempotent — re-acceptance preserves original termsAcceptedAt", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.mutation(internal.users.findOrCreateUser, {
-      phone: "+971501234567",
-    });
-
-    // First acceptance
-    await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971501234567",
-      clerkUserId: "user_clerk123",
-    });
-
-    const userAfterFirst = await t.query(internal.users.getUser, { userId });
-    const originalTermsAt = userAfterFirst!.termsAcceptedAt;
-    const originalOptInAt = userAfterFirst!.proactiveOptInAt;
-    expect(originalTermsAt).toBeGreaterThan(0);
-
-    // Wait a tick so Date.now() would differ
-    await new Promise((r) => setTimeout(r, 10));
-
-    // Second acceptance (re-acceptance)
-    const result = await t.mutation(internal.billing.acceptTermsForUser, {
-      phone: "+971501234567",
-      clerkUserId: "user_clerk123",
-    });
-
-    expect(result.success).toBe(true);
-    const userAfterSecond = await t.query(internal.users.getUser, { userId });
-    expect(userAfterSecond!.termsAcceptedAt).toBe(originalTermsAt);
-    expect(userAfterSecond!.proactiveOptInAt).toBe(originalOptInAt);
   });
 });
 

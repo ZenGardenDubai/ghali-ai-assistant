@@ -316,20 +316,36 @@ export const generateResponse = internalAction({
       return;
     }
 
-    // Terms acceptance gate — blocks ALL service access until user accepts terms.
-    // Sends the prompt once, then silently ignores messages. Re-sends after 24h.
-    // Uses atomic check-and-record to prevent double-send from concurrent actions.
+    // Terms acceptance gate — WhatsApp-only flow:
+    // First message → send infographic + caption, return early
+    // Second message → auto-accept terms, fall through to normal processing
     if (needsTermsAcceptance(user)) {
-      const termsGuard = await ctx.runMutation(
-        internal.outboundGuard.checkAndRecordTermsPrompt,
-        { userId: typedUserId }
-      );
-      if (termsGuard.allowed) {
-        const isOnboardingUser = user.onboardingStep != null;
+      // Branch A: user already received the terms prompt → auto-accept on this message
+      if (user.termsPromptSentAt) {
+        const acceptance = await ctx.runMutation(
+          internal.billing.recordTermsAcceptance,
+          { userId: typedUserId }
+        );
+        if (acceptance.accepted) {
+          await ctx.scheduler.runAfter(0, internal.analytics.trackTermsAccepted, {
+            phone: user.phone,
+            tier: user.tier,
+          });
+        }
+        // Fall through — process the message normally
+      } else {
+        // Branch B: first message ever → send terms prompt, return early
+        const termsGuard = await ctx.runMutation(
+          internal.outboundGuard.checkAndRecordTermsPrompt,
+          { userId: typedUserId }
+        );
+        if (termsGuard.allowed) {
+          const isOnboardingUser = user.onboardingStep != null;
+          const caption = TEMPLATES.terms_prompt.template;
 
-        // New user: send infographic first (if configured)
-        if (isOnboardingUser) {
+          // Try to send infographic with caption; fall back to plain text
           const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+          let imageSent = false;
           if (onboardingConfig) {
             let parsed: { enabled?: boolean; url?: string } | null = null;
             try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
@@ -337,44 +353,32 @@ export const generateResponse = internalAction({
               try {
                 await ctx.runAction(internal.whatsapp.sendMedia, {
                   to: user.phone,
-                  caption: "",
+                  caption,
                   mediaUrl: parsed.url,
                 });
+                imageSent = true;
               } catch (error) {
-                console.error("Failed to send onboarding infographic:", error);
+                console.error("Failed to send terms infographic:", error);
               }
             }
           }
-        }
 
-        // Send terms acceptance template with "Accept & Verify" button.
-        // Falls back to free-form text if template messaging is blocked.
-        const baseUrl = process.env.BASE_URL ?? "http://localhost:3000";
-        const phoneSuffix = encodeURIComponent(user.phone);
-        try {
-          await ctx.runAction(internal.whatsapp.sendTemplate, {
-            to: user.phone,
-            templateName: "ghali_accept_terms",
-            variables: {},
-            buttonUrlSuffix: phoneSuffix,
-          });
-        } catch (error) {
-          console.warn("[terms-gate] Template send failed, falling back to text:", error);
-          const acceptUrl = `${baseUrl}/accept-terms?phone=${phoneSuffix}`;
-          await ctx.runAction(internal.whatsapp.sendMessage, {
-            to: user.phone,
-            body: `Welcome to Ghali — your personal productivity assistant on WhatsApp.\n\nTo get started, please accept our Terms of Service and verify your WhatsApp number:\n\n${acceptUrl}`,
+          if (!imageSent) {
+            await ctx.runAction(internal.whatsapp.sendMessage, {
+              to: user.phone,
+              body: caption,
+            });
+          }
+
+          // Track terms prompt sent (fire-and-forget)
+          await ctx.scheduler.runAfter(0, internal.analytics.trackTermsPromptSent, {
+            phone: user.phone,
+            user_type: isOnboardingUser ? "new" as const : "existing" as const,
           });
         }
-
-        // Track terms prompt sent (fire-and-forget)
-        await ctx.scheduler.runAfter(0, internal.analytics.trackTermsPromptSent, {
-          phone: user.phone,
-          user_type: isOnboardingUser ? "new" as const : "existing" as const,
-        });
+        // Return early — block first message from processing
+        return;
       }
-      // Silently ignore — terms prompt already sent within 24h
-      return;
     }
 
     // Track session-start for returning users (fire-and-forget).

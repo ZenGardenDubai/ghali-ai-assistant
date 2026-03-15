@@ -9,28 +9,36 @@ const proFeaturesList = PRO_FEATURES.map((f) => `✅ ${f}`).join("\n");
 
 export const TEMPLATES = {
   // === Terms Acceptance ===
-  terms_accepted: {
-    template: `Thanks for signing up, {{name}}! 🎉
+  terms_prompt: {
+    template: `Welcome to Ghali — your personal AI assistant on WhatsApp! 🤖
 
 Here's what I can do:
-💬 Answer questions and have conversations
-📄 Process documents, images, and voice notes
-⏰ Set reminders and scheduled tasks
-🖼️ Generate and edit images
+💬 Answer questions & chat in any language
+📄 Process documents, images & voice notes
+⏰ Set reminders & scheduled tasks
+🖼️ Generate & edit images
 🔍 Search the web for real-time info
-📊 Track expenses, tasks, notes, and more
-✍️ Write professional content with ProWrite
+📊 Track expenses, tasks, notes & more
 
-*Commands:*
-• *help* — see what I can do
-• *credits* — check your balance
-• *account* — manage your account
-• *upgrade* — get more credits
-• *stop* / *start* — pause or resume messages
-• *delete* — delete your account and data
+🗣️ *I speak English*
+🗣️ *أتكلم العربية*
+🗣️ *Je parle français*
+🗣️ *मैं हिन्दी बोलता हूँ*
+…and many more!
 
-Just send me a message to get started!`,
-    variables: ["name"],
+By continuing to chat, you agree to these terms:
+• Your messages are processed by AI (Google, Anthropic, OpenAI)
+• We store your messages, files & preferences to personalize the experience
+• You get 60 free credits/month (1 per message) — upgrade for more
+• Ghali may send proactive check-ins & reminders you set up
+• You can delete all your data anytime by sending *delete*
+• Service provided "as is" — verify AI outputs before relying on them
+
+Full Terms: https://ghali.ae/terms
+Privacy Policy: https://ghali.ae/privacy
+
+Send me a message to get started, or type *Help* to learn more!`,
+    variables: [],
   },
 
   // === Onboarding ===

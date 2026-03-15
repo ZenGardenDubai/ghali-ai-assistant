@@ -65,7 +65,6 @@ export const TEMPLATE_DEFINITIONS = [
   { name: "ghali_subscription_active", description: "Pro Plan Activated", variables: ["credits"], preview: "Your Ghali Pro plan is now active. You have {{1}} credits this month." },
   { name: "ghali_subscription_ended", description: "Pro Plan Ended", variables: ["basic_credits"], preview: "Your Pro plan has ended. You're now on the Basic plan with {{1}} credits/month." },
   { name: "ghali_scheduled_task", description: "Scheduled Task Result", variables: ["result"], preview: "📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant." },
-  { name: "ghali_accept_terms", description: "Terms Acceptance (with button)", variables: [], preview: "Welcome to Ghali — your personal productivity assistant on WhatsApp.\n\nTo get started, please accept our Terms of Service and verify your WhatsApp number. This takes less than a minute.\n\n[Accept & Verify →]" },
 ] as const;
 
 /**

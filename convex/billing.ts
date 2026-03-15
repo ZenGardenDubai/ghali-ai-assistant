@@ -2,79 +2,37 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { CREDITS_BASIC, CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
-import { TEMPLATES } from "./templates";
-import { fillTemplate } from "./lib/utils";
 
 // ============================================================================
 // Terms Acceptance
 // ============================================================================
 
 /**
- * Record that a user has accepted the Terms of Service and link their Clerk account.
- * Sets termsAcceptedAt, proactiveOptInAt, and clerkUserId on the user record.
+ * Record that a user has accepted terms (WhatsApp auto-accept on second message).
+ * Sets termsAcceptedAt and proactiveOptInAt atomically. Idempotent — second call
+ * returns alreadyAccepted: true so analytics only fire once.
  */
-export const acceptTermsForUser = internalMutation({
+export const recordTermsAcceptance = internalMutation({
   args: {
-    phone: v.string(),
-    clerkUserId: v.string(),
-    email: v.optional(v.string()),
+    userId: v.id("users"),
   },
-  handler: async (ctx, { phone, clerkUserId, email }) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_phone", (q) => q.eq("phone", phone))
-      .unique();
-
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
     if (!user) {
-      return { success: false, error: "No account found for this phone number" };
+      return { accepted: false, alreadyAccepted: false };
     }
 
-    // Guard: check if clerkUserId is already linked to a different Convex user
-    const existingLink = await ctx.db
-      .query("users")
-      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
-      .unique();
-
-    if (existingLink && existingLink._id !== user._id) {
-      return { success: false, error: "This account is already linked to another user" };
+    if (user.termsAcceptedAt) {
+      return { accepted: false, alreadyAccepted: true };
     }
 
     const now = Date.now();
-    const updates: {
-      clerkUserId: string;
-      termsAcceptedAt: number;
-      proactiveOptInAt: number;
-      email?: string;
-    } = {
-      clerkUserId,
-      // Preserve original timestamps if already set (idempotent on re-acceptance)
-      termsAcceptedAt: user.termsAcceptedAt ?? now,
+    await ctx.db.patch(userId, {
+      termsAcceptedAt: now,
       proactiveOptInAt: user.proactiveOptInAt ?? now,
-    };
-    if (email) updates.email = email;
-    await ctx.db.patch(user._id, updates);
+    });
 
-    // First acceptance only: send thank you message + track analytics
-    if (!user.termsAcceptedAt) {
-      const name = user.name || "there";
-      const thankYouMsg = fillTemplate(TEMPLATES.terms_accepted.template, { name });
-      // Check 24h session window — use free-form within window, skip outside
-      // (no template exists for thank-you, so we only send within the session)
-      const withinWindow = user.lastMessageAt &&
-        now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-      if (withinWindow) {
-        await ctx.scheduler.runAfter(0, internal.whatsapp.sendMessage, {
-          to: phone,
-          body: thankYouMsg,
-        });
-      }
-      await ctx.scheduler.runAfter(0, internal.analytics.trackTermsAccepted, {
-        phone,
-        tier: user.tier,
-      });
-    }
-
-    return { success: true };
+    return { accepted: true, alreadyAccepted: false };
   },
 });
 
