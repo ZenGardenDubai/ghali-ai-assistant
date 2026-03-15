@@ -16,7 +16,8 @@ export default defineSchema({
     clerkUserId: v.optional(v.string()),
     subscriptionCanceling: v.optional(v.boolean()),
     optedOut: v.optional(v.boolean()),
-
+    /** @deprecated — kept temporarily for schema compatibility during migration. Will be removed once all records are cleaned. */
+    dormant: v.optional(v.boolean()),
     pendingAction: v.optional(v.union(
       v.literal("clear_memory"),
       v.literal("clear_documents"),

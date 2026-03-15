@@ -766,27 +766,47 @@ export const countScheduledTasks = internalQuery({
 });
 
 // ============================================================================
+// Strip dormant field from all user records (pre-requisite for schema removal)
+// ============================================================================
+
+/**
+ * Remove the `dormant` field from all user records.
+ * Run from Convex dashboard before removing `dormant` from the schema.
+ * Idempotent — safe to run multiple times.
+ */
+export const stripDormantField = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const allUsers = await ctx.db.query("users").collect();
+    let stripped = 0;
+
+    for (const user of allUsers) {
+      if (user.dormant !== undefined) {
+        await ctx.db.patch(user._id, { dormant: undefined });
+        stripped++;
+      }
+    }
+
+    console.log(`[strip-dormant] Stripped dormant field from ${stripped}/${allUsers.length} users`);
+    return { stripped, total: allUsers.length };
+  },
+});
+
+// ============================================================================
 // Clean Slate — Delete users who haven't accepted terms (v0.44)
 // ============================================================================
 
 
-/** Immutable admin phone — second safety guard alongside isAdmin for destructive migrations. */
-const PROTECTED_ADMIN_PHONE = "+971552500009";
-
-function shouldKeepUser(u: { isAdmin: boolean; phone: string; termsAcceptedAt?: number }): boolean {
-  return u.isAdmin || u.phone === PROTECTED_ADMIN_PHONE || u.termsAcceptedAt !== undefined;
-}
-
 /**
  * Dry-run: count users that would be deleted by the clean slate migration.
- * Users with termsAcceptedAt set, isAdmin flag, or matching the admin phone are kept.
+ * Only users with termsAcceptedAt set are kept.
  */
 export const countCleanSlateCandidates = internalQuery({
   args: {},
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
-    const toDelete = allUsers.filter((u) => !shouldKeepUser(u));
-    const toKeep = allUsers.filter((u) => shouldKeepUser(u));
+    const toDelete = allUsers.filter((u) => u.termsAcceptedAt === undefined);
+    const toKeep = allUsers.filter((u) => u.termsAcceptedAt !== undefined);
     return {
       total: allUsers.length,
       toDelete: toDelete.length,
@@ -803,13 +823,13 @@ export const findCleanSlateCandidates = internalQuery({
   handler: async (ctx) => {
     const allUsers = await ctx.db.query("users").collect();
     return allUsers
-      .filter((u) => !shouldKeepUser(u))
+      .filter((u) => u.termsAcceptedAt === undefined)
       .map((u) => u._id);
   },
 });
 
 /**
- * Clean slate: delete all users who haven't accepted terms (except admin).
+ * Clean slate: delete all users who haven't accepted terms.
  * Uses deleteAccount for full cascade (threads, files, RAG, media, Clerk, etc.).
  * Run from Convex dashboard after deployment.
  */
@@ -829,10 +849,10 @@ export const cleanSlateDeleteUsers = internalAction({
 
     for (const userId of candidates) {
       try {
-        // Re-check: user may have accepted terms or gained admin since the initial query
+        // Re-check: user may have accepted terms since the initial query
         const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
-        if (!user || shouldKeepUser(user)) {
-          console.log(`[clean-slate] Skipping ${userId} — accepted terms, admin, or already deleted`);
+        if (!user || user.termsAcceptedAt !== undefined) {
+          console.log(`[clean-slate] Skipping ${userId} — accepted terms or already deleted`);
           continue;
         }
         await ctx.runAction(internal.accountControl.deleteAccount, { userId });
