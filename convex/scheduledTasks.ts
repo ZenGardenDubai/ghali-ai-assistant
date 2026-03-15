@@ -460,6 +460,7 @@ export const executeScheduledTask = internalAction({
       Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
     let delivered = false;
+    let transportFailed = false; // true only when sendMessage/sendTemplate actually throws
     try {
       if (withinWindow) {
         await ctx.runAction(internal.whatsapp.sendMessage, {
@@ -475,7 +476,7 @@ export const executeScheduledTask = internalAction({
         );
         if (!templateGuard.allowed) {
           console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
-          // Fall through to the !delivered path below
+          // Fall through to the !delivered path below (policy block, not transport failure)
         } else {
           try {
             const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
@@ -492,6 +493,7 @@ export const executeScheduledTask = internalAction({
         }
       }
     } catch (error) {
+      transportFailed = true;
       await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
       console.error(`Failed to deliver scheduled task ${taskId}:`, error);
     }
@@ -506,15 +508,15 @@ export const executeScheduledTask = internalAction({
         await rescheduleNextRun(ctx, taskId);
       } else {
         const retries = task.retryCount ?? 0;
-        if (retries < 1) {
-          // One-off: retry once after 5 minutes
+        if (transportFailed && retries < 1) {
+          // One-off: transport failed — retry once after 5 minutes
           console.log(`[scheduled-task] One-off task ${taskId} delivery failed, scheduling retry (attempt ${retries + 1})`);
           await ctx.runMutation(internal.scheduledTasks.scheduleOneOffRetry, {
             taskId,
           });
         } else {
-          // Already retried — permanently disable
-          console.warn(`[scheduled-task] One-off task ${taskId} delivery failed after retry, disabling`);
+          // Policy block or already retried — permanently disable
+          console.warn(`[scheduled-task] One-off task ${taskId} delivery failed${retries > 0 ? " after retry" : " (policy block)"}, disabling`);
           await ctx.runMutation(internal.scheduledTasks.updateScheduledTask, {
             taskId,
             updates: { enabled: false },
@@ -641,7 +643,8 @@ export const scheduleOneOffRetry = internalMutation({
   args: { taskId: v.id("scheduledTasks") },
   handler: async (ctx, { taskId }) => {
     const task = await ctx.db.get(taskId);
-    if (!task) return;
+    if (!task || !task.enabled || task.schedule.kind !== "once") return;
+    if ((task.retryCount ?? 0) >= 1) return;
 
     const retryCount = (task.retryCount ?? 0) + 1;
     const retryAt = Date.now() + ONEOFF_RETRY_DELAY_MS;
