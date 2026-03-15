@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.44.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.44.0...v0.44.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* deploy compat — keep dormant in schema, stagger heartbeats, remove admin guard ([#263](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/263)) ([e6bbb53](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/e6bbb53abd9ceb8201f3d9df2e29323995bc11ed))
+
 ## [0.44.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.43.1...v0.44.0) (2026-03-14)
 
 
