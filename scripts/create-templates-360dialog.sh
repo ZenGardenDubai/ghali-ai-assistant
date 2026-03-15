@@ -122,24 +122,24 @@ ENDJSON
 echo "Creating 9 Ghali templates in 360dialog WABA..."
 echo ""
 
-# 1. ghali_reminder — UTILITY, 1 var
-submit_template "ghali_reminder" "UTILITY" \
-  '"Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
+# 1. ghali_reminder_v2 — MARKETING, 1 var (includes opt-out text)
+submit_template "ghali_reminder_v2" "MARKETING" \
+  '"Hi from Ghali! Here is your scheduled reminder:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe."' \
   '["Drink 8 glasses of water today"]' || true
 
-# 2. ghali_heartbeat — UTILITY, 1 var
-submit_template "ghali_heartbeat" "UTILITY" \
-  '"Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
+# 2. ghali_heartbeat_v2 — MARKETING, 1 var (includes opt-out text)
+submit_template "ghali_heartbeat_v2" "MARKETING" \
+  '"Hi from Ghali! Here is a check-in for you:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe."' \
   '["How did your interview go yesterday?"]' || true
 
-# 3. ghali_broadcast — MARKETING, 1 var
-submit_template "ghali_broadcast" "MARKETING" \
-  '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
+# 3. ghali_broadcast_v2 — MARKETING, 1 var (includes opt-out text)
+submit_template "ghali_broadcast_v2" "MARKETING" \
+  '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe."' \
   '["We just launched image generation! Send any image idea to try it out."]' || true
 
-# 4. ghali_broadcast_image — MARKETING, 1 var, IMAGE header
-submit_image_template "ghali_broadcast_image" "MARKETING" \
-  '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
+# 4. ghali_broadcast_image_v2 — MARKETING, 1 var, IMAGE header (includes opt-out text)
+submit_image_template "ghali_broadcast_image_v2" "MARKETING" \
+  '"Hi from Ghali! Here is an announcement:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe."' \
   '["Check out our new feature update!"]' || true
 
 # 5. ghali_credits_refreshed — UTILITY, 2 vars
@@ -147,9 +147,9 @@ submit_template "ghali_credits_refreshed" "UTILITY" \
   '"Your {{2}} credits have been refreshed. You now have {{1}} credits for this month.\n\nReply *STOP* to unsubscribe, *DELETE* to completely delete your account, or *HELP* to learn more about Ghali'\''s features."' \
   '["60", "Basic"]' || true
 
-# 6. ghali_credits_low — UTILITY, 1 var
-submit_template "ghali_credits_low" "UTILITY" \
-  '"You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro."' \
+# 6. ghali_credits_low_v2 — MARKETING, 1 var (includes opt-out text)
+submit_template "ghali_credits_low_v2" "MARKETING" \
+  '"You have {{1}} credits remaining this month. Need more? Send \"upgrade\" to learn about Pro.\n\nReply STOP to unsubscribe."' \
   '["5"]' || true
 
 # 7. ghali_subscription_active — UTILITY, 1 var
@@ -162,9 +162,9 @@ submit_template "ghali_subscription_ended" "UTILITY" \
   '"Your Pro plan has ended. You'\''re now on the Basic plan with {{1}} credits/month."' \
   '["60"]' || true
 
-# 9. ghali_scheduled_task — UTILITY, 1 var
-submit_template "ghali_scheduled_task" "UTILITY" \
-  '"📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant."' \
+# 9. ghali_scheduled_task_v2 — MARKETING, 1 var (includes opt-out text)
+submit_template "ghali_scheduled_task_v2" "MARKETING" \
+  '"📋 Scheduled Task Result:\n\n{{1}}\n\nReply to chat with your AI assistant.\n\nReply STOP to unsubscribe."' \
   '["Here is your daily news briefing for March 10, 2026."]' || true
 
 echo "══════════════════════════════════════"

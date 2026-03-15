@@ -264,7 +264,7 @@ export const executeScheduledTask = internalAction({
             } else {
               await ctx.runAction(internal.whatsapp.sendTemplate, {
                 to: user.phone,
-                templateName: "ghali_credits_low",
+                templateName: "ghali_credits_low_v2",
                 variables: { "1": "0" },
               });
             }
@@ -481,7 +481,7 @@ export const executeScheduledTask = internalAction({
             const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
             await ctx.runAction(internal.whatsapp.sendTemplate, {
               to: latestUser.phone,
-              templateName: "ghali_scheduled_task",
+              templateName: "ghali_scheduled_task_v2",
               variables: { "1": truncated },
             });
             delivered = true;

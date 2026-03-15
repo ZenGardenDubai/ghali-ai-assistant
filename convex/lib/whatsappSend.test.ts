@@ -136,12 +136,12 @@ describe("sendWhatsAppTemplate", () => {
       new Response(JSON.stringify({ messages: [{ id: "wamid.789" }] }), { status: 200 })
     );
 
-    await sendWhatsAppTemplate(options, "ghali_reminder", { "1": "Drink water" });
+    await sendWhatsAppTemplate(options, "ghali_reminder_v2", { "1": "Drink water" });
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
     expect(body.type).toBe("template");
-    expect(body.template.name).toBe("ghali_reminder");
+    expect(body.template.name).toBe("ghali_reminder_v2");
     expect(body.template.language.code).toBe("en");
     expect(body.template.components[0].parameters[0].text).toBe("Drink water");
   });
@@ -166,7 +166,7 @@ describe("sendWhatsAppTemplate", () => {
     );
 
     await expect(
-      sendWhatsAppTemplate(options, "ghali_reminder", { "1": "test" })
+      sendWhatsAppTemplate(options, "ghali_reminder_v2", { "1": "test" })
     ).rejects.toThrow("360dialog API error");
   });
 });

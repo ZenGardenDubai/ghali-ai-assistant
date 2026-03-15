@@ -178,6 +178,7 @@ const BLOCK_ERROR_CODES = new Set([131049, 131026]);
 
 export interface ParsedStatusUpdate {
   recipientPhone: string; // E.164 with + prefix
+  wamid: string; // WhatsApp message ID (for template tracking)
   status: "delivered" | "read" | "failed";
   timestamp: number;
   isBlocked: boolean;
@@ -221,6 +222,7 @@ export function parseCloudApiStatuses(
 
         updates.push({
           recipientPhone,
+          wamid: status.id,
           status: status.status as "delivered" | "read" | "failed",
           timestamp: parseInt(status.timestamp, 10) * 1000, // seconds → ms
           isBlocked,

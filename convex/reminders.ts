@@ -169,7 +169,7 @@ export const fireReminder = internalAction({
               try {
                 await ctx.runAction(internal.whatsapp.sendTemplate, {
                   to: user.phone,
-                  templateName: "ghali_reminder",
+                  templateName: "ghali_reminder_v2",
                   variables: { "1": job.payload },
                 });
                 sendSucceeded = true;

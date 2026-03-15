@@ -463,6 +463,90 @@ export const trackScheduledTaskCreditNotification = internalAction({
 });
 
 // ============================================================================
+// WhatsApp Delivery Quality Events
+// ============================================================================
+
+export const trackWhatsAppDelivered = internalAction({
+  args: {
+    phone: v.string(),
+    timestamp: v.optional(v.string()),
+    template_name: v.optional(v.string()),
+  },
+  handler: async (_ctx, { phone, timestamp, template_name }) => {
+    await captureEvent(phone, "whatsapp_message_delivered", {
+      phone_country: detectCountryFromPhone(phone),
+      template_name,
+    }, timestamp);
+  },
+});
+
+export const trackWhatsAppRead = internalAction({
+  args: {
+    phone: v.string(),
+    timestamp: v.optional(v.string()),
+    template_name: v.optional(v.string()),
+  },
+  handler: async (_ctx, { phone, timestamp, template_name }) => {
+    await captureEvent(phone, "whatsapp_message_read", {
+      phone_country: detectCountryFromPhone(phone),
+      template_name,
+    }, timestamp);
+  },
+});
+
+export const trackWhatsAppFailed = internalAction({
+  args: {
+    phone: v.string(),
+    error_code: v.optional(v.number()),
+    error_message: v.optional(v.string()),
+    is_blocked: v.boolean(),
+    template_name: v.optional(v.string()),
+  },
+  handler: async (_ctx, { phone, error_code, error_message, is_blocked, template_name }) => {
+    await captureEvent(phone, "whatsapp_message_failed", {
+      error_code,
+      error_message,
+      is_blocked,
+      template_name,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackWhatsAppBlocked = internalAction({
+  args: {
+    phone: v.string(),
+    error_code: v.optional(v.number()),
+    error_message: v.optional(v.string()),
+    template_name: v.optional(v.string()),
+  },
+  handler: async (_ctx, { phone, error_code, error_message, template_name }) => {
+    await captureEvent(phone, "whatsapp_user_blocked", {
+      error_code,
+      error_message,
+      template_name,
+      phone_country: detectCountryFromPhone(phone),
+    });
+  },
+});
+
+export const trackBroadcastSent = internalAction({
+  args: {
+    templateName: v.string(),
+    recipientCount: v.number(),
+    successCount: v.number(),
+  },
+  handler: async (_ctx, { templateName, recipientCount, successCount }) => {
+    await captureEvent("system", "broadcast_sent", {
+      template_name: templateName,
+      recipient_count: recipientCount,
+      success_count: successCount,
+      failure_count: recipientCount - successCount,
+    });
+  },
+});
+
+// ============================================================================
 // Account Control Events
 // ============================================================================
 

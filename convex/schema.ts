@@ -240,6 +240,17 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_expiresAt", ["expiresAt"]),
 
+  /** Maps WhatsApp message IDs (wamid) to template names for delivery quality tracking.
+   *  Entries are short-lived — cleaned up by cron after 48h. */
+  outboundMessages: defineTable({
+    wamid: v.string(),
+    templateName: v.string(),
+    phone: v.string(),
+    sentAt: v.number(),
+  })
+    .index("by_wamid", ["wamid"])
+    .index("by_sentAt", ["sentAt"]),
+
   appConfig: defineTable({
     key: v.string(),
     value: v.string(),
