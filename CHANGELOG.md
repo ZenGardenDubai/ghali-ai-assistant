@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.46.0...v0.47.0) (2026-03-15)
+
+
+### Features
+
+* add user activity level breakdown to admin dashboard and stats command ([#273](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/273)) ([943127a](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/943127a3d61d7fe244328191f2fd125cad5af184))
+
 ## [0.46.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.45.1...v0.46.0) (2026-03-15)
 
 
