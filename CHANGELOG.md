@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.45.0...v0.45.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* skip users inactive &gt;30 days in template broadcasts ([#268](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/268)) ([08a9d67](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/08a9d67a966727bd504c400a8dbb81b244f961ac))
+
 ## [0.45.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.44.1...v0.45.0) (2026-03-15)
 
 
