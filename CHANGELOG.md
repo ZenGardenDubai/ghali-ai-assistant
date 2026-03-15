@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.47.1...v0.47.2) (2026-03-15)
+
+
+### Bug Fixes
+
+* retry one-off scheduled tasks once on delivery failure ([#277](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/277)) ([28264a4](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/28264a4f0ae7f22127ff21286e1820aba5c03008))
+
 ## [0.47.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.47.0...v0.47.1) (2026-03-15)
 
 
