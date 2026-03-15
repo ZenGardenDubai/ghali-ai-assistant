@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.44.1...v0.45.0) (2026-03-15)
+
+
+### Features
+
+* simplify terms to WhatsApp-only auto-accept flow ([#266](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/266)) ([9ce3277](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/9ce3277e44863f1b67105c30b511c7edceaa122a))
+
 ## [0.44.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.44.0...v0.44.1) (2026-03-15)
 
 
