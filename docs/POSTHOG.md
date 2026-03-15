@@ -275,14 +275,14 @@ Fired when the terms acceptance prompt is sent to a user (new or existing).
 
 ### `terms_accepted`
 
-Fired when a user accepts the Terms of Service and completes authentication.
+Fired when a user who has already received the terms prompt sends another WhatsApp message, which auto-accepts the terms.
 
 | Property | Type | Description |
 |---|---|---|
 | `tier` | string | `basic` or `pro` |
 | `phone_country` | string | ISO country code |
 
-**Triggered in**: `convex/billing.ts` — `acceptTermsForUser` mutation (first acceptance only)
+**Triggered in**: `convex/messages.ts` — terms gate Branch A, after `recordTermsAcceptance` returns `accepted: true`
 
 ## Client Events (Landing Page)
 

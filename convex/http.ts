@@ -274,47 +274,6 @@ http.route({
 });
 
 http.route({
-  path: "/accept-terms",
-  method: "POST",
-  handler: httpAction(async (ctx, request) => {
-    // Validate server-to-server secret
-    const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
-    const expectedSecret = process.env.INTERNAL_API_SECRET;
-
-    if (!expectedSecret) {
-      console.error("INTERNAL_API_SECRET not set");
-      return new Response("Server error", { status: 500 });
-    }
-
-    if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
-      return new Response("Forbidden", { status: 403 });
-    }
-
-    let body: { phone: string; clerkUserId: string; email?: string };
-    try {
-      body = await request.json();
-    } catch {
-      return new Response("Invalid JSON", { status: 400 });
-    }
-
-    if (!body.phone || !body.clerkUserId) {
-      return new Response("Missing phone or clerkUserId", { status: 400 });
-    }
-
-    const result = await ctx.runMutation(internal.billing.acceptTermsForUser, {
-      phone: body.phone,
-      clerkUserId: body.clerkUserId,
-      email: body.email,
-    });
-
-    return new Response(JSON.stringify(result), {
-      status: result.success ? 200 : 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }),
-});
-
-http.route({
   path: "/account-data",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
