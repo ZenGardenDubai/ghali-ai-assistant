@@ -138,6 +138,35 @@ export const getStats = internalQuery({
       (u) => u.createdAt >= dubaiDayStart
     ).length;
 
+    // Exclusive activity-level buckets (based on lastMessageAt)
+    // Reuses oneWeekAgo (7d) and oneMonthAgo (30d) from above
+    const sixtyDaysAgo = now - 60 * DAY;
+    const ninetyDaysAgo = now - 90 * DAY;
+
+    let activityActive = 0;   // messaged within last 7 days
+    let activity7d = 0;       // 7–29 days ago
+    let activity30d = 0;      // 30–59 days ago
+    let activity60d = 0;      // 60–89 days ago
+    let activity90d = 0;      // 90+ days ago
+
+    for (const u of allUsers) {
+      const last = u.lastMessageAt;
+      if (!last) {
+        // Never messaged — count as 90d+ inactive
+        activity90d++;
+      } else if (last >= oneWeekAgo) {
+        activityActive++;
+      } else if (last >= oneMonthAgo) {
+        activity7d++;
+      } else if (last >= sixtyDaysAgo) {
+        activity30d++;
+      } else if (last >= ninetyDaysAgo) {
+        activity60d++;
+      } else {
+        activity90d++;
+      }
+    }
+
     return {
       totalUsers,
       pendingAcceptance,
@@ -159,6 +188,12 @@ export const getStats = internalQuery({
       activeWeekDubai,
       activeMonthDubai,
       newTodayDubai,
+      // Activity levels (exclusive buckets)
+      activityActive,
+      activity7d,
+      activity30d,
+      activity60d,
+      activity90d,
     };
   },
 });

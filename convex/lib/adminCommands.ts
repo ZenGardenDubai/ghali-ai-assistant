@@ -79,6 +79,12 @@ export async function handleAdminCommand(
         activeWeekDubai: number;
         activeMonthDubai: number;
         newTodayDubai: number; // since Dubai midnight — different from newToday (rolling 24h)
+        // Activity levels (exclusive buckets)
+        activityActive: number;
+        activity7d: number;
+        activity30d: number;
+        activity60d: number;
+        activity90d: number;
       };
       return {
         response: await renderSystemMessage(
@@ -95,6 +101,11 @@ export async function handleAdminCommand(
             activeMonthDubai: stats.activeMonthDubai,
             newTodayDubai: stats.newTodayDubai,
             proUsers: stats.proUsers,
+            activityActive: stats.activityActive,
+            activity7d: stats.activity7d,
+            activity30d: stats.activity30d,
+            activity60d: stats.activity60d,
+            activity90d: stats.activity90d,
           },
           userMessage
         ),

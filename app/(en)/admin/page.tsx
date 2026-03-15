@@ -16,6 +16,14 @@ import { Badge } from "@/components/ui/badge";
 
 type Period = "today" | "yesterday" | "7d" | "30d";
 
+interface ActivityLevels {
+  active: number;
+  inactive7d: number;
+  inactive30d: number;
+  inactive60d: number;
+  inactive90d: number;
+}
+
 interface Stats {
   totalUsers: number;
   newUsers: number;
@@ -23,6 +31,7 @@ interface Stats {
   proUsers: number;
   basicUsers: number;
   blockedUsers: number;
+  activityLevels?: ActivityLevels;
 }
 
 interface RecentUser {
@@ -166,6 +175,45 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Activity Levels */}
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-white/80">User Activity Levels</h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {(
+            [
+              { label: "Active", sublabel: "< 7 days", key: "active" as const, color: "#22c55e" },
+              { label: "Inactive 7d+", sublabel: "7–29 days", key: "inactive7d" as const, color: "#eab308" },
+              { label: "Inactive 30d+", sublabel: "30–59 days", key: "inactive30d" as const, color: "#f97316" },
+              { label: "Inactive 60d+", sublabel: "60–89 days", key: "inactive60d" as const, color: "#ef4444" },
+              { label: "Inactive 90d+", sublabel: "90+ days", key: "inactive90d" as const, color: "#6b7280" },
+            ] as const
+          ).map((bucket) => (
+            <Card
+              key={bucket.key}
+              className="border-white/[0.06] bg-white/[0.02] backdrop-blur-sm transition-all duration-300 hover:bg-white/[0.04] hover:border-white/[0.1]"
+            >
+              <CardContent className="flex items-center gap-3 pt-0">
+                <div
+                  className="h-3 w-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: bucket.color }}
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-white/35 uppercase tracking-wider truncate">{bucket.label}</p>
+                  {loadingStats ? (
+                    <Skeleton className="mt-1 h-7 w-12 bg-white/[0.06]" />
+                  ) : (
+                    <p className="text-2xl font-bold tabular-nums text-white">
+                      {stats?.activityLevels?.[bucket.key] ?? 0}
+                    </p>
+                  )}
+                  <p className="text-[10px] text-white/25">{bucket.sublabel}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Recent Users */}
