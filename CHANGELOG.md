@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.47.0...v0.47.1) (2026-03-15)
+
+
+### Bug Fixes
+
+* **account:** cancel scheduled tasks independently in deleteAccount ([#275](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/275)) ([a4e52c3](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/a4e52c3af8347c698f9a533fe0591e8eeb4d63ab)), closes [#265](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/265)
+
 ## [0.47.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.46.0...v0.47.0) (2026-03-15)
 
 
