@@ -938,7 +938,7 @@ http.route({
     const status = body.status as string | undefined;
     const limit = typeof body.limit === "number" ? body.limit : 50;
     const result = await ctx.runQuery(internal.contentStudio.listFeatureQueue, {
-      status: status as Parameters<typeof internal.contentStudio.listFeatureQueue>[0]["status"],
+      status: status as "pending" | "done" | "generating" | "skipped" | undefined,
       limit,
     });
     return new Response(JSON.stringify(result), {
@@ -983,7 +983,7 @@ http.route({
     const status = body.status as string | undefined;
     const limit = typeof body.limit === "number" ? body.limit : 50;
     const result = await ctx.runQuery(internal.contentStudio.listContentPosts, {
-      status: status as Parameters<typeof internal.contentStudio.listContentPosts>[0]["status"],
+      status: status as "draft" | "approved" | "scheduled" | "published" | "rejected" | undefined,
       limit,
     });
     return new Response(JSON.stringify(result), {
