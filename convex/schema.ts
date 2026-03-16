@@ -64,6 +64,10 @@ export default defineSchema({
     lastReflectionAt: v.optional(v.number()),
     /** Lifetime message count (used for adaptive reflection threshold) */
     totalMessages: v.optional(v.number()),
+    /** Storage ID of the last file that was converted — used to deduplicate concurrent conversion requests */
+    lastConvertedStorageId: v.optional(v.string()),
+    /** Timestamp of the last file conversion (epoch ms) — paired with lastConvertedStorageId */
+    lastConvertedAt: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])

@@ -1036,6 +1036,15 @@ const convertFile = createTool({
         sourceMediaType = recentFiles[0]!.mediaType;
       }
 
+      // Deduplicate: if the same file was converted within the last 5 minutes, skip
+      const dedupResult = await ctx.runMutation(internal.users.checkAndRecordConversion, {
+        userId,
+        storageId: resolvedStorageId,
+      });
+      if (dedupResult.isDuplicate) {
+        return "I already sent you that converted file a moment ago — check just above in our chat!";
+      }
+
       const result: {
         success: boolean;
         fileUrl?: string;

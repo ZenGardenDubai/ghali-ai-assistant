@@ -3,6 +3,7 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { detectTimezone } from "./lib/utils";
 import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
+import { isRecentDuplicate } from "./lib/utils";
 import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
 import { replaceProfileSection, type ProfileCategory } from "./lib/profile";
@@ -209,6 +210,37 @@ export const internalUpdateUser = internalMutation({
   },
   handler: async (ctx, { userId, fields }) => {
     await ctx.db.patch(userId, fields as Record<string, unknown>);
+  },
+});
+
+/**
+ * Atomically check whether the same file was recently converted and, if not, record this
+ * conversion so that any concurrent request sees it as a duplicate.
+ *
+ * Convex mutations are serialized with ACID guarantees — concurrent calls are ordered,
+ * so the second call always sees the record written by the first.
+ */
+export const checkAndRecordConversion = internalMutation({
+  args: {
+    userId: v.id("users"),
+    storageId: v.string(),
+  },
+  returns: v.object({ isDuplicate: v.boolean() }),
+  handler: async (ctx, { userId, storageId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return { isDuplicate: false };
+
+    const now = Date.now();
+    if (isRecentDuplicate(user.lastConvertedStorageId, user.lastConvertedAt, storageId, now)) {
+      return { isDuplicate: true };
+    }
+
+    await ctx.db.patch(userId, {
+      lastConvertedStorageId: storageId,
+      lastConvertedAt: now,
+    });
+
+    return { isDuplicate: false };
   },
 });
 

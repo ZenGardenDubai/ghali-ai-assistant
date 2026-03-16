@@ -9,6 +9,7 @@ import {
   DEFAULT_TIMEZONE,
   BLOCKED_COUNTRY_CODES,
   SYSTEM_COMMANDS,
+  CONVERSION_DEDUP_WINDOW_MS,
 } from "../constants";
 
 // Sorted by prefix length (longest first) so +971 matches before +97
@@ -236,4 +237,21 @@ export function splitLongMessage(
   }
 
   return chunks;
+}
+
+/**
+ * Returns true if the given storageId was recently converted (within CONVERSION_DEDUP_WINDOW_MS).
+ * Used by checkAndRecordConversion to detect duplicate file conversion requests.
+ */
+export function isRecentDuplicate(
+  lastConvertedStorageId: string | undefined,
+  lastConvertedAt: number | undefined,
+  currentStorageId: string,
+  now: number
+): boolean {
+  return (
+    lastConvertedStorageId === currentStorageId &&
+    lastConvertedAt !== undefined &&
+    now - lastConvertedAt < CONVERSION_DEDUP_WINDOW_MS
+  );
 }

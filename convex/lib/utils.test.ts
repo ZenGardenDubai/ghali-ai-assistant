@@ -10,6 +10,7 @@ import {
   splitLongMessage,
   getCurrentDateTime,
   buildReplyToTextPrompt,
+  isRecentDuplicate,
 } from "./utils";
 
 describe("detectTimezone", () => {
@@ -283,5 +284,46 @@ describe("buildReplyToTextPrompt", () => {
   it("handles empty user message", () => {
     const result = buildReplyToTextPrompt("Original message", "");
     expect(result).toBe('[Replying to: "Original message"]\n');
+  });
+});
+
+describe("isRecentDuplicate", () => {
+  const STORAGE_ID = "kg1abc123def456";
+  const NOW = 1_000_000;
+  const FOUR_MIN_AGO = NOW - 4 * 60 * 1000;
+  const SIX_MIN_AGO = NOW - 6 * 60 * 1000;
+
+  it("returns true when same storageId was converted within 5 minutes", () => {
+    expect(isRecentDuplicate(STORAGE_ID, FOUR_MIN_AGO, STORAGE_ID, NOW)).toBe(true);
+  });
+
+  it("returns false when same storageId was converted more than 5 minutes ago", () => {
+    expect(isRecentDuplicate(STORAGE_ID, SIX_MIN_AGO, STORAGE_ID, NOW)).toBe(false);
+  });
+
+  it("returns false when a different storageId was recently converted", () => {
+    expect(isRecentDuplicate("other_storage_id", FOUR_MIN_AGO, STORAGE_ID, NOW)).toBe(false);
+  });
+
+  it("returns false when lastConvertedStorageId is undefined", () => {
+    expect(isRecentDuplicate(undefined, FOUR_MIN_AGO, STORAGE_ID, NOW)).toBe(false);
+  });
+
+  it("returns false when lastConvertedAt is undefined", () => {
+    expect(isRecentDuplicate(STORAGE_ID, undefined, STORAGE_ID, NOW)).toBe(false);
+  });
+
+  it("returns false when both last fields are undefined", () => {
+    expect(isRecentDuplicate(undefined, undefined, STORAGE_ID, NOW)).toBe(false);
+  });
+
+  it("returns true at exactly one millisecond before window expiry", () => {
+    const justBeforeExpiry = NOW - (5 * 60 * 1000 - 1);
+    expect(isRecentDuplicate(STORAGE_ID, justBeforeExpiry, STORAGE_ID, NOW)).toBe(true);
+  });
+
+  it("returns false at exactly the window boundary", () => {
+    const atBoundary = NOW - 5 * 60 * 1000;
+    expect(isRecentDuplicate(STORAGE_ID, atBoundary, STORAGE_ID, NOW)).toBe(false);
   });
 });
