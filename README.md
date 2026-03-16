@@ -1,12 +1,12 @@
 # Ghali غالي
 
-**WhatsApp-first AI assistant. One chat, best models, zero apps.**
+**AI assistant on Telegram (formerly WhatsApp). One chat, best models, zero apps.**
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 ## What is Ghali
 
-Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini Flash) handles every message and self-escalates to stronger models when needed — Claude Opus for deep reasoning, Gemini Pro for image generation. It remembers you across conversations, adapts to your style, and can proactively check in on things you care about.
+Ghali is an open-source AI assistant you talk to on Telegram (`@GhaliSmartBot`). One agent (Gemini Flash) handles every message and self-escalates to stronger models when needed — Claude Opus for deep reasoning, Gemini Pro for image generation. It remembers you across conversations, adapts to your style, and can proactively check in on things you care about.
 
 ## Features
 
@@ -14,7 +14,7 @@ Ghali is an open-source AI assistant you talk to on WhatsApp. One agent (Gemini 
 - **Single agent with smart routing** — Flash handles 85% of messages; escalates to Opus for complex reasoning/coding and Gemini Pro for images
 - **Google Search grounding** — real-time web data (weather, news, prices, sports)
 - **Voice notes** — Whisper transcription, processed as text
-- **Image generation** — text-to-image via Gemini Pro, delivered as WhatsApp media
+- **Image generation** — text-to-image via Gemini Pro, delivered as media
 - **ProWrite** — multi-LLM professional writing pipeline (Opus brief/synthesis/humanize, Kimi K2.5 draft/refine, GPT-5.2 elevate, Flash research)
 
 ### Media and Files

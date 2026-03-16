@@ -916,6 +916,32 @@ http.route({
 });
 
 // ============================================================================
+// Telegram upload URL — bot server uses this to upload large files (>20MB)
+// ============================================================================
+
+http.route({
+  path: "/telegram-upload-url",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authHeader = request.headers.get("Authorization");
+    const secret = process.env.INTERNAL_API_SECRET;
+    if (!secret || !authHeader) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!(await timingSafeEqual(token, secret))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const uploadUrl = await ctx.storage.generateUploadUrl();
+    return new Response(JSON.stringify({ uploadUrl }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+// ============================================================================
 // Telegram Bot webhook — receives messages forwarded from the bot server
 // ============================================================================
 
@@ -947,6 +973,7 @@ http.route({
         mediaType,
         mediaFileId,
         mediaMimeType,
+        mediaStorageId,
         replyToMessageId,
         replyToText,
         startParam,
@@ -960,6 +987,7 @@ http.route({
         mediaType?: string;
         mediaFileId?: string;
         mediaMimeType?: string;
+        mediaStorageId?: string;
         replyToMessageId?: number;
         replyToText?: string;
         startParam?: string;
@@ -1018,9 +1046,15 @@ http.route({
 
       // Map Telegram media to the format generateResponse expects
       // mediaUrl = file_id (downloaded in generateResponse via Bot API before processing)
+      // If mediaStorageId is provided (large file uploaded by bot server), skip download
       let mediaUrl: string | undefined;
       let mediaContentType: string | undefined;
-      if (mediaType && mediaFileId) {
+      let preUploadedStorageId: string | undefined;
+      if (mediaStorageId && mediaType) {
+        // Bot server already uploaded the file — pass storageId directly
+        preUploadedStorageId = mediaStorageId;
+      }
+      if (mediaType && mediaFileId && !mediaStorageId) {
         mediaUrl = mediaFileId;
         // Use actual MIME type from bot server payload if available, otherwise infer
         if (mediaMimeType) {
@@ -1045,6 +1079,11 @@ http.route({
         messageBody = `[Replying to: "${replyToText.trim().slice(0, 500)}"]\n\n${messageBody}`;
       }
 
+      // For pre-uploaded files (>20MB), set mediaContentType from payload
+      if (preUploadedStorageId && mediaMimeType) {
+        mediaContentType = mediaMimeType;
+      }
+
       // Schedule async message processing
       await ctx.runMutation(internal.messages.saveIncoming, {
         userId,
@@ -1055,6 +1094,7 @@ http.route({
         originalRepliedMessageSid: replyToMessageId ? String(replyToMessageId) : undefined,
         channel: "telegram",
         chatId: chatIdStr,
+        mediaStorageId: preUploadedStorageId,
       });
     } catch (error) {
       console.error("[telegram-webhook] Error processing message:", error);

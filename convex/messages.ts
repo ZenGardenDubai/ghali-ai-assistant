@@ -164,10 +164,11 @@ export const saveIncoming = internalMutation({
     originalRepliedMessageSid: v.optional(v.string()),
     channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
     chatId: v.optional(v.string()),
+    mediaStorageId: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid, channel, chatId }
+    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid, channel, chatId, mediaStorageId }
   ) => {
     // Capture previous lastMessageAt before updating — needed for session detection
     const user = await ctx.db.get(userId);
@@ -189,6 +190,7 @@ export const saveIncoming = internalMutation({
       previousLastMessageAt,
       channel,
       chatId,
+      mediaStorageId,
     });
   },
 });
@@ -208,6 +210,7 @@ export const generateResponse = internalAction({
     previousLastMessageAt: v.optional(v.number()),
     channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
     chatId: v.optional(v.string()),
+    mediaStorageId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt, channel, chatId } = args;
@@ -742,18 +745,29 @@ export const generateResponse = internalAction({
       { language: user.language, timezone: user.timezone, optedOut: !!user.optedOut }
     );
 
-    // Telegram media download — file_id must be downloaded via Bot API and stored
-    // in Convex before passing to processMedia/transcribeVoiceMessage.
-    // fetchMedia stores directly in Convex and returns storageId (no base64 round-trip).
+    // Telegram media — either pre-uploaded by bot server (>20MB) or downloaded via Bot API (<20MB)
     let telegramStorageId: Id<"_storage"> | null = null;
-    if (isTelegram && mediaUrl && mediaContentType) {
+    if (isTelegram && args.mediaStorageId && mediaContentType) {
+      // Bot server already uploaded the file to Convex storage (large file path)
+      telegramStorageId = args.mediaStorageId as Id<"_storage">;
+      const storageUrl = await ctx.storage.getUrl(telegramStorageId);
+      if (storageUrl) {
+        mediaUrl = storageUrl;
+      } else {
+        console.error("[generateResponse] Pre-uploaded storage ID invalid:", args.mediaStorageId);
+        mediaUrl = undefined;
+        mediaContentType = undefined;
+        telegramStorageId = null;
+      }
+    } else if (isTelegram && mediaUrl && mediaContentType) {
+      // Small file — download via Bot API (fetchMedia stores in Convex, returns storageId)
       const telegramMedia = await ctx.runAction(internal.telegram.fetchMedia, {
         fileId: mediaUrl,
       });
       if (telegramMedia && "error" in telegramMedia) {
-        // File too large (>20MB Bot API limit)
+        // File too large (>20MB Bot API limit) — shouldn't happen if bot server handles large files
         await guardedSendMessage(
-          "Sorry, that file is too large for me to process. Telegram limits file downloads to 20MB."
+          "Sorry, that file is too large for me to process. Please try a smaller file."
         );
         return;
       } else if (telegramMedia && "storageId" in telegramMedia) {

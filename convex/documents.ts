@@ -358,6 +358,10 @@ export const processMedia = internalAction({
 
     console.log(`[Documents] downloaded | size: ${data.byteLength} bytes`);
 
+    // Gemini inline data limit is ~20MB, but base64 encoding inflates by ~33%.
+    // Effective limit for binary files sent to Gemini: ~15MB.
+    const GEMINI_INLINE_LIMIT = 15 * 1024 * 1024;
+
     try {
       let extracted: string;
 
@@ -393,6 +397,10 @@ export const processMedia = internalAction({
         );
       } else {
         // Images, PDF, audio, video: Gemini multimodal directly
+        if (data.byteLength > GEMINI_INLINE_LIMIT) {
+          console.warn(`[Documents] File too large for Gemini inline: ${data.byteLength} bytes (limit ~${GEMINI_INLINE_LIMIT / (1024 * 1024)}MB)`);
+          return null;
+        }
         extracted = await extractViaGemini(
           data,
           normalizeMimeType(mediaType),
