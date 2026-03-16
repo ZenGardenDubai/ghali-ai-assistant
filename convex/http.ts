@@ -1058,4 +1058,93 @@ http.route({
   }),
 });
 
+// Telegram callback query handler — processes inline button taps
+http.route({
+  path: "/telegram-callback",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // Validate Bearer token
+    const authHeader = request.headers.get("Authorization");
+    const secret = process.env.INTERNAL_API_SECRET;
+    if (!secret || !authHeader) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!(await timingSafeEqual(token, secret))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const ALLOWED_CALLBACK_COMMANDS = new Set(["help", "credits", "privacy", "account"]);
+
+    try {
+      const { chatId, callbackQueryId, callbackData, firstName } = await request.json() as {
+        chatId: number;
+        callbackQueryId: string;
+        callbackData: string;
+        messageId?: number;
+        firstName?: string;
+        username?: string;
+      };
+
+      // Validate required fields
+      if (
+        !callbackQueryId || !callbackData ||
+        typeof chatId !== "number" || !Number.isInteger(chatId)
+      ) {
+        return new Response(JSON.stringify({ ok: false, error: "missing or invalid fields" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const chatIdStr = String(chatId);
+
+      // Acknowledge the callback first (must respond within 10s)
+      // This is critical — failure leaves a stuck spinner on the button
+      try {
+        await ctx.runAction(internal.telegram.answerCallbackQuery, {
+          callbackQueryId,
+        });
+      } catch (ackError) {
+        console.error("[telegram-callback] Failed to acknowledge callback:", ackError);
+        // Continue processing even if ack fails — the user's action should still work
+      }
+
+      // Process callback data — whitelist-validated "cmd:<command>" for system commands
+      if (callbackData.startsWith("cmd:")) {
+        const command = callbackData.slice(4);
+        if (!ALLOWED_CALLBACK_COMMANDS.has(command)) {
+          console.warn(`[telegram-callback] Unknown callback command: ${command}`);
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Find user
+        const { userId } = await ctx.runMutation(
+          internal.users.findOrCreateTelegramUser,
+          { telegramId: chatIdStr, firstName }
+        );
+
+        // Schedule as a regular message so it goes through the normal flow
+        await ctx.runMutation(internal.messages.saveIncoming, {
+          userId,
+          body: command,
+          messageSid: `cb:${callbackQueryId}`,
+          channel: "telegram" as const,
+          chatId: chatIdStr,
+        });
+      }
+    } catch (error) {
+      console.error("[telegram-callback] Error:", error);
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
 export default http;

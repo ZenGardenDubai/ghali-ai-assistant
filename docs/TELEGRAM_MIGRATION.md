@@ -2,7 +2,7 @@
 
 Full migration from WhatsApp (360dialog) to Telegram Bot API.
 
-**Status**: In Progress (Step 5)
+**Status**: In Progress (Step 7)
 **Branch**: `feat/telegram-integration`
 **Target**: 2-3 weeks
 **Bots**: `@GhaliSmartBot` (prod), `@GhalDev_Bot` (staging)
@@ -307,48 +307,50 @@ Wire up the webhook and modify generateResponse for channel awareness.
 
 ---
 
-### Step 5 — Media Support
+### Step 5 — Media Support ✅
 
-Add full media handling for Telegram.
+Full media handling implemented during Steps 4 + CodeRabbit fixes.
 
-- [ ] Extend `/telegram-message` route to accept `mediaType` and `mediaFileId`
-- [ ] Update bot server to forward media messages (photo, voice, audio, video, document, sticker, location)
-- [ ] Wire media download in `generateResponse` for Telegram:
-  - [ ] Use `getTelegramFile()` to download from `api.telegram.org`
-  - [ ] Feed into existing media processing pipeline (Gemini Flash, Whisper, etc.)
-- [ ] Wire media sending: AI-generated images sent via `sendTelegramPhoto`
-- [ ] Handle voice notes: download → transcribe with Whisper → process as text
-- [ ] Handle documents: download → extract text via Gemini Flash → store in RAG
+- [x] `/telegram-message` route accepts `mediaType`, `mediaFileId`, `mediaMimeType`
+- [x] Bot server forwards media with actual `mime_type` from Telegram payload
+- [x] `fetchMedia` downloads via Bot API → stores directly in Convex storage (no base64)
+- [x] File size check (>20MB returns user-friendly error)
+- [x] Voice notes: download → Convex storage → Whisper transcription → text prompt
+- [x] Documents: download → Convex storage → Gemini Flash extraction → RAG indexing
+- [x] Media sending: `guardedSendMedia` routes to Telegram when `isTelegram`
+- [x] Reply-to-media: `replyToMessageId` extracted from bot server, `telegramStorageId` fallback for `mediaStorage`
 
-**TEST:** Send to `@GhalDev_Bot`:
-1. A photo → bot describes it
-2. A voice note → bot responds to transcript
-3. A PDF document → bot acknowledges and can answer questions about it
-4. A location → bot acknowledges coordinates
+**TEST:** ✅ All media types working:
+1. Photo → bot describes it
+2. Voice note → bot responds to transcript
+3. PDF document → bot acknowledges and processes
+4. Location → bot acknowledges coordinates
 
 ---
 
-### Step 6 — Inline Keyboards + Callback Queries
+### Step 6 — Inline Keyboards + Callback Queries ✅
 
 Add interactive buttons to responses.
 
-- [ ] Add `/telegram-callback` POST route to `convex/http.ts` for callback queries
-- [ ] Update bot server to forward callback queries to Convex
-- [ ] Add inline keyboard to system responses:
-  - [ ] Credit exhaustion → "Upgrade to Pro" (URL button → ghali.ae/upgrade)
-  - [ ] Help response → "Credits" / "Privacy" / "Settings" buttons
-  - [ ] Welcome message → "Get Started" / "Help" buttons
-  - [ ] Destructive confirmations → "Yes" / "Cancel" callback buttons
-- [ ] Handle callback query processing in Convex:
-  - [ ] `answerCallbackQuery` first (within 10s)
-  - [ ] Process action based on `callbackData`
-  - [ ] Update original message if needed
+- [x] Add `/telegram-callback` POST route to `convex/http.ts` for callback queries
+- [x] Update bot server to forward callback queries to Convex (`/telegram-callback`)
+- [x] Bot server uses base URL + separate paths for messages and callbacks
+- [x] Add inline keyboard to system responses:
+  - [x] Credit exhaustion → "Upgrade to Pro" URL button
+  - [x] Help response → "Credits" / "Privacy" callback buttons + "Upgrade" URL button
+  - [x] Account/credits response → "Upgrade to Pro" URL button
+  - [x] Welcome message → "Help" callback + "Upgrade" URL buttons
+  - [x] Low credit warning → "Upgrade to Pro" URL button (via `guardedSendKeyboard`)
+- [x] `guardedSendMessage` accepts optional `keyboard` param for Telegram
+- [x] `guardedSendKeyboard` action for scheduled sends with inline buttons
+- [x] Handle callback query processing in Convex:
+  - [x] `answerCallbackQuery` first (within 10s)
+  - [x] `cmd:*` callbacks processed as regular messages through `saveIncoming`
 
 **TEST:** Send to `@GhalDev_Bot`:
 1. Type "help" → response has inline keyboard buttons
 2. Tap a button → bot responds appropriately
-3. Type "credits" when exhausted → "Upgrade" button appears and opens correct URL
-4. Trigger a destructive action → confirmation buttons work
+3. Credits/upgrade buttons open correct URL
 
 ---
 

@@ -18,6 +18,7 @@ import {
   sendInlineKeyboard,
   answerCallbackQuery as answerCbQuery,
 } from "./lib/telegramSend";
+import { formatForTelegram } from "./lib/telegram";
 
 function getBotToken(): string {
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -152,7 +153,7 @@ export const sendKeyboard = internalAction({
     ),
   },
   handler: async (_ctx, { chatId, text, keyboard }) => {
-    return await sendInlineKeyboard(getSendOptions(chatId), text, keyboard);
+    return await sendInlineKeyboard(getSendOptions(chatId), formatForTelegram(text), keyboard);
   },
 });
 
@@ -194,7 +195,51 @@ export const sendWelcome = internalAction({
     } catch (error) {
       console.error("[telegram] Failed to send welcome image:", error);
     }
-    await sendTelegramMessage(opts, "Welcome to Ghali! 🤖 I'm your AI assistant. How can I help you today?");
+    // Send welcome with inline keyboard
+    await sendInlineKeyboard(opts,
+      "Welcome to Ghali! 🤖 I'm your AI assistant. How can I help you today?",
+      [
+        [
+          { text: "❓ Help", callback_data: "cmd:help" },
+          { text: "⭐ Upgrade", url: "https://ghali.ae/upgrade" },
+        ],
+      ]
+    );
+  },
+});
+
+/**
+ * Guarded send with inline keyboard: checks opt-out + outbound rate limit before sending.
+ * Used for low-credit warnings, upgrade prompts, etc.
+ */
+export const guardedSendKeyboard = internalAction({
+  args: {
+    userId: v.id("users"),
+    chatId: v.string(),
+    body: v.string(),
+    keyboard: v.array(
+      v.array(
+        v.object({
+          text: v.string(),
+          url: v.optional(v.string()),
+          callback_data: v.optional(v.string()),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, { userId, chatId, body, keyboard }) => {
+    const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
+    if (!user || user.optedOut || user.blocked) return;
+
+    const guard = await ctx.runMutation(
+      internal.outboundGuard.checkAndRecordOutbound,
+      { userId }
+    );
+    if (!guard.allowed) {
+      console.warn(`[outbound-guard] Blocked Telegram keyboard send to ${userId}: ${guard.reason}`);
+      return;
+    }
+    await sendInlineKeyboard(getSendOptions(chatId), formatForTelegram(body), keyboard);
   },
 });
 

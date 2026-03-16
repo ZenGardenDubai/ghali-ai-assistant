@@ -225,7 +225,13 @@ export const generateResponse = internalAction({
      * Send a text message to the user, guarded against double-sends.
      * Returns true if sent, false if blocked (already sent this invocation).
      */
-    async function guardedSendMessage(msgBody: string): Promise<boolean> {
+    /** Inline keyboard button type for Telegram. Ignored for WhatsApp. */
+    type InlineButton = { text: string; url?: string; callback_data?: string };
+
+    async function guardedSendMessage(
+      msgBody: string,
+      keyboard?: InlineButton[][]
+    ): Promise<boolean> {
       if (responseSent) {
         console.warn(
           `[single-response-guard] Blocked duplicate send to ${userId} ` +
@@ -246,10 +252,18 @@ export const generateResponse = internalAction({
       }
       responseSent = true;
       if (isTelegram && chatId) {
-        await ctx.runAction(internal.telegram.sendMessage, {
-          chatId,
-          body: msgBody,
-        });
+        if (keyboard && keyboard.length > 0) {
+          await ctx.runAction(internal.telegram.sendKeyboard, {
+            chatId,
+            text: msgBody,
+            keyboard,
+          });
+        } else {
+          await ctx.runAction(internal.telegram.sendMessage, {
+            chatId,
+            body: msgBody,
+          });
+        }
       } else {
         await ctx.runAction(internal.whatsapp.sendMessage, {
           to: user!.phone,
@@ -630,7 +644,29 @@ export const generateResponse = internalAction({
           phone: user.phone,
           command: messageForCredits,
         });
-        await guardedSendMessage(systemResult.response);
+
+        // Add inline keyboard for Telegram system commands
+        let systemKeyboard: InlineButton[][] | undefined;
+        if (isTelegram) {
+          const cmd = messageForCredits.toLowerCase().trim();
+          if (cmd === "help" || cmd === "commands") {
+            systemKeyboard = [
+              [
+                { text: "💳 Credits", callback_data: "cmd:credits" },
+                { text: "🔒 Privacy", callback_data: "cmd:privacy" },
+              ],
+              [
+                { text: "⭐ Upgrade", url: "https://ghali.ae/upgrade" },
+              ],
+            ];
+          } else if (cmd === "credits" || cmd === "account") {
+            systemKeyboard = [
+              [{ text: "⭐ Upgrade to Pro", url: "https://ghali.ae/upgrade" }],
+            ];
+          }
+        }
+
+        await guardedSendMessage(systemResult.response, systemKeyboard);
         return;
       }
       // Unrecognized command → fall through to AI
@@ -677,7 +713,9 @@ export const generateResponse = internalAction({
         tier: user.tier,
         reset_at: user.creditsResetAt,
       });
-      await guardedSendMessage(message);
+      await guardedSendMessage(message, isTelegram ? [
+        [{ text: "⭐ Upgrade to Pro", url: "https://ghali.ae/upgrade" }],
+      ] : undefined);
       return;
     }
 
@@ -1035,10 +1073,11 @@ export const generateResponse = internalAction({
         { credits: Math.max(0, user.credits - 1) }
       );
       if (isTelegram && chatId) {
-        ctx.scheduler.runAfter(2000, internal.telegram.guardedSendMessage, {
+        ctx.scheduler.runAfter(2000, internal.telegram.guardedSendKeyboard, {
           userId: typedUserId,
           chatId,
           body: lowCreditMsg,
+          keyboard: [[{ text: "⭐ Upgrade to Pro", url: "https://ghali.ae/upgrade" }]],
         });
       } else {
         ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {
