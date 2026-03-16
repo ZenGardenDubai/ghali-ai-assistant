@@ -104,8 +104,9 @@ export const findOrCreateTelegramUser = internalMutation({
     telegramId: v.string(),
     firstName: v.optional(v.string()),
     languageCode: v.optional(v.string()),
+    startParam: v.optional(v.string()),
   },
-  handler: async (ctx, { telegramId, firstName, languageCode }) => {
+  handler: async (ctx, { telegramId, firstName, languageCode, startParam }) => {
     if (!telegramId) throw new Error("telegramId is required");
 
     const existing = await ctx.db
@@ -148,10 +149,12 @@ export const findOrCreateTelegramUser = internalMutation({
       });
     }
 
-    // Fire analytics
+    // Fire analytics with channel + acquisition source
     await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
       phone,
       timezone,
+      channel: "telegram",
+      acquisitionSource: startParam,
     });
     await ctx.scheduler.runAfter(0, internal.analytics.identifyUser, {
       phone,

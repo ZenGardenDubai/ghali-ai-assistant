@@ -955,6 +955,16 @@ export const generateResponse = internalAction({
     const recapContext = getRecapInstruction({ credits: user.credits, tier: user.tier, totalMessages: user.totalMessages });
 
     // Generate response
+    // Refresh typing indicator every 4s during AI generation (each indicator lasts ~5s)
+    let typingInterval: ReturnType<typeof setInterval> | null = null;
+    if (isTelegram && chatId) {
+      typingInterval = setInterval(() => {
+        ctx.runAction(internal.telegram.sendTypingIndicator, {
+          chatId: chatId!,
+        }).catch(() => {}); // best-effort
+      }, 4000);
+    }
+
     let responseText: string | undefined;
     let imageResult: { imageUrl: string; caption: string } | null = null;
     let convertedResult: { fileUrl: string; caption: string; outputFormat: string } | null = null;
@@ -1008,6 +1018,7 @@ export const generateResponse = internalAction({
         return;
       }
     } finally {
+      if (typingInterval) clearInterval(typingInterval);
       clearTraceId();
     }
 

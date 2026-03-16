@@ -2,7 +2,7 @@
 
 Full migration from WhatsApp (360dialog) to Telegram Bot API.
 
-**Status**: In Progress (Step 7)
+**Status**: In Progress (Step 8)
 **Branch**: `feat/telegram-integration`
 **Target**: 2-3 weeks
 **Bots**: `@GhaliSmartBot` (prod), `@GhalDev_Bot` (staging)
@@ -354,18 +354,18 @@ Add interactive buttons to responses.
 
 ---
 
-### Step 7 — /start Deep Linking + Typing Indicators
+### Step 7 — /start Deep Linking + Typing Indicators ✅
 
-- [ ] Parse `startParam` in `/telegram-message` route
-- [ ] Log acquisition source in user record + PostHog `trackUserNew` event
-- [ ] Customize welcome message per source (optional, can just log for now)
-- [ ] Implement context-appropriate typing indicators:
-  - [ ] Send `typing` for text, `upload_document` for doc processing, etc.
-  - [ ] Refresh every 4s for long operations
+- [x] Parse `startParam` in `/telegram-message` route (was `_startParam`, now used)
+- [x] Pass `startParam` to `findOrCreateTelegramUser` → `trackUserNew` with `acquisition_source` property
+- [x] `trackUserNew` analytics event extended with `channel` and `acquisitionSource` optional fields
+- [x] Context-appropriate typing indicators:
+  - [x] `typing` for text, `upload_document` for media (set at webhook receipt)
+  - [x] Refresh every 4s during AI generation via `setInterval` (cleared in `finally` block)
 
 **TEST:**
-1. Open `t.me/GhalDev_Bot?start=test_source` → user created with source logged in PostHog
-2. Send a message → typing indicator appears while processing
+1. Open `t.me/GhalDev_Bot?start=test_source` → user created with `acquisition_source` in PostHog
+2. Send a message → typing indicator persists during AI generation
 3. Send a document → upload indicator appears
 
 ---

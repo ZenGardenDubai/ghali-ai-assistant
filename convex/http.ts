@@ -948,7 +948,7 @@ http.route({
         mediaFileId,
         mediaMimeType,
         replyToMessageId,
-        startParam: _startParam,
+        startParam,
       } = payload as {
         chatId: number;
         messageText?: string;
@@ -1004,7 +1004,7 @@ http.route({
       // Find or create Telegram user
       const { userId, isNew: isNewUser } = await ctx.runMutation(
         internal.users.findOrCreateTelegramUser,
-        { telegramId: chatIdStr, firstName, languageCode }
+        { telegramId: chatIdStr, firstName, languageCode, startParam }
       );
 
       // Send welcome to new users (non-blocking — don't block message processing)
