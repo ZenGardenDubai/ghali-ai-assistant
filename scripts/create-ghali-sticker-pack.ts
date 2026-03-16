@@ -105,7 +105,7 @@ async function apiCallMultipart(
   for (const [key, value] of Object.entries(fields)) {
     form.append(key, value);
   }
-  const blob = new Blob([fileBuffer], { type: "image/webp" });
+  const blob = new Blob([new Uint8Array(fileBuffer)], { type: "image/webp" });
   form.append(fileField, blob, filename);
 
   const res = await fetch(`${API}/${method}`, {
