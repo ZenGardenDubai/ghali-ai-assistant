@@ -128,3 +128,28 @@ User visits ghali.ae/upgrade → signs in with Clerk (phone number)
 **Key difference from WhatsApp onboarding:** Use Telegram's native inline keyboards instead of free-text Q&A. Faster, lower friction, better UX.
 
 **Files affected:** `convex/telegram.ts` (sendWelcome), `convex/users.ts`, `convex/lib/onboarding.ts` (new Telegram path or separate module), bot server (callback handling)
+
+---
+
+## 5. Streaming / Typewriter Effect
+
+**Status:** Deferred from migration Step 8
+**Priority:** Low — nice-to-have UX enhancement, not blocking
+
+**Problem:** Users see a typing indicator while the AI generates a response, then get the full response at once. A streaming effect (progressive text reveal via message edits) would feel more responsive.
+
+**Why deferred:**
+- `ghaliAgent.generateText` returns the full response in one shot — switching to `streamText` requires a major refactor of `generateResponse` (~1000 lines with credit checks, media processing, tool results, circuit breaker)
+- Tool calls (deepReasoning, generateImage) pause the stream mid-generation, creating janky UX
+- Telegram rate limits ~20 edits/message/minute — a 30s response at 700ms intervals = ~43 edits, exceeding the limit
+- Fake typewriter (post-generation reveal) adds latency without saving user wait time
+- Typing indicator refresh (every 4s) already provides adequate feedback
+
+**Infrastructure already in place:**
+- `editMessageText` in `telegramSend.ts`
+- `editMessage` action in `telegram.ts`
+- `TELEGRAM_EDIT_INTERVAL_MS` constant (700ms)
+
+**When to revisit:** After @convex-dev/agent adds better streaming support for actions, or if user feedback strongly requests it.
+
+**Files affected:** `convex/messages.ts` (switch `generateText` → `streamText` + edit loop)

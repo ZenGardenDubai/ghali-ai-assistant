@@ -2,7 +2,7 @@
 
 Full migration from WhatsApp (360dialog) to Telegram Bot API.
 
-**Status**: In Progress (Step 8)
+**Status**: In Progress (Step 9)
 **Branch**: `feat/telegram-integration`
 **Target**: 2-3 weeks
 **Bots**: `@GhaliSmartBot` (prod), `@GhalDev_Bot` (staging)
@@ -370,21 +370,13 @@ Add interactive buttons to responses.
 
 ---
 
-### Step 8 — Streaming / Typewriter Effect
+### Step 8 — Streaming / Typewriter Effect — DEFERRED
 
-- [ ] Modify `generateResponse` for Telegram to use streaming:
-  - [ ] Send placeholder "Thinking..." message, capture `message_id`
-  - [ ] As AI generates, batch `editMessageText` updates every 700ms
-  - [ ] Add cursor `▌` to intermediate edits
-  - [ ] Final edit removes cursor
-  - [ ] Fallback: if edit fails (429), skip intermediate updates, send final as new message
-- [ ] Only for AI responses, not system commands
-
-**TEST:** Send a question requiring a long response to `@GhalDev_Bot`:
-1. "Thinking..." appears immediately
-2. Text progressively reveals with cursor
-3. Final message has no cursor
-4. Response content is correct and complete
+Moved to `docs/POST_MIGRATION.md` Section 5. Too complex for initial migration:
+- Requires switching `generateText` → `streamText` (major refactor of ~1000-line handler)
+- Tool calls (deepReasoning, generateImage) break stream continuity
+- Telegram rate limits (~20 edits/min) conflict with edit frequency
+- Typing indicator refresh (Step 7) provides adequate feedback
 
 ---
 
