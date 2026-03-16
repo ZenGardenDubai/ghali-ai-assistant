@@ -948,6 +948,7 @@ http.route({
         mediaFileId,
         mediaMimeType,
         replyToMessageId,
+        replyToText,
         startParam,
       } = payload as {
         chatId: number;
@@ -960,6 +961,7 @@ http.route({
         mediaFileId?: string;
         mediaMimeType?: string;
         replyToMessageId?: number;
+        replyToText?: string;
         startParam?: string;
       };
 
@@ -1036,10 +1038,17 @@ http.route({
         }
       }
 
+      // Prepend quoted message text as context for the AI
+      // Telegram gives us the full quoted text (unlike WhatsApp Cloud API)
+      let messageBody = body || (mediaType ? `[${mediaType}]` : "");
+      if (replyToText && replyToText.trim()) {
+        messageBody = `[Replying to: "${replyToText.trim().slice(0, 500)}"]\n\n${messageBody}`;
+      }
+
       // Schedule async message processing
       await ctx.runMutation(internal.messages.saveIncoming, {
         userId,
-        body: body || (mediaType ? `[${mediaType}]` : ""),
+        body: messageBody,
         mediaUrl,
         mediaContentType,
         messageSid,

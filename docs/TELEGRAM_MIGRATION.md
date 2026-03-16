@@ -631,5 +631,5 @@ Content-Type: application/json
 
 - **Frontend work**: Always use the `frontend-design` skill for UI/branding changes
 - **Telegram logo**: `public/telegram-svgrepo-com.svg` (already in repo)
-- **Bot tokens**: Prod (`@GhaliSmartBot`) = `8557300681:AAHdw3nRdqVE1WCN0UQS8XXPQWHWagBpEcU`, Dev (`@GhalDev_Bot`) = `8763436809:AAFsR2kQ9EpvFscQimD-WUfFL44gDA5IisA`
+- **Bot tokens**: Stored in Convex env vars (`TELEGRAM_BOT_TOKEN`) and bot server env. Never commit tokens to code.
 - **Reference doc**: [Telegram Migration Guide (Google Docs)](https://docs.google.com/document/d/1MXwR3C6wpIhE_jie1l9gkacYSRaYomR29GrUX9_ZMLY/edit?usp=sharing)
