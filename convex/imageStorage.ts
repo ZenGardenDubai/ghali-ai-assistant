@@ -16,7 +16,7 @@ export const trackGeneratedImage = internalMutation({
 /** Get a Convex storage URL for a generated image, verified against userId ownership. */
 export const getGeneratedImageUrl = internalQuery({
   args: {
-    storageId: v.id("_storage"),
+    storageId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, { storageId, userId }) => {

@@ -84,7 +84,7 @@ export const getRecentUserMedia = internalQuery({
 /** Get a Convex storage URL for a given storage ID, with user ownership verification. */
 export const getStorageUrl = internalQuery({
   args: {
-    storageId: v.id("_storage"),
+    storageId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, { storageId, userId }) => {

@@ -566,7 +566,7 @@ const generateImage = createTool({
         userId: ctx.userId as Id<"users">,
         prompt,
         aspectRatio,
-        referenceImageStorageId: referenceImageStorageId as Id<"_storage"> | undefined,
+        referenceImageStorageId: referenceImageStorageId ?? undefined,
         traceId: _currentTraceId,
       });
       if (result.success && result.imageUrl) {
