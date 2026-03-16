@@ -81,3 +81,50 @@ User visits ghali.ae/upgrade → signs in with Clerk (phone number)
 - May need to support both Clerk (web/WhatsApp) and Stars (Telegram) long-term
 
 **Files affected:** `convex/billing.ts`, `convex/http.ts`, `convex/users.ts`, `app/(en)/upgrade/page.tsx`, bot server
+
+---
+
+## 3. Feedback Flow — Mini App for Telegram
+
+**Status:** Not started
+**Priority:** Medium
+
+**Problem:** The current feedback system uses a web link with a token (ghali.ae/feedback?token=...) that identifies the user. Same identity-linking gap as the payment flow — Telegram users need a way to submit feedback that ties back to their `telegramId`.
+
+**Possible solutions:**
+- **Mini App:** Build a Telegram Mini App for feedback submission. `initData.user.id` provides verified identity without external auth. Best UX — users never leave Telegram.
+- **Deep Link Token:** Same approach as payment Option A — generate a token, embed in URL, resolve on submission.
+- **Inline Feedback:** Skip the web form entirely. Use inline keyboards with rating buttons (1-5 stars) + a follow-up text prompt for comments. Simplest, no web required.
+
+**Note:** This shares infrastructure with the payment Mini App (Section 2, Option B). If we build a Mini App for upgrades, the feedback form can live in the same app.
+
+**Files affected:** `convex/feedback.ts`, `convex/http.ts`, bot server, potential Mini App
+
+---
+
+## 4. Telegram Onboarding Flow Redesign
+
+**Status:** Not started
+**Priority:** Medium
+
+**Problem:** Telegram users currently skip onboarding entirely (`onboardingStep: null` at creation). This means:
+- No guided introduction to Ghali's capabilities
+- No timezone/language confirmation (auto-detected from `language_code` but not verified)
+- No personality preferences collected
+- Welcome message is generic
+
+**Current state:** New Telegram users get a welcome infographic + "Help" / "Upgrade" inline keyboard, then go straight to AI chat.
+
+**Proposed redesign:**
+1. Welcome infographic with inline keyboard introducing Ghali
+2. Inline keyboard-driven onboarding (not step-by-step text like WhatsApp):
+   - "What language do you prefer?" → keyboard with language options
+   - "What's your timezone?" → keyboard with common timezones or auto-detect confirmation
+   - "How should I talk to you?" → tone preferences (formal/casual/emoji-heavy)
+3. Each step uses callback queries — no free-text input needed
+4. User can skip at any point with a "Skip" button
+5. Results saved to user profile + personality files
+
+**Key difference from WhatsApp onboarding:** Use Telegram's native inline keyboards instead of free-text Q&A. Faster, lower friction, better UX.
+
+**Files affected:** `convex/telegram.ts` (sendWelcome), `convex/users.ts`, `convex/lib/onboarding.ts` (new Telegram path or separate module), bot server (callback handling)
