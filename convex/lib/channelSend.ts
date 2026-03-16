@@ -11,6 +11,7 @@
 import { ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { Doc } from "../_generated/dataModel";
+import { WHATSAPP_SESSION_WINDOW_MS } from "../constants";
 
 /**
  * Send a message to a user via their preferred channel.
@@ -32,10 +33,11 @@ export async function sendToUser(
   }
 ): Promise<{ sent: boolean; method: "telegram" | "whatsapp_message" | "whatsapp_template" | "skipped" }> {
   if (user.channel === "telegram" && user.telegramId) {
-    // Telegram: no session window, no templates — send via guarded path
-    // (checks opt-out, blocked, outbound rate limit)
-    await ctx.runAction(internal.telegram.guardedSendMessage, {
-      userId: user._id,
+    // Telegram: no session window, no templates — send directly.
+    // Callers (heartbeat, reminders, scheduledTasks) already run their own
+    // opt-out and outbound guard checks, so we use sendMessage (not guarded)
+    // to avoid double-counting the outbound rate limit.
+    await ctx.runAction(internal.telegram.sendMessage, {
       chatId: user.telegramId,
       body,
     });
@@ -43,7 +45,6 @@ export async function sendToUser(
   }
 
   // WhatsApp: check session window
-  const WHATSAPP_SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
   const withinWindow =
     user.lastMessageAt &&
     Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;

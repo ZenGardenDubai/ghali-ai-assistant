@@ -237,7 +237,8 @@ export async function getTelegramFile(
 
 /**
  * Download a file from Telegram by file_id.
- * Returns the binary data and inferred MIME type.
+ * Calls getFile internally. For cases where you already have file info,
+ * use downloadTelegramFileByPath instead to avoid a redundant API call.
  */
 export async function downloadTelegramFile(
   botToken: string,
@@ -245,21 +246,31 @@ export async function downloadTelegramFile(
 ): Promise<{ data: ArrayBuffer; mimeType: string } | null> {
   const fileInfo = await getTelegramFile(botToken, fileId);
   if (!fileInfo) return null;
+  return downloadTelegramFileByPath(botToken, fileInfo.filePath);
+}
 
-  const downloadUrl = `${TELEGRAM_API_BASE}/file/bot${botToken}/${fileInfo.filePath}`;
+/**
+ * Download a file from Telegram by file path (from a prior getFile call).
+ * Avoids redundant getFile API call when file info is already available.
+ */
+export async function downloadTelegramFileByPath(
+  botToken: string,
+  filePath: string
+): Promise<{ data: ArrayBuffer; mimeType: string } | null> {
+  const downloadUrl = `${TELEGRAM_API_BASE}/file/bot${botToken}/${filePath}`;
 
   try {
     const response = await fetch(downloadUrl);
     if (!response.ok) {
       console.error(
-        `[telegramSend] File download failed (${response.status}): ${fileInfo.filePath}`
+        `[telegramSend] File download failed (${response.status}): ${filePath}`
       );
       return null;
     }
 
     const data = await response.arrayBuffer();
     const mimeType =
-      response.headers.get("content-type") ?? inferMimeType(fileInfo.filePath);
+      response.headers.get("content-type") ?? inferMimeType(filePath);
 
     return { data, mimeType };
   } catch (error) {

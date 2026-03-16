@@ -12,7 +12,7 @@ import {
   sendTelegramAudio,
   sendTelegramVideo,
   sendChatAction,
-  downloadTelegramFile,
+  downloadTelegramFileByPath,
   getTelegramFile as getTelegramFileInfo,
   editMessageText,
   sendInlineKeyboard,
@@ -87,7 +87,7 @@ export const fetchMedia = internalAction({
   handler: async (ctx, { fileId }) => {
     const botToken = getBotToken();
 
-    // Check file size before downloading (Bot API limit: 20MB)
+    // Get file info first (checks size, gets path for download)
     const fileInfo = await getTelegramFileInfo(botToken, fileId);
     if (!fileInfo) return null;
     if (fileInfo.fileSize && fileInfo.fileSize > 20 * 1024 * 1024) {
@@ -95,7 +95,8 @@ export const fetchMedia = internalAction({
       return { error: "file_too_large", fileSize: fileInfo.fileSize };
     }
 
-    const result = await downloadTelegramFile(botToken, fileId);
+    // Download using filePath from above — avoids redundant getFile API call
+    const result = await downloadTelegramFileByPath(botToken, fileInfo.filePath);
     if (!result) return null;
 
     // Store directly in Convex file storage

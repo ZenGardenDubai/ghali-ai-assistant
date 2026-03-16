@@ -63,9 +63,11 @@ export function formatForTelegram(text: string): string {
   formatted = formatted.replace(/~~([^~]+)~~/g, "<s>$1</s>");
 
   // 7. Links: [text](url) → <a href="url">text</a>
+  // Sanitize quotes in URL to prevent malformed HTML attributes
   formatted = formatted.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2">$1</a>'
+    (_match, text: string, url: string) =>
+      `<a href="${url.replace(/"/g, "&quot;")}">${text}</a>`
   );
 
   // 8. Headers: # text → <b>text</b> (Telegram has no headers)
@@ -94,8 +96,8 @@ export function formatForTelegram(text: string): string {
 
   // 13. Escape remaining HTML-sensitive chars in non-tagged content
   // Must escape &, <, > that are NOT part of our HTML tags or existing entities.
-  // First: escape bare & (not already part of &amp; &lt; &gt;)
-  formatted = formatted.replace(/&(?!amp;|lt;|gt;)/g, "&amp;");
+  // First: escape bare & (not already part of known HTML entities)
+  formatted = formatted.replace(/&(?!amp;|lt;|gt;|quot;)/g, "&amp;");
   // Then: escape stray < and > not part of our known HTML tags
   formatted = formatted.replace(
     /(<\/?(?:b|i|u|s|code|pre|a|blockquote|tg-spoiler)[^>]*>)|([<>])/g,
