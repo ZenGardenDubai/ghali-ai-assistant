@@ -108,6 +108,52 @@ export const linkClerkUserByPhone = internalMutation({
 });
 
 // ============================================================================
+// Telegram-Based Account Linking
+// ============================================================================
+
+export const linkClerkUserByTelegramId = internalMutation({
+  args: {
+    telegramId: v.string(),
+    clerkUserId: v.string(),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, { telegramId, clerkUserId, email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_telegramId", (q) => q.eq("telegramId", telegramId))
+      .unique();
+
+    if (!user) {
+      return { success: false, error: "No Telegram account found" };
+    }
+
+    // Idempotent: already linked to this clerkUserId
+    if (user.clerkUserId === clerkUserId) {
+      if (email && !user.email) {
+        await ctx.db.patch(user._id, { email });
+      }
+      return { success: true };
+    }
+
+    // Guard: check if clerkUserId is already linked to a different user
+    const existingLink = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+
+    if (existingLink && existingLink._id !== user._id) {
+      return { success: false, error: "This account is already linked to another user" };
+    }
+
+    const updates: { clerkUserId: string; email?: string } = { clerkUserId };
+    if (email) updates.email = email;
+    await ctx.db.patch(user._id, updates);
+
+    return { success: true };
+  },
+});
+
+// ============================================================================
 // Subscription Handlers
 // ============================================================================
 

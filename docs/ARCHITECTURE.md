@@ -189,7 +189,7 @@ Limits: 3 tasks (Basic), 24 tasks (Pro). Paused tasks count toward limit.
 
 ## Feedback System
 
-Two entry points, both free (no credit deduction):
+Three entry points, all free (no credit deduction):
 
 1. **Chat link** — user says "I have feedback" → agent generates tokenized link → user opens `/feedback?token=xxx` → web form
 2. **Web** — signed-in user on `/account` → "Give Feedback" → `/feedback` with Clerk auth

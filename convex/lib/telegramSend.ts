@@ -304,7 +304,7 @@ export async function editMessageText(
 export async function sendInlineKeyboard(
   options: TelegramSendOptions,
   text: string,
-  keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>>,
+  keyboard: Array<Array<{ text: string; url?: string; callback_data?: string; web_app?: { url: string } }>>,
   parseMode: string = "HTML"
 ): Promise<number | undefined> {
   const result = await telegramApiCall(options.botToken, "sendMessage", {

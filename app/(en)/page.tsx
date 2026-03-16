@@ -92,7 +92,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       name: "Ghali",
       applicationCategory: "UtilitiesApplication",
-      operatingSystem: "Telegram",
+      operatingSystem: "Cross-platform",
       offers: [
         {
           "@type": "Offer",

@@ -229,7 +229,7 @@ export const generateResponse = internalAction({
      * Returns true if sent, false if blocked (already sent this invocation).
      */
     /** Inline keyboard button type for Telegram. Ignored for WhatsApp. */
-    type InlineButton = { text: string; url?: string; callback_data?: string };
+    type InlineButton = { text: string; url?: string; callback_data?: string; web_app?: { url: string } };
 
     async function guardedSendMessage(
       msgBody: string,
@@ -659,12 +659,17 @@ export const generateResponse = internalAction({
                 { text: "🔒 Privacy", callback_data: "cmd:privacy" },
               ],
               [
-                { text: "⭐ Upgrade", url: "https://ghali.ae/upgrade" },
+                { text: "⭐ Upgrade", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade` } },
               ],
             ];
           } else if (cmd === "credits" || cmd === "account") {
+            const baseUrl = process.env.WEBAPP_BASE_URL ?? "https://ghali.ae";
             systemKeyboard = [
-              [{ text: "⭐ Upgrade to Pro", url: "https://ghali.ae/upgrade" }],
+              [
+                { text: "🔑 Sign In", url: `${baseUrl}/upgrade` },
+                { text: "🚪 Sign Out", url: `${baseUrl}/account` },
+              ],
+              [{ text: "⭐ Upgrade to Pro", web_app: { url: `${baseUrl}/tg/upgrade` } }],
             ];
           }
         }
@@ -717,7 +722,7 @@ export const generateResponse = internalAction({
         reset_at: user.creditsResetAt,
       });
       await guardedSendMessage(message, isTelegram ? [
-        [{ text: "⭐ Upgrade to Pro", url: "https://ghali.ae/upgrade" }],
+        [{ text: "⭐ Upgrade to Pro", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade` } }],
       ] : undefined);
       return;
     }
@@ -1102,7 +1107,7 @@ export const generateResponse = internalAction({
           userId: typedUserId,
           chatId,
           body: lowCreditMsg,
-          keyboard: [[{ text: "⭐ Upgrade to Pro", url: "https://ghali.ae/upgrade" }]],
+          keyboard: [[{ text: "⭐ Upgrade to Pro", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade` } }]],
         });
       } else {
         ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {

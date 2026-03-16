@@ -38,7 +38,7 @@ User sends 50MB file
 
 ## 2. Payment Flow — Telegram User Identity Linking
 
-**Status:** Not started
+**Status:** Done (Option B — Mini App)
 **Priority:** High — Pro subscriptions won't work for Telegram users without this
 
 **Problem:** The current billing flow relies on Clerk to identify which user paid. On WhatsApp, this worked because users linked their phone number in Clerk, and we matched `clerkUserId` → `users.clerkUserId` via the phone number. Telegram users don't have a phone number in Clerk — their identifier is `telegramId` (and `phone` is a synthetic `tg:<chatId>`).

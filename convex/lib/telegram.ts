@@ -97,7 +97,7 @@ export function formatForTelegram(text: string): string {
   // 13. Escape remaining HTML-sensitive chars in non-tagged content
   // Must escape &, <, > that are NOT part of our HTML tags or existing entities.
   // First: escape bare & (not already part of known HTML entities)
-  formatted = formatted.replace(/&(?!amp;|lt;|gt;|quot;)/g, "&amp;");
+  formatted = formatted.replace(/&(?!amp;|lt;|gt;|quot;|apos;)/g, "&amp;");
   // Then: escape stray < and > not part of our known HTML tags
   formatted = formatted.replace(
     /(<\/?(?:b|i|u|s|code|pre|a|blockquote|tg-spoiler)[^>]*>)|([<>])/g,

@@ -18,6 +18,11 @@ import {
   sendInlineKeyboard,
   answerCallbackQuery as answerCbQuery,
 } from "./lib/telegramSend";
+
+/** Mini App upgrade URL — configurable via env for dev/prod */
+export function getUpgradeUrl(): string {
+  return `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade`;
+}
 import { formatForTelegram } from "./lib/telegram";
 
 function getBotToken(): string {
@@ -148,6 +153,7 @@ export const sendKeyboard = internalAction({
           text: v.string(),
           url: v.optional(v.string()),
           callback_data: v.optional(v.string()),
+          web_app: v.optional(v.object({ url: v.string() })),
         })
       )
     ),
@@ -195,7 +201,7 @@ export const sendWelcome = internalAction({
             [
               [
                 { text: "❓ Help", callback_data: "cmd:help" },
-                { text: "⭐ Upgrade", url: "https://ghali.ae/upgrade" },
+                { text: "⭐ Upgrade", web_app: { url: getUpgradeUrl() } },
               ],
             ]
           );
@@ -211,7 +217,7 @@ export const sendWelcome = internalAction({
       [
         [
           { text: "❓ Help", callback_data: "cmd:help" },
-          { text: "⭐ Upgrade", url: "https://ghali.ae/upgrade" },
+          { text: "⭐ Upgrade", web_app: { url: getUpgradeUrl() } },
         ],
       ]
     );
@@ -233,6 +239,7 @@ export const guardedSendKeyboard = internalAction({
           text: v.string(),
           url: v.optional(v.string()),
           callback_data: v.optional(v.string()),
+          web_app: v.optional(v.object({ url: v.string() })),
         })
       )
     ),
@@ -249,7 +256,12 @@ export const guardedSendKeyboard = internalAction({
       console.warn(`[outbound-guard] Blocked Telegram keyboard send to ${userId}: ${guard.reason}`);
       return;
     }
-    await sendInlineKeyboard(getSendOptions(chatId), formatForTelegram(body), keyboard);
+    try {
+      await sendInlineKeyboard(getSendOptions(chatId), formatForTelegram(body), keyboard);
+    } catch (error) {
+      await ctx.runMutation(internal.outboundGuard.rollbackOutbound, { userId });
+      console.error(`[telegram] guardedSendKeyboard failed for ${userId}:`, error);
+    }
   },
 });
 
@@ -278,6 +290,11 @@ export const guardedSendMessage = internalAction({
       );
       return;
     }
-    await sendTelegramMessage(getSendOptions(chatId), body);
+    try {
+      await sendTelegramMessage(getSendOptions(chatId), body);
+    } catch (error) {
+      await ctx.runMutation(internal.outboundGuard.rollbackOutbound, { userId });
+      console.error(`[telegram] guardedSendMessage failed for ${userId}:`, error);
+    }
   },
 });

@@ -273,6 +273,46 @@ http.route({
 });
 
 http.route({
+  path: "/link-telegram",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
+
+    if (!expectedSecret) {
+      console.error("INTERNAL_API_SECRET not set");
+      return new Response("Server error", { status: 500 });
+    }
+
+    if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    let body: { telegramId: string; clerkUserId: string; email?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    if (!body.telegramId || !body.clerkUserId) {
+      return new Response("Missing telegramId or clerkUserId", { status: 400 });
+    }
+
+    const result = await ctx.runMutation(internal.billing.linkClerkUserByTelegramId, {
+      telegramId: body.telegramId,
+      clerkUserId: body.clerkUserId,
+      email: body.email,
+    });
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/link-phone",
   method: "POST",
   handler: httpAction(async (ctx, request) => {

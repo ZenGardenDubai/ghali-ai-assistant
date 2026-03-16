@@ -48,7 +48,7 @@ Flash decides when to escalate. No separate classifier call needed.
 ### Message Flow (Async Pattern)
 
 **Telegram (primary):**
-```
+```text
 User → Telegram servers → Bot server (long polling, Node.js on Hetzner)
   → POST /telegram-message (Bearer auth)
   → Convex HTTP action: validate, dedup, find/create user + thread
@@ -60,7 +60,7 @@ User → Telegram servers → Bot server (long polling, Node.js on Hetzner)
 ```
 
 **WhatsApp (dormant):**
-```
+```text
 WhatsApp → 360dialog webhook (POST /whatsapp-webhook)
   → Validate signature + country code blocking
   → Same mutation → action pattern as Telegram
