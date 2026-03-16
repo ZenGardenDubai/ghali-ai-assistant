@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 /** Track a generated image for future cleanup */
 export const trackGeneratedImage = internalMutation({
@@ -13,20 +14,22 @@ export const trackGeneratedImage = internalMutation({
   },
 });
 
-/** Get a Convex storage URL for a generated image, verified against userId ownership. */
+/** Get a Convex storage URL for a generated image, verified against userId ownership.
+ *  Accepts v.string() because agent tools pass storage IDs as plain strings (not typed Convex IDs). */
 export const getGeneratedImageUrl = internalQuery({
   args: {
     storageId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, { storageId, userId }) => {
+    const typedId = storageId as Id<"_storage">;
     const record = await ctx.db
       .query("generatedImages")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .filter((q) => q.eq(q.field("storageId"), storageId))
+      .filter((q) => q.eq(q.field("storageId"), typedId))
       .first();
     if (!record) return null;
-    return await ctx.storage.getUrl(storageId);
+    return await ctx.storage.getUrl(typedId);
   },
 });
 

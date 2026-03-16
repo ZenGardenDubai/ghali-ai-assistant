@@ -39,7 +39,7 @@ First message from an unknown phone/Telegram user.
 
 | Property | Type | Description |
 |---|---|---|
-| `phone_country` | string | ISO country code (e.g. `AE`, `GB`) or empty for Telegram users |
+| `phone_country` | string | ISO country code (e.g. `AE`, `GB`). Empty string `""` for Telegram users (no phone prefix to detect from) |
 | `timezone` | string | IANA timezone (e.g. `Asia/Dubai`) |
 | `channel` | string? | `"telegram"` for Telegram users (absent for WhatsApp) |
 | `acquisition_source` | string? | `/start` deep link param (e.g. `web`, `ig`, `referral_xyz`) — Telegram only |

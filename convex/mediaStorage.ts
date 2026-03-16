@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 /** Track an incoming media file for future reply-to-media re-analysis */
 export const trackMediaFile = internalMutation({
@@ -81,20 +82,22 @@ export const getRecentUserMedia = internalQuery({
   },
 });
 
-/** Get a Convex storage URL for a given storage ID, with user ownership verification. */
+/** Get a Convex storage URL for a given storage ID, with user ownership verification.
+ *  Accepts v.string() because agent tools pass storage IDs as plain strings (not typed Convex IDs). */
 export const getStorageUrl = internalQuery({
   args: {
     storageId: v.string(),
     userId: v.id("users"),
   },
   handler: async (ctx, { storageId, userId }) => {
+    const typedId = storageId as Id<"_storage">;
     const record = await ctx.db
       .query("mediaFiles")
       .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .filter((q) => q.eq(q.field("storageId"), storageId))
+      .filter((q) => q.eq(q.field("storageId"), typedId))
       .first();
     if (!record) return null;
-    return await ctx.storage.getUrl(storageId);
+    return await ctx.storage.getUrl(typedId);
   },
 });
 
