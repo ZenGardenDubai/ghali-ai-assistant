@@ -16,6 +16,7 @@ import type * as analyticsHelper from "../analyticsHelper.js";
 import type * as appConfig from "../appConfig.js";
 import type * as billing from "../billing.js";
 import type * as constants from "../constants.js";
+import type * as contentStudio from "../contentStudio.js";
 import type * as conversion from "../conversion.js";
 import type * as credits from "../credits.js";
 import type * as crons from "../crons.js";
@@ -81,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   appConfig: typeof appConfig;
   billing: typeof billing;
   constants: typeof constants;
+  contentStudio: typeof contentStudio;
   conversion: typeof conversion;
   credits: typeof credits;
   crons: typeof crons;

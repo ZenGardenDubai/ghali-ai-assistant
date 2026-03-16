@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { adminConvexFetch } from "../../../_lib/auth";
+import { adminConvexFetch } from "../../_lib/auth";
 
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown> = {};
