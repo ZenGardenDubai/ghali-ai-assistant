@@ -1110,6 +1110,19 @@ http.route({
         // Continue processing even if ack fails — the user's action should still work
       }
 
+      // Dedup — prevent duplicate processing on retries
+      const dedupKey = `cb:${callbackQueryId}`;
+      const isNewCb = await ctx.runMutation(
+        internal.webhookDedup.tryMarkProcessed,
+        { messageSid: dedupKey }
+      );
+      if (!isNewCb) {
+        return new Response(JSON.stringify({ ok: true, dedup: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       // Process callback data — whitelist-validated "cmd:<command>" for system commands
       if (callbackData.startsWith("cmd:")) {
         const command = callbackData.slice(4);
@@ -1131,10 +1144,12 @@ http.route({
         await ctx.runMutation(internal.messages.saveIncoming, {
           userId,
           body: command,
-          messageSid: `cb:${callbackQueryId}`,
+          messageSid: dedupKey,
           channel: "telegram" as const,
           chatId: chatIdStr,
         });
+      } else {
+        console.warn(`[telegram-callback] Unhandled callback data: ${callbackData}`);
       }
     } catch (error) {
       console.error("[telegram-callback] Error:", error);

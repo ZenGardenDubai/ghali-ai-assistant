@@ -189,6 +189,16 @@ export const sendWelcome = internalAction({
         try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
         if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
           await sendTelegramPhoto(opts, parsed.url, "Welcome to Ghali! 🤖");
+          // Send keyboard as follow-up so new users see interactive buttons
+          await sendInlineKeyboard(opts,
+            "How can I help you today?",
+            [
+              [
+                { text: "❓ Help", callback_data: "cmd:help" },
+                { text: "⭐ Upgrade", url: "https://ghali.ae/upgrade" },
+              ],
+            ]
+          );
           return;
         }
       }
