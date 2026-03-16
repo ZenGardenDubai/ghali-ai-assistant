@@ -425,11 +425,11 @@ Keep existing design intact — only swap platform-specific elements. WhatsApp c
 
 ### Step 11 — Advanced Features (future)
 
-These are planned but not part of the initial migration.
+These are planned but not part of the initial migration. See `docs/POST_MIGRATION.md` for details.
 
-- [ ] **Inline Mode**: `@GhaliSmartBot query` from any chat
-- [ ] **Mini Apps**: Settings panel, upgrade flow embedded in Telegram
-- [ ] **Message reactions**: Emoji feedback on messages
+- [ ] **Inline Mode**: `@GhaliSmartBot query` from any chat (Section 6)
+- [ ] **Mini Apps**: Settings panel, upgrade flow embedded in Telegram (Section 2-3)
+- [ ] **Message reactions**: Emoji feedback on messages (Section 7)
 
 ---
 
