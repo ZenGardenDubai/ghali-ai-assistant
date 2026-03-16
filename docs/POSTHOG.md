@@ -2,7 +2,7 @@
 
 Server-side analytics via `posthog-node` in Convex actions. Client-side via `posthog-js` on the landing page.
 
-**distinct_id**: User's phone number (e.g. `+971500000000`)
+**distinct_id**: User's phone number (e.g. `+971500000000`) or `tg:<chatId>` for Telegram users
 
 All server events include `phone_country` derived from phone prefix (`convex/lib/analytics.ts`).
 
@@ -35,14 +35,18 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 ### `user_new`
 
-First message from an unknown phone number.
+First message from an unknown phone/Telegram user.
 
 | Property | Type | Description |
 |---|---|---|
-| `phone_country` | string | ISO country code (e.g. `AE`, `GB`) |
+| `phone_country` | string | ISO country code (e.g. `AE`, `GB`) or empty for Telegram users |
 | `timezone` | string | IANA timezone (e.g. `Asia/Dubai`) |
+| `channel` | string? | `"telegram"` for Telegram users (absent for WhatsApp) |
+| `acquisition_source` | string? | `/start` deep link param (e.g. `web`, `ig`, `referral_xyz`) — Telegram only |
 
-**Triggered in**: `convex/messages.ts` — when `onboardingStep === 1`
+**distinct_id**: Phone number for WhatsApp users, `tg:<chatId>` for Telegram users.
+
+**Triggered in**: `convex/users.ts` — `findOrCreateUser` (WhatsApp) or `findOrCreateTelegramUser` (Telegram)
 
 ### `user_returning`
 
