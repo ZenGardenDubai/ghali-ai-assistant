@@ -72,6 +72,97 @@ export const findOrCreateUser = internalMutation({
   },
 });
 
+/**
+ * Find or create a user by Telegram chat ID.
+ * Telegram users auto-accept terms and skip onboarding.
+ * Uses a placeholder phone "tg:<chatId>" since the users table requires a phone field.
+ */
+/** Map Telegram language_code to IANA timezone (best-effort). */
+function timezoneFromLanguageCode(langCode?: string): string {
+  if (!langCode) return "Asia/Dubai";
+  const map: Record<string, string> = {
+    ar: "Asia/Dubai",
+    en: "Asia/Dubai", // default for our user base
+    ru: "Europe/Moscow",
+    de: "Europe/Berlin",
+    fr: "Europe/Paris",
+    es: "Europe/Madrid",
+    pt: "America/Sao_Paulo",
+    it: "Europe/Rome",
+    tr: "Europe/Istanbul",
+    hi: "Asia/Kolkata",
+    zh: "Asia/Shanghai",
+    ja: "Asia/Tokyo",
+    ko: "Asia/Seoul",
+  };
+  // Try exact match, then first 2 chars
+  return map[langCode] ?? map[langCode.slice(0, 2)] ?? "Asia/Dubai";
+}
+
+export const findOrCreateTelegramUser = internalMutation({
+  args: {
+    telegramId: v.string(),
+    firstName: v.optional(v.string()),
+    languageCode: v.optional(v.string()),
+  },
+  handler: async (ctx, { telegramId, firstName, languageCode }) => {
+    if (!telegramId) throw new Error("telegramId is required");
+
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_telegramId", (q) => q.eq("telegramId", telegramId))
+      .unique();
+
+    if (existing) {
+      return { userId: existing._id, isNew: false };
+    }
+
+    const now = Date.now();
+    const phone = `tg:${telegramId}`;
+    const timezone = timezoneFromLanguageCode(languageCode);
+    const language = languageCode?.startsWith("ar") ? "ar" : "en";
+    const userId = await ctx.db.insert("users", {
+      phone,
+      name: firstName || undefined,
+      telegramId,
+      channel: "telegram",
+      language,
+      timezone,
+      tier: "basic",
+      isAdmin: false,
+      credits: CREDITS_BASIC,
+      creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
+      onboardingStep: null, // skip onboarding
+      termsAcceptedAt: now, // auto-accept (prevents stale cleanup cron deletion)
+      createdAt: now,
+    });
+
+    // Initialize the 4 user files
+    const files = ["memory", "personality", "heartbeat", "profile"] as const;
+    for (const filename of files) {
+      await ctx.db.insert("userFiles", {
+        userId,
+        filename,
+        content: "",
+        updatedAt: now,
+      });
+    }
+
+    // Fire analytics
+    await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
+      phone,
+      timezone,
+    });
+    await ctx.scheduler.runAfter(0, internal.analytics.identifyUser, {
+      phone,
+      timezone,
+      tier: "basic",
+    });
+
+    return { userId, isNew: true };
+  },
+});
+
 export const getUser = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {

@@ -915,4 +915,147 @@ http.route({
   }),
 });
 
+// ============================================================================
+// Telegram Bot webhook — receives messages forwarded from the bot server
+// ============================================================================
+
+http.route({
+  path: "/telegram-message",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // Validate Bearer token
+    const authHeader = request.headers.get("Authorization");
+    const secret = process.env.INTERNAL_API_SECRET;
+    if (!secret || !authHeader) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!(await timingSafeEqual(token, secret))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Always return 200 — failures are logged, not retried
+    try {
+      const payload = await request.json();
+      const {
+        chatId,
+        messageText,
+        telegramMessageId,
+        firstName,
+        username: _username,
+        languageCode,
+        mediaType,
+        mediaFileId,
+        mediaMimeType,
+        replyToMessageId,
+        startParam: _startParam,
+      } = payload as {
+        chatId: number;
+        messageText?: string;
+        telegramMessageId: number;
+        firstName?: string;
+        username?: string;
+        languageCode?: string;
+        mediaType?: string;
+        mediaFileId?: string;
+        mediaMimeType?: string;
+        replyToMessageId?: number;
+        startParam?: string;
+      };
+
+      // Input validation — chatId and telegramMessageId must be integers
+      if (typeof chatId !== "number" || !Number.isInteger(chatId)) {
+        console.error("[telegram-webhook] Invalid chatId:", chatId);
+        return new Response(JSON.stringify({ ok: false, error: "invalid chatId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (typeof telegramMessageId !== "number" || !Number.isInteger(telegramMessageId)) {
+        console.error("[telegram-webhook] Invalid telegramMessageId:", telegramMessageId);
+        return new Response(JSON.stringify({ ok: false, error: "invalid telegramMessageId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const chatIdStr = String(chatId);
+      const body = (messageText ?? "").slice(0, MAX_MESSAGE_LENGTH);
+      const messageSid = String(telegramMessageId);
+
+      // Dedup by telegramMessageId
+      const isNew = await ctx.runMutation(
+        internal.webhookDedup.tryMarkProcessed,
+        { messageSid: `tg:${messageSid}` }
+      );
+      if (!isNew) {
+        return new Response(JSON.stringify({ ok: true, dedup: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Fire typing indicator immediately
+      ctx.scheduler.runAfter(0, internal.telegram.sendTypingIndicator, {
+        chatId: chatIdStr,
+        action: mediaType ? "upload_document" : "typing",
+      });
+
+      // Find or create Telegram user
+      const { userId, isNew: isNewUser } = await ctx.runMutation(
+        internal.users.findOrCreateTelegramUser,
+        { telegramId: chatIdStr, firstName, languageCode }
+      );
+
+      // Send welcome to new users (non-blocking — don't block message processing)
+      if (isNewUser) {
+        ctx.scheduler.runAfter(0, internal.telegram.sendWelcome, {
+          chatId: chatIdStr,
+        });
+      }
+
+      // Map Telegram media to the format generateResponse expects
+      // mediaUrl = file_id (downloaded in generateResponse via Bot API before processing)
+      let mediaUrl: string | undefined;
+      let mediaContentType: string | undefined;
+      if (mediaType && mediaFileId) {
+        mediaUrl = mediaFileId;
+        // Use actual MIME type from bot server payload if available, otherwise infer
+        if (mediaMimeType) {
+          mediaContentType = mediaMimeType;
+        } else {
+          switch (mediaType) {
+            case "photo": mediaContentType = "image/jpeg"; break;
+            case "voice": mediaContentType = "audio/ogg"; break;
+            case "audio": mediaContentType = "audio/mpeg"; break;
+            case "video": mediaContentType = "video/mp4"; break;
+            case "document": mediaContentType = "application/octet-stream"; break;
+            case "sticker": mediaContentType = "image/webp"; break;
+            default: mediaContentType = "application/octet-stream";
+          }
+        }
+      }
+
+      // Schedule async message processing
+      await ctx.runMutation(internal.messages.saveIncoming, {
+        userId,
+        body: body || (mediaType ? `[${mediaType}]` : ""),
+        mediaUrl,
+        mediaContentType,
+        messageSid,
+        originalRepliedMessageSid: replyToMessageId ? String(replyToMessageId) : undefined,
+        channel: "telegram",
+        chatId: chatIdStr,
+      });
+    } catch (error) {
+      console.error("[telegram-webhook] Error processing message:", error);
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
 export default http;

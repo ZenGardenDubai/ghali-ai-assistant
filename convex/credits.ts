@@ -94,35 +94,48 @@ export const resetCredits = internalMutation({
           continue;
         }
 
-        const withinWindow =
-          user.lastMessageAt &&
-          now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
         const tierLabel = user.tier === "pro" ? "Pro" : "Basic";
+        const refreshMsg = `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`;
 
-        if (withinWindow) {
+        if (user.channel === "telegram" && user.telegramId) {
           await ctx.scheduler.runAfter(
             resetCount * 500,
-            internal.whatsapp.guardedSendMessage,
+            internal.telegram.guardedSendMessage,
             {
               userId: user._id,
-              to: user.phone,
-              body: `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`,
+              chatId: user.telegramId,
+              body: refreshMsg,
             }
           );
         } else {
-          await ctx.scheduler.runAfter(
-            resetCount * 500,
-            internal.whatsapp.guardedSendTemplate,
-            {
-              userId: user._id,
-              to: user.phone,
-              templateName: "ghali_credits_refreshed",
-              variables: {
-                "1": String(tierCredits),
-                "2": tierLabel,
-              },
-            }
-          );
+          const withinWindow =
+            user.lastMessageAt &&
+            now - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+          if (withinWindow) {
+            await ctx.scheduler.runAfter(
+              resetCount * 500,
+              internal.whatsapp.guardedSendMessage,
+              {
+                userId: user._id,
+                to: user.phone,
+                body: refreshMsg,
+              }
+            );
+          } else {
+            await ctx.scheduler.runAfter(
+              resetCount * 500,
+              internal.whatsapp.guardedSendTemplate,
+              {
+                userId: user._id,
+                to: user.phone,
+                templateName: "ghali_credits_refreshed",
+                variables: {
+                  "1": String(tierCredits),
+                  "2": tierLabel,
+                },
+              }
+            );
+          }
         }
 
         // Reset creditNotificationSent on all user's scheduled tasks

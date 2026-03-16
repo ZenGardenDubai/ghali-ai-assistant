@@ -162,10 +162,12 @@ export const saveIncoming = internalMutation({
     mediaContentType: v.optional(v.string()),
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
+    chatId: v.optional(v.string()),
   },
   handler: async (
     ctx,
-    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid }
+    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid, channel, chatId }
   ) => {
     // Capture previous lastMessageAt before updating — needed for session detection
     const user = await ctx.db.get(userId);
@@ -185,6 +187,8 @@ export const saveIncoming = internalMutation({
       messageSid,
       originalRepliedMessageSid,
       previousLastMessageAt,
+      channel,
+      chatId,
     });
   },
 });
@@ -202,11 +206,14 @@ export const generateResponse = internalAction({
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
     previousLastMessageAt: v.optional(v.number()),
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
+    chatId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt } = args;
+    const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt, channel, chatId } = args;
     let { body, mediaUrl, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
+    const isTelegram = channel === "telegram";
 
     // ── Single response guarantee ──────────────────────────────────────
     // Ensures at most ONE outbound message (or message group) per invocation.
@@ -238,10 +245,17 @@ export const generateResponse = internalAction({
         return false;
       }
       responseSent = true;
-      await ctx.runAction(internal.whatsapp.sendMessage, {
-        to: user!.phone,
-        body: msgBody,
-      });
+      if (isTelegram && chatId) {
+        await ctx.runAction(internal.telegram.sendMessage, {
+          chatId,
+          body: msgBody,
+        });
+      } else {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
+          to: user!.phone,
+          body: msgBody,
+        });
+      }
       return true;
     }
 
@@ -272,22 +286,38 @@ export const generateResponse = internalAction({
       }
       responseSent = true;
       try {
-        await ctx.runAction(internal.whatsapp.sendMedia, {
-          to: user!.phone,
-          caption,
-          mediaUrl: mediaUrlToSend,
-          mediaType,
-        });
+        if (isTelegram && chatId) {
+          await ctx.runAction(internal.telegram.sendMedia, {
+            chatId,
+            caption,
+            mediaUrl: mediaUrlToSend,
+            mediaType,
+          });
+        } else {
+          await ctx.runAction(internal.whatsapp.sendMedia, {
+            to: user!.phone,
+            caption,
+            mediaUrl: mediaUrlToSend,
+            mediaType,
+          });
+        }
       } catch (error) {
         console.error(
           `[guardedSendMedia] sendMedia failed for ${userId}, falling back to text. ` +
             `Note: if original was partially sent, user may receive duplicate.`,
           error
         );
-        await ctx.runAction(internal.whatsapp.sendMessage, {
-          to: user!.phone,
-          body: caption,
-        });
+        if (isTelegram && chatId) {
+          await ctx.runAction(internal.telegram.sendMessage, {
+            chatId,
+            body: caption,
+          });
+        } else {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user!.phone,
+            body: caption,
+          });
+        }
       }
       return true;
     }
@@ -316,10 +346,10 @@ export const generateResponse = internalAction({
       return;
     }
 
-    // Terms acceptance gate — WhatsApp-only flow:
+    // Terms acceptance gate — WhatsApp-only flow (Telegram auto-accepts at creation):
     // First message → send infographic + caption, return early
     // Second message → auto-accept terms, fall through to normal processing
-    if (needsTermsAcceptance(user)) {
+    if (!isTelegram && needsTermsAcceptance(user)) {
       // Branch A: user already received the terms prompt → auto-accept on this message
       if (user.termsPromptSentAt) {
         const acceptance = await ctx.runMutation(
@@ -674,13 +704,52 @@ export const generateResponse = internalAction({
       { language: user.language, timezone: user.timezone, optedOut: !!user.optedOut }
     );
 
+    // Telegram media download — file_id must be downloaded via Bot API and stored
+    // in Convex before passing to processMedia/transcribeVoiceMessage.
+    // fetchMedia stores directly in Convex and returns storageId (no base64 round-trip).
+    let telegramStorageId: Id<"_storage"> | null = null;
+    if (isTelegram && mediaUrl && mediaContentType) {
+      const telegramMedia = await ctx.runAction(internal.telegram.fetchMedia, {
+        fileId: mediaUrl,
+      });
+      if (telegramMedia && "error" in telegramMedia) {
+        // File too large (>20MB Bot API limit)
+        await guardedSendMessage(
+          "Sorry, that file is too large for me to process. Telegram limits file downloads to 20MB."
+        );
+        return;
+      } else if (telegramMedia && "storageId" in telegramMedia) {
+        telegramStorageId = telegramMedia.storageId as Id<"_storage">;
+        const storageUrl = await ctx.storage.getUrl(telegramStorageId);
+        if (storageUrl) {
+          mediaUrl = storageUrl;
+          if (mediaContentType === "application/octet-stream") {
+            mediaContentType = telegramMedia.mimeType;
+          }
+        } else {
+          console.error("[generateResponse] Failed to get storage URL for Telegram media");
+          mediaUrl = undefined;
+          mediaContentType = undefined;
+        }
+      } else {
+        console.error("[generateResponse] Failed to download Telegram media");
+        mediaUrl = undefined;
+        mediaContentType = undefined;
+      }
+    }
+
     // Voice note intercept — transcribe and use as text prompt
     // WhatsApp voice notes (audio/ogg) are treated as spoken input, not files.
     // Other audio formats (mp3, m4a, etc.) are treated as files for Gemini analysis.
     if (mediaUrl && mediaContentType && isVoiceNote(mediaContentType)) {
       const voiceResult = await ctx.runAction(
         internal.voice.transcribeVoiceMessage,
-        { mediaUrl, mediaType: mediaContentType }
+        {
+          mediaUrl,
+          mediaType: mediaContentType,
+          // For Telegram: media is already in Convex storage, pass storageId to skip 360dialog download
+          ...(telegramStorageId ? { existingStorageId: telegramStorageId } : {}),
+        }
       );
 
       if (!voiceResult) {
@@ -772,7 +841,7 @@ export const generateResponse = internalAction({
             mediaUrl,
             mediaType: mediaContentType,
             userPrompt: body || undefined,
-            isReprocessing,
+            isReprocessing: isReprocessing || (isTelegram && telegramStorageId != null),
           }
         );
       } catch (error) {
@@ -801,17 +870,20 @@ export const generateResponse = internalAction({
       });
 
       // Store media file for future reply-to-media (first-time only, not voice notes)
-      if (messageSid && storageId) {
+      // For Telegram: processMedia returns storageId=null (isReprocessing=true),
+      // so fall back to telegramStorageId which was set during the download step.
+      const mediaStorageId = storageId ?? telegramStorageId;
+      if (messageSid && mediaStorageId) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
           userId: typedUserId,
-          storageId,
+          storageId: mediaStorageId,
           messageSid,
           mediaType: mediaContentType,
           expiresAt: Date.now() + MEDIA_RETENTION_MS,
         });
       }
 
-      const effectiveStorageId = storageId ?? replyStorageId;
+      const effectiveStorageId = mediaStorageId ?? replyStorageId;
       const isImage = mediaContentType.startsWith("image/");
       const storageIdNote = effectiveStorageId
         ? `\n[File storageId: ${effectiveStorageId} — pass this to convertFile if user wants conversion${isImage ? ", or to generateImage as referenceImageStorageId if user wants to edit/modify this image" : ""}]`
@@ -962,11 +1034,19 @@ export const generateResponse = internalAction({
         TEMPLATES.credits_low_warning.template,
         { credits: Math.max(0, user.credits - 1) }
       );
-      ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {
-        userId: typedUserId,
-        to: user.phone,
-        body: lowCreditMsg,
-      });
+      if (isTelegram && chatId) {
+        ctx.scheduler.runAfter(2000, internal.telegram.guardedSendMessage, {
+          userId: typedUserId,
+          chatId,
+          body: lowCreditMsg,
+        });
+      } else {
+        ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {
+          userId: typedUserId,
+          to: user.phone,
+          body: lowCreditMsg,
+        });
+      }
     }
   },
 });

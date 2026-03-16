@@ -64,11 +64,16 @@ export default defineSchema({
     lastReflectionAt: v.optional(v.number()),
     /** Lifetime message count (used for adaptive reflection threshold) */
     totalMessages: v.optional(v.number()),
+    /** Telegram user ID (int64 stored as string) — set for Telegram users */
+    telegramId: v.optional(v.string()),
+    /** Messaging channel — determines how background senders route messages */
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])
     .index("by_clerkUserId", ["clerkUserId"])
-    .index("by_tier", ["tier"]),
+    .index("by_tier", ["tier"])
+    .index("by_telegramId", ["telegramId"]),
 
   userFiles: defineTable({
     userId: v.id("users"),

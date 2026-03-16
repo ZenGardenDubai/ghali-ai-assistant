@@ -12,6 +12,7 @@ import {
   TEMPLATE_INACTIVITY_GATE_MS,
 } from "./constants";
 import { getNextCronRun } from "./lib/cronParser";
+import { sendToUser, isTelegramUser } from "./lib/channelSend";
 
 /**
  * Create a reminder job. Schedules it via ctx.scheduler.runAt for precise delivery.
@@ -144,38 +145,44 @@ export const fireReminder = internalAction({
         await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
         // Don't return — fall through to recurrence logic
       } else {
-        // Check WhatsApp 24h session window
-        const withinWindow =
-          user.lastMessageAt &&
-          Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
         try {
-          if (withinWindow) {
-            await ctx.runAction(internal.whatsapp.sendMessage, {
-              to: user.phone,
-              body: `⏰ ${job.payload}`,
-            });
+          if (isTelegramUser(user)) {
+            // Telegram: no session window or templates — send directly
+            await sendToUser(ctx, user, `⏰ ${job.payload}`);
             sendSucceeded = true;
           } else {
-            // Outside 24h window — check daily template cap
-            const templateGuard = await ctx.runMutation(
-              internal.outboundGuard.checkAndRecordTemplateSend,
-              { userId: job.userId }
-            );
-            if (!templateGuard.allowed) {
-              console.warn(`[template-guard] Reminder ${jobId} template blocked: ${templateGuard.reason}`);
-              await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+            // WhatsApp: check 24h session window
+            const withinWindow =
+              user.lastMessageAt &&
+              Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+            if (withinWindow) {
+              await ctx.runAction(internal.whatsapp.sendMessage, {
+                to: user.phone,
+                body: `⏰ ${job.payload}`,
+              });
+              sendSucceeded = true;
             } else {
-              try {
-                await ctx.runAction(internal.whatsapp.sendTemplate, {
-                  to: user.phone,
-                  templateName: "ghali_reminder_v2",
-                  variables: { "1": job.payload },
-                });
-                sendSucceeded = true;
-              } catch (error) {
-                await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: job.userId });
-                throw error;
+              // Outside 24h window — check daily template cap
+              const templateGuard = await ctx.runMutation(
+                internal.outboundGuard.checkAndRecordTemplateSend,
+                { userId: job.userId }
+              );
+              if (!templateGuard.allowed) {
+                console.warn(`[template-guard] Reminder ${jobId} template blocked: ${templateGuard.reason}`);
+                await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+              } else {
+                try {
+                  await ctx.runAction(internal.whatsapp.sendTemplate, {
+                    to: user.phone,
+                    templateName: "ghali_reminder_v2",
+                    variables: { "1": job.payload },
+                  });
+                  sendSucceeded = true;
+                } catch (error) {
+                  await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: job.userId });
+                  throw error;
+                }
               }
             }
           }

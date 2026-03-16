@@ -76,6 +76,26 @@ export const WHATSAPP_MESSAGE_DELAY_MS = 500;
 export const MAX_MESSAGE_CHUNKS = 1;
 
 // ============================================================================
+// Telegram
+// ============================================================================
+
+/** Max characters per Telegram message (Bot API limit) */
+export const TELEGRAM_MAX_LENGTH = 4096;
+
+/** Delay between multi-part Telegram messages (ms) to preserve ordering */
+export const TELEGRAM_MESSAGE_DELAY_MS = 500;
+
+/**
+ * Maximum number of Telegram message chunks per outbound send.
+ * Telegram supports up to ~20K chars across 5 messages.
+ */
+export const TELEGRAM_MAX_CHUNKS = 5;
+
+/** Interval between editMessageText calls for streaming/typewriter effect (ms).
+ *  Reserved for Step 8 (streaming implementation). */
+export const TELEGRAM_EDIT_INTERVAL_MS = 700;
+
+// ============================================================================
 // Voice Notes
 // ============================================================================
 
