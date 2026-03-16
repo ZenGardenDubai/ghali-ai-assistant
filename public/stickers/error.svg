@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Warning triangle -->
+  <polygon points="256,30 380,240 132,240" fill="#FFD700" stroke="#ED6B23" stroke-width="8" stroke-linejoin="round"/>
+  <text x="256" y="215" font-family="Arial Black, sans-serif" font-size="100" font-weight="900" fill="#ED6B23" text-anchor="middle">!</text>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="185" x2="85" y2="140" stroke-width="25"/>
+    <circle cx="80" cy="135" r="18" stroke-width="10"/>
+    <line x1="370" y1="185" x2="415" y2="140" stroke-width="25"/>
+    <circle cx="420" cy="135" r="18" stroke-width="10"/>
+    <path d="M 52 270 C 5 275, 5 365, 52 370 Q 35 320 52 270 Z" stroke-width="10"/>
+    <path d="M 448 270 C 495 275, 495 365, 448 370 Q 465 320 448 270 Z" stroke-width="10"/>
+    <path d="M 250 135 C 380 135, 440 205, 440 310 C 440 415, 380 470, 250 470 C 120 470, 60 415, 60 310 C 60 205, 120 135, 250 135 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="185" x2="85" y2="140" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="80" cy="135" r="18"/>
+    <line x1="370" y1="185" x2="415" y2="140" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="420" cy="135" r="18"/>
+    <path d="M 52 270 C 5 275, 5 365, 52 370 Q 35 320 52 270 Z"/>
+    <path d="M 448 270 C 495 275, 495 365, 448 370 Q 465 320 448 270 Z"/>
+    <path d="M 250 135 C 380 135, 440 205, 440 310 C 440 415, 380 470, 250 470 C 120 470, 60 415, 60 310 C 60 205, 120 135, 250 135 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 250 215 C 340 215, 400 245, 400 320 C 400 395, 340 445, 250 445 C 160 445, 100 395, 100 320 C 100 245, 160 215, 250 215 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Worried X eyes -->
+  <line x1="155" y1="298" x2="195" y2="330" stroke="#ED6B23" stroke-width="12" stroke-linecap="round"/>
+  <line x1="195" y1="298" x2="155" y2="330" stroke="#ED6B23" stroke-width="12" stroke-linecap="round"/>
+  <line x1="305" y1="298" x2="345" y2="330" stroke="#ED6B23" stroke-width="12" stroke-linecap="round"/>
+  <line x1="345" y1="298" x2="305" y2="330" stroke="#ED6B23" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Worried frown -->
+  <path d="M 210 395 Q 250 375, 290 395" fill="none" stroke="#ED6B23" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Oops text -->
+  <text x="256" y="505" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#ED6B23" text-anchor="middle">Oops!</text>
+</svg>

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Night sky bg elements -->
+  <path d="M 370 60 Q 410 20, 450 60 Q 420 50, 390 70 Q 420 45, 370 60 Z" fill="#FFD700"/>
+  <!-- Stars -->
+  <circle cx="80" cy="70" r="4" fill="#FFD700"/>
+  <circle cx="140" cy="40" r="3" fill="#FFD700"/>
+  <circle cx="420" cy="30" r="5" fill="#FFD700"/>
+  <circle cx="460" cy="80" r="3" fill="#FFD700"/>
+  <circle cx="50" cy="130" r="3" fill="#FFD700"/>
+  <!-- ZZZ sleep indicators -->
+  <text x="400" y="155" font-family="Arial Black, sans-serif" font-size="28" fill="#ED6B23" font-weight="bold">z</text>
+  <text x="425" y="130" font-family="Arial Black, sans-serif" font-size="22" fill="#ED6B23" font-weight="bold">z</text>
+  <text x="445" y="110" font-family="Arial Black, sans-serif" font-size="17" fill="#ED6B23" font-weight="bold">z</text>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="155" x2="85" y2="110" stroke-width="25"/>
+    <circle cx="80" cy="105" r="18" stroke-width="10"/>
+    <line x1="365" y1="155" x2="406" y2="110" stroke-width="25"/>
+    <circle cx="411" cy="105" r="18" stroke-width="10"/>
+    <path d="M 52 240 C 5 245, 5 335, 52 340 Q 35 290 52 240 Z" stroke-width="10"/>
+    <path d="M 443 240 C 490 245, 490 335, 443 340 Q 460 290 443 240 Z" stroke-width="10"/>
+    <path d="M 247 105 C 377 105, 437 175, 437 280 C 437 385, 377 440, 247 440 C 117 440, 57 385, 57 280 C 57 175, 117 105, 247 105 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="155" x2="85" y2="110" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="80" cy="105" r="18"/>
+    <line x1="365" y1="155" x2="406" y2="110" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="411" cy="105" r="18"/>
+    <path d="M 52 240 C 5 245, 5 335, 52 340 Q 35 290 52 240 Z"/>
+    <path d="M 443 240 C 490 245, 490 335, 443 340 Q 460 290 443 240 Z"/>
+    <path d="M 247 105 C 377 105, 437 175, 437 280 C 437 385, 377 440, 247 440 C 117 440, 57 385, 57 280 C 57 175, 117 105, 247 105 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 247 185 C 337 185, 397 215, 397 290 C 397 365, 337 415, 247 415 C 157 415, 97 365, 97 290 C 97 215, 157 185, 247 185 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Sleepy half-closed eyes -->
+  <path d="M 143 278 Q 175 270, 207 278" fill="#ED6B23" stroke="none"/>
+  <path d="M 143 278 Q 175 290, 207 278" fill="none" stroke="#ED6B23" stroke-width="11" stroke-linecap="round"/>
+  <path d="M 287 278 Q 319 270, 351 278" fill="#ED6B23" stroke="none"/>
+  <path d="M 287 278 Q 319 290, 351 278" fill="none" stroke="#ED6B23" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- Gentle smile -->
+  <path d="M 218 335 Q 247 358, 278 335" fill="none" stroke="#ED6B23" stroke-width="11" stroke-linecap="round"/>
+
+  <!-- Goodnight text -->
+  <text x="256" y="490" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="#ED6B23" text-anchor="middle">Goodnight 🌙</text>
+</svg>

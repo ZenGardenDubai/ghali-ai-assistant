@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Confetti -->
+  <rect x="80" y="50" width="12" height="20" fill="#ED6B23" transform="rotate(25 86 60)"/>
+  <rect x="390" y="60" width="10" height="18" fill="#FFD700" transform="rotate(-20 395 69)"/>
+  <rect x="150" y="30" width="14" height="10" fill="#FF6B6B" transform="rotate(45 157 35)"/>
+  <rect x="330" y="25" width="12" height="16" fill="#4ECDC4" transform="rotate(15 336 33)"/>
+  <rect x="440" y="80" width="10" height="14" fill="#ED6B23" transform="rotate(-35 445 87)"/>
+  <rect x="50" y="120" width="8" height="18" fill="#FFD700" transform="rotate(60 54 129)"/>
+  <circle cx="420" cy="50" r="7" fill="#FF6B6B"/>
+  <circle cx="100" cy="90" r="6" fill="#4ECDC4"/>
+  <circle cx="360" cy="45" r="5" fill="#ED6B23"/>
+
+  <!-- Party hat -->
+  <polygon points="245,45 200,135 290,135" fill="#FF6B6B" stroke="#CC0000" stroke-width="3"/>
+  <line x1="200" y1="135" x2="290" y2="135" stroke="#FFD700" stroke-width="6"/>
+  <circle cx="245" cy="45" r="8" fill="#FFD700"/>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="155" x2="88" y2="112" stroke-width="25"/>
+    <circle cx="83" cy="107" r="18" stroke-width="10"/>
+    <line x1="363" y1="155" x2="403" y2="112" stroke-width="25"/>
+    <circle cx="408" cy="107" r="18" stroke-width="10"/>
+    <path d="M 55 240 C 8 245, 8 335, 55 340 Q 38 290 55 240 Z" stroke-width="10"/>
+    <path d="M 440 240 C 487 245, 487 335, 440 340 Q 457 290 440 240 Z" stroke-width="10"/>
+    <path d="M 248 107 C 378 107, 438 177, 438 282 C 438 387, 378 442, 248 442 C 118 442, 58 387, 58 282 C 58 177, 118 107, 248 107 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="155" x2="88" y2="112" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="83" cy="107" r="18"/>
+    <line x1="363" y1="155" x2="403" y2="112" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="408" cy="107" r="18"/>
+    <path d="M 55 240 C 8 245, 8 335, 55 340 Q 38 290 55 240 Z"/>
+    <path d="M 440 240 C 487 245, 487 335, 440 340 Q 457 290 440 240 Z"/>
+    <path d="M 248 107 C 378 107, 438 177, 438 282 C 438 387, 378 442, 248 442 C 118 442, 58 387, 58 282 C 58 177, 118 107, 248 107 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 248 187 C 338 187, 398 217, 398 292 C 398 367, 338 417, 248 417 C 158 417, 98 367, 98 292 C 98 217, 158 187, 248 187 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Excited wide eyes -->
+  <circle cx="178" cy="282" r="29" fill="#ED6B23"/>
+  <circle cx="168" cy="272" r="9" fill="#FFFFFF"/>
+  <circle cx="320" cy="282" r="29" fill="#ED6B23"/>
+  <circle cx="310" cy="272" r="9" fill="#FFFFFF"/>
+
+  <!-- Big open smile -->
+  <path d="M 190 322 Q 248 375, 308 322" fill="none" stroke="#ED6B23" stroke-width="14" stroke-linecap="round"/>
+</svg>

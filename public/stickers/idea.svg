@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Light bulb -->
+  <circle cx="256" cy="62" r="40" fill="#FFD700" stroke="#ED6B23" stroke-width="5"/>
+  <!-- Bulb base -->
+  <rect x="237" y="95" width="38" height="10" rx="3" fill="#ED6B23"/>
+  <rect x="240" y="108" width="32" height="8" rx="3" fill="#ED6B23"/>
+  <!-- Shine on bulb -->
+  <circle cx="244" cy="50" r="10" fill="#FFFFFF" opacity="0.6"/>
+  <!-- Rays -->
+  <line x1="256" y1="10" x2="256" y2="0" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+  <line x1="290" y1="20" x2="300" y2="12" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+  <line x1="222" y1="20" x2="212" y2="12" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+  <line x1="312" y1="48" x2="322" y2="44" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+  <line x1="200" y1="48" x2="190" y2="44" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="162" x2="85" y2="117" stroke-width="25"/>
+    <circle cx="80" cy="112" r="18" stroke-width="10"/>
+    <line x1="365" y1="162" x2="406" y2="117" stroke-width="25"/>
+    <circle cx="411" cy="112" r="18" stroke-width="10"/>
+    <path d="M 52 247 C 5 252, 5 342, 52 347 Q 35 297 52 247 Z" stroke-width="10"/>
+    <path d="M 443 247 C 490 252, 490 342, 443 347 Q 460 297 443 247 Z" stroke-width="10"/>
+    <path d="M 247 112 C 377 112, 437 182, 437 287 C 437 392, 377 447, 247 447 C 117 447, 57 392, 57 287 C 57 182, 117 112, 247 112 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="162" x2="85" y2="117" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="80" cy="112" r="18"/>
+    <line x1="365" y1="162" x2="406" y2="117" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="411" cy="112" r="18"/>
+    <path d="M 52 247 C 5 252, 5 342, 52 347 Q 35 297 52 247 Z"/>
+    <path d="M 443 247 C 490 252, 490 342, 443 347 Q 460 297 443 247 Z"/>
+    <path d="M 247 112 C 377 112, 437 182, 437 287 C 437 392, 377 447, 247 447 C 117 447, 57 392, 57 287 C 57 182, 117 112, 247 112 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 247 192 C 337 192, 397 222, 397 297 C 397 372, 337 422, 247 422 C 157 422, 97 372, 97 297 C 97 222, 157 192, 247 192 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Bright wide eyes (insight!) -->
+  <circle cx="175" cy="287" r="30" fill="#ED6B23"/>
+  <circle cx="162" cy="275" r="10" fill="#FFFFFF"/>
+  <circle cx="318" cy="287" r="30" fill="#ED6B23"/>
+  <circle cx="305" cy="275" r="10" fill="#FFFFFF"/>
+
+  <!-- Excited smile -->
+  <path d="M 193 332 Q 247 380, 304 332" fill="none" stroke="#ED6B23" stroke-width="13" stroke-linecap="round"/>
+</svg>

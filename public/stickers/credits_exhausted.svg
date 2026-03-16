@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Battery (empty) top-right -->
+  <rect x="340" y="40" width="120" height="55" rx="8" fill="none" stroke="#ED6B23" stroke-width="7"/>
+  <rect x="460" y="55" width="16" height="25" rx="4" fill="#ED6B23"/>
+  <!-- Battery fill — empty (just a sliver) -->
+  <rect x="348" y="48" width="12" height="39" rx="4" fill="#FF4444"/>
+  <!-- Empty cross-out lines -->
+  <line x1="360" y1="48" x2="450" y2="87" stroke="#ED6B23" stroke-width="5" stroke-linecap="round" opacity="0.4"/>
+  <!-- Low battery text -->
+  <text x="400" y="120" font-family="Arial, sans-serif" font-size="20" fill="#ED6B23" text-anchor="middle" font-weight="bold">0 credits</text>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="152" x2="85" y2="107" stroke-width="25"/>
+    <circle cx="80" cy="102" r="18" stroke-width="10"/>
+    <line x1="362" y1="152" x2="403" y2="107" stroke-width="25"/>
+    <circle cx="408" cy="102" r="18" stroke-width="10"/>
+    <path d="M 52 237 C 5 242, 5 332, 52 337 Q 35 287 52 237 Z" stroke-width="10"/>
+    <path d="M 440 237 C 487 242, 487 332, 440 337 Q 457 287 440 237 Z" stroke-width="10"/>
+    <path d="M 246 102 C 376 102, 436 172, 436 277 C 436 382, 376 437, 246 437 C 116 437, 56 382, 56 277 C 56 172, 116 102, 246 102 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="152" x2="85" y2="107" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="80" cy="102" r="18"/>
+    <line x1="362" y1="152" x2="403" y2="107" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="408" cy="102" r="18"/>
+    <path d="M 52 237 C 5 242, 5 332, 52 337 Q 35 287 52 237 Z"/>
+    <path d="M 440 237 C 487 242, 487 332, 440 337 Q 457 287 440 237 Z"/>
+    <path d="M 246 102 C 376 102, 436 172, 436 277 C 436 382, 376 437, 246 437 C 116 437, 56 382, 56 277 C 56 172, 116 102, 246 102 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 246 182 C 336 182, 396 212, 396 287 C 396 362, 336 412, 246 412 C 156 412, 96 362, 96 287 C 96 212, 156 182, 246 182 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Sweat drop on forehead -->
+  <path d="M 290 200 Q 298 215, 285 220 Q 278 210, 290 200 Z" fill="#4FC3F7"/>
+
+  <!-- Concerned eyes (small, downward) -->
+  <circle cx="174" cy="277" r="22" fill="#ED6B23"/>
+  <circle cx="165" cy="268" r="7" fill="#FFFFFF"/>
+  <circle cx="316" cy="277" r="22" fill="#ED6B23"/>
+  <circle cx="307" cy="268" r="7" fill="#FFFFFF"/>
+
+  <!-- Worried mouth -->
+  <path d="M 210 345 Q 246 328, 284 345" fill="none" stroke="#ED6B23" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Upgrade nudge -->
+  <text x="256" y="490" font-family="Arial, sans-serif" font-size="24" fill="#ED6B23" text-anchor="middle" font-weight="bold">Go Pro? 😬</text>
+</svg>

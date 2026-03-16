@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Sparkles / magic burst around head -->
+  <!-- Large sparkle top-right -->
+  <g transform="translate(415,75)">
+    <line x1="0" y1="-22" x2="0" y2="22" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-22" y1="0" x2="22" y2="0" stroke="#FFD700" stroke-width="5" stroke-linecap="round"/>
+    <line x1="-15" y1="-15" x2="15" y2="15" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+    <line x1="15" y1="-15" x2="-15" y2="15" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <!-- Small sparkle top-left -->
+  <g transform="translate(95,95)">
+    <line x1="0" y1="-14" x2="0" y2="14" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+    <line x1="-14" y1="0" x2="14" y2="0" stroke="#FFD700" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <!-- Medium sparkle right -->
+  <g transform="translate(468,220)">
+    <line x1="0" y1="-16" x2="0" y2="16" stroke="#ED6B23" stroke-width="4" stroke-linecap="round"/>
+    <line x1="-16" y1="0" x2="16" y2="0" stroke="#ED6B23" stroke-width="4" stroke-linecap="round"/>
+    <line x1="-11" y1="-11" x2="11" y2="11" stroke="#ED6B23" stroke-width="3" stroke-linecap="round"/>
+    <line x1="11" y1="-11" x2="-11" y2="11" stroke="#ED6B23" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <!-- Tiny dots -->
+  <circle cx="350" cy="50" r="6" fill="#FFD700"/>
+  <circle cx="60" cy="160" r="5" fill="#ED6B23"/>
+  <circle cx="460" cy="150" r="4" fill="#FFD700"/>
+
+  <!-- Check mark badge (success indicator) -->
+  <circle cx="400" cy="340" r="38" fill="#4CAF50"/>
+  <polyline points="382,340 396,356 420,322" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="142" x2="85" y2="97" stroke-width="25"/>
+    <circle cx="80" cy="92" r="18" stroke-width="10"/>
+    <line x1="362" y1="142" x2="403" y2="97" stroke-width="25"/>
+    <circle cx="408" cy="92" r="18" stroke-width="10"/>
+    <path d="M 52 227 C 5 232, 5 322, 52 327 Q 35 277 52 227 Z" stroke-width="10"/>
+    <path d="M 440 227 C 487 232, 487 322, 440 327 Q 457 277 440 227 Z" stroke-width="10"/>
+    <path d="M 246 92 C 376 92, 436 162, 436 267 C 436 372, 376 427, 246 427 C 116 427, 56 372, 56 267 C 56 162, 116 92, 246 92 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="142" x2="85" y2="97" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="80" cy="92" r="18"/>
+    <line x1="362" y1="142" x2="403" y2="97" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="408" cy="92" r="18"/>
+    <path d="M 52 227 C 5 232, 5 322, 52 327 Q 35 277 52 227 Z"/>
+    <path d="M 440 227 C 487 232, 487 322, 440 327 Q 457 277 440 227 Z"/>
+    <path d="M 246 92 C 376 92, 436 162, 436 267 C 436 372, 376 427, 246 427 C 116 427, 56 372, 56 267 C 56 162, 116 92, 246 92 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 246 172 C 336 172, 396 202, 396 277 C 396 352, 336 402, 246 402 C 156 402, 96 352, 96 277 C 96 202, 156 172, 246 172 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Wide excited eyes -->
+  <circle cx="174" cy="267" r="31" fill="#ED6B23"/>
+  <circle cx="163" cy="256" r="10" fill="#FFFFFF"/>
+  <circle cx="320" cy="267" r="31" fill="#ED6B23"/>
+  <circle cx="309" cy="256" r="10" fill="#FFFFFF"/>
+
+  <!-- Open excited smile -->
+  <path d="M 188 312 Q 246 368, 306 312" fill="none" stroke="#ED6B23" stroke-width="14" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Floating hearts -->
+  <path d="M 90 80 C 90 65, 110 65, 110 80 C 110 95, 90 110, 90 110 C 90 110, 70 95, 70 80 Z" fill="#FF6B6B"/>
+  <path d="M 430 60 C 430 48, 445 48, 445 60 C 445 72, 430 83, 430 83 C 430 83, 415 72, 415 60 Z" fill="#ED6B23"/>
+  <path d="M 470 140 C 470 130, 482 130, 482 140 C 482 150, 470 158, 470 158 C 470 158, 458 150, 458 140 Z" fill="#FF6B6B"/>
+  <path d="M 50 160 C 50 152, 60 152, 60 160 C 60 168, 50 175, 50 175 C 50 175, 40 168, 40 160 Z" fill="#ED6B23"/>
+
+  <!-- Ghali head — orange outline layer -->
+  <g fill="#ED6B23" stroke="#ED6B23" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="130" y1="142" x2="85" y2="97" stroke-width="25"/>
+    <circle cx="80" cy="92" r="18" stroke-width="10"/>
+    <line x1="370" y1="142" x2="415" y2="97" stroke-width="25"/>
+    <circle cx="420" cy="92" r="18" stroke-width="10"/>
+    <path d="M 52 227 C 5 232, 5 322, 52 327 Q 35 277 52 227 Z" stroke-width="10"/>
+    <path d="M 448 227 C 495 232, 495 322, 448 327 Q 465 277 448 227 Z" stroke-width="10"/>
+    <path d="M 250 92 C 380 92, 440 162, 440 267 C 440 372, 380 427, 250 427 C 120 427, 60 372, 60 267 C 60 162, 120 92, 250 92 Z" stroke-width="10"/>
+  </g>
+
+  <!-- White fill layer -->
+  <g fill="#FFFFFF">
+    <line x1="130" y1="142" x2="85" y2="97" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="80" cy="92" r="18"/>
+    <line x1="370" y1="142" x2="415" y2="97" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="420" cy="92" r="18"/>
+    <path d="M 52 227 C 5 232, 5 322, 52 327 Q 35 277 52 227 Z"/>
+    <path d="M 448 227 C 495 232, 495 322, 448 327 Q 465 277 448 227 Z"/>
+    <path d="M 250 92 C 380 92, 440 162, 440 267 C 440 372, 380 427, 250 427 C 120 427, 60 372, 60 267 C 60 162, 120 92, 250 92 Z"/>
+  </g>
+
+  <!-- Face details -->
+  <path d="M 250 172 C 340 172, 400 202, 400 277 C 400 352, 340 402, 250 402 C 160 402, 100 352, 100 277 C 100 202, 160 172, 250 172 Z" fill="none" stroke="#ED6B23" stroke-width="14"/>
+
+  <!-- Heart eyes -->
+  <path d="M 175 262 C 175 250, 190 250, 190 262 C 190 274, 175 284, 175 284 C 175 284, 160 274, 160 262 Z" fill="#ED6B23"/>
+  <path d="M 325 262 C 325 250, 340 250, 340 262 C 340 274, 325 284, 325 284 C 325 284, 310 274, 310 262 Z" fill="#ED6B23"/>
+
+  <!-- Warm smile -->
+  <path d="M 200 318 Q 250 362, 300 318" fill="none" stroke="#ED6B23" stroke-width="14" stroke-linecap="round"/>
+</svg>
