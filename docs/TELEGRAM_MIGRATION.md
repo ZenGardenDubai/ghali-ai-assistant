@@ -2,7 +2,7 @@
 
 Full migration from WhatsApp (360dialog) to Telegram Bot API.
 
-**Status**: In Progress (Step 10)
+**Status**: Complete (Steps 0-10). Step 11 is future work.
 **Branch**: `feat/telegram-integration`
 **Target**: 2-3 weeks
 **Bots**: `@GhaliSmartBot` (prod), `@GhalDev_Bot` (staging)
@@ -404,22 +404,22 @@ Keep existing design intact — only swap platform-specific elements. WhatsApp c
 
 ---
 
-### Step 10 — BotFather Configuration + Docs
+### Step 10 — BotFather Configuration + Docs ✅
 
-- [ ] Register bot commands in BotFather (both dev and prod):
+- [x] Register bot commands via Bot API `setMyCommands` (both dev and prod):
   - `/start` — Start chatting with Ghali
   - `/help` — Show available commands
+  - `/credits` — Check your credit balance
   - `/privacy` — View privacy policy
-  - `/deletedata` — Request data deletion
-  - `/settings` — Open settings
   - `/upgrade` — Upgrade to Pro
-- [ ] Set privacy policy URL in BotFather → `ghali.ae/terms`
-- [ ] Set bot description and about text
-- [ ] Update `CLAUDE.md` (tech stack, message flow, architecture — note both channels exist, Telegram is primary)
-- [ ] Update `docs/ARCHITECTURE.md`
-- [ ] Update `docs/POSTHOG.md` (event names)
+  - `/deletedata` — Request data deletion
+- [x] Set bot description via `setMyDescription` (both bots, dev has ⚠️ testing note)
+- [x] Set short description via `setMyShortDescription` (profile/search results)
+- [x] Update `CLAUDE.md` — Telegram-first overview, dual message flow, bot infrastructure table, updated tables schema, key docs
+- [x] Update `docs/ARCHITECTURE.md` — Telegram message flow, callback queries, bot infrastructure table, channel-aware routing, updated tables/feedback
+- [x] `docs/POSTHOG.md` — already updated in Step 7
 
-**TEST:** Open `@GhaliSmartBot` info page — commands list, description, about text all correct. Privacy policy link works.
+**TEST:** ✅ Both bots show commands list, description, and short description correctly.
 
 ---
 

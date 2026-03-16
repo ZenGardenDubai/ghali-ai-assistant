@@ -348,10 +348,10 @@ export default function AdminFeedbackPage() {
                       </button>
                     </div>
 
-                    {/* Reply via Telegram */}
+                    {/* Reply to user */}
                     <div>
                       <label className="block text-[10px] font-medium uppercase tracking-wider text-white/30 mb-1">
-                        Reply via Telegram
+                        Reply to User
                       </label>
                       <div className="flex gap-2">
                         <input

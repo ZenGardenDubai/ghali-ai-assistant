@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Ghali is a WhatsApp-first AI assistant. Users message a WhatsApp number (+971542022073 via 360dialog) and chat with AI. Web chat (ghali.ae) is secondary. Apache 2.0 license.
+Ghali is a Telegram-first AI assistant. Users message `@GhaliSmartBot` on Telegram and chat with AI. Web chat (ghali.ae) is secondary. WhatsApp support (360dialog) is dormant — code preserved but not active. Apache 2.0 license.
 
 ## Tech Stack
 
@@ -14,7 +14,8 @@ Ghali is a WhatsApp-first AI assistant. Users message a WhatsApp number (+971542
 - **Auth:** Clerk
 - **AI Agent:** @convex-dev/agent (threads, messages, tools, streaming, RAG)
 - **AI SDK:** Vercel AI SDK + @ai-sdk/google, @ai-sdk/anthropic, @ai-sdk/openai
-- **WhatsApp:** 360dialog (WhatsApp Cloud API)
+- **Telegram:** Bot API via Node.js bot server (long polling) + direct API calls from Convex
+- **WhatsApp:** 360dialog (dormant — code preserved, account disabled by Meta)
 - **Analytics:** PostHog
 - **Testing:** Vitest
 - **Hosting:** Vercel + Convex Cloud
@@ -46,18 +47,37 @@ Flash decides when to escalate. No separate classifier call needed.
 
 ### Message Flow (Async Pattern)
 
+**Telegram (primary):**
 ```
-WhatsApp → 360dialog webhook (POST /whatsapp-webhook)
-  → Validate signature + country code blocking
-  → Find/create user + thread
+User → Telegram servers → Bot server (long polling, Node.js on Hetzner)
+  → POST /telegram-message (Bearer auth)
+  → Convex HTTP action: validate, dedup, find/create user + thread
   → Save message (mutation, transactional)
   → Schedule async response generation (ctx.scheduler.runAfter)
   → Return 200 immediately
   → Action runs: agent.generateText on user's thread
+  → Send reply via api.telegram.org (direct from Convex)
+```
+
+**WhatsApp (dormant):**
+```
+WhatsApp → 360dialog webhook (POST /whatsapp-webhook)
+  → Validate signature + country code blocking
+  → Same mutation → action pattern as Telegram
   → Send reply via 360dialog Cloud API
 ```
 
 Web chat uses the same Convex mutation → action pattern but streams via WebSocket.
+
+### Telegram Bot Infrastructure
+
+- **Bot server:** `/root/clawd/projects/ghali-telegram/index.js` on `ubuntu-16gb-hel1-1` (157.180.120.93)
+- **Bots:** `@GhaliSmartBot` (prod), `@GhalDev_Bot` (dev)
+- **Local Bot API:** Docker container on port 8081 (removes 20MB file limit, bot server only)
+- **Convex sends via:** `api.telegram.org` directly (cannot reach localhost:8081)
+- **Formatting:** HTML mode (`<b>`, `<i>`, `<pre>`, `<code>`), 4096 char limit, up to 5 chunks
+- **Inline keyboards:** Native buttons on credit exhaustion, help, upgrade prompts
+- **Callback queries:** `/telegram-callback` route handles button taps
 
 ### Per-User Files (Loaded Every Turn)
 
@@ -85,7 +105,7 @@ System messages (credits, help, billing) use pre-defined templates with `{{varia
 
 ### Key Convex Tables
 
-- **users** — phone, name, language, timezone, tier, isAdmin, credits
+- **users** — phone, telegramId, channel, name, language, timezone, tier, isAdmin, credits
 - **userFiles** — userId + filename (profile/memory/personality/heartbeat) + content (markdown, max 50KB)
 - **usage** — per-message tracking: model, tokens, cost
 - **scheduledJobs** — heartbeat, reminders, follow-ups
@@ -94,7 +114,7 @@ System messages (credits, help, billing) use pre-defined templates with `{{varia
 
 ### Document Processing
 
-Files received via WhatsApp: PDF/images → Gemini 3 Flash directly. DOCX/PPTX/XLSX → CloudConvert → PDF → Gemini 3 Flash. Content stored in per-user RAG namespace for future retrieval via `searchDocuments` tool.
+Files received via Telegram or WhatsApp: PDF/images → Gemini 3 Flash directly. DOCX/PPTX/XLSX → CloudConvert → PDF → Gemini 3 Flash. Telegram files downloaded via Bot API → Convex storage. Content stored in per-user RAG namespace for future retrieval via `searchDocuments` tool.
 
 ## Agent Abilities Document
 
@@ -122,3 +142,5 @@ The `ABILITIES & LIMITATIONS` section in `AGENT_INSTRUCTIONS` (`convex/agent.ts`
 - `docs/STACK.md` — Tech stack details and project structure
 - `docs/TEMPLATES.md` — Template message system design
 - `docs/POSTHOG.md` — PostHog analytics: all server/client events, properties, dashboard, and architecture
+- `docs/TELEGRAM_MIGRATION.md` — Migration plan from WhatsApp to Telegram (Steps 0-11)
+- `docs/POST_MIGRATION.md` — Post-migration items (large files, payment flow, streaming)
