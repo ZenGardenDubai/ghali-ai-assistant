@@ -286,4 +286,72 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_userId", ["userId"])
     .index("by_createdAt", ["createdAt"]),
+
+  /** Features/updates queued for tweet content generation */
+  featureQueue: defineTable({
+    title: v.string(),
+    description: v.string(),
+    source: v.union(
+      v.literal("github_pr"),
+      v.literal("github_issue"),
+      v.literal("github_release"),
+      v.literal("manual")
+    ),
+    /** GitHub PR/issue/release URL (for github sources) */
+    sourceUrl: v.optional(v.string()),
+    /** GitHub reference number */
+    sourceRef: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("generating"),
+      v.literal("done"),
+      v.literal("skipped")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
+
+  /** Social media content posts (drafts, scheduled, published) */
+  contentPosts: defineTable({
+    featureId: v.optional(v.id("featureQueue")),
+    /** Tweet copy */
+    content: v.string(),
+    /** Thread tweets (optional — for thread format) */
+    threadTweets: v.optional(v.array(v.string())),
+    format: v.union(
+      v.literal("single"),
+      v.literal("thread"),
+      v.literal("with_image")
+    ),
+    tone: v.union(
+      v.literal("informative"),
+      v.literal("casual"),
+      v.literal("punchy")
+    ),
+    hashtags: v.array(v.string()),
+    /** Convex storage ID for the generated tweet image */
+    imageStorageId: v.optional(v.id("_storage")),
+    /** Typefully draft ID (set after pushing to Typefully) */
+    typefullyId: v.optional(v.string()),
+    /** Scheduled publish time (epoch ms) */
+    scheduledAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("approved"),
+      v.literal("scheduled"),
+      v.literal("published"),
+      v.literal("rejected")
+    ),
+    /** Which variant index this is (0, 1, 2) when multiple were generated */
+    variantIndex: v.optional(v.number()),
+    /** Admin notes */
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_status", ["status"])
+    .index("by_featureId", ["featureId"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_scheduledAt", ["scheduledAt"]),
 });

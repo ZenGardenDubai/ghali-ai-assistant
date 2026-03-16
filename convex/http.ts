@@ -915,4 +915,240 @@ http.route({
   }),
 });
 
+// ============================================================================
+// Content Studio API endpoints
+// ============================================================================
+
+http.route({
+  path: "/admin/content-studio/stats",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx) => {
+    const result = await ctx.runQuery(internal.contentStudio.getContentStudioStats, {});
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/feature-queue",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const status = body.status as string | undefined;
+    const limit = typeof body.limit === "number" ? body.limit : 50;
+    const result = await ctx.runQuery(internal.contentStudio.listFeatureQueue, {
+      status: status as Parameters<typeof internal.contentStudio.listFeatureQueue>[0]["status"],
+      limit,
+    });
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/add-feature",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const { title, description, source, sourceUrl, sourceRef } = body as {
+      title: string;
+      description: string;
+      source: "github_pr" | "github_issue" | "github_release" | "manual";
+      sourceUrl?: string;
+      sourceRef?: string;
+    };
+    if (!title || !description || !source) {
+      return new Response("Missing title, description, or source", { status: 400 });
+    }
+    const id = await ctx.runMutation(internal.contentStudio.addFeatureToQueue, {
+      title,
+      description,
+      source,
+      sourceUrl,
+      sourceRef,
+    });
+    return new Response(JSON.stringify({ id }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/posts",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const status = body.status as string | undefined;
+    const limit = typeof body.limit === "number" ? body.limit : 50;
+    const result = await ctx.runQuery(internal.contentStudio.listContentPosts, {
+      status: status as Parameters<typeof internal.contentStudio.listContentPosts>[0]["status"],
+      limit,
+    });
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/generate",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const {
+      featureId,
+      featureTitle,
+      featureDescription,
+      tone,
+      format,
+      defaultHashtags,
+    } = body as {
+      featureId?: string;
+      featureTitle: string;
+      featureDescription: string;
+      tone: "informative" | "casual" | "punchy";
+      format: "single" | "thread" | "with_image";
+      defaultHashtags?: string[];
+    };
+    if (!featureTitle || !featureDescription || !tone || !format) {
+      return new Response("Missing required fields", { status: 400 });
+    }
+    const result = await ctx.runAction(internal.contentStudio.generateTweetVariants, {
+      featureId: featureId as Id<"featureQueue"> | undefined,
+      featureTitle,
+      featureDescription,
+      tone,
+      format,
+      defaultHashtags,
+    });
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/update-post",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const { postId, ...updates } = body as {
+      postId: string;
+      content?: string;
+      status?: "draft" | "approved" | "scheduled" | "published" | "rejected";
+      adminNotes?: string;
+    };
+    if (!postId) return new Response("Missing postId", { status: 400 });
+    await ctx.runMutation(internal.contentStudio.updateContentPost, {
+      postId: postId as Id<"contentPosts">,
+      ...updates,
+    });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/delete-post",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const { postId } = body as { postId: string };
+    if (!postId) return new Response("Missing postId", { status: 400 });
+    await ctx.runMutation(internal.contentStudio.deleteContentPost, {
+      postId: postId as Id<"contentPosts">,
+    });
+    return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/push-typefully",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const { postId, scheduledAt } = body as {
+      postId: string;
+      scheduledAt?: number;
+    };
+    if (!postId) return new Response("Missing postId", { status: 400 });
+    const result = await ctx.runAction(internal.contentStudio.pushToTypefully, {
+      postId: postId as Id<"contentPosts">,
+      scheduledAt,
+    });
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/settings",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx, body) => {
+    const action = body.action as string;
+    if (action === "get") {
+      const result = await ctx.runQuery(internal.contentStudio.getSettings, {});
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (action === "save") {
+      await ctx.runMutation(internal.contentStudio.saveSettings, {
+        typefullyApiKey: body.typefullyApiKey as string | undefined,
+        defaultTone: body.defaultTone as string | undefined,
+        defaultHashtags: body.defaultHashtags as string | undefined,
+        twitterHandle: body.twitterHandle as string | undefined,
+      });
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response("Invalid action", { status: 400 });
+  }),
+});
+
+http.route({
+  path: "/admin/content-studio/generate-upload-url",
+  method: "POST",
+  handler: adminAuthHandler(async (ctx) => {
+    const uploadUrl = await ctx.runMutation(internal.contentStudio.generateUploadUrl, {});
+    return new Response(JSON.stringify({ uploadUrl }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+/** Typefully webhook — marks a post as published when Typefully publishes it */
+http.route({
+  path: "/typefully-webhook",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    let body: Record<string, unknown> = {};
+    try {
+      body = await request.json() as Record<string, unknown>;
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    // Typefully sends { type: "tweet_published", draft_id: "..." }
+    const typefullyId = (body.draft_id ?? body.id) as string | undefined;
+    if (!typefullyId) {
+      return new Response("OK", { status: 200 });
+    }
+
+    await ctx.runMutation(internal.contentStudio.markAsPublished, { typefullyId: String(typefullyId) });
+    return new Response("OK", { status: 200 });
+  }),
+});
+
 export default http;
