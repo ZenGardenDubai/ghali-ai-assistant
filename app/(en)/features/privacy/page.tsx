@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Your data is yours. We don't sell it, we don't share it, and you can delete it anytime.",
     url: "https://ghali.ae/features/privacy",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -41,7 +41,7 @@ const pageJsonLd = {
       "@type": "FAQPage",
       mainEntity: [
     { "@type": "Question", name: "Does Ghali sell my data?", acceptedAnswer: { "@type": "Answer", text: "No. We never sell or share your personal data. Your conversations and files are yours alone." } },
-    { "@type": "Question", name: "Can I delete all my data?", acceptedAnswer: { "@type": "Answer", text: "Yes. Send 'clear everything' to Ghali on WhatsApp and all your data — memory, files, conversation history — will be permanently deleted." } },
+    { "@type": "Question", name: "Can I delete all my data?", acceptedAnswer: { "@type": "Answer", text: "Yes. Send 'clear everything' to Ghali on Telegram and all your data — memory, files, conversation history — will be permanently deleted." } },
     { "@type": "Question", name: "Where is my data stored?", acceptedAnswer: { "@type": "Answer", text: "Your data is stored securely on Convex cloud infrastructure. Each user's data is completely isolated from other users." } },
       ],
     },

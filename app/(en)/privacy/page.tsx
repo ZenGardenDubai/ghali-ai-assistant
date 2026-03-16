@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         url: "/ghali-logo-with-bg.png",
         width: 640,
         height: 640,
-        alt: "Ghali — AI Assistant on WhatsApp",
+        alt: "Ghali — AI Assistant on Telegram",
       },
     ],
   },
@@ -119,7 +119,7 @@ export default function PrivacyPage() {
               <strong className="text-white/80">SAHEM DATA TECHNOLOGY</strong> collects information that you provide directly to us:
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li><strong className="text-white/80">Account Information:</strong> Phone number and profile name from WhatsApp</li>
+              <li><strong className="text-white/80">Account Information:</strong> Username and profile name from Telegram</li>
               <li><strong className="text-white/80">Conversation Data:</strong> Messages, voice notes, and files you share with the AI assistant</li>
               <li><strong className="text-white/80">Knowledge Base:</strong> Documents you send that are stored for future retrieval</li>
               <li><strong className="text-white/80">Usage Data:</strong> How you interact with our service, including features used and preferences</li>

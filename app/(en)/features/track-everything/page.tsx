@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Track Expenses, Tasks & More with AI on WhatsApp",
+  title: "Track Expenses, Tasks & More with AI on Telegram",
   description:
-    "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through WhatsApp.",
+    "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through Telegram.",
   alternates: {
     canonical: "https://ghali.ae/features/track-everything",
     languages: { en: "https://ghali.ae/features/track-everything", ar: "https://ghali.ae/ar/features/track-everything", "x-default": "https://ghali.ae/features/track-everything" },
@@ -12,16 +12,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Track Everything — Ghali",
     description:
-      "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through WhatsApp.",
+      "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through Telegram.",
     url: "https://ghali.ae/features/track-everything",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Track Everything — Ghali",
     description:
-      "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through WhatsApp.",
+      "Track expenses, tasks, contacts, notes, and bookmarks with natural language. Smart search and automatic organization — all through Telegram.",
     images: ["/ghali-logo-with-bg.png"],
   },
 };

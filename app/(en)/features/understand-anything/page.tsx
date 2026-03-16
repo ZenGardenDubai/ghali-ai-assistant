@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Understand Images, Voice & Video with AI on WhatsApp",
+  title: "Understand Images, Voice & Video with AI on Telegram",
   description:
     "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Send photos, voice notes, videos, or audio — Ghali sees, hears, and understands it all.",
     url: "https://ghali.ae/features/understand-anything",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -56,11 +56,11 @@ export default function UnderstandAnythingPage() {
       alternateLocaleHref="/ar/features/understand-anything"
       badge="Multimodal"
       title={<>Send Anything. <span className="text-[#ED6B23]">Ghali Gets It.</span></>}
-      subtitle="Photos, voice notes, videos, audio files — just send them in WhatsApp and Ghali understands what you're sharing."
+      subtitle="Photos, voice notes, videos, audio files — just send them in Telegram and Ghali understands what you're sharing."
     >
       <FeatureSection title="More than just text">
         <p>
-          Real conversations aren&apos;t just words. You snap a photo of a menu. You record a quick voice note. You forward a video someone sent you. Ghali handles all of it — natively, through WhatsApp.
+          Real conversations aren&apos;t just words. You snap a photo of a menu. You record a quick voice note. You forward a video someone sent you. Ghali handles all of it — natively, through Telegram.
         </p>
       </FeatureSection>
 

@@ -32,13 +32,16 @@ export const fontVariables = `${geistSans.variable} ${geistMono.variable} ${inst
 export const sharedMetadata: Metadata = {
   metadataBase: new URL("https://ghali.ae"),
   title: {
-    default: "Ghali — Your AI Assistant on WhatsApp",
+    default: "Ghali — Your AI Assistant on Telegram",
     template: "%s — Ghali",
   },
   description:
-    "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
+    "Ghali is an AI assistant on Telegram (formerly WhatsApp). Chat, generate images, analyze documents, and more. No app to install — just message and go.",
   keywords: [
     "AI assistant",
+    "Telegram AI",
+    "Telegram bot",
+    "Telegram AI assistant",
     "WhatsApp AI",
     "AI chatbot",
     "document analysis",
@@ -46,7 +49,9 @@ export const sharedMetadata: Metadata = {
     "voice notes",
     "personal AI",
     "Dubai AI",
+    "UAE AI assistant",
     "Ghali",
+    "Ghali AI",
   ],
   authors: [{ name: "SAHEM DATA TECHNOLOGY" }],
   creator: "SAHEM DATA TECHNOLOGY",
@@ -56,24 +61,24 @@ export const sharedMetadata: Metadata = {
     locale: "en_AE",
     url: "https://ghali.ae",
     siteName: "Ghali",
-    title: "Ghali — Your AI Assistant on WhatsApp",
+    title: "Ghali — Your AI Assistant on Telegram",
     description:
-      "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more. No app to install — just message and go.",
+      "Ghali is an AI assistant on Telegram (formerly WhatsApp). Chat, generate images, analyze documents, and more. No app to install — just message and go.",
     images: [
       {
         url: "/ghali-logo-with-bg.png",
         width: 640,
         height: 640,
-        alt: "Ghali — AI Assistant on WhatsApp",
+        alt: "Ghali — AI Assistant on Telegram",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ghali — Your AI Assistant on WhatsApp",
+    title: "Ghali — Your AI Assistant on Telegram",
     description:
-      "Ghali is a WhatsApp-first AI assistant. Chat, generate images, analyze documents, and more.",
+      "Ghali is an AI assistant on Telegram (formerly WhatsApp). Chat, generate images, analyze documents, and more.",
     images: ["/ghali-logo-with-bg.png"],
   },
   robots: {

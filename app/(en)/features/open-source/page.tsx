@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Ghali's code is public. See exactly how your data is handled. No black boxes.",
     url: "https://ghali.ae/features/open-source",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -94,7 +94,7 @@ export default function OpenSourcePage() {
 
       <FeatureSection title="What you'll find on GitHub">
         <p>
-          The full Ghali codebase — the WhatsApp integration, the AI agent, the credit system, the memory system, document processing, image generation, the landing page you&apos;re looking at right now. All of it.
+          The full Ghali codebase — the Telegram integration, the AI agent, the credit system, the memory system, document processing, image generation, the landing page you&apos;re looking at right now. All of it.
         </p>
         <p>
           Licensed under Apache 2.0, which means you can read it, learn from it, and even build on it.

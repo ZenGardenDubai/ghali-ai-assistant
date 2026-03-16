@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "AI Document Analysis on WhatsApp — PDF, Word, Excel",
+  title: "AI Document Analysis on Telegram — PDF, Word, Excel",
   description:
     "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Send PDFs and files to Ghali. It reads them, answers your questions, and remembers them for later.",
     url: "https://ghali.ae/features/documents",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -56,7 +56,7 @@ export default function DocumentsPage() {
       alternateLocaleHref="/ar/features/documents"
       badge="Documents & Knowledge"
       title={<>Send a File. <span className="text-[#ED6B23]">Get Answers.</span></>}
-      subtitle="Drop a PDF, Word doc, or spreadsheet into WhatsApp. Ghali reads it, answers your questions about it, and stores it in your personal knowledge base for later."
+      subtitle="Drop a PDF, Word doc, or spreadsheet into Telegram. Ghali reads it, answers your questions about it, and stores it in your personal knowledge base for later."
     >
       <FeatureSection title="Instant document analysis">
         <p>
@@ -72,7 +72,7 @@ export default function DocumentsPage() {
           <FeatureCard
             icon="📄"
             title="PDFs"
-            description="Reports, contracts, papers, invoices — sent directly through WhatsApp."
+            description="Reports, contracts, papers, invoices — sent directly through Telegram."
           />
           <FeatureCard
             icon="📝"
@@ -98,7 +98,7 @@ export default function DocumentsPage() {
 
       <FeatureSection title="Reply-to-media">
         <p>
-          Sent a document earlier and want to ask a follow-up? Just reply to the original message in WhatsApp. Ghali pulls up the document and re-analyzes it with your new question. Natural and effortless.
+          Sent a document earlier and want to ask a follow-up? Just reply to the original message in Telegram. Ghali pulls up the document and re-analyzes it with your new question. Natural and effortless.
         </p>
       </FeatureSection>
 

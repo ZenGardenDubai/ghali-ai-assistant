@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "AI That Remembers You — Personal Memory on WhatsApp",
+  title: "AI That Remembers You — Personal Memory on Telegram",
   description:
     "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Ghali remembers your preferences, your context, and your style. It gets smarter the more you use it.",
     url: "https://ghali.ae/features/personal-memory",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",

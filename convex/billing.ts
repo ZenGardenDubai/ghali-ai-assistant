@@ -3,6 +3,27 @@ import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { CREDITS_BASIC, CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
+// Bilingual billing notification messages — used in mutations (no async LLM translation)
+const BILLING_MESSAGES = {
+  subscriptionActive: {
+    en: (credits: number) => `Your Ghali Pro plan is now active. You have ${credits} credits this month.`,
+    ar: (credits: number) => `تم تفعيل خطة Ghali Pro. لديك ${credits} رصيد هذا الشهر.`,
+  },
+  subscriptionEnded: {
+    en: (credits: number) => `Your Pro plan has ended. You're now on the Basic plan with ${credits} credits/month.`,
+    ar: (credits: number) => `انتهت خطة Pro. أنت الآن على الخطة المجانية بـ ${credits} رصيد/شهر.`,
+  },
+} as const;
+
+function getBillingMessage(
+  key: keyof typeof BILLING_MESSAGES,
+  lang: string,
+  credits: number
+): string {
+  const msgs = BILLING_MESSAGES[key];
+  return lang === "ar" ? msgs.ar(credits) : msgs.en(credits);
+}
+
 // ============================================================================
 // Terms Acceptance
 // ============================================================================
@@ -124,8 +145,8 @@ export const handleSubscriptionActive = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user — channel-aware routing
-    const proMsg = `Your Ghali Pro plan is now active. You have ${CREDITS_PRO} credits this month.`;
+    // Notify user — channel-aware routing (localized)
+    const proMsg = getBillingMessage("subscriptionActive", user.language, CREDITS_PRO);
     if (user.channel === "telegram" && user.telegramId) {
       await ctx.scheduler.runAfter(0, internal.telegram.guardedSendMessage, {
         userId: user._id,
@@ -202,8 +223,8 @@ export const handleSubscriptionEnded = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user — channel-aware routing
-    const endMsg = `Your Pro plan has ended. You're now on the Basic plan with ${CREDITS_BASIC} credits/month.`;
+    // Notify user — channel-aware routing (localized)
+    const endMsg = getBillingMessage("subscriptionEnded", user.language, CREDITS_BASIC);
     if (user.channel === "telegram" && user.telegramId) {
       await ctx.scheduler.runAfter(0, internal.telegram.guardedSendMessage, {
         userId: user._id,

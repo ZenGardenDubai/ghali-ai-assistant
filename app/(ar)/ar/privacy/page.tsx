@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         url: "/ghali-logo-with-bg.png",
         width: 640,
         height: 640,
-        alt: "غالي — مساعد ذكاء اصطناعي على واتساب",
+        alt: "غالي — مساعد ذكاء اصطناعي على تيليجرام",
       },
     ],
   },
@@ -120,7 +120,7 @@ export default function ArPrivacyPage() {
               تجمع <strong className="text-white/80">شركة ساهم لتكنولوجيا البيانات</strong> المعلومات التي تقدمها لنا مباشرة:
             </p>
             <ul className="list-disc pr-6 space-y-2">
-              <li><strong className="text-white/80">معلومات الحساب:</strong> رقم الهاتف واسم الملف الشخصي من واتساب</li>
+              <li><strong className="text-white/80">معلومات الحساب:</strong> اسم المستخدم واسم الملف الشخصي من تيليجرام</li>
               <li><strong className="text-white/80">بيانات المحادثات:</strong> الرسائل والملاحظات الصوتية والملفات التي تشاركها مع المساعد الذكي</li>
               <li><strong className="text-white/80">قاعدة المعرفة:</strong> المستندات التي ترسلها والتي يتم تخزينها للاسترجاع لاحقًا</li>
               <li><strong className="text-white/80">بيانات الاستخدام:</strong> كيف تتفاعل مع خدمتنا، بما في ذلك الميزات المستخدمة والتفضيلات</li>

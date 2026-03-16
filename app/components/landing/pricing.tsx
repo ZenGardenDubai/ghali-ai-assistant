@@ -27,7 +27,7 @@ export function Pricing({ t }: { t: TranslationDict }) {
               ))}
             </ul>
             <CtaButton
-              href={t.whatsappUrl}
+              href={t.telegramUrl}
               location="pricing_basic"
               className="mt-8 block rounded-full border border-white/10 py-3 text-center font-medium transition-all hover:border-white/20 hover:bg-white/5"
             >
@@ -63,7 +63,7 @@ export function Pricing({ t }: { t: TranslationDict }) {
               ))}
             </ul>
             <CtaButton
-              href={t.whatsappUrl}
+              href={t.telegramUrl}
               location="pricing_pro"
               className="mt-8 md:mt-auto block rounded-full bg-[#ED6B23] py-3 text-center font-medium transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
             >

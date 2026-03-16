@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "AI Image Generation on WhatsApp — Create Images with Ghali",
+  title: "AI Image Generation on Telegram — Create Images with Ghali",
   description:
     "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Describe what you want and get a stunning image in seconds. Logos, art, visuals — all from a text message.",
     url: "https://ghali.ae/features/image-generation",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -40,7 +40,7 @@ const pageJsonLd = {
     {
       "@type": "FAQPage",
       mainEntity: [
-    { "@type": "Question", name: "How do I generate an image with Ghali?", acceptedAnswer: { "@type": "Answer", text: "Just describe what you want in a message. For example: 'Create an image of a sunset over Dubai Marina.' Ghali will generate and send the image directly in WhatsApp." } },
+    { "@type": "Question", name: "How do I generate an image with Ghali?", acceptedAnswer: { "@type": "Answer", text: "Just describe what you want in a message. For example: 'Create an image of a sunset over Dubai Marina.' Ghali will generate and send the image directly in Telegram." } },
     { "@type": "Question", name: "What kinds of images can Ghali create?", acceptedAnswer: { "@type": "Answer", text: "Ghali can create art, illustrations, social media graphics, logo concepts, business visuals, memes, avatars, and more in various styles." } },
     { "@type": "Question", name: "What AI model does Ghali use for images?", acceptedAnswer: { "@type": "Answer", text: "Ghali uses Google's Gemini Pro for image generation, delivering high-quality results with fast generation times." } },
       ],
@@ -56,7 +56,7 @@ export default function ImageGenerationPage() {
       alternateLocaleHref="/ar/features/image-generation"
       badge="Image Generation"
       title={<>Describe It. <span className="text-[#ED6B23]">Get It.</span></>}
-      subtitle="Tell Ghali what you want to see and get a stunning image delivered right in your WhatsApp chat. No design skills needed."
+      subtitle="Tell Ghali what you want to see and get a stunning image delivered right in your Telegram chat. No design skills needed."
     >
       <FeatureSection title="From words to visuals in seconds">
         <p>
@@ -92,9 +92,9 @@ export default function ImageGenerationPage() {
         </div>
       </FeatureSection>
 
-      <FeatureSection title="Delivered right in WhatsApp">
+      <FeatureSection title="Delivered right in Telegram">
         <p>
-          The image shows up as a regular WhatsApp photo. Save it, share it, forward it — no extra steps. No need to download from a website or copy from another app.
+          The image shows up as a regular Telegram photo. Save it, share it, forward it — no extra steps. No need to download from a website or copy from another app.
         </p>
       </FeatureSection>
 

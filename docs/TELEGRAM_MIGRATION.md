@@ -2,7 +2,7 @@
 
 Full migration from WhatsApp (360dialog) to Telegram Bot API.
 
-**Status**: In Progress (Step 9)
+**Status**: In Progress (Step 10)
 **Branch**: `feat/telegram-integration`
 **Target**: 2-3 weeks
 **Bots**: `@GhaliSmartBot` (prod), `@GhalDev_Bot` (staging)
@@ -380,22 +380,27 @@ Moved to `docs/POST_MIGRATION.md` Section 5. Too complex for initial migration:
 
 ---
 
-### Step 9 — Frontend Branding (use `frontend-design` skill)
+### Step 9 — Frontend Branding ✅
 
-Keep existing design intact — only swap platform-specific elements. **Hide** WhatsApp CTAs (do not remove).
+Keep existing design intact — only swap platform-specific elements. WhatsApp components kept dormant (not removed).
 
-- [ ] **Hide** sticky WhatsApp CTA (e.g., conditional render / feature flag)
-- [ ] **Add** sticky Telegram CTA (blue `#2AABEE`, `telegram-svgrepo-com.svg`) — same position, same design, different color/icon/link
-- [ ] **Hide** WhatsApp buttons on upgrade page, **add** Telegram buttons (same design, blue, Telegram icon)
-- [ ] Update start page copy and links (`wa.me/...` → `t.me/GhaliSmartBot`)
-- [ ] Update terms page copy (WhatsApp references → Telegram, keep WhatsApp mentioned as secondary/paused)
-- [ ] Update translations (EN + AR) — add `telegramUrl`, keep `whatsappUrl` in translations file
-- [ ] Keep `public/whatsapp-color-icon.svg` (do not delete)
-- [ ] Update Google Ads conversion event name (`whatsapp_cta_click` → `telegram_cta_click`)
+- [x] **Add** `StickyTelegramCta` component (blue `#2AABEE`, Telegram SVG icon) — replaces `StickyWhatsAppCta` on all pages
+- [x] **Add** `TelegramIcon` to `icons.tsx` (shared component)
+- [x] All CTA buttons now link to `t.me/GhaliSmartBot` via `t.telegramUrl`
+- [x] Start pages (EN + AR) use Telegram blue (`#2AABEE`) button with Telegram icon
+- [x] Upgrade page: `WhatsAppButton` → `TelegramButton`, links to Telegram
+- [x] Account page: "Chat with Ghali" card uses Telegram blue + Telegram icon
+- [x] Update translations (EN + AR) — added `telegramUrl`, `stickyTelegram`; kept `whatsappUrl` dormant
+- [x] All text copy updated: "on WhatsApp" → "on Telegram" (EN), "واتساب" → "تيليجرام" (AR)
+- [x] Feature pages (11 subpages), terms, privacy, feedback — all updated
+- [x] Root layout metadata (SEO title, description, OG tags) — all updated
+- [x] Admin feedback: display labels updated, source enum value `whatsapp_link` kept (DB value)
+- [x] Keep `public/whatsapp-color-icon.svg` (not deleted)
+- [x] Google Ads event already platform-agnostic (`ghali_chat_started`) — no change needed
+- [x] `StickyWhatsAppCta` component kept (dormant, not imported anywhere)
+- [x] `WhatsAppIcon` in `icons.tsx` kept (dormant export)
 
-**IMPORTANT:** Do not change layouts, component structure, animations, or overall design. Only swap colors, icons, links, and copy text. WhatsApp components are hidden, not removed — they can be re-enabled if the WhatsApp account is restored.
-
-**TEST:** `pnpm build` succeeds. Visually verify ghali.ae — Telegram CTAs visible, WhatsApp CTAs hidden, correct blue color, correct icon, no broken links. Arabic version also correct.
+**TEST:** ✅ `pnpm build` succeeds. All pages render with Telegram CTAs, correct blue color, correct icon.
 
 ---
 
