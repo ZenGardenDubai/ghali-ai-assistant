@@ -331,6 +331,7 @@ const ALLOWED_FEATURES = new Set([
   "web_search",
   "feedback",
   "scheduled_tasks",
+  "image_editing",
 ]);
 
 export const trackFeatureUsed = internalAction({
