@@ -99,9 +99,12 @@ export default defineSchema({
     userId: v.id("users"),
     storageId: v.id("_storage"),
     expiresAt: v.number(),
+    /** Telegram messageSid (chatId:messageId) set after the image is sent — enables reply-to-image lookups */
+    messageSid: v.optional(v.string()),
   })
     .index("by_expiresAt", ["expiresAt"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_messageSid", ["messageSid"]),
 
   mediaFiles: defineTable({
     userId: v.id("users"),

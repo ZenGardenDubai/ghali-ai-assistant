@@ -55,6 +55,47 @@ export const getRecentGeneratedImages = internalQuery({
   },
 });
 
+/** Associate a Telegram messageSid with a generated image after it has been sent.
+ *  This enables reply-to-image lookups when users quote a specific generated image. */
+export const updateMessageSid = internalMutation({
+  args: {
+    storageId: v.id("_storage"),
+    userId: v.id("users"),
+    messageSid: v.string(),
+  },
+  handler: async (ctx, { storageId, userId, messageSid }) => {
+    const record = await ctx.db
+      .query("generatedImages")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .filter((q) => q.eq(q.field("storageId"), storageId))
+      .first();
+    if (record) {
+      await ctx.db.patch(record._id, { messageSid });
+    }
+  },
+});
+
+/** Look up a generated image by its Telegram messageSid (chatId:messageId).
+ *  Used when a user replies to a generated image to resolve the correct edit base. */
+export const getGeneratedImageBySid = internalQuery({
+  args: { messageSid: v.string(), userId: v.id("users") },
+  handler: async (ctx, { messageSid, userId }) => {
+    const record = await ctx.db
+      .query("generatedImages")
+      .withIndex("by_messageSid", (q) => q.eq("messageSid", messageSid))
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+    if (!record) return null;
+    const storageUrl = await ctx.storage.getUrl(record.storageId);
+    if (!storageUrl) return null;
+    return {
+      storageId: record.storageId as string,
+      mediaType: "image/png" as const,
+      storageUrl,
+    };
+  },
+});
+
 /** Delete expired generated images from storage */
 export const cleanupExpiredImages = internalMutation({
   handler: async (ctx) => {

@@ -28,6 +28,7 @@ export const generateAndStoreImage = internalAction({
   ): Promise<{
     success: boolean;
     imageUrl?: string;
+    storageId?: string;
     description?: string;
     error?: string;
   }> => {
@@ -195,7 +196,7 @@ export const generateAndStoreImage = internalAction({
         });
       }
 
-      return { success: true, imageUrl, description };
+      return { success: true, imageUrl, storageId: storageId as string, description };
     } catch (error) {
       console.error("[generateAndStoreImage] Failed:", error);
       if (user) {

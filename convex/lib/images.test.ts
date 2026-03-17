@@ -57,6 +57,31 @@ describe("parseImageToolResult", () => {
   it("returns null for empty string", () => {
     expect(parseImageToolResult("")).toBeNull();
   });
+
+  it("includes storageId when present in JSON", () => {
+    const json = JSON.stringify({
+      type: "image",
+      imageUrl: "https://example.com/image.png",
+      caption: "A sunset",
+      storageId: "kg2abc123def456",
+    });
+    expect(parseImageToolResult(json)).toEqual({
+      imageUrl: "https://example.com/image.png",
+      caption: "A sunset",
+      storageId: "kg2abc123def456",
+    });
+  });
+
+  it("omits storageId when not present in JSON", () => {
+    const json = JSON.stringify({
+      type: "image",
+      imageUrl: "https://example.com/image.png",
+      caption: "A sunset",
+    });
+    const result = parseImageToolResult(json);
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty("storageId");
+  });
 });
 
 describe("extractImageFromSteps", () => {
@@ -137,6 +162,25 @@ describe("extractImageFromSteps", () => {
       { toolName: "another", output: null },
     ]);
     expect(extractImageFromSteps(steps)).toBeNull();
+  });
+
+  it("propagates storageId from tool result", () => {
+    const steps = makeSteps([
+      {
+        toolName: "generateImage",
+        output: JSON.stringify({
+          type: "image",
+          imageUrl: "https://storage.convex.cloud/abc123",
+          caption: "A motorbike",
+          storageId: "kg2abc123def456",
+        }),
+      },
+    ]);
+    expect(extractImageFromSteps(steps)).toEqual({
+      imageUrl: "https://storage.convex.cloud/abc123",
+      caption: "A motorbike",
+      storageId: "kg2abc123def456",
+    });
   });
 });
 

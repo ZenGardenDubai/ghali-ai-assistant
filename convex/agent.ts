@@ -560,6 +560,7 @@ const generateImage = createTool({
       const result: {
         success: boolean;
         imageUrl?: string;
+        storageId?: string;
         description?: string;
         error?: string;
       } = await ctx.runAction(internal.images.generateAndStoreImage, {
@@ -571,9 +572,11 @@ const generateImage = createTool({
       });
       if (result.success && result.imageUrl) {
         const caption = result.description || "Here's your generated image.";
-        // Return JSON so messages.ts can extract imageUrl from tool results,
-        // while the stored thread message stays clean (no raw URLs in history)
-        return JSON.stringify({ type: "image", imageUrl: result.imageUrl, caption });
+        // Return JSON so messages.ts can extract imageUrl + storageId from tool results,
+        // while the stored thread message stays clean (no raw URLs in history).
+        // storageId is included so messages.ts can associate the Telegram message_id
+        // with this image for future reply-to-image lookups.
+        return JSON.stringify({ type: "image", imageUrl: result.imageUrl, caption, storageId: result.storageId });
       }
       const action = referenceImageStorageId ? "editing" : "generation";
       return `Image ${action} failed: ${result.error || "Unknown error"}. Please try rephrasing your request.`;
