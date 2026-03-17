@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.47.2...v0.48.0) (2026-03-17)
+
+
+### Features
+
+* complete Telegram migration — bot integration, Mini Apps, onboarding ([#286](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/286)) ([0fbbd5d](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/0fbbd5dfa446b42407cf45118fb4bcd71e0cf20a))
+
 ## [0.47.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.47.1...v0.47.2) (2026-03-15)
 
 
