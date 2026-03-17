@@ -193,7 +193,7 @@ export const handleSubscriptionActive = internalMutation({
 
     // Notify user — channel-aware routing (localized)
     const proMsg = getBillingMessage("subscriptionActive", user.language, CREDITS_PRO);
-    if (user.channel === "telegram" && user.telegramId) {
+    if (user.telegramId) {
       await ctx.scheduler.runAfter(0, internal.telegram.guardedSendMessage, {
         userId: user._id,
         chatId: user.telegramId,
@@ -271,7 +271,7 @@ export const handleSubscriptionEnded = internalMutation({
 
     // Notify user — channel-aware routing (localized)
     const endMsg = getBillingMessage("subscriptionEnded", user.language, CREDITS_BASIC);
-    if (user.channel === "telegram" && user.telegramId) {
+    if (user.telegramId) {
       await ctx.scheduler.runAfter(0, internal.telegram.guardedSendMessage, {
         userId: user._id,
         chatId: user.telegramId,

@@ -97,7 +97,7 @@ export const resetCredits = internalMutation({
         const tierLabel = user.tier === "pro" ? "Pro" : "Basic";
         const refreshMsg = `Your ${tierLabel} credits have been refreshed. You now have ${tierCredits} credits for this month.`;
 
-        if (user.channel === "telegram" && user.telegramId) {
+        if (user.telegramId) {
           await ctx.scheduler.runAfter(
             resetCount * 500,
             internal.telegram.guardedSendMessage,

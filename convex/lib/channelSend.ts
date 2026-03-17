@@ -3,7 +3,7 @@
  *
  * Background actions (heartbeat, reminders, billing, credits, scheduled tasks)
  * need to send messages to users on either WhatsApp or Telegram. This helper
- * checks the user's `channel` field and routes to the appropriate sender.
+ * checks for `telegramId` to determine the user's channel and routes accordingly.
  *
  * For Telegram: always sends directly (no session window, no templates).
  * For WhatsApp: uses the existing session window + template fallback pattern.
@@ -32,7 +32,7 @@ export async function sendToUser(
     variables: Record<string, string>;
   }
 ): Promise<{ sent: boolean; method: "telegram" | "whatsapp_message" | "whatsapp_template" | "skipped" }> {
-  if (user.channel === "telegram" && user.telegramId) {
+  if (user.telegramId) {
     // Telegram: no session window, no templates — send directly.
     // Callers (heartbeat, reminders, scheduledTasks) already run their own
     // opt-out and outbound guard checks, so we use sendMessage (not guarded)
@@ -75,7 +75,7 @@ export async function sendToUser(
  * Returns telegramId for Telegram users, phone for WhatsApp users.
  */
 export function getUserChatId(user: Doc<"users">): string {
-  if (user.channel === "telegram" && user.telegramId) {
+  if (user.telegramId) {
     return user.telegramId;
   }
   return user.phone;
@@ -85,5 +85,5 @@ export function getUserChatId(user: Doc<"users">): string {
  * Check if a user is on Telegram.
  */
 export function isTelegramUser(user: Doc<"users">): boolean {
-  return user.channel === "telegram" && !!user.telegramId;
+  return !!user.telegramId;
 }
