@@ -52,17 +52,18 @@ function TelegramFeedbackContent() {
       return;
     }
 
-    // Dev mode
+    // Dev mode: allow testing in regular browser with ?telegramId=xxx
     if (process.env.NODE_ENV === "development") {
       const devTelegramId = new URLSearchParams(window.location.search).get("telegramId");
       if (devTelegramId) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- dev-only shortcut, tree-shaken in production
         setInitData("dev_mode");
-        setState("form");
+        setState("form"); // eslint-disable-line react-hooks/set-state-in-effect
         return;
       }
     }
 
-    setState("not_telegram");
+    setState("not_telegram"); // eslint-disable-line react-hooks/set-state-in-effect
   }, [state]);
 
   const handleSubmit = async () => {
