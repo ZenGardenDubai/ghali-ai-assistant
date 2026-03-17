@@ -123,120 +123,32 @@ User taps "Send Feedback" button (or /feedback command)
 
 ## 4. Telegram Onboarding Flow Redesign
 
-**Status:** Not started
+**Status:** Done
 **Priority:** Medium
 
-**Problem:** Telegram users currently skip onboarding entirely (`onboardingStep: null` at creation). This means:
-- No guided introduction to Ghali's capabilities
-- No timezone/language confirmation (auto-detected from `language_code` but not verified)
-- No personality preferences collected
-- Welcome message is generic
+**Problem:** Telegram users previously skipped onboarding entirely (`onboardingStep: null` at creation) — no guided introduction, no timezone/language confirmation, no personality seeding.
 
-**Current state:** New Telegram users get a welcome infographic + "Help" / "Upgrade" inline keyboard, then go straight to AI chat.
-
-**Proposed redesign:**
-1. Welcome infographic with inline keyboard introducing Ghali
-2. Inline keyboard-driven onboarding (not step-by-step text like WhatsApp):
-   - "What language do you prefer?" → keyboard with language options
-   - "What's your timezone?" → keyboard with common timezones or auto-detect confirmation
-   - "How should I talk to you?" → tone preferences (formal/casual/emoji-heavy)
-3. Each step uses callback queries — no free-text input needed
-4. User can skip at any point with a "Skip" button
-5. Results saved to user profile + personality files
-
-**Key difference from WhatsApp onboarding:** Use Telegram's native inline keyboards instead of free-text Q&A. Faster, lower friction, better UX.
-
-**Files affected:** `convex/telegram.ts` (sendWelcome), `convex/users.ts`, `convex/lib/onboarding.ts` (new Telegram path or separate module), bot server (callback handling)
-
----
-
-## 5. Streaming / Typewriter Effect
-
-**Status:** Deferred from migration Step 8
-**Priority:** Low — nice-to-have UX enhancement, not blocking
-
-**Problem:** Users see a typing indicator while the AI generates a response, then get the full response at once. A streaming effect (progressive text reveal via message edits) would feel more responsive.
-
-**Why deferred:**
-- `ghaliAgent.generateText` returns the full response in one shot — switching to `streamText` requires a major refactor of `generateResponse` (~1000 lines with credit checks, media processing, tool results, circuit breaker)
-- Tool calls (deepReasoning, generateImage) pause the stream mid-generation, creating janky UX
-- Telegram rate limits ~20 edits/message/minute — a 30s response at 700ms intervals = ~43 edits, exceeding the limit
-- Fake typewriter (post-generation reveal) adds latency without saving user wait time
-- Typing indicator refresh (every 4s) already provides adequate feedback
-
-**Infrastructure already in place:**
-- `editMessageText` in `telegramSend.ts`
-- `editMessage` action in `telegram.ts`
-- `TELEGRAM_EDIT_INTERVAL_MS` constant (700ms)
-
-**When to revisit:** After @convex-dev/agent adds better streaming support for actions, or if user feedback strongly requests it.
-
-**Files affected:** `convex/messages.ts` (switch `generateText` → `streamText` + edit loop)
-
----
-
-## 6. Inline Mode (@GhaliSmartBot query)
-
-**Status:** Not started
-**Priority:** Low — convenience feature, not blocking
-
-**Problem:** Users can only interact with Ghali inside the bot's own chat. Inline mode lets users type `@GhaliSmartBot <query>` from any chat (group, private, channel) and get an instant AI answer they can share.
-
-**How it works:**
-1. User types `@GhaliSmartBot what is the capital of France` in any chat
-2. Telegram sends an `inline_query` to the bot server
-3. Bot server forwards to Convex → runs a lightweight agent call (no thread, no tools, no credit deduction — or 1 credit per inline query)
-4. Convex returns answer text
-5. Bot server responds with `answerInlineQuery` containing result articles
-6. User taps a result → it's inserted into the chat as a message from them
-
-**Design decisions:**
-- **Credit model:** Free (no credit deduction) for short answers, or 1 credit per query? Free encourages adoption but risks abuse.
-- **Model:** Use Flash only (no deep reasoning or image gen — inline results must be fast, <3s)
-- **Context:** No user files loaded (no memory/personality). Stateless, fast answers only.
-- **Rate limiting:** Telegram throttles inline queries naturally, but add per-user rate limit (e.g., 20/min)
-- **Result format:** `InlineQueryResultArticle` with title (short answer) and message_text (full answer in HTML)
-- **Caching:** Set `cache_time` to reduce repeat queries (e.g., 300s)
+**Solution:** Inline keyboard-driven onboarding. New users see a welcome message with auto-detected timezone/language, changeable via picker buttons (6 timezones, 4 languages, or type a city). Tapping "Start Chatting" or sending any message completes onboarding and seeds personality/memory files.
 
 **Implementation:**
-- [ ] Add `inline_query` handler in bot server (extract query text, forward to Convex)
-- [ ] Add `/telegram-inline` HTTP route in Convex (lightweight agent call, no thread)
-- [ ] Return `answerInlineQuery` with formatted results
-- [ ] Enable inline mode in BotFather (`/setinline` with placeholder text)
-- [ ] Add per-user rate limiting for inline queries
+- [x] Welcome message with inline keyboard (Change Timezone / Change Language / Start Chatting)
+- [x] Timezone picker (Dubai, Riyadh, London, Paris, New York, Mumbai, or type a city)
+- [x] Language picker (English, العربية, Français, हिन्दी)
+- [x] `ob:` callback handlers in `/telegram-callback` route
+- [x] `completeTelegramOnboarding` mutation seeds personality + memory files
+- [x] Onboarding callbacks guarded — ignored after completion
+- [x] Validation: whitelisted timezone/language values from single source of truth
+- [x] Step 2 (city text input) with `resolveCityToTimezone` + re-send welcome
+- [x] Infographic moved from welcome to `/help` command
 
-**Files affected:** bot server `index.js`, `convex/http.ts`, new `convex/inlineQuery.ts` or handler in `convex/telegram.ts`
+**Files affected:** `convex/telegram.ts`, `convex/http.ts`, `convex/users.ts`, `convex/lib/onboarding.ts`, `convex/messages.ts`, `convex/templates.ts`
 
 ---
 
-## 7. Message Reactions
+## Remaining Items (moved to GitHub Issues)
 
-**Status:** Not started
-**Priority:** Low — UX polish
-
-**Problem:** Users can react to Ghali's messages with emoji (Telegram native feature), but the bot doesn't acknowledge or use reactions. Reactions could serve as lightweight feedback signals.
-
-**Use cases:**
-- **Feedback signal:** 👍/👎 on responses → track satisfaction without asking explicitly
-- **Acknowledgment:** Bot reacts to user messages (e.g., 👀 when processing, ✅ when done) instead of typing indicator
-- **Analytics:** Track reaction patterns per user/model/feature for quality insights
-
-**How it works:**
-1. User reacts to a bot message with an emoji
-2. Telegram sends a `message_reaction` update to the bot server
-3. Bot server forwards to Convex
-4. Convex logs the reaction (message ID, emoji, user) for analytics
-
-**Bot-initiated reactions:**
-- `setMessageReaction` API call to add emoji to user messages
-- Useful as processing indicators: 👀 (seen), ⚡ (processing), ✅ (done)
-- Alternative to typing indicator for quick responses
-
-**Implementation:**
-- [ ] Add `message_reaction` handler in bot server
-- [ ] Add `/telegram-reaction` HTTP route in Convex (or extend `/telegram-callback`)
-- [ ] Track reactions in PostHog (`message_reaction` event with emoji, message context)
-- [ ] Optionally: bot reacts with 👀 on receipt, ✅ on completion
-- [ ] Enable in BotFather: `/setjoingroups` if needed for group reactions
-
-**Files affected:** bot server `index.js`, `convex/http.ts`, `convex/analytics.ts`
+| Item | Issue | Priority |
+|------|-------|----------|
+| Streaming / Typewriter Effect | [#283](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/283) | Low |
+| Inline Mode (@GhaliSmartBot query) | [#284](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/284) | Low |
+| Message Reactions | [#285](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/285) | Low |
