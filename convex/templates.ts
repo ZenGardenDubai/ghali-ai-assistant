@@ -49,6 +49,18 @@ Send me a message to get started, or type *Help* to learn more!`,
     variables: ["name", "timezone"],
   },
 
+  telegram_welcome: {
+    template: `Welcome to Ghali, {{name}}! 🤖
+
+I'm your personal AI assistant — right here in Telegram. I can answer questions, process files, generate images, set reminders, and remember what matters to you.
+
+🕐 Timezone: <b>{{timezone}}</b>
+🌐 Language: <b>{{language}}</b>
+
+Type /help anytime for commands, or /privacy to see how your data is handled.`,
+    variables: ["name", "timezone", "language"],
+  },
+
   // === Credits ===
   check_credits: {
     template: `*Your Credits* 🪙

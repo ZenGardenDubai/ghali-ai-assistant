@@ -1122,8 +1122,13 @@ http.route({
 
       // Send welcome to new users (non-blocking — don't block message processing)
       if (isNewUser) {
+        // Fetch the created user to get auto-detected timezone/language
+        const newUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
         ctx.scheduler.runAfter(0, internal.telegram.sendWelcome, {
           chatId: chatIdStr,
+          name: newUser?.name,
+          timezone: newUser?.timezone,
+          language: newUser?.language,
         });
       }
 
@@ -1255,8 +1260,96 @@ http.route({
         });
       }
 
+      // Onboarding callbacks — ob:tz, ob:lang, ob:done, ob:tz:<value>, ob:lang:<value>
+      if (callbackData.startsWith("ob:")) {
+        const { userId } = await ctx.runMutation(
+          internal.users.findOrCreateTelegramUser,
+          { telegramId: chatIdStr, firstName }
+        );
+        const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+          name?: string; timezone?: string; language?: string; onboardingStep?: number | null;
+        } | null;
+
+        // Ignore onboarding callbacks if user already completed onboarding
+        if (user?.onboardingStep == null) {
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const { ONBOARDING_TIMEZONES, ONBOARDING_LANGUAGES } = await import("./telegram");
+
+        if (callbackData === "ob:tz") {
+          // Show timezone picker
+          await ctx.runAction(internal.telegram.sendTimezonePicker, { chatId: chatIdStr });
+        } else if (callbackData === "ob:lang") {
+          // Show language picker
+          await ctx.runAction(internal.telegram.sendLanguagePicker, { chatId: chatIdStr });
+        } else if (callbackData === "ob:tz:type") {
+          // Prompt user to type a city — set onboardingStep to 2 (awaiting city text)
+          await ctx.runMutation(internal.users.updateUser, {
+            userId,
+            fields: { onboardingStep: 2 },
+          });
+          await ctx.runAction(internal.telegram.sendMessage, {
+            chatId: chatIdStr,
+            body: "Type your city name (e.g. Dubai, London, New York):",
+          });
+        } else if (callbackData.startsWith("ob:tz:")) {
+          // Timezone selected — validate and update user, re-send welcome
+          const tz = callbackData.slice(6);
+          if (!ONBOARDING_TIMEZONES.has(tz)) {
+            console.warn(`[telegram-callback] Invalid onboarding timezone: ${tz}`);
+            await ctx.runAction(internal.telegram.sendMessage, {
+              chatId: chatIdStr,
+              body: "Something went wrong. Please try again.",
+            });
+          } else {
+            await ctx.runMutation(internal.users.updateUser, {
+              userId,
+              fields: { timezone: tz, onboardingStep: 1 },
+            });
+            await ctx.runAction(internal.telegram.sendWelcome, {
+              chatId: chatIdStr,
+              name: user?.name,
+              timezone: tz,
+              language: user?.language ?? "en",
+            });
+          }
+        } else if (callbackData.startsWith("ob:lang:")) {
+          // Language selected — validate and update user, re-send welcome
+          const lang = callbackData.slice(8);
+          if (!ONBOARDING_LANGUAGES.has(lang)) {
+            console.warn(`[telegram-callback] Invalid onboarding language: ${lang}`);
+            await ctx.runAction(internal.telegram.sendMessage, {
+              chatId: chatIdStr,
+              body: "Something went wrong. Please try again.",
+            });
+          } else {
+            await ctx.runMutation(internal.users.updateUser, {
+              userId,
+              fields: { language: lang, onboardingStep: 1 },
+            });
+            await ctx.runAction(internal.telegram.sendWelcome, {
+              chatId: chatIdStr,
+              name: user?.name,
+              timezone: user?.timezone ?? "Asia/Dubai",
+              language: lang,
+            });
+          }
+        } else if (callbackData === "ob:done") {
+          // Complete onboarding — seed files and confirm
+          await ctx.runMutation(internal.users.completeTelegramOnboarding, { userId });
+          await ctx.runAction(internal.telegram.sendMessage, {
+            chatId: chatIdStr,
+            body: "You're all set! 🎉 Just send me a message to get started.",
+          });
+        } else {
+          console.warn(`[telegram-callback] Unknown onboarding callback: ${callbackData}`);
+        }
       // Process callback data — whitelist-validated "cmd:<command>" for system commands
-      if (callbackData.startsWith("cmd:")) {
+      } else if (callbackData.startsWith("cmd:")) {
         const command = callbackData.slice(4);
         if (!ALLOWED_CALLBACK_COMMANDS.has(command)) {
           console.warn(`[telegram-callback] Unknown callback command: ${command}`);

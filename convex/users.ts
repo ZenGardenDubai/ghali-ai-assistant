@@ -133,7 +133,7 @@ export const findOrCreateTelegramUser = internalMutation({
       isAdmin: false,
       credits: CREDITS_BASIC,
       creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
-      onboardingStep: null, // skip onboarding
+      onboardingStep: 1, // Telegram onboarding (welcome with inline keyboard)
       termsAcceptedAt: now, // auto-accept (prevents stale cleanup cron deletion)
       createdAt: now,
     });
@@ -251,6 +251,52 @@ export const updateUserFile = internalMutation({
       content,
       updatedAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Complete Telegram onboarding: seed personality + memory files, set onboardingStep to null.
+ */
+export const completeTelegramOnboarding = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return;
+
+    // Only complete if still in onboarding
+    if (user.onboardingStep == null) return;
+
+    await ctx.db.patch(userId, { onboardingStep: null });
+
+    // Seed personality file if empty
+    const personalityFile = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", "personality")
+      )
+      .unique();
+    if (personalityFile && !personalityFile.content) {
+      const { buildDefaultPersonality } = await import("./lib/onboarding");
+      await ctx.db.patch(personalityFile._id, {
+        content: buildDefaultPersonality(),
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Seed memory file if empty
+    const memoryFile = await ctx.db
+      .query("userFiles")
+      .withIndex("by_userId_filename", (q) =>
+        q.eq("userId", userId).eq("filename", "memory")
+      )
+      .unique();
+    if (memoryFile && !memoryFile.content) {
+      const { buildOnboardingMemory } = await import("./lib/onboarding");
+      await ctx.db.patch(memoryFile._id, {
+        content: buildOnboardingMemory(user.name?.trim() || undefined),
+        updatedAt: Date.now(),
+      });
+    }
   },
 });
 

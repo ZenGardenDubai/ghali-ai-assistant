@@ -494,8 +494,21 @@ export const generateResponse = internalAction({
       if (!result.skipToAI) {
         // Translate onboarding response to the user's language
         const lang = result.updates?.language ?? user.language ?? "en";
-        const translatedResponse = await translateMessage(result.response, lang);
-        await guardedSendMessage(translatedResponse);
+        if (result.response) {
+          const translatedResponse = await translateMessage(result.response, lang);
+          await guardedSendMessage(translatedResponse);
+        }
+        // Re-send welcome keyboard when Telegram user returns to step 1 (e.g. after city input)
+        if (isTelegram && chatId && result.nextStep === 1) {
+          const updatedTz = result.updates?.timezone ?? user.timezone;
+          const updatedLang = result.updates?.language ?? user.language ?? "en";
+          await ctx.runAction(internal.telegram.sendWelcome, {
+            chatId,
+            name: user.name,
+            timezone: updatedTz,
+            language: updatedLang,
+          });
+        }
         return;
       }
       // Fall through to AI with onboarding already marked done (nextStep: null)
@@ -653,13 +666,12 @@ export const generateResponse = internalAction({
         if (isTelegram) {
           const cmd = messageForCredits.toLowerCase().trim();
           if (cmd === "help" || cmd === "commands") {
+            const baseUrl = process.env.WEBAPP_BASE_URL ?? "https://ghali.ae";
             systemKeyboard = [
+              [{ text: "👤 Manage Your Account", url: `${baseUrl}/account` }],
               [
-                { text: "💳 Credits", callback_data: "cmd:credits" },
-                { text: "🔒 Privacy", callback_data: "cmd:privacy" },
-              ],
-              [
-                { text: "⭐ Upgrade", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade` } },
+                { text: "📝 Send Feedback", web_app: { url: `${baseUrl}/tg/feedback` } },
+                { text: "⭐ Upgrade to Pro", web_app: { url: `${baseUrl}/tg/upgrade` } },
               ],
             ];
           } else if (cmd === "feedback") {

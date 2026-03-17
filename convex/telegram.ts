@@ -19,6 +19,9 @@ import {
   answerCallbackQuery as answerCbQuery,
 } from "./lib/telegramSend";
 import { formatForTelegram } from "./lib/telegram";
+import { TEMPLATES } from "./templates";
+import { formatTimezoneForDisplay } from "./lib/onboarding";
+import { fillTemplate } from "./lib/utils";
 
 /** Mini App upgrade URL — configurable via env for dev/prod */
 export function getUpgradeUrl(): string {
@@ -182,47 +185,108 @@ export const answerCallbackQuery = internalAction({
   },
 });
 
+/** Valid onboarding timezones (must match picker buttons) */
+export const ONBOARDING_TIMEZONES = new Set([
+  "Asia/Dubai", "Asia/Riyadh", "Europe/London", "Europe/Paris",
+  "America/New_York", "Asia/Kolkata",
+]);
+
+/** Valid onboarding languages (must match picker buttons) */
+export const ONBOARDING_LANGUAGES = new Set(["en", "ar", "fr", "hi"]);
+
+/** Language display labels */
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  ar: "العربية",
+  fr: "Français",
+  hi: "हिन्दी",
+};
+
+/**
+ * Build the onboarding welcome text for a Telegram user.
+ */
+function buildWelcomeText(name: string, timezone: string, language: string): string {
+  const tzDisplay = formatTimezoneForDisplay(timezone);
+  const langDisplay = LANGUAGE_LABELS[language] ?? language;
+  return fillTemplate(TEMPLATES.telegram_welcome.template, {
+    name: name || "there",
+    timezone: tzDisplay,
+    language: langDisplay,
+  });
+}
+
+/** Onboarding inline keyboard */
+const ONBOARDING_KEYBOARD = [
+  [
+    { text: "🌍 Change Timezone", callback_data: "ob:tz" },
+    { text: "🌐 Change Language", callback_data: "ob:lang" },
+  ],
+  [{ text: "💬 Start Chatting", callback_data: "ob:done" }],
+];
+
 /**
  * Send welcome message to new Telegram users (non-blocking).
- * Tries to send the onboarding infographic, falls back to text.
+ * Tries to send the onboarding infographic, then the welcome text with onboarding buttons.
  */
 export const sendWelcome = internalAction({
-  args: { chatId: v.string() },
-  handler: async (ctx, { chatId }) => {
+  args: { chatId: v.string(), name: v.optional(v.string()), timezone: v.optional(v.string()), language: v.optional(v.string()) },
+  handler: async (_ctx, { chatId, name, timezone, language }) => {
     const opts = getSendOptions(chatId);
-    try {
-      const onboardingConfig = await ctx.runQuery(
-        internal.appConfig.getConfig,
-        { key: "onboarding_image" }
-      );
-      if (onboardingConfig) {
-        let parsed: { enabled?: boolean; url?: string } | null = null;
-        try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
-        if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
-          await sendTelegramPhoto(opts, parsed.url, "Welcome to Ghali! 🤖");
-          // Send keyboard as follow-up so new users see interactive buttons
-          await sendInlineKeyboard(opts,
-            "How can I help you today?",
-            [
-              [
-                { text: "❓ Help", callback_data: "cmd:help" },
-                { text: "⭐ Upgrade", web_app: { url: getUpgradeUrl() } },
-              ],
-            ]
-          );
-          return;
-        }
-      }
-    } catch (error) {
-      console.error("[telegram] Failed to send welcome image:", error);
-    }
-    // Send welcome with inline keyboard
+    const userName = name ?? "there";
+    const tz = timezone ?? "Asia/Dubai";
+    const lang = language ?? "en";
+
+    // Send welcome text with onboarding keyboard
+    const welcomeText = buildWelcomeText(userName, tz, lang);
+    await sendInlineKeyboard(opts, welcomeText, ONBOARDING_KEYBOARD);
+  },
+});
+
+/**
+ * Send timezone picker keyboard.
+ */
+export const sendTimezonePicker = internalAction({
+  args: { chatId: v.string() },
+  handler: async (_ctx, { chatId }) => {
+    const opts = getSendOptions(chatId);
     await sendInlineKeyboard(opts,
-      "Welcome to Ghali! 🤖 I'm your AI assistant. How can I help you today?",
+      "Where are you located?",
       [
         [
-          { text: "❓ Help", callback_data: "cmd:help" },
-          { text: "⭐ Upgrade", web_app: { url: getUpgradeUrl() } },
+          { text: "🇦🇪 Dubai", callback_data: "ob:tz:Asia/Dubai" },
+          { text: "🇸🇦 Riyadh", callback_data: "ob:tz:Asia/Riyadh" },
+        ],
+        [
+          { text: "🇬🇧 London", callback_data: "ob:tz:Europe/London" },
+          { text: "🇫🇷 Paris", callback_data: "ob:tz:Europe/Paris" },
+        ],
+        [
+          { text: "🇺🇸 New York", callback_data: "ob:tz:America/New_York" },
+          { text: "🇮🇳 Mumbai", callback_data: "ob:tz:Asia/Kolkata" },
+        ],
+        [{ text: "⌨️ Type a city instead", callback_data: "ob:tz:type" }],
+      ]
+    );
+  },
+});
+
+/**
+ * Send language picker keyboard.
+ */
+export const sendLanguagePicker = internalAction({
+  args: { chatId: v.string() },
+  handler: async (_ctx, { chatId }) => {
+    const opts = getSendOptions(chatId);
+    await sendInlineKeyboard(opts,
+      "Which language should I use?",
+      [
+        [
+          { text: "🇬🇧 English", callback_data: "ob:lang:en" },
+          { text: "🇦🇪 العربية", callback_data: "ob:lang:ar" },
+        ],
+        [
+          { text: "🇫🇷 Français", callback_data: "ob:lang:fr" },
+          { text: "🇮🇳 हिन्दी", callback_data: "ob:lang:hi" },
         ],
       ]
     );

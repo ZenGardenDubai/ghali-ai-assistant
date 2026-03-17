@@ -8,8 +8,6 @@ import {
   ONBOARDING_LONG_MESSAGE_WORDS,
 } from "../constants";
 
-import { TEMPLATES } from "../templates";
-import { fillTemplate } from "./utils";
 
 // ============================================================================
 // Types
@@ -393,21 +391,29 @@ export async function handleOnboarding(
   }
 
   switch (step) {
-    // Step 1: Send single welcome message (first message from new user)
-    // Onboarding completes immediately — timezone/name are auto-detected,
-    // language is detected from first real message, personality is learned organically.
+    // Step 1: Telegram users see the welcome keyboard; any text completes onboarding.
     case 1: {
-      const name = user.name || "there";
-      const timezone = formatTimezoneForDisplay(user.timezone);
-      const response = fillTemplate(TEMPLATES.onboarding_welcome.template, {
-        name,
-        timezone,
-      });
       const fileUpdates: OnboardingResult["fileUpdates"] = {
         memory: buildOnboardingMemory(user.name?.trim() || undefined),
         personality: buildDefaultPersonality(),
       };
-      return { response, nextStep: null, fileUpdates };
+      return { response: "", nextStep: null, fileUpdates, skipToAI: true };
+    }
+
+    // Step 2: Telegram user is typing a city name for timezone
+    case 2: {
+      const resolved = resolveCityToTimezone(trimmed);
+      if (resolved) {
+        return {
+          response: `Timezone set to ${formatTimezoneForDisplay(resolved)} ✓`,
+          nextStep: 1, // back to welcome screen (callback handler re-sends welcome)
+          updates: { timezone: resolved },
+        };
+      }
+      return {
+        response: "I couldn't find that city. Try again (e.g. Dubai, London, New York):",
+        nextStep: 2, // stay on city input
+      };
     }
 
     default:
