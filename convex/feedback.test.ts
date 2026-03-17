@@ -459,3 +459,82 @@ describe("feedback token cleanup", () => {
     expect(expiredResult.reason).toBe("not_found");
   });
 });
+
+describe("submitFeedbackByTelegramId", () => {
+  it("submits feedback when user has telegramId set", async () => {
+    const t = convexTest(schema, modules);
+
+    const { userId } = await t.mutation(
+      internal.users.findOrCreateTelegramUser,
+      { telegramId: "111222333", firstName: "Tariq" }
+    );
+
+    const result = await t.mutation(
+      internal.feedback.submitFeedbackByTelegramId,
+      {
+        telegramId: "111222333",
+        category: "bug",
+        message: "Something is broken",
+      }
+    );
+
+    expect(result.success).toBe(true);
+
+    const feedbackList = await t.query(internal.feedback.listFeedback, {});
+    expect(feedbackList).toHaveLength(1);
+    expect(feedbackList[0]!.source).toBe("telegram_miniapp");
+    expect(feedbackList[0]!.userId).toEqual(userId);
+  });
+
+  it("returns user_not_found when telegramId does not match any user", async () => {
+    const t = convexTest(schema, modules);
+
+    const result = await t.mutation(
+      internal.feedback.submitFeedbackByTelegramId,
+      {
+        telegramId: "nonexistent",
+        category: "general",
+        message: "Hello",
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe("user_not_found");
+  });
+
+  it("falls back to tg: phone lookup for legacy users without telegramId field", async () => {
+    const t = convexTest(schema, modules);
+
+    // Simulate legacy user: has tg: phone but telegramId field was never set
+    const legacyUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        phone: "tg:555666777",
+        language: "en",
+        timezone: "Asia/Dubai",
+        tier: "basic",
+        isAdmin: false,
+        credits: 60,
+        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        onboardingStep: null,
+        createdAt: Date.now(),
+        // telegramId intentionally omitted
+      });
+    });
+
+    const result = await t.mutation(
+      internal.feedback.submitFeedbackByTelegramId,
+      {
+        telegramId: "555666777",
+        category: "feature_request",
+        message: "Add voice messages",
+      }
+    );
+
+    expect(result.success).toBe(true);
+
+    const feedbackList = await t.query(internal.feedback.listFeedback, {});
+    expect(feedbackList).toHaveLength(1);
+    expect(feedbackList[0]!.userId).toEqual(legacyUserId);
+    expect(feedbackList[0]!.source).toBe("telegram_miniapp");
+  });
+});

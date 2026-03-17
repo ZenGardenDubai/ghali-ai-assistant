@@ -217,10 +217,18 @@ export const submitFeedbackByTelegramId = internalMutation({
     message: v.string(),
   },
   handler: async (ctx, { telegramId, category, message }) => {
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_telegramId", (q) => q.eq("telegramId", telegramId))
       .unique();
+
+    // Fallback: look up by placeholder phone for users who predate the telegramId field.
+    if (!user) {
+      user = await ctx.db
+        .query("users")
+        .withIndex("by_phone", (q) => q.eq("phone", `tg:${telegramId}`))
+        .unique();
+    }
 
     if (!user) return { success: false, error: "user_not_found" };
 

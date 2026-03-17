@@ -478,3 +478,77 @@ describe("userFile CRUD", () => {
     expect(file!.content).toBe("Name: Ahmad\nWork: ADNOC");
   });
 });
+
+describe("findOrCreateTelegramUser", () => {
+  it("creates a new Telegram user with telegramId set", async () => {
+    const t = convexTest(schema, modules);
+
+    const { userId, isNew } = await t.mutation(
+      internal.users.findOrCreateTelegramUser,
+      { telegramId: "123456789", firstName: "Ali" }
+    );
+
+    expect(isNew).toBe(true);
+
+    const user = await t.run(async (ctx) => ctx.db.get(userId));
+    expect(user!.telegramId).toBe("123456789");
+    expect(user!.phone).toBe("tg:123456789");
+    expect(user!.channel).toBe("telegram");
+  });
+
+  it("returns existing user by telegramId without creating duplicate", async () => {
+    const t = convexTest(schema, modules);
+
+    const { userId: id1 } = await t.mutation(
+      internal.users.findOrCreateTelegramUser,
+      { telegramId: "123456789" }
+    );
+    const { userId: id2, isNew } = await t.mutation(
+      internal.users.findOrCreateTelegramUser,
+      { telegramId: "123456789" }
+    );
+
+    expect(id1).toEqual(id2);
+    expect(isNew).toBe(false);
+
+    const users = await t.run(async (ctx) => ctx.db.query("users").collect());
+    expect(users).toHaveLength(1);
+  });
+
+  it("backfills telegramId for legacy users with tg: phone but no telegramId field", async () => {
+    const t = convexTest(schema, modules);
+
+    // Simulate a legacy user created before the telegramId field existed
+    const legacyUserId = await t.run(async (ctx) => {
+      return await ctx.db.insert("users", {
+        phone: "tg:987654321",
+        language: "en",
+        timezone: "Asia/Dubai",
+        tier: "basic",
+        isAdmin: false,
+        credits: 60,
+        creditsResetAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        onboardingStep: null,
+        createdAt: Date.now(),
+        // telegramId intentionally omitted
+      });
+    });
+
+    const { userId, isNew } = await t.mutation(
+      internal.users.findOrCreateTelegramUser,
+      { telegramId: "987654321" }
+    );
+
+    expect(isNew).toBe(false);
+    expect(userId).toEqual(legacyUserId);
+
+    // Verify telegramId was backfilled
+    const user = await t.run(async (ctx) => ctx.db.get(userId));
+    expect(user!.telegramId).toBe("987654321");
+    expect(user!.channel).toBe("telegram");
+
+    // Verify no duplicate was created
+    const users = await t.run(async (ctx) => ctx.db.query("users").collect());
+    expect(users).toHaveLength(1);
+  });
+});

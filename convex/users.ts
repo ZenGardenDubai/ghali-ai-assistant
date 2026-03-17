@@ -120,6 +120,19 @@ export const findOrCreateTelegramUser = internalMutation({
 
     const now = Date.now();
     const phone = `tg:${telegramId}`;
+
+    // Fallback: look up by placeholder phone for users who predate the telegramId field.
+    // If found, backfill telegramId so the index works for all future lookups.
+    const byPhone = await ctx.db
+      .query("users")
+      .withIndex("by_phone", (q) => q.eq("phone", phone))
+      .unique();
+
+    if (byPhone) {
+      await ctx.db.patch(byPhone._id, { telegramId, channel: "telegram" });
+      return { userId: byPhone._id, isNew: false };
+    }
+
     const timezone = timezoneFromLanguageCode(languageCode);
     const language = languageCode?.startsWith("ar") ? "ar" : "en";
     const userId = await ctx.db.insert("users", {
