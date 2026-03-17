@@ -312,13 +312,13 @@ export const generateResponse = internalAction({
       responseSent = true;
       try {
         if (isTelegram && chatId) {
-          const messageId = await ctx.runAction(internal.telegram.sendMedia, {
+          const telegramMessageId = await ctx.runAction(internal.telegram.sendMedia, {
             chatId,
             caption,
             mediaUrl: mediaUrlToSend,
             mediaType,
           });
-          return { sent: true, messageId };
+          return { sent: true, messageId: telegramMessageId ?? undefined };
         } else {
           await ctx.runAction(internal.whatsapp.sendMedia, {
             to: user!.phone,
