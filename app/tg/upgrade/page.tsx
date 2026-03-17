@@ -8,6 +8,7 @@ import {
   useAuth,
 } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
+import { usePostHog } from "posthog-js/react";
 import Image from "next/image";
 
 type FlowState =
@@ -25,11 +26,14 @@ function TelegramUpgradeContent() {
   const isSuccess = searchParams.get("success") === "true";
   const { isSignedIn, isLoaded } = useAuth();
 
+  const posthog = usePostHog();
   const [state, setState] = useState<FlowState>("loading");
   const [telegramId, setTelegramId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [linked, setLinked] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+
+  const distinctId = telegramId ? `tg:${telegramId}` : undefined;
 
   // Step 1: Wait for Clerk to load, then verify identity
   useEffect(() => {
@@ -37,6 +41,7 @@ function TelegramUpgradeContent() {
     if (!isLoaded) return;
 
     if (isSuccess) {
+      posthog?.capture("tg_upgrade_success", { distinct_id: distinctId });
       setState("success");
       return;
     }
@@ -51,6 +56,7 @@ function TelegramUpgradeContent() {
       webapp.expand();
 
       (async () => {
+        posthog?.capture("tg_upgrade_verification_started");
         try {
           const res = await fetch("/api/tg-auth", {
             method: "POST",
@@ -59,12 +65,15 @@ function TelegramUpgradeContent() {
           });
 
           if (!res.ok) {
+            posthog?.capture("tg_upgrade_verification_failed", { reason: `http_${res.status}` });
             setState("error");
             setError("Could not verify your identity. Please try again.");
             return;
           }
 
           const data = await res.json();
+          const id = `tg:${data.telegramId}`;
+          posthog?.capture("tg_upgrade_verification_success", { distinct_id: id });
           setTelegramId(data.telegramId);
           localStorage.setItem("tg_upgrade_telegramId", data.telegramId);
           if (isSignedIn) {
@@ -73,6 +82,7 @@ function TelegramUpgradeContent() {
             setState("welcome");
           }
         } catch {
+          posthog?.capture("tg_upgrade_verification_failed", { reason: "network_error" });
           setState("error");
           setError("Connection error. Please try again.");
         }
@@ -111,6 +121,7 @@ function TelegramUpgradeContent() {
     if (!telegramId || linked || isLinking) return;
     setIsLinking(true);
     setState("linking");
+    posthog?.capture("tg_upgrade_linking_started", { distinct_id: distinctId });
 
     try {
       const res = await fetch("/api/link-telegram", {
@@ -121,19 +132,22 @@ function TelegramUpgradeContent() {
 
       const result = await res.json();
       if (result.success) {
+        posthog?.capture("tg_upgrade_linking_success", { distinct_id: distinctId });
         setLinked(true);
         setState("pricing");
       } else {
+        posthog?.capture("tg_upgrade_linking_failed", { distinct_id: distinctId, reason: result.error });
         setState("error");
         setError(result.error || "Failed to link account.");
       }
     } catch {
+      posthog?.capture("tg_upgrade_linking_failed", { distinct_id: distinctId, reason: "network_error" });
       setState("error");
       setError("Connection error. Please try again.");
     } finally {
       setIsLinking(false);
     }
-  }, [telegramId, linked, isLinking]);
+  }, [telegramId, linked, isLinking, posthog, distinctId]);
 
   // Auto-link whenever signed in with a telegramId (covers both in-page auth change and redirect)
   useEffect(() => {
@@ -184,6 +198,7 @@ function TelegramUpgradeContent() {
             <ErrorCard
               message={error || "Something went wrong."}
               onRetry={() => {
+                posthog?.capture("tg_upgrade_retry", { distinct_id: distinctId });
                 setError(null);
                 setState("loading");
               }}

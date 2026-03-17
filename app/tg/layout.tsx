@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
+import { PostHogProvider } from "@/app/providers/posthog";
 import { fontVariables } from "@/app/lib/root-layout";
 import Script from "next/script";
 
@@ -23,7 +24,9 @@ export default function TelegramMiniAppLayout({
         />
       </head>
       <body className={`${fontVariables} antialiased`}>
-        <ClerkProvider>{children}</ClerkProvider>
+        <ClerkProvider>
+          <PostHogProvider>{children}</PostHogProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
