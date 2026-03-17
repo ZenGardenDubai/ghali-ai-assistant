@@ -185,7 +185,7 @@ function TelegramUpgradeContent() {
               message={error || "Something went wrong."}
               onRetry={() => {
                 setError(null);
-                setState("welcome");
+                setState("loading");
               }}
             />
           )}

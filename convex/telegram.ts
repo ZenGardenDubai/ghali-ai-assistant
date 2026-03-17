@@ -144,7 +144,7 @@ export const editMessage = internalAction({
     text: v.string(),
   },
   handler: async (_ctx, { chatId, messageId, text }) => {
-    await editMessageText(getSendOptions(chatId), messageId, text);
+    await editMessageText(getSendOptions(chatId), messageId, formatForTelegram(text));
   },
 });
 

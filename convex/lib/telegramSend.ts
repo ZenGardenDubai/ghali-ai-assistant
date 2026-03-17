@@ -26,19 +26,32 @@ interface TelegramApiResponse {
  * Base HTTP call to the Telegram Bot API.
  * Returns the parsed response, throws on network errors.
  */
+/** Default timeout for Telegram API calls (15 seconds). */
+const TELEGRAM_API_TIMEOUT_MS = 15_000;
+/** Default timeout for file downloads (30 seconds — larger files need more time). */
+const TELEGRAM_DOWNLOAD_TIMEOUT_MS = 30_000;
+
 export async function telegramApiCall(
   botToken: string,
   method: string,
   body: Record<string, unknown>
 ): Promise<TelegramApiResponse> {
-  const response = await fetch(
-    `${TELEGRAM_API_BASE}/bot${botToken}/${method}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TELEGRAM_API_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(
+      `${TELEGRAM_API_BASE}/bot${botToken}/${method}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      }
+    );
+  } finally {
+    clearTimeout(timer);
+  }
 
   const data = (await response.json()) as TelegramApiResponse;
 
@@ -276,8 +289,10 @@ export async function downloadTelegramFileByPath(
 ): Promise<{ data: ArrayBuffer; mimeType: string } | null> {
   const downloadUrl = `${TELEGRAM_API_BASE}/file/bot${botToken}/${filePath}`;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TELEGRAM_DOWNLOAD_TIMEOUT_MS);
   try {
-    const response = await fetch(downloadUrl);
+    const response = await fetch(downloadUrl, { signal: controller.signal });
     if (!response.ok) {
       console.error(
         `[telegramSend] File download failed (${response.status}): ${filePath}`
@@ -293,6 +308,8 @@ export async function downloadTelegramFileByPath(
   } catch (error) {
     console.error("[telegramSend] File download error:", error);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
