@@ -104,7 +104,11 @@ export const fetchMedia = internalAction({
     // Get file info first (checks size, gets path for download)
     const fileInfo = await getTelegramFileInfo(botToken, fileId);
     if (!fileInfo) return null;
-    if (fileInfo.fileSize && fileInfo.fileSize > 20 * 1024 * 1024) {
+    if (fileInfo.fileSize == null) {
+      console.warn(`[telegram] Missing file size for ${fileId}; refusing download`);
+      return null;
+    }
+    if (fileInfo.fileSize > 20 * 1024 * 1024) {
       console.warn(`[telegram] File too large: ${fileInfo.fileSize} bytes (max 20MB)`);
       return { error: "file_too_large", fileSize: fileInfo.fileSize };
     }
