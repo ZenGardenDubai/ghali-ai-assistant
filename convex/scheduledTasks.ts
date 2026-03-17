@@ -16,6 +16,7 @@ import {
 import { getNextCronRun } from "./lib/cronParser";
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
+import { sendToUser, isTelegramUser } from "./lib/channelSend";
 import { ghaliAgent, getOrCreateChatThread, setTraceId, clearTraceId } from "./agent";
 
 /**
@@ -251,22 +252,26 @@ export const executeScheduledTask = internalAction({
           { userId: task.userId }
         );
         if (guard.allowed) {
-          const withinWindow =
-            user.lastMessageAt &&
-            Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
           try {
-            if (withinWindow) {
-              await ctx.runAction(internal.whatsapp.sendMessage, {
-                to: user.phone,
-                body: `Your scheduled task "${task.title}" couldn't run — you're out of credits. Send "upgrade" to get more.`,
-              });
+            const creditMsg = `Your scheduled task "${task.title}" couldn't run — you're out of credits. Send "upgrade" to get more.`;
+            if (isTelegramUser(user)) {
+              await sendToUser(ctx, user, creditMsg);
             } else {
-              await ctx.runAction(internal.whatsapp.sendTemplate, {
-                to: user.phone,
-                templateName: "ghali_credits_low_v2",
-                variables: { "1": "0" },
-              });
+              const withinWindow =
+                user.lastMessageAt &&
+                Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+              if (withinWindow) {
+                await ctx.runAction(internal.whatsapp.sendMessage, {
+                  to: user.phone,
+                  body: creditMsg,
+                });
+              } else {
+                await ctx.runAction(internal.whatsapp.sendTemplate, {
+                  to: user.phone,
+                  templateName: "ghali_credits_low_v2",
+                  variables: { "1": "0" },
+                });
+              }
             }
             notificationSent = true;
           } catch (error) {
@@ -366,14 +371,19 @@ export const executeScheduledTask = internalAction({
         );
         if (errorGuard.allowed) {
           try {
-            const withinErrorWindow =
-              user.lastMessageAt &&
-              Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-            if (withinErrorWindow) {
-              await ctx.runAction(internal.whatsapp.sendMessage, {
-                to: user.phone,
-                body: `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`,
-              });
+            const errorMsg = `Your scheduled task "${task.title}" failed to run. I'll try again next time or you can reschedule it.`;
+            if (isTelegramUser(user)) {
+              await sendToUser(ctx, user, errorMsg);
+            } else {
+              const withinErrorWindow =
+                user.lastMessageAt &&
+                Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+              if (withinErrorWindow) {
+                await ctx.runAction(internal.whatsapp.sendMessage, {
+                  to: user.phone,
+                  body: errorMsg,
+                });
+              }
             }
           } catch {
             // Best-effort notification
@@ -455,41 +465,48 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    const withinWindow =
-      latestUser.lastMessageAt &&
-      Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
     let delivered = false;
     let transportFailed = false; // true only when sendMessage/sendTemplate actually throws
     try {
-      if (withinWindow) {
-        await ctx.runAction(internal.whatsapp.sendMessage, {
-          to: latestUser.phone,
-          body: responseText,
-        });
+      if (isTelegramUser(latestUser)) {
+        // Telegram: no session window or templates — send directly
+        await sendToUser(ctx, latestUser, responseText);
         delivered = true;
       } else {
-        // Out of session — check daily template cap before sending
-        const templateGuard = await ctx.runMutation(
-          internal.outboundGuard.checkAndRecordTemplateSend,
-          { userId: task.userId }
-        );
-        if (!templateGuard.allowed) {
-          console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
-          await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
-          // Fall through to the !delivered path below (policy block, not transport failure)
+        // WhatsApp: session window + template fallback
+        const withinWindow =
+          latestUser.lastMessageAt &&
+          Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+        if (withinWindow) {
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: latestUser.phone,
+            body: responseText,
+          });
+          delivered = true;
         } else {
-          try {
-            const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
-            await ctx.runAction(internal.whatsapp.sendTemplate, {
-              to: latestUser.phone,
-              templateName: "ghali_scheduled_task_v2",
-              variables: { "1": truncated },
-            });
-            delivered = true;
-          } catch (error) {
-            await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: task.userId });
-            throw error;
+          // Out of session — check daily template cap before sending
+          const templateGuard = await ctx.runMutation(
+            internal.outboundGuard.checkAndRecordTemplateSend,
+            { userId: task.userId }
+          );
+          if (!templateGuard.allowed) {
+            console.warn(`[template-guard] Task ${taskId} template blocked: ${templateGuard.reason}`);
+            await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: task.userId });
+            // Fall through to the !delivered path below (policy block, not transport failure)
+          } else {
+            try {
+              const truncated = truncateForTemplate(responseText, SCHEDULED_TASK_MAX_RESULT_LENGTH);
+              await ctx.runAction(internal.whatsapp.sendTemplate, {
+                to: latestUser.phone,
+                templateName: "ghali_scheduled_task_v2",
+                variables: { "1": truncated },
+              });
+              delivered = true;
+            } catch (error) {
+              await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: task.userId });
+              throw error;
+            }
           }
         }
       }

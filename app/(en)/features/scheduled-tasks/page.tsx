@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "AI Scheduled Tasks & Reminders on WhatsApp",
+  title: "AI Scheduled Tasks & Reminders on Telegram",
   description:
     "Schedule AI-powered tasks that run automatically — reminders, daily briefings, recurring reports, and more.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Schedule AI-powered tasks that run automatically — reminders, daily briefings, recurring reports, and more.",
     url: "https://ghali.ae/features/scheduled-tasks",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
@@ -56,7 +56,7 @@ export default function ScheduledTasksPage() {
       alternateLocaleHref="/ar/features/scheduled-tasks"
       badge="Scheduled Tasks"
       title={<>AI That Works <span className="text-[#ED6B23]">While You Sleep</span></>}
-      subtitle="Schedule tasks and Ghali runs them automatically — a full AI turn with research, analysis, and rich results delivered straight to your WhatsApp."
+      subtitle="Schedule tasks and Ghali runs them automatically — a full AI turn with research, analysis, and rich results delivered straight to your Telegram."
     >
       <FeatureSection title="More than reminders">
         <p>

@@ -2,7 +2,7 @@
 
 Server-side analytics via `posthog-node` in Convex actions. Client-side via `posthog-js` on the landing page.
 
-**distinct_id**: User's phone number (e.g. `+971500000000`)
+**distinct_id**: User's phone number (e.g. `+971500000000`) or `tg:<chatId>` for Telegram users
 
 All server events include `phone_country` derived from phone prefix (`convex/lib/analytics.ts`).
 
@@ -35,14 +35,18 @@ Agent usageHandler → ctx.runMutation(scheduleTrackAIGeneration) → scheduler 
 
 ### `user_new`
 
-First message from an unknown phone number.
+First message from an unknown phone/Telegram user.
 
 | Property | Type | Description |
 |---|---|---|
-| `phone_country` | string | ISO country code (e.g. `AE`, `GB`) |
+| `phone_country` | string | ISO country code (e.g. `AE`, `GB`). Empty string `""` for Telegram users (no phone prefix to detect from) |
 | `timezone` | string | IANA timezone (e.g. `Asia/Dubai`) |
+| `channel` | string? | `"telegram"` for Telegram users (absent for WhatsApp) |
+| `acquisition_source` | string? | `/start` deep link param (e.g. `web`, `ig`, `referral_xyz`) — Telegram only |
 
-**Triggered in**: `convex/messages.ts` — when `onboardingStep === 1`
+**distinct_id**: Phone number for WhatsApp users, `tg:<chatId>` for Telegram users.
+
+**Triggered in**: `convex/users.ts` — `findOrCreateUser` (WhatsApp) or `findOrCreateTelegramUser` (Telegram)
 
 ### `user_returning`
 
@@ -290,7 +294,7 @@ Fired when a user submits feedback via any channel.
 | Property | Type | Description |
 |---|---|---|
 | `category` | string | `bug`, `feature_request`, `general` |
-| `source` | string | `whatsapp_link`, `web`, `agent_tool` |
+| `source` | string | `whatsapp_link`, `web`, `agent_tool`, `telegram_miniapp` |
 | `tier` | string | `basic` or `pro` |
 | `phone_country` | string | ISO country code |
 
@@ -345,6 +349,87 @@ Fired when a user who has already received the terms prompt sends another WhatsA
 | `phone_country` | string | ISO country code |
 
 **Triggered in**: `convex/messages.ts` — terms gate Branch A, after `recordTermsAcceptance` returns `accepted: true`
+
+## Client Events (Telegram Mini Apps)
+
+Captured via `posthog-js` in `/tg/upgrade` and `/tg/feedback` Mini Apps. `distinct_id` is `tg:<telegramId>`.
+
+### `tg_upgrade_verification_started`
+
+Telegram initData verification begins.
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — init effect
+
+### `tg_upgrade_verification_success`
+
+Identity verified successfully.
+
+| Property | Type | Description |
+|---|---|---|
+| `distinct_id` | string | `tg:<telegramId>` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — after successful `/api/tg-auth` response
+
+### `tg_upgrade_verification_failed`
+
+Identity verification failed.
+
+| Property | Type | Description |
+|---|---|---|
+| `reason` | string | `http_<status>` or `network_error` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — on `/api/tg-auth` failure
+
+### `tg_upgrade_linking_started`
+
+Clerk account linking to Telegram ID begins.
+
+| Property | Type | Description |
+|---|---|---|
+| `distinct_id` | string | `tg:<telegramId>` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — `linkAccount` callback
+
+### `tg_upgrade_linking_success`
+
+Clerk account successfully linked to Telegram.
+
+| Property | Type | Description |
+|---|---|---|
+| `distinct_id` | string | `tg:<telegramId>` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — after `/api/link-telegram` success
+
+### `tg_upgrade_linking_failed`
+
+Account linking failed.
+
+| Property | Type | Description |
+|---|---|---|
+| `distinct_id` | string | `tg:<telegramId>` |
+| `reason` | string | Error message or `network_error` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — on `/api/link-telegram` failure
+
+### `tg_upgrade_success`
+
+Pro subscription completed (redirect back with `?success=true`).
+
+| Property | Type | Description |
+|---|---|---|
+| `distinct_id` | string | `tg:<telegramId>` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — success redirect detected
+
+### `tg_upgrade_retry`
+
+User tapped "Try Again" after an error.
+
+| Property | Type | Description |
+|---|---|---|
+| `distinct_id` | string | `tg:<telegramId>` |
+
+**Triggered in**: `app/tg/upgrade/page.tsx` — retry button click
 
 ## Client Events (Landing Page)
 

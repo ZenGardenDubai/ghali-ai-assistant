@@ -362,12 +362,11 @@ describe("formatTimezoneForDisplay", () => {
 
 describe("handleOnboarding", () => {
   describe("step 1 — single welcome message", () => {
-    it("returns welcome message with name and timezone, completes onboarding", async () => {
+    it("completes onboarding and skips to AI on any message", async () => {
       const result = await handleOnboarding(1, "hi", makeUser());
-      expect(result.response).toContain("Ahmad");
-      expect(result.response).toContain("Dubai");
+      expect(result.response).toBe(""); // no text response — welcome keyboard already shown
       expect(result.nextStep).toBeNull(); // done after one message
-      expect(result.skipToAI).toBeUndefined();
+      expect(result.skipToAI).toBe(true);
     });
 
     it("writes initial memory on welcome", async () => {
@@ -386,6 +385,27 @@ describe("handleOnboarding", () => {
         "What's the weather in Dubai?",
         makeUser()
       );
+      expect(result.skipToAI).toBe(true);
+      expect(result.nextStep).toBeNull();
+    });
+  });
+
+  describe("step 2 — city input for timezone", () => {
+    it("resolves a valid city and returns to step 1", async () => {
+      const result = await handleOnboarding(2, "London", makeUser());
+      expect(result.updates?.timezone).toBe("Europe/London");
+      expect(result.nextStep).toBe(1);
+      expect(result.response).toContain("London");
+    });
+
+    it("rejects an unknown city and stays on step 2", async () => {
+      const result = await handleOnboarding(2, "xyznotacity", makeUser());
+      expect(result.nextStep).toBe(2);
+      expect(result.response).toContain("couldn't find");
+    });
+
+    it("skips to AI if user sends a real question during city input", async () => {
+      const result = await handleOnboarding(2, "What is the capital of France?", makeUser());
       expect(result.skipToAI).toBe(true);
       expect(result.nextStep).toBeNull();
     });

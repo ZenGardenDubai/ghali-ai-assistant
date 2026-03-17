@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Professional multi-AI writing pipeline. 8 models research, draft, and polish your content — articles, emails, reports, and more.",
     url: "https://ghali.ae/features/prowrite",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",

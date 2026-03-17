@@ -4,12 +4,14 @@ System architecture overview for Ghali. See [SPEC.md](SPEC.md) for full build sp
 
 ## Message Flow
 
+### Telegram (Primary Channel)
+
 ```text
-WhatsApp message
-  → 360dialog webhook (Convex HTTP route, POST /whatsapp-webhook)
-  → Validate signature (Web Crypto HMAC-SHA256) + check country blocklist
-  → Deduplicate (message ID check)
-  → Find or create user + thread
+Telegram message
+  → Bot server (Node.js + Telegraf, long polling on ubuntu-16gb-hel1-1)
+  → POST /telegram-message (Bearer auth via INTERNAL_API_SECRET)
+  → Convex HTTP action: validate chatId, deduplicate (message ID check)
+  → Find or create user + thread (auto-detect timezone/language from languageCode)
   → Save message (Convex mutation, transactional)
   → Schedule async response (ctx.scheduler.runAfter)
   → Return 200 immediately
@@ -24,11 +26,48 @@ Background action:
       → searchDocuments → user's RAG knowledge base
       → addItem/queryItems/updateItem → structured data
       → updateProfile/appendToMemory/updatePersonality/updateHeartbeat → user files
-  → Format for WhatsApp + truncate if over 4096 chars (WhatsApp API limit)
+  → Format for Telegram HTML + split if over 4096 chars (up to 5 chunks)
+  → Send reply via api.telegram.org (direct from Convex)
+```
+
+### Callback Queries (Inline Keyboards)
+
+```text
+User taps inline button
+  → Bot server forwards to POST /telegram-callback
+  → answerCallbackQuery (within 10s)
+  → Whitelist-validate command (help, credits, privacy, account)
+  → Process as regular message through saveIncoming
+```
+
+### WhatsApp (Dormant)
+
+```text
+WhatsApp message
+  → 360dialog webhook (POST /whatsapp-webhook)
+  → Validate signature (Web Crypto HMAC-SHA256) + check country blocklist
+  → Same mutation → action pattern as Telegram
   → Send reply via 360dialog Cloud API
 ```
 
+Code preserved but WhatsApp Business account is disabled by Meta.
+
 Web chat uses the same mutation → action pattern but streams via Convex WebSocket.
+
+## Telegram Bot Infrastructure
+
+| Component | Details |
+|-----------|---------|
+| Prod bot | `@GhaliSmartBot` |
+| Dev bot | `@GhalDev_Bot` |
+| Bot server | Node.js + Telegraf, `/root/clawd/projects/ghali-telegram/index.js` |
+| Server | `ubuntu-16gb-hel1-1` (157.180.120.93), systemd service `ghali-telegram` |
+| Local Bot API | Docker `telegram-bot-api` on port 8081 (removes 20MB limit, bot server only) |
+| Convex sends via | `api.telegram.org` directly (cannot reach localhost:8081) |
+| Formatting | HTML mode (`<b>`, `<i>`, `<pre>`, `<code>`), `&<>` escaping |
+| Message limit | 4096 chars, split into up to 5 chunks (split before formatting) |
+| Media download | Bot API `getFile` → download → Convex storage (>20MB returns error) |
+| Inline keyboards | Credit exhaustion, help menu, upgrade prompts, welcome message |
 
 ## Single Agent with Escalation
 
@@ -101,7 +140,7 @@ Queries use both text scoring and vector similarity:
 
 ## Document Processing & RAG
 
-Files received via WhatsApp:
+Files received via Telegram or WhatsApp:
 - PDF/images/audio/video → sent directly to Gemini 3 Flash
 - DOCX/PPTX/XLSX → CloudConvert → PDF → Gemini 3 Flash
 - Content chunked, embedded (text-embedding-3-small), stored per-user in RAG namespace
@@ -113,7 +152,7 @@ Uses `@convex-dev/rag` with pre-computed embeddings via `ai@5` to avoid version 
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Phone, name, language, timezone, tier, isAdmin, credits |
+| `users` | Phone, telegramId, channel, name, language, timezone, tier, isAdmin, credits |
 | `userFiles` | Per-user markdown files (profile/memory/personality/heartbeat) |
 | `items` | Structured data items (expenses, tasks, contacts, etc.) |
 | `collections` | Named groups for organizing items |
@@ -122,7 +161,7 @@ Uses `@convex-dev/rag` with pre-computed embeddings via `ai@5` to avoid version 
 | `scheduledTasks` | AI-powered scheduled tasks (one-time & recurring) |
 | `scheduledJobs` | Heartbeat and legacy reminders |
 | `feedback` | User feedback, bug reports, feature requests |
-| `feedbackTokens` | Short-lived tokens for WhatsApp feedback links |
+| `feedbackTokens` | Short-lived tokens for feedback form links |
 
 Threads and messages managed by `@convex-dev/agent`. RAG documents managed by `@convex-dev/rag`.
 
@@ -138,9 +177,10 @@ Task fires (ctx.scheduler.runAt)
   → Get/create thread
   → Run agent (ghaliAgent.generateText with task description as prompt)
   → Deduct 1 credit
-  → Deliver result via WhatsApp:
-    → In-session (24h window): free-form message
-    → Out-of-session: template message (truncated to 1400 chars)
+  → Deliver result via channel-aware routing:
+    → Telegram: direct message (no session window)
+    → WhatsApp in-session (24h window): free-form message
+    → WhatsApp out-of-session: template message (truncated to 1400 chars)
   → If cron: compute next run → reschedule
   → If once: set enabled = false
 ```
@@ -149,12 +189,13 @@ Limits: 3 tasks (Basic), 24 tasks (Pro). Paused tasks count toward limit.
 
 ## Feedback System
 
-Two entry points, both free (no credit deduction):
+Three entry points, all free (no credit deduction):
 
-1. **WhatsApp link** — user says "I have feedback" → agent generates tokenized link → user opens `/feedback?token=xxx` → web form
+1. **Chat link** — user says "I have feedback" → agent generates tokenized link → user opens `/feedback?token=xxx` → web form
 2. **Web** — signed-in user on `/account` → "Give Feedback" → `/feedback` with Clerk auth
+3. **Agent tool** — user provides feedback in conversation → agent calls `submitFeedback` tool directly
 
-Token-based links expire in 15 minutes and are single-use. Rate limit: 3 feedbacks/day per user. Admin panel at `/admin/feedback` for viewing, filtering, status management, notes, and WhatsApp replies.
+Token-based links expire in 15 minutes and are single-use. Rate limit: 3 feedbacks/day per user. Admin panel at `/admin/feedback` for viewing, filtering, status management, notes, and replies.
 
 ## Template Messages
 

@@ -202,7 +202,7 @@ Defined in `convex/lib/utils.ts` as `SYSTEM_COMMANDS`:
 | Credit cost | 0 (always free) | — |
 | Token cleanup | Daily at 03:00 UTC | `convex/crons.ts` |
 
-Three submission channels: agent tool (in-chat), WhatsApp link (tokenized), web (Clerk auth). All free.
+Four submission channels: agent tool (in-chat), Telegram Mini App, WhatsApp link (tokenized, dormant), web (Clerk auth). All free.
 
 ## Supported Languages
 

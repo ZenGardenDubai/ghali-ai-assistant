@@ -141,7 +141,7 @@ export const featurePages = {
       breadcrumb: "مدعوم بأفضل ذكاء اصطناعي",
       metaTitle: "مدعوم بأفضل ذكاء اصطناعي",
       metaDescription:
-        "مساعد ذكاء اصطناعي يستخدم أفضل النماذج — Google Gemini وClaude وOpenAI — ويختار النموذج المناسب لكل مهمة تلقائياً عبر واتساب.",
+        "مساعد ذكاء اصطناعي يستخدم أفضل النماذج — Google Gemini وClaude وOpenAI — ويختار النموذج المناسب لكل مهمة تلقائياً عبر تيليجرام.",
       sections: [
         {
           title: "ليش عدة نماذج؟",
@@ -223,19 +223,19 @@ export const featurePages = {
     en: {
       slug: "zero-friction",
       badge: "Zero Friction",
-      title: "No App. No Account.",
-      titleHighlight: "Just WhatsApp.",
+      title: "No Extra App. No Signup.",
+      titleHighlight: "Just Message.",
       subtitle:
         "Other AI assistants want you to download an app, create an account, pick a plan, and figure out a new interface. Ghali just works.",
       breadcrumb: "Zero Friction",
       metaTitle: "Zero Friction",
       metaDescription:
-        "No app to download, no account to create. Ghali works entirely through WhatsApp — just send a message and go.",
+        "No app to download, no account to create. Ghali works entirely through Telegram — just send a message and go.",
       sections: [
         {
-          title: "Open WhatsApp. Say Hi. Done.",
+          title: "Open Telegram. Say Hi. Done.",
           paragraphs: [
-            "That's literally it. You already have WhatsApp on your phone. You already know how to send a message. There's nothing new to learn, nothing to install, nothing to update.",
+            "That's literally it. You already have Telegram on your phone. You already know how to send a message. There's nothing new to learn, nothing to install, nothing to update.",
             "Ghali lives where you already are. No new app taking up storage. No login screens. No \"please update to the latest version\" popups.",
           ],
         },
@@ -246,13 +246,13 @@ export const featurePages = {
               icon: "📱",
               title: "No download required",
               description:
-                "Works on any phone with WhatsApp. Android, iPhone, even WhatsApp Web.",
+                "Works on any phone with Telegram. Android, iPhone, even Telegram Desktop.",
             },
             {
               icon: "🔑",
               title: "No account to create",
               description:
-                "Your WhatsApp number is your identity. No passwords, no email verification.",
+                "Your Telegram account is your identity. No passwords, no email verification.",
             },
             {
               icon: "🔄",
@@ -264,7 +264,7 @@ export const featurePages = {
               icon: "🌍",
               title: "Works everywhere",
               description:
-                "WhatsApp works on slow connections, old phones, and in every country. So does Ghali.",
+                "Telegram works on slow connections, old phones, and in every country. So does Ghali.",
             },
           ],
         },
@@ -280,19 +280,19 @@ export const featurePages = {
     ar: {
       slug: "zero-friction",
       badge: "بدون تعقيد",
-      title: "بدون تطبيق. بدون حساب.",
-      titleHighlight: "بس واتساب.",
+      title: "بدون تطبيق إضافي. بدون تسجيل.",
+      titleHighlight: "بس راسل.",
       subtitle:
         "مساعدات الذكاء الاصطناعي الثانية تبيك تحمّل تطبيق، تسوي حساب، تختار خطة، وتتعلم واجهة جديدة. غالي يشتغل وبس.",
       breadcrumb: "بدون تعقيد",
       metaTitle: "بدون تعقيد",
       metaDescription:
-        "مساعد ذكي على واتساب بدون تطبيق ولا تسجيل. ارسل رسالة واتساب وابدأ فوراً — مجاني وسهل الاستخدام.",
+        "مساعد ذكي على تيليجرام بدون تطبيق ولا تسجيل. ارسل رسالة وابدأ فوراً — مجاني وسهل الاستخدام.",
       sections: [
         {
-          title: "افتح واتساب. قول هلا. خلاص.",
+          title: "افتح تيليجرام. قول هلا. خلاص.",
           paragraphs: [
-            "هذا حرفياً كل شي. واتساب عندك بالتلفون. تعرف ترسل رسالة. ما في شي جديد تتعلمه، ما في شي تحمّله، ما في شي تحدّثه.",
+            "هذا حرفياً كل شي. تيليجرام عندك بالتلفون. تعرف ترسل رسالة. ما في شي جديد تتعلمه، ما في شي تحمّله، ما في شي تحدّثه.",
             "غالي موجود وين أنت أصلاً. بدون تطبيق جديد ياخذ مساحة. بدون شاشات تسجيل دخول. بدون \"رجاءً حدّث للنسخة الأخيرة\".",
           ],
         },
@@ -303,13 +303,13 @@ export const featurePages = {
               icon: "📱",
               title: "بدون تحميل",
               description:
-                "يشتغل على أي تلفون فيه واتساب. أندرويد، آيفون، حتى واتساب ويب.",
+                "يشتغل على أي تلفون فيه تيليجرام. أندرويد، آيفون، حتى تيليجرام ديسكتوب.",
             },
             {
               icon: "🔑",
               title: "بدون إنشاء حساب",
               description:
-                "رقم واتسابك هو هويتك. بدون كلمات سر، بدون تحقق إيميل.",
+                "حسابك في تيليجرام هو هويتك. بدون كلمات سر، بدون تحقق إيميل.",
             },
             {
               icon: "🔄",
@@ -321,7 +321,7 @@ export const featurePages = {
               icon: "🌍",
               title: "يشتغل في كل مكان",
               description:
-                "واتساب يشتغل على اتصالات بطيئة، تلفونات قديمة، وفي كل بلد. وغالي كذلك.",
+                "تيليجرام يشتغل على اتصالات بطيئة، تلفونات قديمة، وفي كل بلد. وغالي كذلك.",
             },
           ],
         },
@@ -398,7 +398,7 @@ export const featurePages = {
       breadcrumb: "ذاكرة شخصية",
       metaTitle: "ذاكرة شخصية",
       metaDescription:
-        "مساعد شخصي ذكي يتذكر تفضيلاتك وسياقك وأسلوبك. ذاكرة شخصية بالذكاء الاصطناعي تتطور مع كل محادثة على واتساب.",
+        "مساعد شخصي ذكي يتذكر تفضيلاتك وسياقك وأسلوبك. ذاكرة شخصية بالذكاء الاصطناعي تتطور مع كل محادثة على تيليجرام.",
       sections: [
         {
           title: "فعلاً يتذكرك",
@@ -515,7 +515,7 @@ export const featurePages = {
       breadcrumb: "الخصوصية وبياناتك",
       metaTitle: "الخصوصية وبياناتك",
       metaDescription:
-        "خصوصية البيانات أولاً — ما نبيع ولا نشارك بياناتك. تحكم كامل في معلوماتك مع حذف فوري على واتساب.",
+        "خصوصية البيانات أولاً — ما نبيع ولا نشارك بياناتك. تحكم كامل في معلوماتك مع حذف فوري على تيليجرام.",
       sections: [
         {
           title: "الخصوصية مو ميزة. هي الأساس.",
@@ -577,16 +577,16 @@ export const featurePages = {
       title: "Send Anything.",
       titleHighlight: "Ghali Gets It.",
       subtitle:
-        "Photos, voice notes, videos, audio files — just send them in WhatsApp and Ghali understands what you're sharing.",
+        "Photos, voice notes, videos, audio files — just send them in Telegram and Ghali understands what you're sharing.",
       breadcrumb: "Understand Anything",
       metaTitle: "Understand Anything",
       metaDescription:
-        "Send photos, voice notes, videos, and audio files through WhatsApp. Ghali understands all media types natively.",
+        "Send photos, voice notes, videos, and audio files through Telegram. Ghali understands all media types natively.",
       sections: [
         {
           title: "More than just text",
           paragraphs: [
-            "Real conversations aren't just words. You snap a photo of a menu. You record a quick voice note. You forward a video someone sent you. Ghali handles all of it — natively, through WhatsApp.",
+            "Real conversations aren't just words. You snap a photo of a menu. You record a quick voice note. You forward a video someone sent you. Ghali handles all of it — natively, through Telegram.",
           ],
         },
         {
@@ -639,16 +639,16 @@ export const featurePages = {
       title: "ارسل أي شي.",
       titleHighlight: "غالي يفهمه.",
       subtitle:
-        "صور، رسائل صوتية، فيديوهات، ملفات صوتية — بس ارسلها على واتساب وغالي يفهم شو تشاركه.",
+        "صور، رسائل صوتية، فيديوهات، ملفات صوتية — بس ارسلها على تيليجرام وغالي يفهم شو تشاركه.",
       breadcrumb: "يفهم أي شي",
       metaTitle: "يفهم أي شي",
       metaDescription:
-        "ذكاء اصطناعي يفهم الصور والرسائل الصوتية والفيديو على واتساب. ارسل أي وسائط وغالي يحللها فوراً.",
+        "ذكاء اصطناعي يفهم الصور والرسائل الصوتية والفيديو على تيليجرام. ارسل أي وسائط وغالي يحللها فوراً.",
       sections: [
         {
           title: "أكثر من مجرد نص",
           paragraphs: [
-            "المحادثات الحقيقية مو بس كلام. تصور قائمة مطعم. تسجل رسالة صوتية سريعة. تحوّل فيديو أحد أرسله لك. غالي يتعامل مع كل شي — أصلياً، عبر واتساب.",
+            "المحادثات الحقيقية مو بس كلام. تصور قائمة مطعم. تسجل رسالة صوتية سريعة. تحوّل فيديو أحد أرسله لك. غالي يتعامل مع كل شي — أصلياً، عبر تيليجرام.",
           ],
         },
         {
@@ -704,11 +704,11 @@ export const featurePages = {
       title: "Describe It.",
       titleHighlight: "Get It.",
       subtitle:
-        "Tell Ghali what you want to see and get a stunning image delivered right in your WhatsApp chat. No design skills needed.",
+        "Tell Ghali what you want to see and get a stunning image delivered right in your Telegram chat. No design skills needed.",
       breadcrumb: "Image Generation",
       metaTitle: "Image Generation",
       metaDescription:
-        "Describe what you want and get stunning AI-generated images delivered right in your WhatsApp chat.",
+        "Describe what you want and get stunning AI-generated images delivered right in your Telegram chat.",
       sections: [
         {
           title: "From words to visuals in seconds",
@@ -747,9 +747,9 @@ export const featurePages = {
           ],
         },
         {
-          title: "Delivered right in WhatsApp",
+          title: "Delivered right in Telegram",
           paragraphs: [
-            "The image shows up as a regular WhatsApp photo. Save it, share it, forward it — no extra steps. No need to download from a website or copy from another app.",
+            "The image shows up as a regular Telegram photo. Save it, share it, forward it — no extra steps. No need to download from a website or copy from another app.",
           ],
         },
         {
@@ -766,11 +766,11 @@ export const featurePages = {
       title: "وصّفها.",
       titleHighlight: "احصل عليها.",
       subtitle:
-        "قول لغالي شو تبي تشوف واحصل على صورة مذهلة مباشرة في محادثة واتساب. بدون مهارات تصميم.",
+        "قول لغالي شو تبي تشوف واحصل على صورة مذهلة مباشرة في محادثة تيليجرام. بدون مهارات تصميم.",
       breadcrumb: "إنشاء صور",
       metaTitle: "إنشاء صور",
       metaDescription:
-        "إنشاء صور بالذكاء الاصطناعي على واتساب — وصّف اللي تبيه واحصل على صورة مذهلة خلال ثواني. تصميم شعارات وصور فنية.",
+        "إنشاء صور بالذكاء الاصطناعي على تيليجرام — وصّف اللي تبيه واحصل على صورة مذهلة خلال ثواني. تصميم شعارات وصور فنية.",
       sections: [
         {
           title: "من كلمات لصور في ثواني",
@@ -809,9 +809,9 @@ export const featurePages = {
           ],
         },
         {
-          title: "تُسلّم مباشرة في واتساب",
+          title: "تُسلّم مباشرة في تيليجرام",
           paragraphs: [
-            "الصورة تظهر كصورة واتساب عادية. احفظها، شاركها، حوّلها — بدون خطوات إضافية. بدون تحميل من موقع أو نسخ من تطبيق ثاني.",
+            "الصورة تظهر كصورة تيليجرام عادية. احفظها، شاركها، حوّلها — بدون خطوات إضافية. بدون تحميل من موقع أو نسخ من تطبيق ثاني.",
           ],
         },
         {
@@ -831,11 +831,11 @@ export const featurePages = {
       title: "Send a File.",
       titleHighlight: "Get Answers.",
       subtitle:
-        "Drop a PDF, Word doc, or spreadsheet into WhatsApp. Ghali reads it, answers your questions about it, and stores it in your personal knowledge base for later.",
+        "Drop a PDF, Word doc, or spreadsheet into Telegram. Ghali reads it, answers your questions about it, and stores it in your personal knowledge base for later.",
       breadcrumb: "Document Analysis & Knowledge Base",
       metaTitle: "Document Analysis & Knowledge Base",
       metaDescription:
-        "Send PDFs, Word docs, and spreadsheets through WhatsApp. Ghali analyzes them and stores them in your personal knowledge base.",
+        "Send PDFs, Word docs, and spreadsheets through Telegram. Ghali analyzes them and stores them in your personal knowledge base.",
       sections: [
         {
           title: "Instant document analysis",
@@ -851,7 +851,7 @@ export const featurePages = {
               icon: "📄",
               title: "PDFs",
               description:
-                "Reports, contracts, papers, invoices — sent directly through WhatsApp.",
+                "Reports, contracts, papers, invoices — sent directly through Telegram.",
             },
             {
               icon: "📝",
@@ -877,7 +877,7 @@ export const featurePages = {
         {
           title: "Reply-to-media",
           paragraphs: [
-            "Sent a document earlier and want to ask a follow-up? Just reply to the original message in WhatsApp. Ghali pulls up the document and re-analyzes it with your new question. Natural and effortless.",
+            "Sent a document earlier and want to ask a follow-up? Just reply to the original message in Telegram. Ghali pulls up the document and re-analyzes it with your new question. Natural and effortless.",
           ],
         },
         {
@@ -894,11 +894,11 @@ export const featurePages = {
       title: "ارسل ملف.",
       titleHighlight: "احصل على إجابات.",
       subtitle:
-        "حط PDF أو ملف وورد أو جدول بيانات في واتساب. غالي يقرأه، يجاوب أسئلتك عنه، ويحفظه في قاعدة معرفتك الشخصية للمستقبل.",
+        "حط PDF أو ملف وورد أو جدول بيانات في تيليجرام. غالي يقرأه، يجاوب أسئلتك عنه، ويحفظه في قاعدة معرفتك الشخصية للمستقبل.",
       breadcrumb: "تحليل المستندات وقاعدة المعرفة",
       metaTitle: "تحليل المستندات وقاعدة المعرفة",
       metaDescription:
-        "تحليل مستندات بالذكاء الاصطناعي — ارسل PDF ووورد وإكسل عبر واتساب. غالي يحلل ويجاوب أسئلتك من الملفات.",
+        "تحليل مستندات بالذكاء الاصطناعي — ارسل PDF ووورد وإكسل عبر تيليجرام. غالي يحلل ويجاوب أسئلتك من الملفات.",
       sections: [
         {
           title: "تحليل مستندات فوري",
@@ -914,7 +914,7 @@ export const featurePages = {
               icon: "📄",
               title: "PDF",
               description:
-                "تقارير، عقود، أوراق، فواتير — ترسل مباشرة عبر واتساب.",
+                "تقارير، عقود، أوراق، فواتير — ترسل مباشرة عبر تيليجرام.",
             },
             {
               icon: "📝",
@@ -939,7 +939,7 @@ export const featurePages = {
         {
           title: "الرد على الوسائط",
           paragraphs: [
-            "أرسلت مستند قبل وتبي تسأل سؤال متابعة؟ بس رد على الرسالة الأصلية في واتساب. غالي يسحب المستند ويحلله من جديد مع سؤالك الجديد. طبيعي وسهل.",
+            "أرسلت مستند قبل وتبي تسأل سؤال متابعة؟ بس رد على الرسالة الأصلية في تيليجرام. غالي يسحب المستند ويحلله من جديد مع سؤالك الجديد. طبيعي وسهل.",
           ],
         },
         {
@@ -959,11 +959,11 @@ export const featurePages = {
       title: "AI That Works",
       titleHighlight: "While You Sleep",
       subtitle:
-        "Schedule tasks and Ghali runs them automatically — a full AI turn with research, analysis, and rich results delivered straight to your WhatsApp.",
+        "Schedule tasks and Ghali runs them automatically — a full AI turn with research, analysis, and rich results delivered straight to your Telegram.",
       breadcrumb: "Scheduled Tasks",
       metaTitle: "Scheduled Tasks",
       metaDescription:
-        "Schedule tasks and Ghali runs them automatically — morning briefings, reminders, recurring reports delivered to WhatsApp.",
+        "Schedule tasks and Ghali runs them automatically — morning briefings, reminders, recurring reports delivered to Telegram.",
       sections: [
         {
           title: "More than reminders",
@@ -1036,11 +1036,11 @@ export const featurePages = {
       title: "ذكاء اصطناعي يشتغل",
       titleHighlight: "وأنت نايم",
       subtitle:
-        "جدول مهام وغالي ينفذها تلقائياً — دورة ذكاء اصطناعي كاملة مع بحث وتحليل ونتائج غنية تُسلّم مباشرة على واتساب.",
+        "جدول مهام وغالي ينفذها تلقائياً — دورة ذكاء اصطناعي كاملة مع بحث وتحليل ونتائج غنية تُسلّم مباشرة على تيليجرام.",
       breadcrumb: "مهام مجدولة",
       metaTitle: "مهام مجدولة",
       metaDescription:
-        "مهام مجدولة وتذكيرات بالذكاء الاصطناعي على واتساب — ملخصات صباحية وتقارير دورية وتنبيهات تلقائية.",
+        "مهام مجدولة وتذكيرات بالذكاء الاصطناعي على تيليجرام — ملخصات صباحية وتقارير دورية وتنبيهات تلقائية.",
       sections: [
         {
           title: "أكثر من تذكيرات",
@@ -1207,7 +1207,7 @@ export const featurePages = {
       breadcrumb: "تابع كل شي",
       metaTitle: "تابع كل شي",
       metaDescription:
-        "تتبع المصروفات والمهام والملاحظات بالذكاء الاصطناعي على واتساب. نظّم كل شي بكلام طبيعي — بدون تطبيقات إضافية.",
+        "تتبع المصروفات والمهام والملاحظات بالذكاء الاصطناعي على تيليجرام. نظّم كل شي بكلام طبيعي — بدون تطبيقات إضافية.",
       sections: [
         {
           title: "بس قول لغالي",
@@ -1387,7 +1387,7 @@ export const featurePages = {
       breadcrumb: "ProWrite",
       metaTitle: "ProWrite",
       metaDescription:
-        "مساعد كتابة بالذكاء الاصطناعي — قول \"prowrite\" وغالي يبحث ويكتب ويصقل محتواك عبر 8 نماذج ذكاء اصطناعي على واتساب.",
+        "مساعد كتابة بالذكاء الاصطناعي — قول \"prowrite\" وغالي يبحث ويكتب ويصقل محتواك عبر 8 نماذج ذكاء اصطناعي على تيليجرام.",
       sections: [
         {
           title: "كيف يعمل",
@@ -1522,7 +1522,7 @@ export const featurePages = {
         {
           title: "What you'll find on GitHub",
           paragraphs: [
-            "The full Ghali codebase — the WhatsApp integration, the AI agent, the credit system, the memory system, document processing, image generation, the landing page you're looking at right now. All of it.",
+            "The full Ghali codebase — the Telegram integration, the AI agent, the credit system, the memory system, document processing, image generation, the landing page you're looking at right now. All of it.",
             "Licensed under Apache 2.0, which means you can read it, learn from it, and even build on it.",
           ],
         },
@@ -1582,7 +1582,7 @@ export const featurePages = {
         {
           title: "شو بتلقى على GitHub",
           paragraphs: [
-            "كود غالي الكامل — تكامل واتساب، وكيل الذكاء الاصطناعي، نظام الأرصدة، نظام الذاكرة، معالجة المستندات، إنشاء الصور، صفحة الهبوط اللي تشوفها الحين. كله.",
+            "كود غالي الكامل — تكامل تيليجرام، وكيل الذكاء الاصطناعي، نظام الأرصدة، نظام الذاكرة، معالجة المستندات، إنشاء الصور، صفحة الهبوط اللي تشوفها الحين. كله.",
             "مرخص تحت Apache 2.0، يعني تقدر تقرأه، تتعلم منه، وحتى تبني عليه.",
           ],
         },

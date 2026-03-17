@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { GoogleGenAI } from "@google/genai";
 import { MODELS } from "./models";
 import { IMAGE_RETENTION_MS } from "./constants";
@@ -18,7 +19,7 @@ export const generateAndStoreImage = internalAction({
     aspectRatio: v.optional(
       v.union(v.literal("9:16"), v.literal("16:9"), v.literal("1:1"))
     ),
-    referenceImageStorageId: v.optional(v.id("_storage")),
+    referenceImageStorageId: v.optional(v.string()),
     traceId: v.optional(v.string()),
   },
   handler: async (
@@ -35,7 +36,8 @@ export const generateAndStoreImage = internalAction({
       return { success: false, error: "Google API key not configured" };
     }
 
-    const isEditing = !!referenceImageStorageId;
+    const refStorageId = referenceImageStorageId as Id<"_storage"> | undefined;
+    const isEditing = !!refStorageId;
     const truncatedPrompt =
       prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
     console.log(
@@ -54,19 +56,19 @@ export const generateAndStoreImage = internalAction({
       // Build contents: for editing, include the reference image + text prompt
       // For new generation, just the text prompt
       let contents: Parameters<typeof ai.models.generateContent>[0]["contents"];
-      if (referenceImageStorageId) {
+      if (refStorageId) {
         // Ownership check: verify the storageId belongs to this user
         // (could be in mediaFiles from uploads or generatedImages from prior generations)
         const [mediaUrl, generatedUrl] = await Promise.all([
-          ctx.runQuery(internal.mediaStorage.getStorageUrl, { storageId: referenceImageStorageId, userId }),
-          ctx.runQuery(internal.imageStorage.getGeneratedImageUrl, { storageId: referenceImageStorageId, userId }),
+          ctx.runQuery(internal.mediaStorage.getStorageUrl, { storageId: refStorageId, userId }),
+          ctx.runQuery(internal.imageStorage.getGeneratedImageUrl, { storageId: refStorageId, userId }),
         ]);
         if (!mediaUrl && !generatedUrl) {
           return { success: false, error: "Reference image not found or does not belong to you." };
         }
 
         // Fetch the reference image from Convex storage
-        const imageBlob = await ctx.storage.get(referenceImageStorageId);
+        const imageBlob = await ctx.storage.get(refStorageId);
         if (!imageBlob) {
           return { success: false, error: "Reference image not found in storage." };
         }

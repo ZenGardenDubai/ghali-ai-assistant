@@ -67,6 +67,30 @@ export const checkAndRecordOutbound = internalMutation({
   },
 });
 
+/**
+ * Rollback an outbound send counter — called when a send fails after the guard passed.
+ * Prevents failed sends from consuming rate limit quota.
+ */
+export const rollbackOutbound = internalMutation({
+  args: {
+    userId: v.id("users"),
+    windowStart: v.optional(v.number()),
+  },
+  handler: async (ctx, { userId, windowStart }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return;
+
+    const count = user.outboundCountInWindow ?? 0;
+    // Only rollback if we're still in the same window that recorded the send
+    const sameWindow = !windowStart || user.outboundWindowStart === windowStart;
+    if (count > 0 && sameWindow) {
+      await ctx.db.patch(userId, {
+        outboundCountInWindow: count - 1,
+      });
+    }
+  },
+});
+
 /** One day in milliseconds */
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 

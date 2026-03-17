@@ -147,7 +147,7 @@ function FeedbackForm() {
           Sign in to submit feedback
         </p>
         <p className="mt-3 text-sm text-white/30">
-          Or ask Ghali on WhatsApp for a feedback link.
+          Or ask Ghali on Telegram for a feedback link.
         </p>
         <Link
           href="/auth/admin-sign-in"

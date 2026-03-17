@@ -84,11 +84,15 @@ export const trackUserNew = internalAction({
     phone: v.string(),
     timezone: v.string(),
     timestamp: v.optional(v.string()),
+    channel: v.optional(v.string()),
+    acquisitionSource: v.optional(v.string()),
   },
-  handler: async (_ctx, { phone, timezone, timestamp }) => {
+  handler: async (_ctx, { phone, timezone, timestamp, channel, acquisitionSource }) => {
     await captureEvent(phone, "user_new", {
       phone_country: detectCountryFromPhone(phone),
       timezone,
+      ...(channel ? { channel } : {}),
+      ...(acquisitionSource ? { acquisition_source: acquisitionSource } : {}),
     }, timestamp);
   },
 });
@@ -327,6 +331,7 @@ const ALLOWED_FEATURES = new Set([
   "web_search",
   "feedback",
   "scheduled_tasks",
+  "image_editing",
 ]);
 
 export const trackFeatureUsed = internalAction({

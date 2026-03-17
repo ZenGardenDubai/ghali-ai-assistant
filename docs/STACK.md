@@ -11,7 +11,7 @@
 | AI Agent | @convex-dev/agent | Threads, messages, tools, streaming, RAG |
 | AI SDK | Vercel AI SDK v5 | Model provider abstraction |
 | RAG | @convex-dev/rag | Document chunking + search |
-| Messaging | Twilio WhatsApp Business API | Inbound/outbound WhatsApp |
+| Messaging | Telegram Bot API | Inbound/outbound Telegram (primary) |
 | UI | Tailwind v4 + shadcn/ui | Styling + components |
 | Analytics | PostHog | Server + client event tracking |
 | Testing | Vitest + convex-test | Unit + integration tests |
@@ -44,14 +44,14 @@ ghali-ai-assistant/
 │   └── components/         # React components (landing page, etc.)
 ├── convex/                 # Convex backend
 │   ├── agent.ts            # Ghali agent definition + all tools
-│   ├── http.ts             # HTTP routes (Twilio + Clerk webhooks, admin API)
+│   ├── http.ts             # HTTP routes (Telegram + Clerk webhooks, admin API)
 │   ├── schema.ts           # Database schema (all tables)
 │   ├── items.ts            # Structured data (items + collections + embeddings)
 │   ├── documents.ts        # Document processing + RAG pipeline
 │   ├── rag.ts              # RAG component setup
 │   ├── images.ts           # Image generation (Gemini Pro)
 │   ├── voice.ts            # Voice transcription (Whisper)
-│   ├── twilio.ts           # Outbound WhatsApp messaging
+│   ├── telegram.ts         # Outbound Telegram messaging + Mini App helpers
 │   ├── credits.ts          # Credit system
 │   ├── billing.ts          # Subscription management (Clerk)
 │   ├── heartbeat.ts        # Proactive check-ins (all users)

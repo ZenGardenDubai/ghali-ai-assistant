@@ -47,7 +47,8 @@ export interface PricingFeature {
 export interface TranslationDict {
   locale: Locale;
   dir: "ltr" | "rtl";
-  whatsappUrl: string;
+  whatsappUrl: string; // dormant — kept for WhatsApp restoration
+  telegramUrl: string;
 
   // Nav
   nav: {
@@ -151,8 +152,13 @@ export interface TranslationDict {
     switchLocaleHref: string;
   };
 
-  // Sticky WhatsApp CTA
+  // Sticky WhatsApp CTA (dormant)
   stickyWhatsApp: {
+    ariaLabel: string;
+  };
+
+  // Sticky Telegram CTA
+  stickyTelegram: {
     ariaLabel: string;
   };
 }

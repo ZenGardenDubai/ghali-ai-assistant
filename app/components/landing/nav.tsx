@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CtaButton } from "./cta-button";
-import { GitHubIcon, WhatsAppIcon } from "./icons";
+import { GitHubIcon, TelegramIcon } from "./icons";
 import type { TranslationDict } from "@/app/lib/i18n/types";
 
 export function Nav({ t }: { t: TranslationDict }) {
@@ -42,11 +42,11 @@ export function Nav({ t }: { t: TranslationDict }) {
             <GitHubIcon className="h-5 w-5" />
           </a>
           <CtaButton
-            href={t.whatsappUrl}
+            href={t.telegramUrl}
             location="nav"
             className="group flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
           >
-            <WhatsAppIcon className="h-4 w-4" />
+            <TelegramIcon className="h-4 w-4" />
             {t.nav.startChatting}
           </CtaButton>
         </div>

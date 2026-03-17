@@ -3,6 +3,27 @@ import { internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 import { CREDITS_BASIC, CREDITS_PRO, WHATSAPP_SESSION_WINDOW_MS } from "./constants";
 
+// Bilingual billing notification messages — used in mutations (no async LLM translation)
+const BILLING_MESSAGES = {
+  subscriptionActive: {
+    en: (credits: number) => `Your Ghali Pro plan is now active. You have ${credits} credits this month.`,
+    ar: (credits: number) => `تم تفعيل خطة Ghali Pro. لديك ${credits} رصيد هذا الشهر.`,
+  },
+  subscriptionEnded: {
+    en: (credits: number) => `Your Pro plan has ended. You're now on the Basic plan with ${credits} credits/month.`,
+    ar: (credits: number) => `انتهت خطة Pro. أنت الآن على الخطة المجانية بـ ${credits} رصيد/شهر.`,
+  },
+} as const;
+
+function getBillingMessage(
+  key: keyof typeof BILLING_MESSAGES,
+  lang: string,
+  credits: number
+): string {
+  const msgs = BILLING_MESSAGES[key];
+  return lang === "ar" ? msgs.ar(credits) : msgs.en(credits);
+}
+
 // ============================================================================
 // Terms Acceptance
 // ============================================================================
@@ -87,6 +108,52 @@ export const linkClerkUserByPhone = internalMutation({
 });
 
 // ============================================================================
+// Telegram-Based Account Linking
+// ============================================================================
+
+export const linkClerkUserByTelegramId = internalMutation({
+  args: {
+    telegramId: v.string(),
+    clerkUserId: v.string(),
+    email: v.optional(v.string()),
+  },
+  handler: async (ctx, { telegramId, clerkUserId, email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_telegramId", (q) => q.eq("telegramId", telegramId))
+      .unique();
+
+    if (!user) {
+      return { success: false, error: "No Telegram account found" };
+    }
+
+    // Idempotent: already linked to this clerkUserId
+    if (user.clerkUserId === clerkUserId) {
+      if (email && !user.email) {
+        await ctx.db.patch(user._id, { email });
+      }
+      return { success: true };
+    }
+
+    // Guard: check if clerkUserId is already linked to a different user
+    const existingLink = await ctx.db
+      .query("users")
+      .withIndex("by_clerkUserId", (q) => q.eq("clerkUserId", clerkUserId))
+      .unique();
+
+    if (existingLink && existingLink._id !== user._id) {
+      return { success: false, error: "This account is already linked to another user" };
+    }
+
+    const updates: { clerkUserId: string; email?: string } = { clerkUserId };
+    if (email) updates.email = email;
+    await ctx.db.patch(user._id, updates);
+
+    return { success: true };
+  },
+});
+
+// ============================================================================
 // Subscription Handlers
 // ============================================================================
 
@@ -124,25 +191,33 @@ export const handleSubscriptionActive = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user via WhatsApp — guarded to respect outbound rate limits
-    const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
-    if (withinWindow) {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendMessage, {
+    // Notify user — channel-aware routing (localized)
+    const proMsg = getBillingMessage("subscriptionActive", user.language, CREDITS_PRO);
+    if (user.telegramId) {
+      await ctx.scheduler.runAfter(0, internal.telegram.guardedSendMessage, {
         userId: user._id,
-        to: user.phone,
-        body: `Your Ghali Pro plan is now active. You have ${CREDITS_PRO} credits this month.`,
+        chatId: user.telegramId,
+        body: proMsg,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendTemplate, {
-        userId: user._id,
-        to: user.phone,
-        templateName: "ghali_subscription_active",
-        variables: { "1": String(CREDITS_PRO) },
-        skipInactivityGate: true,
-      });
+      const withinWindow =
+        user.lastMessageAt &&
+        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      if (withinWindow) {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendMessage, {
+          userId: user._id,
+          to: user.phone,
+          body: proMsg,
+        });
+      } else {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendTemplate, {
+          userId: user._id,
+          to: user.phone,
+          templateName: "ghali_subscription_active",
+          variables: { "1": String(CREDITS_PRO) },
+          skipInactivityGate: true,
+        });
+      }
     }
   },
 });
@@ -194,25 +269,33 @@ export const handleSubscriptionEnded = internalMutation({
       subscriptionCanceling: undefined,
     });
 
-    // Notify user via WhatsApp — guarded to respect outbound rate limits
-    const withinWindow =
-      user.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
-    if (withinWindow) {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendMessage, {
+    // Notify user — channel-aware routing (localized)
+    const endMsg = getBillingMessage("subscriptionEnded", user.language, CREDITS_BASIC);
+    if (user.telegramId) {
+      await ctx.scheduler.runAfter(0, internal.telegram.guardedSendMessage, {
         userId: user._id,
-        to: user.phone,
-        body: `Your Pro plan has ended. You're now on the Basic plan with ${CREDITS_BASIC} credits/month.`,
+        chatId: user.telegramId,
+        body: endMsg,
       });
     } else {
-      await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendTemplate, {
-        userId: user._id,
-        to: user.phone,
-        templateName: "ghali_subscription_ended",
-        variables: { "1": String(CREDITS_BASIC) },
-        skipInactivityGate: true,
-      });
+      const withinWindow =
+        user.lastMessageAt &&
+        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+      if (withinWindow) {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendMessage, {
+          userId: user._id,
+          to: user.phone,
+          body: endMsg,
+        });
+      } else {
+        await ctx.scheduler.runAfter(0, internal.whatsapp.guardedSendTemplate, {
+          userId: user._id,
+          to: user.phone,
+          templateName: "ghali_subscription_ended",
+          variables: { "1": String(CREDITS_BASIC) },
+          skipInactivityGate: true,
+        });
+      }
     }
   },
 });

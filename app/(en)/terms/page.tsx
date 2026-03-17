@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         url: "/ghali-logo-with-bg.png",
         width: 640,
         height: 640,
-        alt: "Ghali — AI Assistant on WhatsApp",
+        alt: "Ghali — AI Assistant on Telegram",
       },
     ],
   },
@@ -119,7 +119,7 @@ export default function TermsPage() {
 
           <Section title="2. Description of Service">
             <p>
-              ghali.ae is an AI-powered WhatsApp assistant developed and operated by <strong className="text-white/80">SAHEM DATA TECHNOLOGY</strong> that helps you get things done.
+              ghali.ae is an AI-powered Telegram assistant developed and operated by <strong className="text-white/80">SAHEM DATA TECHNOLOGY</strong> that helps you get things done.
               The service includes conversational AI, document analysis, image generation, voice note transcription,
               personal knowledge base, and scheduling features powered by various AI providers.
             </p>
@@ -129,7 +129,7 @@ export default function TermsPage() {
             <p className="mb-3">To use ghali.ae, you must:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Be at least 18 years old or have parental consent</li>
-              <li>Have a valid WhatsApp account</li>
+              <li>Have a valid Telegram account</li>
               <li>Not use the service from a blocked region</li>
               <li>Notify us immediately of any unauthorized access</li>
             </ul>

@@ -273,6 +273,46 @@ http.route({
 });
 
 http.route({
+  path: "/link-telegram",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
+
+    if (!expectedSecret) {
+      console.error("INTERNAL_API_SECRET not set");
+      return new Response("Server error", { status: 500 });
+    }
+
+    if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    let body: { telegramId: string; clerkUserId: string; email?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    if (!body.telegramId || !body.clerkUserId) {
+      return new Response("Missing telegramId or clerkUserId", { status: 400 });
+    }
+
+    const result = await ctx.runMutation(internal.billing.linkClerkUserByTelegramId, {
+      telegramId: body.telegramId,
+      clerkUserId: body.clerkUserId,
+      email: body.email,
+    });
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/link-phone",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
@@ -737,6 +777,49 @@ http.route({
 });
 
 http.route({
+  path: "/tg-feedback",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
+
+    if (!expectedSecret) {
+      return new Response("Server error", { status: 500 });
+    }
+    if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    let body: { telegramId: string; category: string; message: string };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    if (!body.telegramId || !body.category || !body.message) {
+      return new Response("Missing telegramId, category, or message", { status: 400 });
+    }
+
+    const validCategories = ["bug", "feature_request", "general"];
+    if (!validCategories.includes(body.category)) {
+      return new Response("Invalid category", { status: 400 });
+    }
+
+    const result = await ctx.runMutation(internal.feedback.submitFeedbackByTelegramId, {
+      telegramId: body.telegramId,
+      category: body.category as "bug" | "feature_request" | "general",
+      message: body.message,
+    });
+
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/feedback/submit-web",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
@@ -886,29 +969,427 @@ http.route({
       });
     }
 
-    // Check if user is within 24h WhatsApp session window
+    // Route reply based on user's channel
     const user = await ctx.runQuery(internal.admin.searchUser, {
       phone: feedback.phone,
     });
-    const withinWindow =
-      user?.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
-    if (withinWindow) {
-      await ctx.runAction(internal.whatsapp.sendMessage, {
-        to: feedback.phone,
+    if (user?.telegramId) {
+      // Telegram user — send directly
+      await ctx.runAction(internal.telegram.sendMessage, {
+        chatId: user.telegramId,
         body: message,
       });
     } else {
-      // Outside 24h window — use broadcast template as fallback
-      await ctx.runAction(internal.whatsapp.sendTemplate, {
-        to: feedback.phone,
-        templateName: "ghali_broadcast_v2",
-        variables: { "1": message },
-      });
+      // WhatsApp user — check session window
+      const withinWindow =
+        user?.lastMessageAt &&
+        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+      if (withinWindow) {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
+          to: feedback.phone,
+          body: message,
+        });
+      } else {
+        await ctx.runAction(internal.whatsapp.sendTemplate, {
+          to: feedback.phone,
+          templateName: "ghali_broadcast_v2",
+          variables: { "1": message },
+        });
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+// ============================================================================
+// Telegram upload URL — bot server uses this to upload large files (>20MB)
+// ============================================================================
+
+http.route({
+  path: "/telegram-upload-url",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const authHeader = request.headers.get("Authorization");
+    const secret = process.env.INTERNAL_API_SECRET;
+    if (!secret || !authHeader) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!(await timingSafeEqual(token, secret))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const uploadUrl = await ctx.storage.generateUploadUrl();
+    return new Response(JSON.stringify({ uploadUrl }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+// ============================================================================
+// Telegram Bot webhook — receives messages forwarded from the bot server
+// ============================================================================
+
+http.route({
+  path: "/telegram-message",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // Validate Bearer token
+    const authHeader = request.headers.get("Authorization");
+    const secret = process.env.INTERNAL_API_SECRET;
+    if (!secret || !authHeader) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!(await timingSafeEqual(token, secret))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    // Always return 200 — failures are logged, not retried
+    try {
+      const payload = await request.json();
+      const {
+        chatId,
+        messageText,
+        telegramMessageId,
+        firstName,
+        // username is available but not currently used
+        languageCode,
+        mediaType,
+        mediaFileId,
+        mediaMimeType,
+        mediaStorageId,
+        replyToMessageId,
+        replyToText,
+        startParam,
+      } = payload as {
+        chatId: number;
+        messageText?: string;
+        telegramMessageId: number;
+        firstName?: string;
+        username?: string;
+        languageCode?: string;
+        mediaType?: string;
+        mediaFileId?: string;
+        mediaMimeType?: string;
+        mediaStorageId?: string;
+        replyToMessageId?: number;
+        replyToText?: string;
+        startParam?: string;
+      };
+
+      // Input validation — chatId and telegramMessageId must be integers
+      if (typeof chatId !== "number" || !Number.isInteger(chatId)) {
+        console.error("[telegram-webhook] Invalid chatId:", chatId);
+        return new Response(JSON.stringify({ ok: false, error: "invalid chatId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (typeof telegramMessageId !== "number" || !Number.isInteger(telegramMessageId)) {
+        console.error("[telegram-webhook] Invalid telegramMessageId:", telegramMessageId);
+        return new Response(JSON.stringify({ ok: false, error: "invalid telegramMessageId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const chatIdStr = String(chatId);
+      const body = (messageText ?? "").slice(0, MAX_MESSAGE_LENGTH);
+      const messageSid = `${chatIdStr}:${telegramMessageId}`;
+
+      // Dedup by chatId:messageId (messageId is only unique within a chat)
+      const isNew = await ctx.runMutation(
+        internal.webhookDedup.tryMarkProcessed,
+        { messageSid: `tg:${messageSid}` }
+      );
+      if (!isNew) {
+        return new Response(JSON.stringify({ ok: true, dedup: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Fire typing indicator immediately
+      await ctx.scheduler.runAfter(0, internal.telegram.sendTypingIndicator, {
+        chatId: chatIdStr,
+        action: mediaType ? "upload_document" : "typing",
+      });
+
+      // Find or create Telegram user
+      const { userId, isNew: isNewUser } = await ctx.runMutation(
+        internal.users.findOrCreateTelegramUser,
+        { telegramId: chatIdStr, firstName, languageCode, startParam }
+      );
+
+      // Send welcome to new users (non-blocking — don't block message processing)
+      if (isNewUser) {
+        // Fetch the created user to get auto-detected timezone/language
+        const newUser = await ctx.runQuery(internal.users.internalGetUser, { userId });
+        ctx.scheduler.runAfter(0, internal.telegram.sendWelcome, {
+          chatId: chatIdStr,
+          name: newUser?.name,
+          timezone: newUser?.timezone,
+          language: newUser?.language,
+        });
+      }
+
+      // Map Telegram media to the format generateResponse expects
+      // mediaUrl = file_id (downloaded in generateResponse via Bot API before processing)
+      // If mediaStorageId is provided (large file uploaded by bot server), skip download
+      let mediaUrl: string | undefined;
+      let mediaContentType: string | undefined;
+      let preUploadedStorageId: string | undefined;
+      if (mediaStorageId && mediaType) {
+        // Bot server already uploaded the file — pass storageId directly
+        preUploadedStorageId = mediaStorageId;
+      }
+      if (mediaType && mediaFileId && !mediaStorageId) {
+        mediaUrl = mediaFileId;
+        // Use actual MIME type from bot server payload if available, otherwise infer
+        if (mediaMimeType) {
+          mediaContentType = mediaMimeType;
+        } else {
+          switch (mediaType) {
+            case "photo": mediaContentType = "image/jpeg"; break;
+            case "voice": mediaContentType = "audio/ogg"; break;
+            case "audio": mediaContentType = "audio/mpeg"; break;
+            case "video": mediaContentType = "video/mp4"; break;
+            case "document": mediaContentType = "application/octet-stream"; break;
+            case "sticker": mediaContentType = "image/webp"; break;
+            default: mediaContentType = "application/octet-stream";
+          }
+        }
+      }
+
+      // Prepend quoted message text as context for the AI
+      // Telegram gives us the full quoted text (unlike WhatsApp Cloud API)
+      let messageBody = body || (mediaType ? `[${mediaType}]` : "");
+      if (replyToText && replyToText.trim()) {
+        messageBody = `[Replying to: "${replyToText.trim().slice(0, 500)}"]\n\n${messageBody}`;
+      }
+
+      // For pre-uploaded files (>20MB), set mediaContentType from payload
+      if (preUploadedStorageId && mediaMimeType) {
+        mediaContentType = mediaMimeType;
+      }
+
+      // Schedule async message processing
+      await ctx.runMutation(internal.messages.saveIncoming, {
+        userId,
+        body: messageBody,
+        mediaUrl,
+        mediaContentType,
+        messageSid,
+        originalRepliedMessageSid: replyToMessageId ? `${chatIdStr}:${replyToMessageId}` : undefined,
+        channel: "telegram",
+        chatId: chatIdStr,
+        mediaStorageId: preUploadedStorageId,
+      });
+    } catch (error) {
+      console.error("[telegram-webhook] Error processing message:", error);
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+// Telegram callback query handler — processes inline button taps
+http.route({
+  path: "/telegram-callback",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    // Validate Bearer token
+    const authHeader = request.headers.get("Authorization");
+    const secret = process.env.INTERNAL_API_SECRET;
+    if (!secret || !authHeader) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const token = authHeader.replace(/^Bearer\s+/i, "");
+    if (!(await timingSafeEqual(token, secret))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const ALLOWED_CALLBACK_COMMANDS = new Set(["help", "credits", "privacy", "account"]);
+
+    try {
+      const { chatId, callbackQueryId, callbackData, firstName } = await request.json() as {
+        chatId: number;
+        callbackQueryId: string;
+        callbackData: string;
+        messageId?: number;
+        firstName?: string;
+        username?: string;
+      };
+
+      // Validate required fields
+      if (
+        !callbackQueryId || !callbackData ||
+        typeof chatId !== "number" || !Number.isInteger(chatId)
+      ) {
+        return new Response(JSON.stringify({ ok: false, error: "missing or invalid fields" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const chatIdStr = String(chatId);
+
+      // Acknowledge the callback first (must respond within 10s)
+      // This is critical — failure leaves a stuck spinner on the button
+      try {
+        await ctx.runAction(internal.telegram.answerCallbackQuery, {
+          callbackQueryId,
+        });
+      } catch (ackError) {
+        console.error("[telegram-callback] Failed to acknowledge callback:", ackError);
+        // Continue processing even if ack fails — the user's action should still work
+      }
+
+      // Dedup — prevent duplicate processing on retries
+      const dedupKey = `cb:${callbackQueryId}`;
+      const isNewCb = await ctx.runMutation(
+        internal.webhookDedup.tryMarkProcessed,
+        { messageSid: dedupKey }
+      );
+      if (!isNewCb) {
+        return new Response(JSON.stringify({ ok: true, dedup: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Onboarding callbacks — ob:tz, ob:lang, ob:done, ob:tz:<value>, ob:lang:<value>
+      if (callbackData.startsWith("ob:")) {
+        const { userId } = await ctx.runMutation(
+          internal.users.findOrCreateTelegramUser,
+          { telegramId: chatIdStr, firstName }
+        );
+        const user = await ctx.runQuery(internal.users.internalGetUser, { userId }) as {
+          name?: string; timezone?: string; language?: string; onboardingStep?: number | null;
+        } | null;
+
+        // Ignore onboarding callbacks if user already completed onboarding
+        if (user?.onboardingStep == null) {
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const { ONBOARDING_TIMEZONES, ONBOARDING_LANGUAGES } = await import("./telegram");
+
+        if (callbackData === "ob:tz") {
+          // Show timezone picker
+          await ctx.runAction(internal.telegram.sendTimezonePicker, { chatId: chatIdStr });
+        } else if (callbackData === "ob:lang") {
+          // Show language picker
+          await ctx.runAction(internal.telegram.sendLanguagePicker, { chatId: chatIdStr });
+        } else if (callbackData === "ob:tz:type") {
+          // Prompt user to type a city — set onboardingStep to 2 (awaiting city text)
+          await ctx.runMutation(internal.users.updateUser, {
+            userId,
+            fields: { onboardingStep: 2 },
+          });
+          await ctx.runAction(internal.telegram.sendMessage, {
+            chatId: chatIdStr,
+            body: "Type your city name (e.g. Dubai, London, New York):",
+          });
+        } else if (callbackData.startsWith("ob:tz:")) {
+          // Timezone selected — validate and update user, re-send welcome
+          const tz = callbackData.slice(6);
+          if (!ONBOARDING_TIMEZONES.has(tz)) {
+            console.warn(`[telegram-callback] Invalid onboarding timezone: ${tz}`);
+            await ctx.runAction(internal.telegram.sendMessage, {
+              chatId: chatIdStr,
+              body: "Something went wrong. Please try again.",
+            });
+          } else {
+            await ctx.runMutation(internal.users.updateUser, {
+              userId,
+              fields: { timezone: tz, onboardingStep: 1 },
+            });
+            await ctx.runAction(internal.telegram.sendWelcome, {
+              chatId: chatIdStr,
+              name: user?.name,
+              timezone: tz,
+              language: user?.language ?? "en",
+            });
+          }
+        } else if (callbackData.startsWith("ob:lang:")) {
+          // Language selected — validate and update user, re-send welcome
+          const lang = callbackData.slice(8);
+          if (!ONBOARDING_LANGUAGES.has(lang)) {
+            console.warn(`[telegram-callback] Invalid onboarding language: ${lang}`);
+            await ctx.runAction(internal.telegram.sendMessage, {
+              chatId: chatIdStr,
+              body: "Something went wrong. Please try again.",
+            });
+          } else {
+            await ctx.runMutation(internal.users.updateUser, {
+              userId,
+              fields: { language: lang, onboardingStep: 1 },
+            });
+            await ctx.runAction(internal.telegram.sendWelcome, {
+              chatId: chatIdStr,
+              name: user?.name,
+              timezone: user?.timezone ?? "Asia/Dubai",
+              language: lang,
+            });
+          }
+        } else if (callbackData === "ob:done") {
+          // Complete onboarding — seed files and confirm
+          await ctx.runMutation(internal.users.completeTelegramOnboarding, { userId });
+          await ctx.runAction(internal.telegram.sendMessage, {
+            chatId: chatIdStr,
+            body: "You're all set! 🎉 Just send me a message to get started.",
+          });
+        } else {
+          console.warn(`[telegram-callback] Unknown onboarding callback: ${callbackData}`);
+        }
+      // Process callback data — whitelist-validated "cmd:<command>" for system commands
+      } else if (callbackData.startsWith("cmd:")) {
+        const command = callbackData.slice(4);
+        if (!ALLOWED_CALLBACK_COMMANDS.has(command)) {
+          console.warn(`[telegram-callback] Unknown callback command: ${command}`);
+          return new Response(JSON.stringify({ ok: true }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        // Find user
+        const { userId } = await ctx.runMutation(
+          internal.users.findOrCreateTelegramUser,
+          { telegramId: chatIdStr, firstName }
+        );
+
+        // Schedule as a regular message so it goes through the normal flow
+        await ctx.runMutation(internal.messages.saveIncoming, {
+          userId,
+          body: command,
+          messageSid: dedupKey,
+          channel: "telegram" as const,
+          chatId: chatIdStr,
+        });
+      } else {
+        console.warn(`[telegram-callback] Unhandled callback data: ${callbackData}`);
+      }
+    } catch (error) {
+      console.error("[telegram-callback] Error:", error);
+    }
+
+    return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

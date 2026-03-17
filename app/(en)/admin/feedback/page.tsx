@@ -44,7 +44,7 @@ const CATEGORY_LABELS: Record<Category, { label: string; emoji: string }> = {
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  whatsapp_link: "WhatsApp Link",
+  whatsapp_link: "Chat Link",
   web: "Web",
   agent_tool: "Agent",
 };
@@ -348,10 +348,10 @@ export default function AdminFeedbackPage() {
                       </button>
                     </div>
 
-                    {/* Reply via WhatsApp */}
+                    {/* Reply to user */}
                     <div>
                       <label className="block text-[10px] font-medium uppercase tracking-wider text-white/30 mb-1">
-                        Reply via WhatsApp
+                        Reply to User
                       </label>
                       <div className="flex gap-2">
                         <input

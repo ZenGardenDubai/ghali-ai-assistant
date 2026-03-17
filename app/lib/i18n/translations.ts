@@ -5,10 +5,15 @@ const WHATSAPP_DISPLAY = "+971 54 202 2073";
 const WHATSAPP_URL = `https://wa.me/${WHATSAPP_NUMBER}?text=Hi%20Ghali`;
 const WHATSAPP_URL_AR = `https://wa.me/${WHATSAPP_NUMBER}?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%20%D8%BA%D8%A7%D9%84%D9%8A`;
 
+const TELEGRAM_BOT = "GhaliSmartBot";
+const TELEGRAM_URL = `https://t.me/${TELEGRAM_BOT}`;
+const TELEGRAM_DISPLAY = `@${TELEGRAM_BOT}`;
+
 export const en: TranslationDict = {
   locale: "en",
   dir: "ltr",
   whatsappUrl: WHATSAPP_URL,
+  telegramUrl: TELEGRAM_URL,
 
   nav: {
     features: "Features",
@@ -17,7 +22,7 @@ export const en: TranslationDict = {
 
   hero: {
     titleLine1: "The UAE's Favourite AI Assistant",
-    titleLine2: "on WhatsApp",
+    titleLine2: "on Telegram",
     subtitle:
       "No app to install. No account to create. Just message Ghali and get things done.",
     cta: "Start Chatting",
@@ -31,7 +36,7 @@ export const en: TranslationDict = {
         icon: "message",
         title: "Just Message. That\u2019s It.",
         description:
-          "No app. No account. No password. Open WhatsApp, say hi, done.",
+          "No app. No account. No password. Open Telegram, say hi, done.",
         href: "/features/zero-friction",
         colSpan: "2",
       },
@@ -67,7 +72,7 @@ export const en: TranslationDict = {
         icon: "calendar",
         title: "AI That Works on Your Schedule",
         description:
-          "Set tasks and Ghali runs them automatically \u2014 morning briefings, reminders, recurring reports, all delivered to WhatsApp.",
+          "Set tasks and Ghali runs them automatically \u2014 morning briefings, reminders, recurring reports, all delivered to Telegram.",
         href: "/features/scheduled-tasks",
         colSpan: "3",
         horizontal: true,
@@ -104,8 +109,8 @@ export const en: TranslationDict = {
     steps: [
       {
         num: "01",
-        title: "Message Ghali on WhatsApp",
-        desc: "Open WhatsApp and send your first message. No signup, no downloads.",
+        title: "Message Ghali on Telegram",
+        desc: "Open Telegram and send your first message. No signup, no downloads.",
       },
       {
         num: "02",
@@ -185,7 +190,7 @@ export const en: TranslationDict = {
       {
         question: "Do I need to install anything?",
         answer:
-          "No. Ghali works entirely through WhatsApp. Just send a message.",
+          "No. Ghali works entirely through Telegram (formerly WhatsApp). Just send a message.",
       },
       {
         question: "Is my data safe?",
@@ -210,7 +215,7 @@ export const en: TranslationDict = {
       {
         question: "How do I upgrade to Pro?",
         answer:
-          'Send "upgrade" to Ghali on WhatsApp and follow the link.',
+          'Send "upgrade" to Ghali on Telegram and follow the link.',
       },
     ],
   },
@@ -237,9 +242,9 @@ export const en: TranslationDict = {
   },
 
   start: {
-    headline: "Your AI Assistant on WhatsApp",
-    phone: WHATSAPP_DISPLAY,
-    cta: "Chat with Ghali on WhatsApp",
+    headline: "Your AI Assistant on Telegram",
+    phone: TELEGRAM_DISPLAY,
+    cta: "Chat with Ghali on Telegram",
     trust: "Free \u00B7 No signup \u00B7 60 credits/month",
     switchLocale: "\u0639\u0631\u0628\u064A",
     switchLocaleHref: "/ar/start",
@@ -248,12 +253,17 @@ export const en: TranslationDict = {
   stickyWhatsApp: {
     ariaLabel: "Chat with Ghali on WhatsApp",
   },
+
+  stickyTelegram: {
+    ariaLabel: "Chat with Ghali on Telegram",
+  },
 };
 
 export const ar: TranslationDict = {
   locale: "ar",
   dir: "rtl",
   whatsappUrl: WHATSAPP_URL_AR,
+  telegramUrl: TELEGRAM_URL,
 
   nav: {
     features: "\u0627\u0644\u0645\u0632\u0627\u064A\u0627",
@@ -262,7 +272,7 @@ export const ar: TranslationDict = {
 
   hero: {
     titleLine1: "\u0645\u0633\u0627\u0639\u062F\u0643 \u0627\u0644\u0630\u0643\u064A \u0627\u0644\u0645\u0641\u0636\u0651\u0644 \u0641\u064A \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A",
-    titleLine2: "\u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
+    titleLine2: "\u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645",
     subtitle:
       "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642. \u0628\u062F\u0648\u0646 \u062D\u0633\u0627\u0628. \u0628\u0633 \u0631\u0627\u0633\u0644 \u063A\u0627\u0644\u064A \u0648\u062E\u0644\u0651\u0635 \u0634\u063A\u0644\u0643.",
     cta: "\u0627\u0628\u062F\u0623 \u0627\u0644\u0645\u062D\u0627\u062F\u062B\u0629",
@@ -276,7 +286,7 @@ export const ar: TranslationDict = {
         icon: "message",
         title: "\u0628\u0633 \u0631\u0627\u0633\u0644. \u0648\u062E\u0644\u0627\u0635.",
         description:
-          "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642. \u0628\u062F\u0648\u0646 \u062D\u0633\u0627\u0628. \u0628\u062F\u0648\u0646 \u0643\u0644\u0645\u0629 \u0633\u0631. \u0627\u0641\u062A\u062D \u0648\u0627\u062A\u0633\u0627\u0628\u060C \u0642\u0648\u0644 \u0647\u0644\u0627\u060C \u0648\u062E\u0644\u0627\u0635.",
+          "\u0628\u062F\u0648\u0646 \u062A\u0637\u0628\u064A\u0642. \u0628\u062F\u0648\u0646 \u062D\u0633\u0627\u0628. \u0628\u062F\u0648\u0646 \u0643\u0644\u0645\u0629 \u0633\u0631. \u0627\u0641\u062A\u062D \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645\u060C \u0642\u0648\u0644 \u0647\u0644\u0627\u060C \u0648\u062E\u0644\u0627\u0635.",
         href: "/ar/features/zero-friction",
         colSpan: "2",
       },
@@ -312,7 +322,7 @@ export const ar: TranslationDict = {
         icon: "calendar",
         title: "\u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064A \u064A\u0634\u062A\u063A\u0644 \u062D\u0633\u0628 \u062C\u062F\u0648\u0644\u0643",
         description:
-          "\u062D\u062F\u062F \u0645\u0647\u0627\u0645 \u0648\u063A\u0627\u0644\u064A \u064A\u0646\u0641\u0630\u0647\u0627 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u2014 \u0645\u0644\u062E\u0635\u0627\u062A \u0635\u0628\u0627\u062D\u064A\u0629\u060C \u062A\u0630\u0643\u064A\u0631\u0627\u062A\u060C \u062A\u0642\u0627\u0631\u064A\u0631 \u062F\u0648\u0631\u064A\u0629\u060C \u0643\u0644\u0647\u0627 \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628.",
+          "\u062D\u062F\u062F \u0645\u0647\u0627\u0645 \u0648\u063A\u0627\u0644\u064A \u064A\u0646\u0641\u0630\u0647\u0627 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u2014 \u0645\u0644\u062E\u0635\u0627\u062A \u0635\u0628\u0627\u062D\u064A\u0629\u060C \u062A\u0630\u0643\u064A\u0631\u0627\u062A\u060C \u062A\u0642\u0627\u0631\u064A\u0631 \u062F\u0648\u0631\u064A\u0629\u060C \u0643\u0644\u0647\u0627 \u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645.",
         href: "/ar/features/scheduled-tasks",
         colSpan: "3",
         horizontal: true,
@@ -349,8 +359,8 @@ export const ar: TranslationDict = {
     steps: [
       {
         num: "01",
-        title: "\u0631\u0627\u0633\u0644 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
-        desc: "\u0627\u0641\u062A\u062D \u0648\u0627\u062A\u0633\u0627\u0628 \u0648\u0627\u0631\u0633\u0644 \u0623\u0648\u0644 \u0631\u0633\u0627\u0644\u0629. \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644\u060C \u0628\u062F\u0648\u0646 \u062A\u062D\u0645\u064A\u0644.",
+        title: "\u0631\u0627\u0633\u0644 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645",
+        desc: "\u0627\u0641\u062A\u062D \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645 \u0648\u0627\u0631\u0633\u0644 \u0623\u0648\u0644 \u0631\u0633\u0627\u0644\u0629. \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644\u060C \u0628\u062F\u0648\u0646 \u062A\u062D\u0645\u064A\u0644.",
       },
       {
         num: "02",
@@ -430,7 +440,7 @@ export const ar: TranslationDict = {
       {
         question: "\u0647\u0644 \u0623\u062D\u062A\u0627\u062C \u062A\u062D\u0645\u064A\u0644 \u0634\u064A\u061F",
         answer:
-          "\u0644\u0627. \u063A\u0627\u0644\u064A \u064A\u0639\u0645\u0644 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 \u0639\u0628\u0631 \u0648\u0627\u062A\u0633\u0627\u0628. \u0628\u0633 \u0627\u0631\u0633\u0644 \u0631\u0633\u0627\u0644\u0629.",
+          "\u0644\u0627. \u063A\u0627\u0644\u064A \u064A\u0639\u0645\u0644 \u0628\u0627\u0644\u0643\u0627\u0645\u0644 \u0639\u0628\u0631 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645. \u0628\u0633 \u0627\u0631\u0633\u0644 \u0631\u0633\u0627\u0644\u0629.",
       },
       {
         question: "\u0647\u0644 \u0628\u064A\u0627\u0646\u0627\u062A\u064A \u0622\u0645\u0646\u0629\u061F",
@@ -455,7 +465,7 @@ export const ar: TranslationDict = {
       {
         question: "\u0643\u064A\u0641 \u0623\u062A\u0631\u0642\u0649 \u0644\u0640 Pro\u061F",
         answer:
-          '\u0627\u0631\u0633\u0644 "upgrade" \u0644\u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628 \u0648\u0627\u062A\u0628\u0639 \u0627\u0644\u0631\u0627\u0628\u0637.',
+          '\u0627\u0631\u0633\u0644 "upgrade" \u0644\u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645 \u0648\u0627\u062A\u0628\u0639 \u0627\u0644\u0631\u0627\u0628\u0637.',
       },
     ],
   },
@@ -482,9 +492,9 @@ export const ar: TranslationDict = {
   },
 
   start: {
-    headline: "\u0645\u0633\u0627\u0639\u062F\u0643 \u0627\u0644\u0630\u0643\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
-    phone: WHATSAPP_DISPLAY,
-    cta: "\u062A\u062D\u062F\u062B \u0645\u0639 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
+    headline: "\u0645\u0633\u0627\u0639\u062F\u0643 \u0627\u0644\u0630\u0643\u064A \u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645",
+    phone: TELEGRAM_DISPLAY,
+    cta: "\u062A\u062D\u062F\u062B \u0645\u0639 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645",
     trust: "\u0645\u062C\u0627\u0646\u064A \u00B7 \u0628\u062F\u0648\u0646 \u062A\u0633\u062C\u064A\u0644 \u00B7 60 \u0631\u0635\u064A\u062F/\u0634\u0647\u0631",
     switchLocale: "English",
     switchLocaleHref: "/start",
@@ -492,6 +502,10 @@ export const ar: TranslationDict = {
 
   stickyWhatsApp: {
     ariaLabel: "\u062A\u062D\u062F\u062B \u0645\u0639 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u0648\u0627\u062A\u0633\u0627\u0628",
+  },
+
+  stickyTelegram: {
+    ariaLabel: "\u062A\u062D\u062F\u062B \u0645\u0639 \u063A\u0627\u0644\u064A \u0639\u0644\u0649 \u062A\u064A\u0644\u064A\u062C\u0631\u0627\u0645",
   },
 };
 

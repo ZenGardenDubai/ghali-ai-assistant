@@ -5,6 +5,7 @@ import { ghaliAgent, getOrCreateChatThread, SYSTEM_BLOCK, setTraceId, clearTrace
 import { getCurrentDateTime } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { WHATSAPP_SESSION_WINDOW_MS, TEMPLATE_INACTIVITY_GATE_MS } from "./constants";
+import { sendToUser, isTelegramUser } from "./lib/channelSend";
 import { REFLECTION_TIME_FALLBACK_MS } from "./reflection";
 
 /**
@@ -172,36 +173,42 @@ ${SYSTEM_BLOCK}
         return;
       }
 
-      const latestWithinWindow =
-        latestUser.lastMessageAt &&
-        Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
       try {
-        if (latestWithinWindow) {
-          await ctx.runAction(internal.whatsapp.sendMessage, {
-            to: latestUser.phone,
-            body: responseText,
-          });
+        if (isTelegramUser(latestUser)) {
+          // Telegram: no session window or templates — send directly
+          await sendToUser(ctx, latestUser, responseText);
         } else {
-          // Outside 24h window — check daily template cap before sending
-          const templateGuard = await ctx.runMutation(
-            internal.outboundGuard.checkAndRecordTemplateSend,
-            { userId }
-          );
-          if (!templateGuard.allowed) {
-            console.warn(`[template-guard] Heartbeat template blocked for ${userId}: ${templateGuard.reason}`);
-            await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
-            return;
-          }
-          try {
-            await ctx.runAction(internal.whatsapp.sendTemplate, {
+          // WhatsApp: session window + template fallback
+          const latestWithinWindow =
+            latestUser.lastMessageAt &&
+            Date.now() - latestUser.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+          if (latestWithinWindow) {
+            await ctx.runAction(internal.whatsapp.sendMessage, {
               to: latestUser.phone,
-              templateName: "ghali_heartbeat_v2",
-              variables: { "1": responseText },
+              body: responseText,
             });
-          } catch (error) {
-            await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
-            throw error;
+          } else {
+            // Outside 24h window — check daily template cap before sending
+            const templateGuard = await ctx.runMutation(
+              internal.outboundGuard.checkAndRecordTemplateSend,
+              { userId }
+            );
+            if (!templateGuard.allowed) {
+              console.warn(`[template-guard] Heartbeat template blocked for ${userId}: ${templateGuard.reason}`);
+              await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId });
+              return;
+            }
+            try {
+              await ctx.runAction(internal.whatsapp.sendTemplate, {
+                to: latestUser.phone,
+                templateName: "ghali_heartbeat_v2",
+                variables: { "1": responseText },
+              });
+            } catch (error) {
+              await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId });
+              throw error;
+            }
           }
         }
       } catch (error) {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FeaturePage, FeatureSection, FeatureCard } from "@/app/components/landing/feature-page";
 
 export const metadata: Metadata = {
-  title: "Best AI Models — Google Gemini, Claude & OpenAI on WhatsApp",
+  title: "Best AI Models — Google Gemini, Claude & OpenAI on Telegram",
   description:
     "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
       "Ghali uses Google Gemini, Anthropic Claude, and OpenAI — and automatically picks the best model for every task.",
     url: "https://ghali.ae/features/smart-ai",
     locale: "en_AE",
-    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on WhatsApp" }],
+    images: [{ url: "/ghali-logo-with-bg.png", width: 640, height: 640, alt: "Ghali — AI Assistant on Telegram" }],
   },
   twitter: {
     card: "summary_large_image",
