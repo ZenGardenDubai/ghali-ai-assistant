@@ -662,14 +662,18 @@ export const generateResponse = internalAction({
                 { text: "⭐ Upgrade", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade` } },
               ],
             ];
+          } else if (cmd === "feedback") {
+            systemKeyboard = [
+              [{ text: "📝 Send Feedback", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/feedback` } }],
+            ];
           } else if (cmd === "credits" || cmd === "account") {
             const baseUrl = process.env.WEBAPP_BASE_URL ?? "https://ghali.ae";
             systemKeyboard = [
+              [{ text: "👤 Manage Your Account", url: `${baseUrl}/account` }],
               [
-                { text: "🔑 Sign In", url: `${baseUrl}/upgrade` },
-                { text: "🚪 Sign Out", url: `${baseUrl}/account` },
+                { text: "📝 Send Feedback", web_app: { url: `${baseUrl}/tg/feedback` } },
+                { text: "⭐ Upgrade to Pro", web_app: { url: `${baseUrl}/tg/upgrade` } },
               ],
-              [{ text: "⭐ Upgrade to Pro", web_app: { url: `${baseUrl}/tg/upgrade` } }],
             ];
           }
         }
@@ -1087,7 +1091,12 @@ export const generateResponse = internalAction({
     } else if (imageResult) {
       await guardedSendMedia(imageResult.caption, imageResult.imageUrl, "image");
     } else if (responseText) {
-      await guardedSendMessage(responseText);
+      // Attach web_app button for feedback Mini App when agent used generateFeedbackLink
+      const feedbackKeyboard =
+        isTelegram && chatId && toolsUsed.includes("generateFeedbackLink")
+          ? [[{ text: "📝 Send Feedback", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/feedback` } }]]
+          : undefined;
+      await guardedSendMessage(responseText, feedbackKeyboard);
     }
 
     // Low-credit warning — fires AFTER the main reply so it can't pre-empt it.

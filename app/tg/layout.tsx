@@ -5,7 +5,7 @@ import { fontVariables } from "@/app/lib/root-layout";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "Ghali — Upgrade",
+  title: "Ghali",
   robots: { index: false, follow: false },
 };
 

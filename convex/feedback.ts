@@ -103,7 +103,8 @@ export const submitFeedback = internalMutation({
     source: v.union(
       v.literal("whatsapp_link"),
       v.literal("web"),
-      v.literal("agent_tool")
+      v.literal("agent_tool"),
+      v.literal("telegram_miniapp")
     ),
   },
   handler: async (ctx, { userId, category, message, source }) => {
@@ -196,6 +197,54 @@ export const submitFeedbackViaToken = internalMutation({
       category,
       message: truncatedMessage,
       source: "whatsapp_link",
+      status: "new",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+export const submitFeedbackByTelegramId = internalMutation({
+  args: {
+    telegramId: v.string(),
+    category: v.union(
+      v.literal("bug"),
+      v.literal("feature_request"),
+      v.literal("general")
+    ),
+    message: v.string(),
+  },
+  handler: async (ctx, { telegramId, category, message }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_telegramId", (q) => q.eq("telegramId", telegramId))
+      .unique();
+
+    if (!user) return { success: false, error: "user_not_found" };
+
+    // Rate limit check
+    const todayMidnight = getTodayMidnightUtcMs();
+    const todayFeedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .filter((q) => q.gte(q.field("createdAt"), todayMidnight))
+      .collect();
+
+    if (todayFeedback.length >= FEEDBACK_MAX_PER_DAY) {
+      return { success: false, error: "rate_limited" };
+    }
+
+    const truncatedMessage = message.slice(0, FEEDBACK_MAX_MESSAGE_LENGTH);
+
+    const now = Date.now();
+    await ctx.db.insert("feedback", {
+      userId: user._id,
+      phone: user.phone,
+      category,
+      message: truncatedMessage,
+      source: "telegram_miniapp",
       status: "new",
       createdAt: now,
       updatedAt: now,

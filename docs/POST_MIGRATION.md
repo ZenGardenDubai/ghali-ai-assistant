@@ -86,19 +86,38 @@ User visits ghali.ae/upgrade → signs in with Clerk (phone number)
 
 ## 3. Feedback Flow — Mini App for Telegram
 
-**Status:** Not started
+**Status:** Done
 **Priority:** Medium
 
 **Problem:** The current feedback system uses a web link with a token (ghali.ae/feedback?token=...) that identifies the user. Same identity-linking gap as the payment flow — Telegram users need a way to submit feedback that ties back to their `telegramId`.
 
-**Possible solutions:**
-- **Mini App:** Build a Telegram Mini App for feedback submission. `initData.user.id` provides verified identity without external auth. Best UX — users never leave Telegram.
-- **Deep Link Token:** Same approach as payment Option A — generate a token, embed in URL, resolve on submission.
-- **Inline Feedback:** Skip the web form entirely. Use inline keyboards with rating buttons (1-5 stars) + a follow-up text prompt for comments. Simplest, no web required.
+**Solution:** Built a Telegram Mini App at `/tg/feedback` reusing the upgrade Mini App infrastructure (layout, SDK, dark theme, initData verification). Identity comes from `initData` — no token needed.
 
-**Note:** This shares infrastructure with the payment Mini App (Section 2, Option B). If we build a Mini App for upgrades, the feedback form can live in the same app.
+**Flow:**
+```
+User taps "Send Feedback" button (or /feedback command)
+  → Mini App opens in Telegram
+  → initData verified via /api/tg-auth (HMAC-SHA256)
+  → User selects category (bug/feature/general) + writes message
+  → POST /api/tg-feedback → verifies initData → forwards to Convex /tg-feedback
+  → submitFeedbackByTelegramId mutation (lookup by telegramId index, rate limit, insert)
+  → Success card with "Back to Chat" button
+```
 
-**Files affected:** `convex/feedback.ts`, `convex/http.ts`, bot server, potential Mini App
+**Implementation:**
+- [x] Add `"telegram_miniapp"` to feedback source enum in schema + feedback.ts
+- [x] Add `submitFeedbackByTelegramId` internal mutation in feedback.ts
+- [x] Add `POST /tg-feedback` HTTP route in http.ts (Bearer auth)
+- [x] Add `/api/tg-feedback` Next.js API route (verifies initData, forwards to Convex)
+- [x] Extract `verifyInitData` to shared `app/lib/telegram-auth.ts`
+- [x] Create Mini App feedback page at `app/tg/feedback/page.tsx`
+- [x] Update `generateFeedbackLink` agent tool (Mini App for Telegram, token for others)
+- [x] Add `getFeedbackUrl()` helper in telegram.ts
+- [x] Add `/feedback` bot command (registered in BotFather for dev + prod)
+- [x] Add `feedback` system command with `web_app` inline keyboard button
+- [x] Update layout title from "Ghali — Upgrade" to "Ghali"
+
+**Files affected:** `convex/schema.ts`, `convex/feedback.ts`, `convex/http.ts`, `convex/agent.ts`, `convex/telegram.ts`, `convex/messages.ts`, `convex/constants.ts`, `convex/templates.ts`, `convex/lib/systemCommands.ts`, `app/api/tg-feedback/route.ts`, `app/api/tg-auth/route.ts`, `app/lib/telegram-auth.ts`, `app/tg/feedback/page.tsx`, `app/tg/layout.tsx`
 
 ---
 

@@ -777,6 +777,49 @@ http.route({
 });
 
 http.route({
+  path: "/tg-feedback",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
+    const expectedSecret = process.env.INTERNAL_API_SECRET;
+
+    if (!expectedSecret) {
+      return new Response("Server error", { status: 500 });
+    }
+    if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
+      return new Response("Forbidden", { status: 403 });
+    }
+
+    let body: { telegramId: string; category: string; message: string };
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
+    }
+
+    if (!body.telegramId || !body.category || !body.message) {
+      return new Response("Missing telegramId, category, or message", { status: 400 });
+    }
+
+    const validCategories = ["bug", "feature_request", "general"];
+    if (!validCategories.includes(body.category)) {
+      return new Response("Invalid category", { status: 400 });
+    }
+
+    const result = await ctx.runMutation(internal.feedback.submitFeedbackByTelegramId, {
+      telegramId: body.telegramId,
+      category: body.category as "bug" | "feature_request" | "general",
+      message: body.message,
+    });
+
+    return new Response(JSON.stringify(result), {
+      status: result.success ? 200 : 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }),
+});
+
+http.route({
   path: "/feedback/submit-web",
   method: "POST",
   handler: httpAction(async (ctx, request) => {

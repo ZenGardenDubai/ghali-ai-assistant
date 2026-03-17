@@ -121,7 +121,13 @@ Thanks for being Pro! 💎`,
 • *privacy* — how your data is handled
 • *help* — this guide
 
-💭 *Feedback* — Say "I have feedback" or "report a bug" to get a feedback form link`,
+💭 *Feedback* — /feedback or say "I have feedback"`,
+    variables: [],
+  },
+
+  // === Feedback ===
+  feedback: {
+    template: `Tap the button below to send us your feedback 💬`,
     variables: [],
   },
 

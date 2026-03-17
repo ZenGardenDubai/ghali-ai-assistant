@@ -201,6 +201,9 @@ export async function handleSystemCommand(
     case "help":
       return { response: await renderSystemMessage("help", {}, userMessage) };
 
+    case "feedback":
+      return { response: await renderSystemMessage("feedback", {}, userMessage) };
+
     case "privacy":
       return { response: await renderSystemMessage("privacy", {}, userMessage) };
 

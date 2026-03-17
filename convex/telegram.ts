@@ -18,12 +18,17 @@ import {
   sendInlineKeyboard,
   answerCallbackQuery as answerCbQuery,
 } from "./lib/telegramSend";
+import { formatForTelegram } from "./lib/telegram";
 
 /** Mini App upgrade URL — configurable via env for dev/prod */
 export function getUpgradeUrl(): string {
   return `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade`;
 }
-import { formatForTelegram } from "./lib/telegram";
+
+/** Mini App feedback URL — configurable via env for dev/prod */
+export function getFeedbackUrl(): string {
+  return `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/feedback`;
+}
 
 function getBotToken(): string {
   const token = process.env.TELEGRAM_BOT_TOKEN;

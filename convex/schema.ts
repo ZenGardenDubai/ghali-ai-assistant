@@ -275,7 +275,8 @@ export default defineSchema({
     source: v.union(
       v.literal("whatsapp_link"),
       v.literal("web"),
-      v.literal("agent_tool")
+      v.literal("agent_tool"),
+      v.literal("telegram_miniapp")
     ),
     status: v.union(
       v.literal("new"),
