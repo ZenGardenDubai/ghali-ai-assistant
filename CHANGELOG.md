@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.0...v0.48.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* **feedback:** remove pre-flight tg-auth call and fix retry state ([#293](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/293)) ([21975e2](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/21975e2e980e9c3fe0a8c795caf6add3a496cb45))
+
 ## [0.48.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.47.2...v0.48.0) (2026-03-17)
 
 
