@@ -78,6 +78,13 @@ export async function POST(request: Request) {
     }),
   });
 
-  const result = await convexRes.json();
-  return NextResponse.json(result, { status: convexRes.status });
+  try {
+    const result = await convexRes.json();
+    return NextResponse.json(result, { status: convexRes.status });
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 502 }
+    );
+  }
 }

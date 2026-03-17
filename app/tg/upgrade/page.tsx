@@ -129,7 +129,7 @@ function TelegramUpgradeContent() {
     }
 
     setState("not_telegram");
-  }, [isLoaded, isSuccess, isSignedIn, state]);
+  }, [isLoaded, isSuccess, isSignedIn, state, posthog, distinctId]);
 
   // Step 3: Link accounts after Clerk sign-up
   const linkAccount = useCallback(async () => {
