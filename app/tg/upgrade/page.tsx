@@ -75,7 +75,7 @@ function TelegramUpgradeContent() {
           const id = `tg:${data.telegramId}`;
           posthog?.capture("tg_upgrade_verification_success", { distinct_id: id });
           setTelegramId(data.telegramId);
-          localStorage.setItem("tg_upgrade_telegramId", data.telegramId);
+          localStorage.setItem("tg_upgrade_telegramId", JSON.stringify({ id: data.telegramId, ts: Date.now() }));
           if (isSignedIn) {
             setState("linking");
           } else {
@@ -91,7 +91,22 @@ function TelegramUpgradeContent() {
     }
 
     // Fallback: use saved telegramId from pre-redirect (Clerk OAuth loses WebApp context)
-    const savedTelegramId = localStorage.getItem("tg_upgrade_telegramId");
+    // Expires after 15 minutes to prevent stale identity binding
+    const savedRaw = localStorage.getItem("tg_upgrade_telegramId");
+    let savedTelegramId: string | null = null;
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed?.id && parsed?.ts && Date.now() - parsed.ts < 15 * 60 * 1000) {
+          savedTelegramId = parsed.id;
+        } else {
+          localStorage.removeItem("tg_upgrade_telegramId");
+        }
+      } catch {
+        // Legacy format (plain string) — treat as expired
+        localStorage.removeItem("tg_upgrade_telegramId");
+      }
+    }
     if (savedTelegramId) {
       setTelegramId(savedTelegramId);
       if (isSignedIn) {
@@ -107,7 +122,7 @@ function TelegramUpgradeContent() {
       const devTelegramId = new URLSearchParams(window.location.search).get("telegramId");
       if (devTelegramId) {
         setTelegramId(devTelegramId);
-        localStorage.setItem("tg_upgrade_telegramId", devTelegramId);
+        localStorage.setItem("tg_upgrade_telegramId", JSON.stringify({ id: devTelegramId, ts: Date.now() }));
         setState("welcome");
         return;
       }

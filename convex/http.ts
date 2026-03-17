@@ -1060,7 +1060,7 @@ http.route({
         messageText,
         telegramMessageId,
         firstName,
-        username: _username,
+        // username is available but not currently used
         languageCode,
         mediaType,
         mediaFileId,

@@ -15,6 +15,7 @@ const CATEGORIES: { value: Category; label: string; icon: string }[] = [
 function TelegramFeedbackContent() {
   const [state, setState] = useState<FlowState>("loading");
   const [initData, setInitData] = useState<string | null>(null);
+  const [devTelegramId, setDevTelegramId] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +55,11 @@ function TelegramFeedbackContent() {
 
     // Dev mode: allow testing in regular browser with ?telegramId=xxx
     if (process.env.NODE_ENV === "development") {
-      const devTelegramId = new URLSearchParams(window.location.search).get("telegramId");
-      if (devTelegramId) {
+      const devId = new URLSearchParams(window.location.search).get("telegramId");
+      if (devId) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- dev-only shortcut, tree-shaken in production
-        setInitData("dev_mode");
+        setDevTelegramId(devId);
+        setInitData("dev_mode"); // eslint-disable-line react-hooks/set-state-in-effect
         setState("form"); // eslint-disable-line react-hooks/set-state-in-effect
         return;
       }
@@ -78,6 +80,7 @@ function TelegramFeedbackContent() {
           initData,
           category,
           message: message.trim(),
+          ...(devTelegramId ? { devTelegramId } : {}),
         }),
       });
 

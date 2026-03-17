@@ -48,13 +48,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Message too long" }, { status: 400 });
   }
 
-  // Verify initData directly (no network call)
-  const verified = await verifyInitData(body.initData, BOT_TOKEN);
-  if (!verified) {
-    return NextResponse.json(
-      { error: "Invalid Telegram identity" },
-      { status: 401 }
-    );
+  // Dev mode: accept telegramId directly (tree-shaken in production builds)
+  let telegramId: string;
+  if (process.env.NODE_ENV === "development" && body.initData === "dev_mode" && (body as Record<string, unknown>).devTelegramId) {
+    telegramId = String((body as Record<string, unknown>).devTelegramId);
+  } else {
+    // Verify initData directly (30-min window — user may spend time writing feedback)
+    const verified = await verifyInitData(body.initData, BOT_TOKEN, 1800);
+    if (!verified) {
+      return NextResponse.json(
+        { error: "Invalid Telegram identity" },
+        { status: 401 }
+      );
+    }
+    telegramId = verified.telegramId;
   }
 
   // Forward to Convex
@@ -65,7 +72,7 @@ export async function POST(request: Request) {
       Authorization: `Bearer ${INTERNAL_API_SECRET}`,
     },
     body: JSON.stringify({
-      telegramId: verified.telegramId,
+      telegramId,
       category: body.category,
       message: body.message,
     }),

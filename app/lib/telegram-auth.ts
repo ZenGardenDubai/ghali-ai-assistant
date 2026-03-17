@@ -4,7 +4,8 @@
  */
 export async function verifyInitData(
   initData: string,
-  botToken: string
+  botToken: string,
+  maxAgeSeconds = 300
 ): Promise<{ telegramId: string; firstName?: string } | null> {
   try {
     const params = new URLSearchParams(initData);
@@ -16,7 +17,7 @@ export async function verifyInitData(
     if (!authDate) return null;
     const authTimestamp = parseInt(authDate, 10);
     if (isNaN(authTimestamp)) return null;
-    if (Math.abs(Date.now() / 1000 - authTimestamp) > 300) return null;
+    if (Math.abs(Date.now() / 1000 - authTimestamp) > maxAgeSeconds) return null;
 
     // Build data-check-string: sort all fields except hash, join with \n
     params.delete("hash");
