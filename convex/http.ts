@@ -969,26 +969,35 @@ http.route({
       });
     }
 
-    // Check if user is within 24h WhatsApp session window
+    // Route reply based on user's channel
     const user = await ctx.runQuery(internal.admin.searchUser, {
       phone: feedback.phone,
     });
-    const withinWindow =
-      user?.lastMessageAt &&
-      Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
 
-    if (withinWindow) {
-      await ctx.runAction(internal.whatsapp.sendMessage, {
-        to: feedback.phone,
+    if (user?.telegramId) {
+      // Telegram user — send directly
+      await ctx.runAction(internal.telegram.sendMessage, {
+        chatId: user.telegramId,
         body: message,
       });
     } else {
-      // Outside 24h window — use broadcast template as fallback
-      await ctx.runAction(internal.whatsapp.sendTemplate, {
-        to: feedback.phone,
-        templateName: "ghali_broadcast_v2",
-        variables: { "1": message },
-      });
+      // WhatsApp user — check session window
+      const withinWindow =
+        user?.lastMessageAt &&
+        Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+      if (withinWindow) {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
+          to: feedback.phone,
+          body: message,
+        });
+      } else {
+        await ctx.runAction(internal.whatsapp.sendTemplate, {
+          to: feedback.phone,
+          templateName: "ghali_broadcast_v2",
+          variables: { "1": message },
+        });
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {
@@ -1109,7 +1118,7 @@ http.route({
       }
 
       // Fire typing indicator immediately
-      ctx.scheduler.runAfter(0, internal.telegram.sendTypingIndicator, {
+      await ctx.scheduler.runAfter(0, internal.telegram.sendTypingIndicator, {
         chatId: chatIdStr,
         action: mediaType ? "upload_document" : "typing",
       });

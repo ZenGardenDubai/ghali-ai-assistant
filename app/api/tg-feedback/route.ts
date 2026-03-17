@@ -5,7 +5,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
 
-const MAX_MESSAGE_LENGTH = 10000;
+const MAX_MESSAGE_LENGTH = 2000;
 
 const VALID_CATEGORIES = new Set(["bug", "feature_request", "general"]);
 
