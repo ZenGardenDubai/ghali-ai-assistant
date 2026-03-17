@@ -20,7 +20,7 @@ function TelegramFeedbackContent() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1: Verify Telegram identity
+  // Step 1: Detect Telegram identity (auth happens server-side on submit)
   useEffect(() => {
     if (state !== "loading") return;
 
@@ -28,28 +28,9 @@ function TelegramFeedbackContent() {
     if (webapp?.initData) {
       webapp.ready();
       webapp.expand();
-
-      (async () => {
-        try {
-          const res = await fetch("/api/tg-auth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData: webapp.initData }),
-          });
-
-          if (!res.ok) {
-            setState("error");
-            setError("Could not verify your identity. Please try again.");
-            return;
-          }
-
-          setInitData(webapp.initData);
-          setState("form");
-        } catch {
-          setState("error");
-          setError("Connection error. Please try again.");
-        }
-      })();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- read external system (Telegram WebApp) then sync to React state
+      setInitData(webapp.initData);
+      setState("form"); // eslint-disable-line react-hooks/set-state-in-effect
       return;
     }
 
@@ -57,15 +38,14 @@ function TelegramFeedbackContent() {
     if (process.env.NODE_ENV === "development") {
       const devId = new URLSearchParams(window.location.search).get("telegramId");
       if (devId) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- dev-only shortcut, tree-shaken in production
         setDevTelegramId(devId);
-        setInitData("dev_mode"); // eslint-disable-line react-hooks/set-state-in-effect
-        setState("form"); // eslint-disable-line react-hooks/set-state-in-effect
+        setInitData("dev_mode");
+        setState("form");
         return;
       }
     }
 
-    setState("not_telegram"); // eslint-disable-line react-hooks/set-state-in-effect
+    setState("not_telegram");
   }, [state]);
 
   const handleSubmit = async () => {
@@ -132,7 +112,7 @@ function TelegramFeedbackContent() {
               message={error || "Something went wrong."}
               onRetry={() => {
                 setError(null);
-                setState("form");
+                setState("loading");
               }}
             />
           )}
