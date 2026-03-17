@@ -60,6 +60,7 @@ import type * as rateLimiting from "../rateLimiting.js";
 import type * as reflection from "../reflection.js";
 import type * as reminders from "../reminders.js";
 import type * as scheduledTasks from "../scheduledTasks.js";
+import type * as telegram from "../telegram.js";
 import type * as templates from "../templates.js";
 import type * as users from "../users.js";
 import type * as voice from "../voice.js";
@@ -125,6 +126,7 @@ declare const fullApi: ApiFromModules<{
   reflection: typeof reflection;
   reminders: typeof reminders;
   scheduledTasks: typeof scheduledTasks;
+  telegram: typeof telegram;
   templates: typeof templates;
   users: typeof users;
   voice: typeof voice;
