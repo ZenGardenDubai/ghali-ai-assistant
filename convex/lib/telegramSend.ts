@@ -109,6 +109,23 @@ export async function sendTelegramHtml(
   return (result.result as Record<string, unknown>)?.message_id as number;
 }
 
+/** Max caption length for Telegram media (1024 chars after entity parsing). */
+const TELEGRAM_CAPTION_MAX = 1024;
+
+/** Sanitize a caption for Telegram HTML parse mode: escape HTML entities and truncate. */
+function sanitizeCaption(caption: string): string {
+  // Escape HTML special characters
+  let safe = caption
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  // Truncate to Telegram's caption limit
+  if (safe.length > TELEGRAM_CAPTION_MAX) {
+    safe = safe.slice(0, TELEGRAM_CAPTION_MAX - 1) + "…";
+  }
+  return safe;
+}
+
 /**
  * Send a photo via Telegram Bot API.
  * Accepts a URL or file_id.
@@ -123,7 +140,7 @@ export async function sendTelegramPhoto(
     photo,
   };
   if (caption) {
-    body.caption = caption;
+    body.caption = sanitizeCaption(caption);
     body.parse_mode = "HTML";
   }
   const result = await telegramApiCall(options.botToken, "sendPhoto", body);
@@ -143,7 +160,7 @@ export async function sendTelegramDocument(
     document,
   };
   if (caption) {
-    body.caption = caption;
+    body.caption = sanitizeCaption(caption);
     body.parse_mode = "HTML";
   }
   const result = await telegramApiCall(options.botToken, "sendDocument", body);
@@ -163,7 +180,7 @@ export async function sendTelegramAudio(
     audio,
   };
   if (caption) {
-    body.caption = caption;
+    body.caption = sanitizeCaption(caption);
     body.parse_mode = "HTML";
   }
   const result = await telegramApiCall(options.botToken, "sendAudio", body);
@@ -183,7 +200,7 @@ export async function sendTelegramVideo(
     video,
   };
   if (caption) {
-    body.caption = caption;
+    body.caption = sanitizeCaption(caption);
     body.parse_mode = "HTML";
   }
   const result = await telegramApiCall(options.botToken, "sendVideo", body);

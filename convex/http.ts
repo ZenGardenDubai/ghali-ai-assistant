@@ -1103,9 +1103,9 @@ http.route({
 
       const chatIdStr = String(chatId);
       const body = (messageText ?? "").slice(0, MAX_MESSAGE_LENGTH);
-      const messageSid = String(telegramMessageId);
+      const messageSid = `${chatIdStr}:${telegramMessageId}`;
 
-      // Dedup by telegramMessageId
+      // Dedup by chatId:messageId (messageId is only unique within a chat)
       const isNew = await ctx.runMutation(
         internal.webhookDedup.tryMarkProcessed,
         { messageSid: `tg:${messageSid}` }
@@ -1188,7 +1188,7 @@ http.route({
         mediaUrl,
         mediaContentType,
         messageSid,
-        originalRepliedMessageSid: replyToMessageId ? String(replyToMessageId) : undefined,
+        originalRepliedMessageSid: replyToMessageId ? `${chatIdStr}:${replyToMessageId}` : undefined,
         channel: "telegram",
         chatId: chatIdStr,
         mediaStorageId: preUploadedStorageId,

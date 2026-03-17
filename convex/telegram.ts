@@ -316,6 +316,10 @@ export const guardedSendKeyboard = internalAction({
   handler: async (ctx, { userId, chatId, body, keyboard }) => {
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user || user.optedOut || user.blocked) return;
+    if (!user.telegramId || user.telegramId !== chatId) {
+      console.error(`[telegram] chatId mismatch for ${userId}: expected ${user.telegramId}, got ${chatId}`);
+      return;
+    }
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,
@@ -345,9 +349,12 @@ export const guardedSendMessage = internalAction({
     body: v.string(),
   },
   handler: async (ctx, { userId, chatId, body }) => {
-    // Re-check opt-out/blocked
     const user = await ctx.runQuery(internal.users.internalGetUser, { userId });
     if (!user || user.optedOut || user.blocked) return;
+    if (!user.telegramId || user.telegramId !== chatId) {
+      console.error(`[telegram] chatId mismatch for ${userId}: expected ${user.telegramId}, got ${chatId}`);
+      return;
+    }
 
     const guard = await ctx.runMutation(
       internal.outboundGuard.checkAndRecordOutbound,

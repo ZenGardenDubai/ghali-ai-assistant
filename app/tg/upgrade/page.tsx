@@ -41,25 +41,12 @@ function TelegramUpgradeContent() {
       return;
     }
 
-    // Check if we have a saved telegramId from a previous step (survives Clerk redirect)
-    const savedTelegramId = localStorage.getItem("tg_upgrade_telegramId");
-    if (savedTelegramId && state === "loading") {
-      setTelegramId(savedTelegramId);
-      if (isSignedIn) {
-        // Returning from Clerk redirect — go straight to linking
-        setState("linking");
-      } else {
-        setState("sign_up");
-      }
-      return;
-    }
-
     // Already past loading state — don't re-run init
     if (state !== "loading") return;
 
+    // Always try fresh initData verification first (takes priority over localStorage)
     const webapp = window.Telegram?.WebApp;
     if (webapp?.initData) {
-      // Real Telegram Mini App — verify initData
       webapp.ready();
       webapp.expand();
 
@@ -80,12 +67,28 @@ function TelegramUpgradeContent() {
           const data = await res.json();
           setTelegramId(data.telegramId);
           localStorage.setItem("tg_upgrade_telegramId", data.telegramId);
-          setState("welcome");
+          if (isSignedIn) {
+            setState("linking");
+          } else {
+            setState("welcome");
+          }
         } catch {
           setState("error");
           setError("Connection error. Please try again.");
         }
       })();
+      return;
+    }
+
+    // Fallback: use saved telegramId from pre-redirect (Clerk OAuth loses WebApp context)
+    const savedTelegramId = localStorage.getItem("tg_upgrade_telegramId");
+    if (savedTelegramId) {
+      setTelegramId(savedTelegramId);
+      if (isSignedIn) {
+        setState("linking");
+      } else {
+        setState("sign_up");
+      }
       return;
     }
 
