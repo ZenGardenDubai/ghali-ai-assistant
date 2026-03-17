@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { verifyInitData } from "@/app/lib/telegram-auth";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
+
+const MAX_MESSAGE_LENGTH = 10000;
 
 const VALID_CATEGORIES = new Set(["bug", "feature_request", "general"]);
 
 export async function POST(request: Request) {
-  if (!BOT_TOKEN || !CONVEX_URL || !INTERNAL_API_SECRET) {
+  if (!BOT_TOKEN || !CONVEX_SITE_URL || !INTERNAL_API_SECRET) {
     console.error("[tg-feedback] Missing required env vars");
     return NextResponse.json(
       { error: "Server configuration error" },
@@ -42,6 +44,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
+  if (body.message.length > MAX_MESSAGE_LENGTH) {
+    return NextResponse.json({ error: "Message too long" }, { status: 400 });
+  }
+
   // Verify initData directly (no network call)
   const verified = await verifyInitData(body.initData, BOT_TOKEN);
   if (!verified) {
@@ -52,8 +58,7 @@ export async function POST(request: Request) {
   }
 
   // Forward to Convex
-  const convexSiteUrl = CONVEX_URL.replace(".cloud", ".site");
-  const convexRes = await fetch(`${convexSiteUrl}/tg-feedback`, {
+  const convexRes = await fetch(`${CONVEX_SITE_URL}/tg-feedback`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

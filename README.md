@@ -35,7 +35,7 @@ Ghali is an open-source AI assistant you talk to on Telegram (`@GhaliSmartBot`).
 - **Proactive follow-ups** — when you mention an interview or deadline, Ghali adds a follow-up and checks in days later
 - **Onboarding** — 5-step guided setup: welcome, name, timezone, personality style, language (skippable)
 - **Multilingual templates** — system messages detected, translated, numbers/formatting preserved
-- **Feedback system** — tokenized WhatsApp links + web form, admin review panel, rate-limited (3/day)
+- **Feedback system** — Telegram Mini App + web form, admin review panel, rate-limited (3/day)
 
 ### Structured Data
 - **Items & Collections** — track expenses, tasks, contacts, notes, bookmarks, habits via natural language
@@ -46,7 +46,7 @@ Ghali is an open-source AI assistant you talk to on Telegram (`@GhaliSmartBot`).
 
 ### System
 - **Credit system** — 60/month free, 600/month Pro ($9.99/mo or $99.48/year). 1 credit per request.
-- **System commands** — `credits`, `help`, `privacy`, `upgrade`, `account` — template-based, no LLM cost
+- **System commands** — `credits`, `help`, `privacy`, `upgrade`, `account`, `feedback` — template-based, no LLM cost
 - **Rate limiting** — per-user token bucket (30/min sustained, 40 burst)
 - **Country code blocking** — configurable blocklist
 - **Data management** — `clear memory`, `clear documents`, `clear everything` with confirmation
@@ -56,11 +56,10 @@ Ghali is an open-source AI assistant you talk to on Telegram (`@GhaliSmartBot`).
 ## How It Works
 
 ```
-WhatsApp message
-  → 360dialog webhook (Convex HTTP route)
-  → Validate signature + check country blocklist
-  → Deduplicate (MessageSid check)
-  → Find or create user + thread
+Telegram message
+  → Bot server (long polling, Node.js on Hetzner)
+  → POST /telegram-message (Bearer auth)
+  → Convex HTTP action: validate, dedup, find/create user + thread
   → Save message (Convex mutation)
   → Schedule async response (ctx.scheduler.runAfter)
   → Return 200 immediately
@@ -78,8 +77,8 @@ Background action:
     → createScheduledTask → one-time or recurring AI tasks
     → updateProfile/appendToMemory/editMemory/updatePersonality/updateHeartbeat → user files
     → resolveMedia/reprocessMedia/convertFile → media handling
-  → Format for WhatsApp + split long messages
-  → Send reply via 360dialog API
+  → Format for Telegram (HTML) + split long messages (4096 char chunks)
+  → Send reply via api.telegram.org
 ```
 
 ## Tech Stack
@@ -92,7 +91,7 @@ Background action:
 | AI Agent | @convex-dev/agent |
 | AI SDK | Vercel AI SDK v5 |
 | RAG | @convex-dev/rag + OpenAI embeddings |
-| Messaging | 360dialog WhatsApp Business API |
+| Messaging | Telegram Bot API (primary), 360dialog WhatsApp (dormant) |
 | UI | Tailwind v4 + shadcn/ui |
 | Analytics | PostHog |
 | Testing | Vitest + convex-test |
@@ -117,7 +116,7 @@ Background action:
 - Node.js 20+
 - [pnpm](https://pnpm.io/) 10+
 - [Convex](https://convex.dev) account
-- [360dialog](https://360dialog.com) account with WhatsApp Business
+- Telegram bot token (via [@BotFather](https://t.me/BotFather))
 - API keys: Google AI, Anthropic, OpenAI
 - Optional: [Clerk](https://clerk.com) (auth + billing), [PostHog](https://posthog.com) (analytics), [CloudConvert](https://cloudconvert.com) (Office files)
 
@@ -148,6 +147,7 @@ Environment variables are split between two runtimes. `.env.example` lists all v
 | `NEXT_PUBLIC_POSTHOG_HOST` | PostHog ingest host |
 | `POSTHOG_PERSONAL_API_KEY` | PostHog personal API key (server-side) |
 | `POSTHOG_PROJECT_ID` | PostHog project ID |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (for Mini App initData verification) |
 
 ### Convex (set via `npx convex env set`)
 
@@ -156,8 +156,7 @@ Environment variables are split between two runtimes. `.env.example` lists all v
 | `GOOGLE_GENERATIVE_AI_API_KEY` | Google AI API key (Flash + Pro) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (Claude Opus) |
 | `OPENAI_API_KEY` | OpenAI API key (Whisper + embeddings) |
-| `DIALOG360_API_KEY` | 360dialog Cloud API key |
-| `WHATSAPP_NUMBER` | Your WhatsApp Business number |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (from BotFather) |
 | `CONVEX_SITE_URL` | Public-facing Convex HTTP URL |
 | `INTERNAL_API_SECRET` | Shared secret for Next.js ↔ Convex API auth |
 | `CLERK_WEBHOOK_SECRET` | Clerk webhook signature secret |
@@ -178,11 +177,12 @@ ghali-ai-assistant/
 │   │   ├── privacy/        # Privacy policy
 │   │   └── terms/          # Terms of service
 │   ├── (ar)/               # Arabic pages (full mirror)
+│   ├── tg/                 # Telegram Mini Apps (upgrade, feedback)
 │   ├── api/                # Next.js API routes (proxy to Convex)
 │   └── providers/          # PostHog + Convex providers
 ├── convex/                 # Convex backend (25 agent tools)
 │   ├── agent.ts            # Ghali agent definition + all tools
-│   ├── http.ts             # HTTP routes (360dialog + Clerk webhooks, admin API)
+│   ├── http.ts             # HTTP routes (Telegram + Clerk webhooks, admin API)
 │   ├── messages.ts         # Message processing + async response generation
 │   ├── documents.ts        # Document processing + RAG pipeline
 │   ├── items.ts            # Structured data (items + collections + embeddings)
@@ -190,7 +190,7 @@ ghali-ai-assistant/
 │   ├── proWrite.ts         # ProWrite multi-LLM writing pipeline
 │   ├── images.ts           # Image generation (Gemini Pro)
 │   ├── voice.ts            # Voice transcription (Whisper)
-│   ├── whatsapp.ts            # Outbound WhatsApp messaging
+│   ├── telegram.ts         # Outbound Telegram messaging + Mini App helpers
 │   ├── credits.ts          # Credit system + monthly reset
 │   ├── billing.ts          # Subscription management (Clerk)
 │   ├── scheduledTasks.ts   # Scheduled agent tasks (one-time & recurring)
@@ -240,10 +240,10 @@ cd convex && npx vitest run
 - [x] Database schema
 - [x] User management
 - [x] Pure utility functions
-- [x] 360dialog inbound webhook
-- [x] 360dialog outbound messaging
+- [x] Telegram inbound webhook + bot server
+- [x] Telegram outbound messaging
 - [x] AI agent core (Flash + threads + async flow)
-- [x] Escalation tools + search grounding + WhatsApp formatting
+- [x] Escalation tools + search grounding + Telegram formatting
 - [x] Credit system
 - [x] System commands and templates
 - [x] Onboarding flow
@@ -256,9 +256,8 @@ cd convex && npx vitest run
 - [x] Rate limiting
 - [x] Heartbeat (proactive check-ins)
 - [x] Admin commands + web dashboard
-- [x] 360dialog Content Templates (9 templates for out-of-window delivery)
-- [x] Billing (Clerk subscriptions)
-- [x] Feedback system (WhatsApp links + web form + admin panel)
+- [x] Billing (Clerk subscriptions + Telegram Mini App upgrade flow)
+- [x] Feedback system (Telegram Mini App + web form + admin panel)
 - [x] Landing page (ghali.ae) + Arabic mirror
 - [x] Integration testing
 - [x] Deployment and configuration
@@ -267,6 +266,7 @@ cd convex && npx vitest run
 - [x] Scheduled agent tasks (one-time & recurring AI tasks)
 - [x] Personalization Phase 1 (default personality, language/timezone, bootstrap)
 - [x] Personalization Phase 2 (behavioral learning, milestones, proactive follow-ups)
+- [x] Telegram migration (bot server, inline keyboards, Mini App upgrade + feedback)
 - [ ] Post-launch hardening (monitoring, backups)
 
 ## Documentation
@@ -279,6 +279,8 @@ cd convex && npx vitest run
 - [BUSINESS_RULES.md](docs/BUSINESS_RULES.md) — Business rules quick reference
 - [DEPLOYMENT.md](docs/DEPLOYMENT.md) — Deployment and configuration guide
 - [POSTHOG.md](docs/POSTHOG.md) — Analytics events and dashboard setup
+- [TELEGRAM_MIGRATION.md](docs/TELEGRAM_MIGRATION.md) — WhatsApp to Telegram migration plan
+- [POST_MIGRATION.md](docs/POST_MIGRATION.md) — Post-migration enhancements
 - [SECURITY_AUDIT.md](docs/SECURITY_AUDIT.md) — Security review
 - [PHASE2_PLAN.md](docs/PHASE2_PLAN.md) — Personalization Phase 2 implementation plan
 - [Convex Agent docs](https://docs.convex.dev/agents) — Agent framework documentation
