@@ -151,8 +151,8 @@ export function extractImageFromSteps(
 }
 
 /**
- * Save an incoming WhatsApp message and schedule async processing.
- * Called by the HTTP webhook handler.
+ * Save an incoming message and schedule async processing.
+ * Called by the HTTP webhook handler (WhatsApp or Telegram).
  */
 export const saveIncoming = internalMutation({
   args: {
@@ -162,10 +162,11 @@ export const saveIncoming = internalMutation({
     mediaContentType: v.optional(v.string()),
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
   },
   handler: async (
     ctx,
-    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid }
+    { userId, body, mediaUrl, mediaContentType, messageSid, originalRepliedMessageSid, channel }
   ) => {
     // Capture previous lastMessageAt before updating — needed for session detection
     const user = await ctx.db.get(userId);
@@ -185,12 +186,13 @@ export const saveIncoming = internalMutation({
       messageSid,
       originalRepliedMessageSid,
       previousLastMessageAt,
+      channel,
     });
   },
 });
 
 /**
- * Generate an AI response and send it via WhatsApp.
+ * Generate an AI response and send it via WhatsApp or Telegram.
  * Runs asynchronously after the webhook returns 200.
  */
 export const generateResponse = internalAction({
@@ -202,9 +204,10 @@ export const generateResponse = internalAction({
     messageSid: v.optional(v.string()),
     originalRepliedMessageSid: v.optional(v.string()),
     previousLastMessageAt: v.optional(v.number()),
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
   },
   handler: async (ctx, args) => {
-    const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt } = args;
+    const { userId, messageSid, originalRepliedMessageSid, previousLastMessageAt, channel } = args;
     let { body, mediaUrl, mediaContentType } = args;
     const typedUserId = userId as Id<"users">;
 
@@ -238,10 +241,17 @@ export const generateResponse = internalAction({
         return false;
       }
       responseSent = true;
-      await ctx.runAction(internal.whatsapp.sendMessage, {
-        to: user!.phone,
-        body: msgBody,
-      });
+      if (channel === "telegram" && user?.telegramChatId) {
+        await ctx.runAction(internal.telegram.sendMessage, {
+          chatId: user.telegramChatId,
+          text: msgBody,
+        });
+      } else {
+        await ctx.runAction(internal.whatsapp.sendMessage, {
+          to: user!.phone,
+          body: msgBody,
+        });
+      }
       return true;
     }
 
@@ -271,23 +281,31 @@ export const generateResponse = internalAction({
         return false;
       }
       responseSent = true;
-      try {
-        await ctx.runAction(internal.whatsapp.sendMedia, {
-          to: user!.phone,
-          caption,
-          mediaUrl: mediaUrlToSend,
-          mediaType,
+      if (channel === "telegram" && user?.telegramChatId) {
+        // Telegram: send caption as text (media requires different Telegram API calls)
+        await ctx.runAction(internal.telegram.sendMessage, {
+          chatId: user.telegramChatId,
+          text: caption,
         });
-      } catch (error) {
-        console.error(
-          `[guardedSendMedia] sendMedia failed for ${userId}, falling back to text. ` +
-            `Note: if original was partially sent, user may receive duplicate.`,
-          error
-        );
-        await ctx.runAction(internal.whatsapp.sendMessage, {
-          to: user!.phone,
-          body: caption,
-        });
+      } else {
+        try {
+          await ctx.runAction(internal.whatsapp.sendMedia, {
+            to: user!.phone,
+            caption,
+            mediaUrl: mediaUrlToSend,
+            mediaType,
+          });
+        } catch (error) {
+          console.error(
+            `[guardedSendMedia] sendMedia failed for ${userId}, falling back to text. ` +
+              `Note: if original was partially sent, user may receive duplicate.`,
+            error
+          );
+          await ctx.runAction(internal.whatsapp.sendMessage, {
+            to: user!.phone,
+            body: caption,
+          });
+        }
       }
       return true;
     }
@@ -343,31 +361,39 @@ export const generateResponse = internalAction({
           const isOnboardingUser = user.onboardingStep != null;
           const caption = TEMPLATES.terms_prompt.template;
 
-          // Try to send infographic with caption; fall back to plain text
-          const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
-          let imageSent = false;
-          if (onboardingConfig) {
-            let parsed: { enabled?: boolean; url?: string } | null = null;
-            try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
-            if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
-              try {
-                await ctx.runAction(internal.whatsapp.sendMedia, {
-                  to: user.phone,
-                  caption,
-                  mediaUrl: parsed.url,
-                });
-                imageSent = true;
-              } catch (error) {
-                console.error("Failed to send terms infographic:", error);
+          if (channel === "telegram" && user.telegramChatId) {
+            // Telegram: send plain text only (no WhatsApp infographic)
+            await ctx.runAction(internal.telegram.sendMessage, {
+              chatId: user.telegramChatId,
+              text: caption,
+            });
+          } else {
+            // Try to send infographic with caption; fall back to plain text
+            const onboardingConfig = await ctx.runQuery(internal.appConfig.getConfig, { key: "onboarding_image" });
+            let imageSent = false;
+            if (onboardingConfig) {
+              let parsed: { enabled?: boolean; url?: string } | null = null;
+              try { parsed = JSON.parse(onboardingConfig.value); } catch { /* skip */ }
+              if (parsed?.enabled === true && typeof parsed.url === "string" && parsed.url.length > 0) {
+                try {
+                  await ctx.runAction(internal.whatsapp.sendMedia, {
+                    to: user.phone,
+                    caption,
+                    mediaUrl: parsed.url,
+                  });
+                  imageSent = true;
+                } catch (error) {
+                  console.error("Failed to send terms infographic:", error);
+                }
               }
             }
-          }
 
-          if (!imageSent) {
-            await ctx.runAction(internal.whatsapp.sendMessage, {
-              to: user.phone,
-              body: caption,
-            });
+            if (!imageSent) {
+              await ctx.runAction(internal.whatsapp.sendMessage, {
+                to: user.phone,
+                body: caption,
+              });
+            }
           }
 
           // Track terms prompt sent (fire-and-forget)
@@ -952,7 +978,9 @@ export const generateResponse = internalAction({
 
     // Low-credit warning — fires AFTER the main reply so it can't pre-empt it.
     // Best-effort: scheduled follow-up so failures don't affect the user's response.
+    // Telegram: skip for now (no guardedSendMessage equivalent for Telegram yet).
     if (
+      channel !== "telegram" &&
       aiSucceeded &&
       creditCheck.status === "available" &&
       (Math.max(0, user.credits - 1)) <= CREDITS_LOW_THRESHOLD &&

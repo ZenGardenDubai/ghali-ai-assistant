@@ -24,8 +24,9 @@ export const createReminder = internalMutation({
     cronExpr: v.optional(v.string()),
     timezone: v.string(),
     isReschedule: v.optional(v.boolean()),
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
   },
-  handler: async (ctx, { userId, payload, runAt, cronExpr, timezone, isReschedule }) => {
+  handler: async (ctx, { userId, payload, runAt, cronExpr, timezone, isReschedule, channel }) => {
     // Enforce per-user limit (skip for recurring reschedules)
     if (!isReschedule) {
       const pendingCount = await ctx.db
@@ -52,6 +53,7 @@ export const createReminder = internalMutation({
       status: "pending",
       cronExpr,
       timezone,
+      channel,
     });
 
     // Schedule the firing
@@ -114,6 +116,7 @@ export const fireReminder = internalAction({
             cronExpr: job.cronExpr,
             timezone: job.timezone!,
             isReschedule: true,
+            channel: job.channel,
           });
         } catch (error) {
           console.error(`Failed to schedule next recurring reminder for ${jobId}:`, error);
@@ -144,38 +147,50 @@ export const fireReminder = internalAction({
         await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
         // Don't return — fall through to recurrence logic
       } else {
-        // Check WhatsApp 24h session window
-        const withinWindow =
-          user.lastMessageAt &&
-          Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
-
         try {
-          if (withinWindow) {
-            await ctx.runAction(internal.whatsapp.sendMessage, {
-              to: user.phone,
-              body: `⏰ ${job.payload}`,
+          if (job.channel === "telegram") {
+            // Telegram delivery — no session window, always send directly
+            if (!user.telegramChatId) {
+              throw new Error(`Telegram reminder ${jobId}: user ${job.userId} has no telegramChatId`);
+            }
+            await ctx.runAction(internal.telegram.sendMessage, {
+              chatId: user.telegramChatId,
+              text: `⏰ ${job.payload}`,
             });
             sendSucceeded = true;
           } else {
-            // Outside 24h window — check daily template cap
-            const templateGuard = await ctx.runMutation(
-              internal.outboundGuard.checkAndRecordTemplateSend,
-              { userId: job.userId }
-            );
-            if (!templateGuard.allowed) {
-              console.warn(`[template-guard] Reminder ${jobId} template blocked: ${templateGuard.reason}`);
-              await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+            // WhatsApp delivery — check 24h session window
+            const withinWindow =
+              user.lastMessageAt &&
+              Date.now() - user.lastMessageAt < WHATSAPP_SESSION_WINDOW_MS;
+
+            if (withinWindow) {
+              await ctx.runAction(internal.whatsapp.sendMessage, {
+                to: user.phone,
+                body: `⏰ ${job.payload}`,
+              });
+              sendSucceeded = true;
             } else {
-              try {
-                await ctx.runAction(internal.whatsapp.sendTemplate, {
-                  to: user.phone,
-                  templateName: "ghali_reminder_v2",
-                  variables: { "1": job.payload },
-                });
-                sendSucceeded = true;
-              } catch (error) {
-                await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: job.userId });
-                throw error;
+              // Outside 24h window — check daily template cap
+              const templateGuard = await ctx.runMutation(
+                internal.outboundGuard.checkAndRecordTemplateSend,
+                { userId: job.userId }
+              );
+              if (!templateGuard.allowed) {
+                console.warn(`[template-guard] Reminder ${jobId} template blocked: ${templateGuard.reason}`);
+                await ctx.runMutation(internal.outboundGuard.rollbackProactiveSend, { userId: job.userId });
+              } else {
+                try {
+                  await ctx.runAction(internal.whatsapp.sendTemplate, {
+                    to: user.phone,
+                    templateName: "ghali_reminder_v2",
+                    variables: { "1": job.payload },
+                  });
+                  sendSucceeded = true;
+                } catch (error) {
+                  await ctx.runMutation(internal.outboundGuard.rollbackTemplateSend, { userId: job.userId });
+                  throw error;
+                }
               }
             }
           }
@@ -208,6 +223,7 @@ export const fireReminder = internalAction({
           cronExpr: job.cronExpr,
           timezone: job.timezone!,
           isReschedule: true,
+          channel: job.channel,
         });
       } catch (error) {
         console.error(

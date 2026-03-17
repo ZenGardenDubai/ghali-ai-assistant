@@ -915,4 +915,88 @@ http.route({
   }),
 });
 
+// ============================================================================
+// Telegram webhook — receives messages from the ghali-telegram proxy
+// ============================================================================
+
+http.route({
+  path: "/telegram-message",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const ok = () => new Response("OK", { status: 200 });
+
+    try {
+      // Authenticate with TELEGRAM_WEBHOOK_SECRET
+      const secret = request.headers.get("Authorization")?.replace("Bearer ", "");
+      const expectedSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+
+      if (!expectedSecret) {
+        console.error("[telegram-message] TELEGRAM_WEBHOOK_SECRET not configured");
+        return new Response("Server error", { status: 500 });
+      }
+      if (!secret || !(await timingSafeEqual(secret, expectedSecret))) {
+        return new Response("Forbidden", { status: 403 });
+      }
+
+      let body: {
+        chatId: string | number;
+        messageText: string;
+        firstName?: string;
+        username?: string;
+        messageId?: string | number;
+      };
+      try {
+        body = await request.json();
+      } catch {
+        console.error("[telegram-message] Invalid JSON body");
+        return ok();
+      }
+
+      if (!body.chatId || !body.messageText) {
+        console.error("[telegram-message] Missing chatId or messageText");
+        return ok();
+      }
+
+      const chatId = String(body.chatId);
+      const messageText = body.messageText;
+
+      // Truncate overly long messages
+      const truncatedText = messageText.length > MAX_MESSAGE_LENGTH
+        ? messageText.slice(0, MAX_MESSAGE_LENGTH)
+        : messageText;
+
+      // Message ID dedup — reject replayed webhooks if messageId provided
+      if (body.messageId) {
+        const dedupKey = `telegram:${body.messageId}`;
+        const isNew = await ctx.runMutation(internal.webhookDedup.tryMarkProcessed, {
+          messageSid: dedupKey,
+        });
+        if (!isNew) {
+          console.log(`[telegram-message] Duplicate messageId ${body.messageId}, skipping`);
+          return ok();
+        }
+      }
+
+      // Find or create user by Telegram chat ID
+      const userId = await ctx.runMutation(internal.users.findOrCreateUserByTelegram, {
+        telegramChatId: chatId,
+        firstName: body.firstName,
+        username: body.username,
+      });
+
+      // Schedule async message processing (Telegram channel)
+      await ctx.runMutation(internal.messages.saveIncoming, {
+        userId,
+        body: truncatedText,
+        channel: "telegram",
+      });
+
+      return ok();
+    } catch (error) {
+      console.error("[telegram-message] Unhandled error:", error);
+      return ok();
+    }
+  }),
+});
+
 export default http;

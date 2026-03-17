@@ -105,6 +105,64 @@ describe("findOrCreateUser", () => {
   });
 });
 
+describe("findOrCreateUserByTelegram", () => {
+  it("creates a new Telegram user with telegramChatId and telegram phone prefix", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUserByTelegram, {
+      telegramChatId: "123456789",
+      firstName: "Ali",
+    });
+
+    const user = await t.run(async (ctx) => ctx.db.get(userId));
+
+    expect(user).toMatchObject({
+      phone: "telegram:123456789",
+      telegramChatId: "123456789",
+      name: "Ali",
+      tier: "basic",
+      language: "en",
+      onboardingStep: 1,
+    });
+  });
+
+  it("returns existing user on repeat calls without creating duplicate", async () => {
+    const t = convexTest(schema, modules);
+
+    const id1 = await t.mutation(internal.users.findOrCreateUserByTelegram, {
+      telegramChatId: "999888777",
+      firstName: "Sara",
+    });
+
+    const id2 = await t.mutation(internal.users.findOrCreateUserByTelegram, {
+      telegramChatId: "999888777",
+      firstName: "Sara",
+    });
+
+    expect(id1).toEqual(id2);
+
+    const users = await t.run(async (ctx) => ctx.db.query("users").collect());
+    expect(users).toHaveLength(1);
+  });
+
+  it("initializes 4 user files on creation", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUserByTelegram, {
+      telegramChatId: "777666555",
+    });
+
+    const files = await t.query(internal.users.getUserFiles, { userId });
+    expect(files).toHaveLength(4);
+    expect(files.map((f: { filename: string }) => f.filename).sort()).toEqual([
+      "heartbeat",
+      "memory",
+      "personality",
+      "profile",
+    ]);
+  });
+});
+
 describe("getUser / getUserByPhone", () => {
   it("gets user by ID", async () => {
     const t = convexTest(schema, modules);

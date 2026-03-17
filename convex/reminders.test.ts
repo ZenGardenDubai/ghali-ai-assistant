@@ -210,6 +210,45 @@ describe("cancelAllUserReminders", () => {
   });
 });
 
+describe("createReminder with channel", () => {
+  it("stores the channel field on the job", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const jobId = await t.mutation(internal.reminders.createReminder, {
+      userId,
+      payload: "Telegram reminder",
+      runAt: Date.now() + 60_000,
+      timezone: "Asia/Dubai",
+      channel: "telegram",
+    });
+
+    const job = await t.query(internal.reminders.getJob, { jobId });
+    expect(job?.channel).toBe("telegram");
+  });
+
+  it("defaults to undefined channel for WhatsApp reminders", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const jobId = await t.mutation(internal.reminders.createReminder, {
+      userId,
+      payload: "WhatsApp reminder",
+      runAt: Date.now() + 60_000,
+      timezone: "Asia/Dubai",
+    });
+
+    const job = await t.query(internal.reminders.getJob, { jobId });
+    expect(job?.channel).toBeUndefined();
+  });
+});
+
 describe("markJobFailed", () => {
   it("marks a pending job as failed", async () => {
     const t = convexTest(schema, modules);

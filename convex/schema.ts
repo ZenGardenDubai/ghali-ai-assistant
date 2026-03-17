@@ -64,11 +64,14 @@ export default defineSchema({
     lastReflectionAt: v.optional(v.number()),
     /** Lifetime message count (used for adaptive reflection threshold) */
     totalMessages: v.optional(v.number()),
+    /** Telegram chat ID — set for users who interact via Telegram */
+    telegramChatId: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])
     .index("by_clerkUserId", ["clerkUserId"])
-    .index("by_tier", ["tier"]),
+    .index("by_tier", ["tier"])
+    .index("by_telegramChatId", ["telegramChatId"]),
 
   userFiles: defineTable({
     userId: v.id("users"),
@@ -136,6 +139,8 @@ export default defineSchema({
     cronExpr: v.optional(v.string()),
     timezone: v.optional(v.string()),
     schedulerJobId: v.optional(v.id("_scheduled_functions")),
+    /** Delivery channel — defaults to whatsapp for legacy jobs */
+    channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
   })
     .index("by_userId", ["userId"])
     .index("by_runAt", ["runAt"])

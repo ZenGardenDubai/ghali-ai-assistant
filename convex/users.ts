@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { detectTimezone } from "./lib/utils";
-import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS } from "./constants";
+import { CREDITS_BASIC, CREDITS_PRO, CREDIT_RESET_PERIOD_MS, MEMORY_COMPACTION_THRESHOLD, ERROR_CIRCUIT_BREAKER_THRESHOLD, ERROR_BACKOFF_MS, DEFAULT_TIMEZONE } from "./constants";
 import { isFileTooLarge } from "./lib/userFiles";
 import { appendToCategory, editMemoryContent, needsCompaction, type MemoryCategory } from "./lib/memory";
 import { replaceProfileSection, type ProfileCategory } from "./lib/profile";
@@ -65,6 +65,74 @@ export const findOrCreateUser = internalMutation({
     await ctx.scheduler.runAfter(0, internal.analytics.identifyUser, {
       phone,
       timezone,
+      tier: "basic",
+    });
+
+    return userId;
+  },
+});
+
+/**
+ * Find or create a user by Telegram chat ID.
+ * Uses "telegram:{chatId}" as the phone identifier for Telegram-only users.
+ */
+export const findOrCreateUserByTelegram = internalMutation({
+  args: {
+    telegramChatId: v.string(),
+    firstName: v.optional(v.string()),
+    username: v.optional(v.string()),
+  },
+  handler: async (ctx, { telegramChatId, firstName, username }) => {
+    // Look up by telegramChatId index
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("by_telegramChatId", (q) => q.eq("telegramChatId", telegramChatId))
+      .unique();
+
+    if (existing) {
+      // Update name if provided and not already set
+      if (firstName && !existing.name) {
+        await ctx.db.patch(existing._id, { name: firstName });
+      }
+      return existing._id;
+    }
+
+    // Create new Telegram user — use "telegram:{chatId}" as the phone identifier
+    const phone = `telegram:${telegramChatId}`;
+    const now = Date.now();
+    const userId = await ctx.db.insert("users", {
+      phone,
+      name: firstName ?? username,
+      language: "en",
+      timezone: DEFAULT_TIMEZONE,
+      tier: "basic",
+      isAdmin: false,
+      credits: CREDITS_BASIC,
+      creditsResetAt: now + CREDIT_RESET_PERIOD_MS,
+      onboardingStep: 1,
+      telegramChatId,
+      createdAt: now,
+    });
+
+    // Initialize the 4 user files
+    const files = ["memory", "personality", "heartbeat", "profile"] as const;
+    for (const filename of files) {
+      await ctx.db.insert("userFiles", {
+        userId,
+        filename,
+        content: "",
+        updatedAt: now,
+      });
+    }
+
+    // Fire analytics at creation time
+    await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
+      phone,
+      timezone: DEFAULT_TIMEZONE,
+    });
+    await ctx.scheduler.runAfter(0, internal.analytics.identifyUser, {
+      phone,
+      timezone: DEFAULT_TIMEZONE,
       tier: "basic",
     });
 
