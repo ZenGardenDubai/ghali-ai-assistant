@@ -14,7 +14,7 @@ export function StickyTelegramCta({ t }: { t: TranslationDict }) {
       href: t.telegramUrl,
     });
     window.dataLayer?.push({
-      event: "cta_clicked",
+      event: "telegram_cta_click",
       cta_location: "sticky_telegram",
       cta_href: t.telegramUrl,
     });

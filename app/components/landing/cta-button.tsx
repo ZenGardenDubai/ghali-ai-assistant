@@ -24,7 +24,7 @@ export function CtaButton({ href, location, children, className }: CtaButtonProp
       href,
     });
     window.dataLayer?.push({
-      event: "cta_clicked",
+      event: href.includes("t.me") ? "telegram_cta_click" : "cta_clicked",
       cta_location: location,
       cta_href: href,
     });
