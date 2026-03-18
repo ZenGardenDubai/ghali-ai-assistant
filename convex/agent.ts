@@ -116,8 +116,10 @@ IMAGE GENERATION & EDITING:
 - Pass the user's EXACT words as the prompt — do NOT rewrite, embellish, or add details. Gemini handles prompt interpretation.
 - ALWAYS use 9:16 (portrait) aspect ratio unless the user explicitly asks for landscape or square — WhatsApp users are on phones
 - If the model declines, tell the user politely and suggest rephrasing
-- IMAGE EDITING: when users want to modify, edit, or add to an EXISTING image (theirs or previously generated), pass the image's storageId to generateImage via referenceImageStorageId. The storageId is available in the message context (e.g. "[File storageId: ...]"). If the user references "my last image" without replying to one, call resolveMedia first to get the storageId, then pass it to generateImage.
-- Examples of edit requests: "add hot air balloons to this", "make it darker", "remove the background", "change the sky to sunset", "modify this image"
+- IMAGE EDITING: when users want to modify, edit, or add to an EXISTING image (theirs or previously generated), pass the image's storageId to generateImage via referenceImageStorageId. The storageId is available in the message context (e.g. "[File storageId: ...]"). If no storageId is in the context, call resolveMedia (mediaCategory: "image") first to get the storageId, then pass it to generateImage.
+- Explicit edit requests: "add hot air balloons to this", "make it darker", "remove the background", "change the sky to sunset", "modify this image", "edit my last image"
+- IMPLICIT edit requests — when the user's follow-up uses a pronoun ("it", "this", "that") or contextually refers to a recently generated image: "have a girl ride it", "put a sunset behind it", "add someone to it", "now make it blue", "give it wings". If the prior conversation includes an image generation, treat these as edit requests: call resolveMedia to get the storageId and pass it to generateImage.
+- NEVER generate a brand new image when intent is clearly an edit of a prior image — always retrieve the reference via resolveMedia when no storageId is in context.
 
 WEB SEARCH:
 - You have access to Google Search for real-time information
@@ -549,7 +551,7 @@ const generateImage = createTool({
       .string()
       .optional()
       .describe(
-        "Convex storage ID of an existing image to edit/modify. Pass this when the user wants to modify an existing image (e.g. 'add hot air balloons to this', 'make it darker'). Get the storageId from the message context [File storageId: ...] or from resolveMedia."
+        "Convex storage ID of an existing image to edit/modify. Pass this when the user wants to modify an existing image — including implicit requests using pronouns like 'it', 'this', 'that' that refer to a recently generated image (e.g. 'add hot air balloons to this', 'make it darker', 'have a girl ride it'). Get the storageId from the message context [File storageId: ...] or by calling resolveMedia first."
       ),
   }),
   handler: async (ctx, { prompt, aspectRatio, referenceImageStorageId }): Promise<string> => {
@@ -868,7 +870,7 @@ const deleteScheduledTaskTool = createTool({
 
 const resolveMedia = createTool({
   description:
-    "Find a user's recent media file by type. Use when the user refers to 'my last image', 'my last voice note', 'the document I sent', 'the PDF I shared', 'the text file I uploaded', etc. Returns storageId and mediaType for chaining into other tools (e.g. convertFile).",
+    "Find a user's recent media file by type. Use when the user refers to 'my last image', 'my last voice note', 'the document I sent', 'the PDF I shared', 'the text file I uploaded', etc. Also use for implicit image edit requests where the user refers to a prior generated image via pronoun (e.g. 'have a girl ride it', 'make it darker', 'add wings to it'). Returns storageId and mediaType for chaining into other tools (e.g. generateImage, convertFile).",
   args: z.object({
     mediaCategory: z
       .enum(["image", "audio", "video", "document", "any"])
