@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.1...v0.48.2) (2026-03-18)
+
+
+### Bug Fixes
+
+* detect implicit image edit requests from conversation context ([#297](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/297)) ([983fed4](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/983fed4346e6298ffe8d29de0ebaf473b6a8cfdc)), closes [#290](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/290)
+
 ## [0.48.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.0...v0.48.1) (2026-03-17)
 
 
