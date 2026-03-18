@@ -22,12 +22,12 @@ import { isNewSession } from "./lib/analytics";
 import { needsTermsAcceptance } from "./lib/termsGating";
 
 /**
- * Try to parse a generateImage tool result (JSON with imageUrl + caption).
- * Returns the URL and caption, or null if not an image result.
+ * Try to parse a generateImage tool result (JSON with imageUrl + caption + optional storageId).
+ * Returns the URL, caption, and optional storageId, or null if not an image result.
  */
 export function parseImageToolResult(
   text: string
-): { imageUrl: string; caption: string } | null {
+): { imageUrl: string; caption: string; storageId?: string } | null {
   try {
     const parsed = JSON.parse(text);
     if (
@@ -37,7 +37,14 @@ export function parseImageToolResult(
       typeof parsed.imageUrl === "string" &&
       typeof parsed.caption === "string"
     ) {
-      return { imageUrl: parsed.imageUrl, caption: parsed.caption };
+      const result: { imageUrl: string; caption: string; storageId?: string } = {
+        imageUrl: parsed.imageUrl,
+        caption: parsed.caption,
+      };
+      if (typeof parsed.storageId === "string") {
+        result.storageId = parsed.storageId;
+      }
+      return result;
     }
   } catch {
     // Not JSON — not an image tool result
@@ -132,12 +139,12 @@ export function extractConvertedFileFromSteps(
 
 /**
  * Scan all tool results from generateText steps for an image generation result.
- * The generateImage tool returns JSON: { imageUrl, caption }.
+ * The generateImage tool returns JSON: { imageUrl, caption, storageId? }.
  * We check tool results directly since Flash may not relay the URL in its text.
  */
 export function extractImageFromSteps(
   steps: Array<{ toolResults: Array<Record<string, unknown>> }>
-): { imageUrl: string; caption: string } | null {
+): { imageUrl: string; caption: string; storageId?: string } | null {
   for (const step of steps) {
     for (const toolResult of step.toolResults) {
       const text = extractToolResultText(toolResult);
@@ -279,17 +286,18 @@ export const generateResponse = internalAction({
     /**
      * Send a media message to the user, guarded against double-sends.
      * Falls back to text-only on send error.
+     * Returns { sent, messageId? } where messageId is the Telegram message_id (if applicable).
      */
     async function guardedSendMedia(
       caption: string,
       mediaUrlToSend: string,
       mediaType?: "image" | "document" | "audio" | "video"
-    ): Promise<boolean> {
+    ): Promise<{ sent: boolean; messageId?: number }> {
       if (responseSent) {
         console.warn(
           `[single-response-guard] Blocked duplicate media send to ${userId}`
         );
-        return false;
+        return { sent: false };
       }
       const guard = await ctx.runMutation(
         internal.outboundGuard.checkAndRecordOutbound,
@@ -299,17 +307,18 @@ export const generateResponse = internalAction({
         console.warn(
           `[outbound-guard] Blocked media send to ${userId}: ${guard.reason}`
         );
-        return false;
+        return { sent: false };
       }
       responseSent = true;
       try {
         if (isTelegram && chatId) {
-          await ctx.runAction(internal.telegram.sendMedia, {
+          const telegramMessageId = await ctx.runAction(internal.telegram.sendMedia, {
             chatId,
             caption,
             mediaUrl: mediaUrlToSend,
             mediaType,
           });
+          return { sent: true, messageId: telegramMessageId ?? undefined };
         } else {
           await ctx.runAction(internal.whatsapp.sendMedia, {
             to: user!.phone,
@@ -317,6 +326,7 @@ export const generateResponse = internalAction({
             mediaUrl: mediaUrlToSend,
             mediaType,
           });
+          return { sent: true };
         }
       } catch (error) {
         console.error(
@@ -335,8 +345,8 @@ export const generateResponse = internalAction({
             body: caption,
           });
         }
+        return { sent: true };
       }
-      return true;
     }
 
     // `user` is set below after the initial query — referenced by guard helpers.
@@ -904,6 +914,22 @@ export const generateResponse = internalAction({
       // Reply-to-text: Cloud API doesn't expose quoted message text.
       // TODO: Store outbound message wamids locally to enable reply-context lookup.
       // For now, reply-to-text context is not available with 360dialog.
+
+      // Fallback: check if this is a reply to a Ghali-generated image.
+      // Generated images are tracked in the generatedImages table with messageSid
+      // set after the image is sent to Telegram.
+      if (!replyStorageId) {
+        const generatedImage = await ctx.runQuery(
+          internal.imageStorage.getGeneratedImageBySid,
+          { messageSid: originalRepliedMessageSid, userId: typedUserId }
+        );
+        if (generatedImage) {
+          replyStorageId = generatedImage.storageId;
+          mediaUrl = generatedImage.storageUrl;
+          mediaContentType = generatedImage.mediaType;
+          isReprocessing = true;
+        }
+      }
     }
     if (mediaUrl && mediaContentType && isSupportedMediaType(mediaContentType)) {
       let result: { extracted: string; storageId: Id<"_storage"> | null } | null = null;
@@ -1001,7 +1027,7 @@ export const generateResponse = internalAction({
     }
 
     let responseText: string | undefined;
-    let imageResult: { imageUrl: string; caption: string } | null = null;
+    let imageResult: { imageUrl: string; caption: string; storageId?: string } | null = null;
     let convertedResult: { fileUrl: string; caption: string; outputFormat: string } | null = null;
     let aiSucceeded = false;
     let toolsUsed: string[] = [];
@@ -1101,7 +1127,16 @@ export const generateResponse = internalAction({
       const waMediaType = convertedFormatToWhatsAppType(convertedResult.outputFormat);
       await guardedSendMedia(convertedResult.caption, convertedResult.fileUrl, waMediaType);
     } else if (imageResult) {
-      await guardedSendMedia(imageResult.caption, imageResult.imageUrl, "image");
+      const sendResult = await guardedSendMedia(imageResult.caption, imageResult.imageUrl, "image");
+      // Associate the Telegram message_id with the generated image's storageId so that
+      // future replies/quotes to this image can resolve the correct edit base.
+      if (isTelegram && chatId && sendResult.messageId && imageResult.storageId) {
+        await ctx.runMutation(internal.imageStorage.updateMessageSid, {
+          storageId: imageResult.storageId as Id<"_storage">,
+          userId: typedUserId,
+          messageSid: `${chatId}:${sendResult.messageId}`,
+        });
+      }
     } else if (responseText) {
       // Attach web_app button for feedback Mini App when agent used generateFeedbackLink
       const feedbackKeyboard =

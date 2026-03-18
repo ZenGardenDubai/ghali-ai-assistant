@@ -28,6 +28,31 @@ describe("parseImageToolResult", () => {
     const json = JSON.stringify({ type: "text", imageUrl: "x", caption: "y" });
     expect(parseImageToolResult(json)).toBeNull();
   });
+
+  it("includes storageId when present", () => {
+    const json = JSON.stringify({
+      type: "image",
+      imageUrl: "https://example.com/img.png",
+      caption: "A motorbike",
+      storageId: "kg2abc123def456",
+    });
+    expect(parseImageToolResult(json)).toEqual({
+      imageUrl: "https://example.com/img.png",
+      caption: "A motorbike",
+      storageId: "kg2abc123def456",
+    });
+  });
+
+  it("omits storageId when not in JSON", () => {
+    const json = JSON.stringify({
+      type: "image",
+      imageUrl: "https://example.com/img.png",
+      caption: "A sunset",
+    });
+    const result = parseImageToolResult(json);
+    expect(result).not.toBeNull();
+    expect(result).not.toHaveProperty("storageId");
+  });
 });
 
 describe("extractToolResultText", () => {
