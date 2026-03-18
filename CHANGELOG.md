@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.2...v0.48.3) (2026-03-18)
+
+
+### Bug Fixes
+
+* resolve quoted image as edit base when user replies to generated image ([#296](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/296)) ([e613aa6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/e613aa610be1d9b52776caeb0c1a1264caf4f47c))
+
 ## [0.48.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.1...v0.48.2) (2026-03-18)
 
 
