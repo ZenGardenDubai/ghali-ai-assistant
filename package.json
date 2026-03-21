@@ -27,7 +27,8 @@
     "@convex-dev/rag": "^0.7.1",
     "@convex-dev/rate-limiter": "^0.3.2",
     "@google/genai": "^1.42.0",
-    "sharp": "^0.34.5",
+    "jpeg-js": "^0.4.4",
+    "pngjs": "^7.0.0",
     "@openrouter/ai-sdk-provider": "^1.5.4",
     "ai": "^5.0.137",
     "class-variance-authority": "^0.7.1",
@@ -45,6 +46,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/pngjs": "^6.0.5",
     "@edge-runtime/vm": "^5.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

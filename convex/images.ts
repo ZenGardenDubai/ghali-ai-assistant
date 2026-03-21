@@ -5,7 +5,8 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { GoogleGenAI, createPartFromBase64 } from "@google/genai";
-import sharp from "sharp";
+import jpeg from "jpeg-js";
+import { PNG } from "pngjs";
 import { MODELS } from "./models";
 import { IMAGE_RETENTION_MS } from "./constants";
 
@@ -113,8 +114,16 @@ export const generateAndStoreImage = internalAction({
         let finalMimeType = referenceMimeType;
         if (referenceMimeType === "image/jpeg" || referenceMimeType === "image/jpg") {
           console.log("[generateAndStoreImage] Converting JPEG to PNG to avoid Gemini blockReason:OTHER");
-          const pngBuffer = await sharp(Buffer.from(imageBytes)).png().toBuffer();
-          finalBytes = new Uint8Array(pngBuffer);
+          const decoded = jpeg.decode(Buffer.from(imageBytes), { useTArray: true });
+          const png = new PNG({ width: decoded.width, height: decoded.height });
+          png.data = Buffer.from(decoded.data);
+          finalBytes = await new Promise<Uint8Array>((resolve, reject) => {
+            const chunks: Buffer[] = [];
+            png.pack()
+              .on("data", (chunk: Buffer) => chunks.push(chunk))
+              .on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))))
+              .on("error", reject);
+          });
           finalMimeType = "image/png";
         }
 
