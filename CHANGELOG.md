@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.9](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.8...v0.48.9) (2026-03-21)
+
+
+### Bug Fixes
+
+* **images:** add logging + fix agent instruction for follow-up image edits ([#316](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/316)) ([2c44994](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2c449944a41e885a6e096ce639e4ce341b8c08e9))
+
 ## [0.48.8](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.7...v0.48.8) (2026-03-21)
 
 
