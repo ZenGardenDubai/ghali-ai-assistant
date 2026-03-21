@@ -88,8 +88,14 @@ export const generateAndStoreImage = internalAction({
           return { success: false, error: "Reference image not found in storage." };
         }
 
-        // Validate MIME type — only images can be used as references
-        const referenceMimeType = imageBlob.type || "application/octet-stream";
+        // Validate MIME type — only images can be used as references.
+        // If blob has no meaningful MIME type (Convex stores Telegram images as
+        // application/octet-stream), default to image/jpeg — Telegram photos are always JPEG
+        // and the calling code already validated isImageType before dispatching here.
+        const referenceMimeType =
+          imageBlob.type && imageBlob.type !== "application/octet-stream"
+            ? imageBlob.type
+            : "image/jpeg";
         console.log(
           `[generateAndStoreImage] Reference image MIME type: ${referenceMimeType}, size: ${imageBlob.size} bytes`
         );
