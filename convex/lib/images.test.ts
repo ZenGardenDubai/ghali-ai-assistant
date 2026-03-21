@@ -5,6 +5,7 @@ import {
   parseConvertedFileResult,
   extractConvertedFileFromSteps,
 } from "../messages";
+import { enhanceEditPrompt } from "./imagePrompts";
 
 describe("parseImageToolResult", () => {
   it("parses valid JSON with type, imageUrl and caption", () => {
@@ -232,6 +233,83 @@ describe("parseConvertedFileResult", () => {
 
   it("returns null for empty string", () => {
     expect(parseConvertedFileResult("")).toBeNull();
+  });
+});
+
+describe("enhanceEditPrompt", () => {
+  it("expands ghibli to full style prompt", () => {
+    const result = enhanceEditPrompt("Make ghibli");
+    expect(result).toContain("Studio Ghibli anime style");
+    expect(result).toContain("Preserve the subject's face, likeness, and appearance exactly");
+    expect(result).toContain("Keep all other details (background, clothing, pose) consistent with the original");
+  });
+
+  it("handles Japanese ghibli script ジブリ", () => {
+    const result = enhanceEditPrompt("ジブリスタイルに変換して");
+    expect(result).toContain("Studio Ghibli anime style");
+  });
+
+  it("handles Arabic ghibli script جيبلي", () => {
+    const result = enhanceEditPrompt("حوله إلى جيبلي");
+    expect(result).toContain("Studio Ghibli anime style");
+  });
+
+  it("expands manga to full style prompt", () => {
+    const result = enhanceEditPrompt("convert to manga");
+    expect(result).toContain("manga comic art style");
+    expect(result).toContain("High-contrast ink linework");
+  });
+
+  it("handles Arabic manga مانغا", () => {
+    const result = enhanceEditPrompt("حوله إلى مانغا");
+    expect(result).toContain("manga comic art style");
+  });
+
+  it("expands anime to full style prompt", () => {
+    const result = enhanceEditPrompt("make it anime style");
+    expect(result).toContain("vibrant anime illustration style");
+    expect(result).toContain("cel-shaded colors");
+  });
+
+  it("expands pixar to full style prompt", () => {
+    const result = enhanceEditPrompt("pixar style please");
+    expect(result).toContain("Pixar/Disney 3D animation style");
+  });
+
+  it("expands disney to full style prompt", () => {
+    const result = enhanceEditPrompt("make it disney");
+    expect(result).toContain("Pixar/Disney 3D animation style");
+  });
+
+  it("expands watercolor to full style prompt", () => {
+    const result = enhanceEditPrompt("watercolor effect");
+    expect(result).toContain("watercolor painting style");
+    expect(result).toContain("Delicate washes");
+  });
+
+  it("expands oil painting to full style prompt", () => {
+    const result = enhanceEditPrompt("make it an oil painting");
+    expect(result).toContain("classical oil painting style");
+    expect(result).toContain("visible brushwork");
+  });
+
+  it("wraps unknown style with fallback template", () => {
+    const result = enhanceEditPrompt("make it look like a Van Gogh");
+    expect(result).toContain("Transform the image: make it look like a Van Gogh");
+    expect(result).toContain("Preserve the subject's face, likeness, and appearance exactly");
+    expect(result).toContain("Keep all other details (background, clothing, pose) consistent with the original");
+  });
+
+  it("is case-insensitive for style keywords", () => {
+    expect(enhanceEditPrompt("GHIBLI style")).toContain("Studio Ghibli anime style");
+    expect(enhanceEditPrompt("Manga")).toContain("manga comic art style");
+    expect(enhanceEditPrompt("ANIME")).toContain("vibrant anime illustration style");
+  });
+
+  it("does not match 'anime' in 'inanimate'", () => {
+    const result = enhanceEditPrompt("make it look inanimate");
+    expect(result).toContain("Transform the image: make it look inanimate");
+    expect(result).not.toContain("vibrant anime illustration style");
   });
 });
 
