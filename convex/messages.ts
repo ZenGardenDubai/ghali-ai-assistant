@@ -982,6 +982,20 @@ export const generateResponse = internalAction({
       // requests from failing with document_extraction_failed when OCR/description errors occur.
       const isImageType = mediaContentType.startsWith("image/");
       const refStorageId = result?.storageId ?? telegramStorageId;
+
+      // Track Telegram image before the bypass runs so the ownership check in
+      // generateAndStoreImage can find it. Without this, the bypass returns early
+      // before the trackMediaFile call at line ~1076, and the ownership check fails.
+      if (isImageType && telegramStorageId) {
+        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+          userId: typedUserId,
+          storageId: telegramStorageId,
+          messageSid: resolveMediaRef(messageSid, channel, telegramStorageId),
+          mediaType: mediaContentType,
+          expiresAt: Date.now() + MEDIA_RETENTION_MS,
+        });
+      }
+
       if (isImageType && refStorageId && body.trim().length > 0 && creditCheck.status === "available") {
         const intent = await classifyImageIntent(body);
         if (intent === "edit") {
@@ -1069,10 +1083,11 @@ export const generateResponse = internalAction({
       });
 
       // Store media file for future reply-to-media (first-time only, not voice notes)
-      // For Telegram: processMedia returns storageId=null (isReprocessing=true),
-      // so fall back to telegramStorageId which was set during the download step.
+      // For Telegram images: already tracked above before the edit bypass. Only track here
+      // for non-Telegram channels (storageId from processMedia) or non-image Telegram files
+      // (telegramStorageId not pre-tracked since they aren't images).
       const mediaStorageId = storageId ?? telegramStorageId;
-      if (mediaStorageId) {
+      if (mediaStorageId && !(isImageType && telegramStorageId)) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
           userId: typedUserId,
           storageId: mediaStorageId,
