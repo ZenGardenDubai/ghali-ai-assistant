@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.4...v0.48.5) (2026-03-21)
+
+
+### Bug Fixes
+
+* style transfer uses reference image instead of generating from scratch ([#304](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/304)) ([eb18905](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/eb18905defd8078c54d3f2f353c7860bc2b97dc2))
+
 ## [0.48.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.3...v0.48.4) (2026-03-21)
 
 
