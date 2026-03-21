@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.7](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.6...v0.48.7) (2026-03-21)
+
+
+### Bug Fixes
+
+* replace regex with LLM intent classification for image edit bypass ([#310](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/310)) ([7c0e602](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/7c0e6028fbe28152adba1f834f6560f5afa67426))
+
 ## [0.48.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.5...v0.48.6) (2026-03-21)
 
 
