@@ -992,7 +992,6 @@ export const generateResponse = internalAction({
             const editResult = await ctx.runAction(internal.images.generateAndStoreImage, {
               userId: typedUserId,
               prompt: body,
-              aspectRatio: "9:16",
               referenceImageStorageId: refStorageId,
               traceId,
             });
@@ -1014,7 +1013,7 @@ export const generateResponse = internalAction({
               }
               editSucceeded = true;
             } else {
-              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+              await guardedSendMessage(TEMPLATES.image_generation_failed.template);
             }
           } catch (error) {
             console.error("[image-edit-bypass] generateAndStoreImage failed:", error);
@@ -1022,7 +1021,7 @@ export const generateResponse = internalAction({
               userId: typedUserId,
             });
             if (errorState.consecutiveErrors === 1) {
-              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+              await guardedSendMessage(TEMPLATES.image_generation_failed.template);
             }
           } finally {
             clearTraceId();
@@ -1044,6 +1043,28 @@ export const generateResponse = internalAction({
               tier: user.tier,
               is_new_session: sessionStarted,
             });
+
+            // Low-credit warning — mirrors the main agent path
+            if (newCredits <= CREDITS_LOW_THRESHOLD && user.credits > CREDITS_LOW_THRESHOLD) {
+              const lowCreditMsg = fillTemplate(
+                TEMPLATES.credits_low_warning.template,
+                { credits: newCredits }
+              );
+              if (isTelegram && chatId) {
+                ctx.scheduler.runAfter(2000, internal.telegram.guardedSendKeyboard, {
+                  userId: typedUserId,
+                  chatId,
+                  body: lowCreditMsg,
+                  keyboard: [[{ text: "⭐ Upgrade to Pro", web_app: { url: `${process.env.WEBAPP_BASE_URL ?? "https://ghali.ae"}/tg/upgrade` } }]],
+                });
+              } else {
+                ctx.scheduler.runAfter(2000, internal.whatsapp.guardedSendMessage, {
+                  userId: typedUserId,
+                  to: user.phone,
+                  body: lowCreditMsg,
+                });
+              }
+            }
           }
           return;
         }

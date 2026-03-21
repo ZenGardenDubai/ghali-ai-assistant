@@ -9,6 +9,44 @@ import { MODELS } from "./models";
 import { IMAGE_RETENTION_MS } from "./constants";
 
 /**
+ * Infer the closest supported aspect ratio from raw image bytes.
+ * Parses PNG and JPEG headers to extract width/height.
+ * Falls back to "9:16" (portrait) if parsing fails.
+ */
+function inferAspectRatioFromBytes(bytes: Uint8Array): "9:16" | "16:9" | "1:1" {
+  let width = 0;
+  let height = 0;
+
+  // PNG: magic \x89PNG\r\n\x1a\n (8 bytes), then IHDR chunk — width at offset 16, height at 20
+  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+    height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+  }
+  // JPEG: magic 0xFF 0xD8 — scan for SOF0/SOF1/SOF2 markers
+  else if (bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let i = 2;
+    while (i + 8 < bytes.length) {
+      if (bytes[i] !== 0xff) break;
+      const marker = bytes[i + 1];
+      const segLen = (bytes[i + 2] << 8) | bytes[i + 3];
+      if (marker === 0xc0 || marker === 0xc1 || marker === 0xc2) {
+        height = (bytes[i + 5] << 8) | bytes[i + 6];
+        width = (bytes[i + 7] << 8) | bytes[i + 8];
+        break;
+      }
+      i += 2 + segLen;
+    }
+  }
+
+  if (width === 0 || height === 0) return "9:16";
+
+  const ratio = width / height;
+  if (ratio > 1.4) return "16:9";  // landscape
+  if (ratio < 0.7) return "9:16";  // portrait
+  return "1:1";                    // square-ish
+}
+
+/**
  * Generate an image using Gemini and store it in Convex file storage.
  * Returns a public URL that can be sent via WhatsApp.
  */
@@ -24,7 +62,7 @@ export const generateAndStoreImage = internalAction({
   },
   handler: async (
     ctx,
-    { userId, prompt, aspectRatio = "9:16", referenceImageStorageId, traceId }
+    { userId, prompt, aspectRatio, referenceImageStorageId, traceId }
   ): Promise<{
     success: boolean;
     imageUrl?: string;
@@ -39,11 +77,10 @@ export const generateAndStoreImage = internalAction({
 
     const refStorageId = referenceImageStorageId as Id<"_storage"> | undefined;
     const isEditing = !!refStorageId;
+    // Resolve effective aspect ratio: caller may omit it to let us auto-infer from the reference image
+    let effectiveAspectRatio: "9:16" | "16:9" | "1:1" = aspectRatio ?? "9:16";
     const truncatedPrompt =
       prompt.length > 50 ? prompt.slice(0, 50) + "..." : prompt;
-    console.log(
-      `[generateAndStoreImage] ${isEditing ? "EDIT" : "NEW"} — Prompt: "${truncatedPrompt}", Aspect: ${aspectRatio}`
-    );
 
     // Fetch user for analytics (phone + tier)
     const user = await ctx.runQuery(internal.users.internalGetUser, {
@@ -87,6 +124,14 @@ export const generateAndStoreImage = internalAction({
           return { success: false, error: "Reference image is too large (max 5MB). Please send a smaller image." };
         }
 
+        // Auto-infer aspect ratio from image dimensions when caller didn't specify one
+        if (!aspectRatio) {
+          effectiveAspectRatio = inferAspectRatioFromBytes(imageBytes);
+        }
+        console.log(
+          `[generateAndStoreImage] EDIT — Prompt: "${truncatedPrompt}", Aspect: ${effectiveAspectRatio}${!aspectRatio ? " (inferred)" : ""}`
+        );
+
         // Chunk to avoid stack overflow with large images
         const chunks: string[] = [];
         const chunkSize = 8192;
@@ -100,6 +145,9 @@ export const generateAndStoreImage = internalAction({
         contents = [createPartFromBase64(base64Image, referenceMimeType), prompt];
       } else {
         contents = prompt;
+        console.log(
+          `[generateAndStoreImage] NEW — Prompt: "${truncatedPrompt}", Aspect: ${effectiveAspectRatio}`
+        );
       }
 
       const response = await ai.models.generateContent({
@@ -107,7 +155,7 @@ export const generateAndStoreImage = internalAction({
         contents,
         config: {
           responseModalities: ["TEXT", "IMAGE"],
-          imageConfig: { aspectRatio },
+          imageConfig: { aspectRatio: effectiveAspectRatio },
         },
       });
 
