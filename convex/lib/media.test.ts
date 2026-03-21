@@ -18,6 +18,7 @@ import {
   getFormatFromMime,
   MEDIA_CATEGORY_PREFIX_MAP,
   inferMimeTypeFromFilename,
+  resolveMediaRef,
 } from "./media";
 
 describe("normalizeMimeType", () => {
@@ -600,5 +601,33 @@ describe("inferMimeTypeFromFilename", () => {
 
   it("handles filenames with multiple dots", () => {
     expect(inferMimeTypeFromFilename("my.report.2024.csv")).toBe("text/csv");
+  });
+});
+
+describe("resolveMediaRef", () => {
+  it("returns messageSid when provided", () => {
+    expect(resolveMediaRef("SM123abc", "whatsapp", "storageId1")).toBe("SM123abc");
+  });
+
+  it("falls back to inbound-{storageId} when messageSid and channel are both undefined", () => {
+    expect(resolveMediaRef(undefined, undefined, "storageId1")).toBe("inbound-storageId1");
+  });
+
+  it("falls back to telegram-{storageId} when channel is telegram and messageSid is missing", () => {
+    expect(resolveMediaRef(undefined, "telegram", "storageId2")).toBe("telegram-storageId2");
+  });
+
+  it("falls back to whatsapp-{storageId} when channel is whatsapp and messageSid is missing", () => {
+    expect(resolveMediaRef(undefined, "whatsapp", "storageId3")).toBe("whatsapp-storageId3");
+  });
+
+  it("falls back when messageSid is null", () => {
+    expect(resolveMediaRef(null, "telegram", "storageId4")).toBe("telegram-storageId4");
+  });
+
+  it("generated ref includes storageId ensuring uniqueness per upload", () => {
+    const ref1 = resolveMediaRef(null, "telegram", "aaa");
+    const ref2 = resolveMediaRef(null, "telegram", "bbb");
+    expect(ref1).not.toBe(ref2);
   });
 });

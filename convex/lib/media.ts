@@ -288,6 +288,22 @@ export function inferMimeTypeFromFilename(
 // ============================================================================
 
 /**
+ * Build a media tracking reference for a received file.
+ *
+ * Uses messageSid if present (Twilio/WhatsApp legacy). For Telegram and
+ * 360dialog WhatsApp where messageSid is always null, generates a
+ * channel-agnostic unique ref from channel + storageId so that files are
+ * always registered in mediaFiles and ownership checks pass.
+ */
+export function resolveMediaRef(
+  messageSid: string | null | undefined,
+  channel: string | null | undefined,
+  storageId: string
+): string {
+  return messageSid ?? `${channel ?? "inbound"}-${storageId}`;
+}
+
+/**
  * Convert ArrayBuffer to base64 string.
  * Browser-compatible (no Node.js Buffer).
  */
