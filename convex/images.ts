@@ -5,6 +5,7 @@ import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { GoogleGenAI, createPartFromBase64 } from "@google/genai";
+import sharp from "sharp";
 import { MODELS } from "./models";
 import { IMAGE_RETENTION_MS } from "./constants";
 
@@ -105,17 +106,29 @@ export const generateAndStoreImage = internalAction({
           return { success: false, error: "Reference image is too large (max 5MB). Please send a smaller image." };
         }
 
+        // Convert JPEG to PNG to avoid Gemini blockReason: OTHER for real photos.
+        // The Gemini API silently blocks image/jpeg inline data containing faces;
+        // the same image as image/png succeeds (mirrors Python SDK pil_to_blob behaviour).
+        let finalBytes = imageBytes;
+        let finalMimeType = referenceMimeType;
+        if (referenceMimeType === "image/jpeg" || referenceMimeType === "image/jpg") {
+          console.log("[generateAndStoreImage] Converting JPEG to PNG to avoid Gemini blockReason:OTHER");
+          const pngBuffer = await sharp(Buffer.from(imageBytes)).png().toBuffer();
+          finalBytes = new Uint8Array(pngBuffer);
+          finalMimeType = "image/png";
+        }
+
         // Chunk to avoid stack overflow with large images
         const chunks: string[] = [];
         const chunkSize = 8192;
-        for (let i = 0; i < imageBytes.length; i += chunkSize) {
-          chunks.push(String.fromCharCode(...imageBytes.subarray(i, i + chunkSize)));
+        for (let i = 0; i < finalBytes.length; i += chunkSize) {
+          chunks.push(String.fromCharCode(...finalBytes.subarray(i, i + chunkSize)));
         }
         const base64Image = btoa(chunks.join(""));
         // Use flat array format [imagePart, promptString] for native image editing.
         // The role/parts chat format treats the image as context for generation;
         // the flat array tells the model to transform the actual pixels.
-        contents = [createPartFromBase64(base64Image, referenceMimeType), prompt];
+        contents = [createPartFromBase64(base64Image, finalMimeType), prompt];
       } else {
         contents = prompt;
       }
