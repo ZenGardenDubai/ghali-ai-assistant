@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.49.1...v0.49.2) (2026-03-21)
+
+
+### Bug Fixes
+
+* **images:** fallback to image/jpeg when blob type is application/octet-stream ([#330](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/330)) ([a0d90e6](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/a0d90e6880aaadaacf8e95b744be312f7996005c))
+
 ## [0.49.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.49.0...v0.49.1) (2026-03-21)
 
 
