@@ -158,6 +158,32 @@ export function extractImageFromSteps(
 }
 
 /**
+ * Build the [File storageId: ...] hint injected into the agent prompt.
+ *
+ * For images the hint explicitly calls out style-transfer requests (Ghibli,
+ * manga, oil painting, etc.) so the agent reliably passes `referenceImageStorageId`
+ * to `generateImage` even when the user's caption uses "make/apply/turn into"
+ * rather than "edit/modify".
+ *
+ * Returns an empty string when storageId is null.
+ */
+export function buildFileContextNote(
+  storageId: string | null,
+  isImage: boolean
+): string {
+  if (!storageId) return "";
+  if (isImage) {
+    return (
+      `\n[File storageId: ${storageId} — pass as referenceImageStorageId to generateImage` +
+      ` for ANY image edit/transform/style request (e.g. Ghibli, manga, oil painting,` +
+      ` anime, cartoon, add/remove objects, change background, adjust lighting).` +
+      ` Pass to convertFile only for file format conversions (e.g. jpg→png).]`
+    );
+  }
+  return `\n[File storageId: ${storageId} — pass to convertFile if user wants format conversion.]`;
+}
+
+/**
  * Save an incoming WhatsApp message and schedule async processing.
  * Called by the HTTP webhook handler.
  */
@@ -984,9 +1010,7 @@ export const generateResponse = internalAction({
 
       const effectiveStorageId = mediaStorageId ?? replyStorageId;
       const isImage = mediaContentType.startsWith("image/");
-      const storageIdNote = effectiveStorageId
-        ? `\n[File storageId: ${effectiveStorageId} — pass this to convertFile if user wants conversion${isImage ? ", or to generateImage as referenceImageStorageId if user wants to edit/modify this image" : ""}]`
-        : "";
+      const storageIdNote = buildFileContextNote(effectiveStorageId ?? null, isImage);
       prompt = body
         ? `[User sent a file (${mediaContentType})]${storageIdNote}\nUser's question: "${body}"\n\nExtracted content:\n${extracted}`
         : `[User sent a file (${mediaContentType})]${storageIdNote}\n\nExtracted content:\n${extracted}`;

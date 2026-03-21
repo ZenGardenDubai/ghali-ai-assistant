@@ -4,6 +4,7 @@ import {
   extractImageFromSteps,
   parseConvertedFileResult,
   extractConvertedFileFromSteps,
+  buildFileContextNote,
 } from "../messages";
 
 describe("parseImageToolResult", () => {
@@ -282,5 +283,50 @@ describe("extractConvertedFileFromSteps", () => {
       },
     ]);
     expect(extractConvertedFileFromSteps(steps)).toBeNull();
+  });
+});
+
+describe("buildFileContextNote", () => {
+  it("returns empty string when storageId is null", () => {
+    expect(buildFileContextNote(null, true)).toBe("");
+    expect(buildFileContextNote(null, false)).toBe("");
+  });
+
+  it("includes storageId in the note", () => {
+    const note = buildFileContextNote("abc123", true);
+    expect(note).toContain("abc123");
+  });
+
+  it("includes referenceImageStorageId hint for images", () => {
+    const note = buildFileContextNote("abc123", true);
+    expect(note).toContain("referenceImageStorageId");
+  });
+
+  it("includes style transfer examples for images (Ghibli, manga, oil painting)", () => {
+    const note = buildFileContextNote("abc123", true);
+    expect(note.toLowerCase()).toContain("ghibli");
+    expect(note.toLowerCase()).toContain("manga");
+    expect(note.toLowerCase()).toContain("oil painting");
+  });
+
+  it("does not include referenceImageStorageId hint for non-images", () => {
+    const note = buildFileContextNote("abc123", false);
+    expect(note).not.toContain("referenceImageStorageId");
+  });
+
+  it("includes convertFile hint for non-images", () => {
+    const note = buildFileContextNote("abc123", false);
+    expect(note).toContain("convertFile");
+  });
+
+  it("includes both convertFile and referenceImageStorageId for images", () => {
+    const note = buildFileContextNote("abc123", true);
+    expect(note).toContain("convertFile");
+    expect(note).toContain("referenceImageStorageId");
+  });
+
+  it("starts with a newline", () => {
+    const note = buildFileContextNote("abc123", true);
+    expect(note).toMatch(/^\n/);
   });
 });
