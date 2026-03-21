@@ -9,6 +9,7 @@ import jpeg from "jpeg-js";
 import { PNG } from "pngjs";
 import { MODELS } from "./models";
 import { IMAGE_RETENTION_MS } from "./constants";
+import { enhanceEditPrompt } from "./lib/imagePrompts";
 
 /**
  * Generate an image using Gemini and store it in Convex file storage.
@@ -143,7 +144,8 @@ export const generateAndStoreImage = internalAction({
         // Use flat array format [imagePart, promptString] for native image editing.
         // The role/parts chat format treats the image as context for generation;
         // the flat array tells the model to transform the actual pixels.
-        contents = [createPartFromBase64(base64Image, finalMimeType), prompt];
+        // Enhance the prompt with style-specific guidance for better quality.
+        contents = [createPartFromBase64(base64Image, finalMimeType), enhanceEditPrompt(prompt)];
       } else {
         contents = prompt;
       }
@@ -153,7 +155,9 @@ export const generateAndStoreImage = internalAction({
         contents,
         config: {
           responseModalities: ["TEXT", "IMAGE"],
-          ...(isEditing ? {} : { imageConfig: { aspectRatio } }),
+          ...(isEditing
+            ? { imageConfig: { imageSize: "2K" } }
+            : { imageConfig: { aspectRatio } }),
         },
       });
 
