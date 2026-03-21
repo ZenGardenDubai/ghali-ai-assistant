@@ -159,6 +159,16 @@ export function extractImageFromSteps(
 }
 
 /**
+ * Detects edit/transform intent when a user sends an image + instruction in the same message.
+ * Matches action verbs, style names, and transformation phrases — broad enough to cover
+ * style transfers ("ghibli", "cartoon"), additive edits ("add a balloon"), color/clothing
+ * changes ("make the dress red"), appearance edits ("make her younger"), and more.
+ * Questions and non-edit messages (e.g. "what is this?") are not matched and fall through
+ * to normal agent processing.
+ */
+const EDIT_INTENT_PATTERNS = /\b(make|turn|change|add|remove|put|give|edit|style|convert|transform|apply|draw|create|generate|replace|swap|fix|adjust|modify|color|recolor|resize|crop|blur|sharpen|brighten|darken|flip|rotate|age|younger|older|dress|outfit|hair|background|sky|face|body|pose|render|paint|sketch|cartoon|anime|ghibli|manga|pixar|watercolor|oil paint|pixel|vintage|retro|3d|realistic|cute|cool|scary|funny|artistic)\b/i;
+
+/**
  * Save an incoming WhatsApp message and schedule async processing.
  * Called by the HTTP webhook handler.
  */
@@ -979,6 +989,62 @@ export const generateResponse = internalAction({
           mediaType: mediaContentType,
           expiresAt: Date.now() + MEDIA_RETENTION_MS,
         });
+      }
+
+      // Same-message edit bypass: user sent an image + edit/transform instruction.
+      // Skip the agent entirely and call generateAndStoreImage directly.
+      // This reliably passes referenceImageStorageId, avoiding the persistent bug
+      // where Gemini Flash omits it (tracked across PRs #301, #303, #306).
+      if (
+        mediaContentType.startsWith("image/") &&
+        mediaStorageId !== null &&
+        body.trim().length > 0 &&
+        EDIT_INTENT_PATTERNS.test(body)
+      ) {
+        const editResult = await ctx.runAction(internal.images.generateAndStoreImage, {
+          userId: typedUserId,
+          prompt: body,
+          aspectRatio: "9:16",
+          referenceImageStorageId: mediaStorageId as string,
+        });
+
+        if (editResult.success && editResult.imageUrl) {
+          const sendResult = await guardedSendMedia(
+            editResult.description ?? "Here's your image.",
+            editResult.imageUrl,
+            "image"
+          );
+          // Associate the Telegram message_id with the generated image's storageId so that
+          // future replies/quotes to this image can resolve the correct edit base.
+          if (isTelegram && chatId && sendResult.messageId && editResult.storageId) {
+            await ctx.runMutation(internal.imageStorage.updateMessageSid, {
+              storageId: editResult.storageId as Id<"_storage">,
+              userId: typedUserId,
+              messageSid: `${chatId}:${sendResult.messageId}`,
+            });
+          }
+        } else {
+          await guardedSendMessage("Sorry, I couldn't generate that image. Please try again.");
+        }
+
+        // Deduct credit and track analytics — same as the agent path
+        if (creditCheck.status === "available") {
+          await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
+          const newCredits = Math.max(0, user.credits - 1);
+          await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
+            phone: user.phone,
+            credits_remaining: newCredits,
+            tier: user.tier,
+            model: MODELS.IMAGE_GENERATION,
+            tools_used: ["generateImage"],
+          });
+          await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
+            phone: user.phone,
+            tier: user.tier,
+            is_new_session: sessionStarted,
+          });
+        }
+        return;
       }
 
       const effectiveStorageId = mediaStorageId ?? replyStorageId;
