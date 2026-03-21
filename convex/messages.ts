@@ -15,6 +15,7 @@ import {
   isSupportedMediaType,
   isRagIndexable,
   isVoiceNote,
+  resolveMediaRef,
 } from "./lib/media";
 import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, SESSION_GAP_MS } from "./constants";
 import { getRecapInstruction } from "./lib/engagementRecap";
@@ -841,16 +842,14 @@ export const generateResponse = internalAction({
       }
 
       // Track voice note in mediaFiles with transcript for future reply-to-voice
-      if (messageSid) {
-        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
-          userId: typedUserId,
-          storageId: voiceResult.storageId,
-          messageSid,
-          mediaType: mediaContentType,
-          expiresAt: Date.now() + MEDIA_RETENTION_MS,
-          transcript: voiceResult.transcript,
-        });
-      }
+      await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+        userId: typedUserId,
+        storageId: voiceResult.storageId,
+        messageSid: resolveMediaRef(messageSid, channel, voiceResult.storageId),
+        mediaType: mediaContentType,
+        expiresAt: Date.now() + MEDIA_RETENTION_MS,
+        transcript: voiceResult.transcript,
+      });
 
       // Track voice note feature usage
       await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
@@ -972,11 +971,11 @@ export const generateResponse = internalAction({
       // For Telegram: processMedia returns storageId=null (isReprocessing=true),
       // so fall back to telegramStorageId which was set during the download step.
       const mediaStorageId = storageId ?? telegramStorageId;
-      if (messageSid && mediaStorageId) {
+      if (mediaStorageId) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
           userId: typedUserId,
           storageId: mediaStorageId,
-          messageSid,
+          messageSid: resolveMediaRef(messageSid, channel, mediaStorageId),
           mediaType: mediaContentType,
           expiresAt: Date.now() + MEDIA_RETENTION_MS,
         });
