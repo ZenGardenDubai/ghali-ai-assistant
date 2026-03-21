@@ -4,6 +4,8 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent, getOrCreateChatThread, setTraceId, clearTraceId } from "./agent";
 import { MODELS } from "./models";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
@@ -21,6 +23,32 @@ import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, 
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
 import { needsTermsAcceptance } from "./lib/termsGating";
+
+/**
+ * Classify whether the user wants to EDIT an image or ANALYZE it.
+ * Uses Gemini Flash with max 5 tokens — fast, cheap, and multilingual.
+ * Returns "edit" for style/transform/modification requests, "analyze" for questions/description.
+ * Defaults to "analyze" on failure so non-edit messages always fall through to the agent.
+ */
+async function classifyImageIntent(body: string): Promise<"edit" | "analyze"> {
+  try {
+    const result = await generateText({
+      model: google(MODELS.FLASH),
+      temperature: 0,
+      maxOutputTokens: 5,
+      prompt: `The user sent an image with this message: "${body}"
+
+Does the user want to EDIT or TRANSFORM the image (change style, add/remove elements, modify appearance, apply filters), or do they want to ANALYZE or DESCRIBE it (understand content, translate text, answer a question)?
+
+Reply with exactly one word: edit or analyze`,
+    });
+    const answer = result.text.toLowerCase().match(/\b(edit|analyze)\b/)?.[1];
+    return answer === "edit" ? "edit" : "analyze";
+  } catch (error) {
+    console.error("[classifyImageIntent] classification failed, defaulting to analyze:", error);
+    return "analyze";
+  }
+}
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption + optional storageId).
@@ -947,6 +975,79 @@ export const generateResponse = internalAction({
           `[Messages] processMedia failed for ${mediaContentType}:`,
           error instanceof Error ? error.message : String(error)
         );
+      }
+
+      // Same-message image edit bypass: run even if processMedia failed — we only need the
+      // reference storageId for the image, not the extracted content. This prevents edit
+      // requests from failing with document_extraction_failed when OCR/description errors occur.
+      const isImageType = mediaContentType.startsWith("image/");
+      const refStorageId = result?.storageId ?? telegramStorageId;
+      if (isImageType && refStorageId && body.trim().length > 0 && creditCheck.status === "available") {
+        const intent = await classifyImageIntent(body);
+        if (intent === "edit") {
+          const traceId = crypto.randomUUID();
+          setTraceId(traceId);
+          let editSucceeded = false;
+          try {
+            const editResult = await ctx.runAction(internal.images.generateAndStoreImage, {
+              userId: typedUserId,
+              prompt: body,
+              aspectRatio: "9:16",
+              referenceImageStorageId: refStorageId,
+              traceId,
+            });
+
+            if (editResult.success && editResult.imageUrl) {
+              await ctx.runMutation(internal.users.resetApiErrors, { userId: typedUserId });
+              const sendResult = await guardedSendMedia(
+                editResult.description ?? "Here's your image.",
+                editResult.imageUrl,
+                "image"
+              );
+              // Associate Telegram message_id with generated image's storageId for future reply-to-image
+              if (isTelegram && chatId && sendResult.messageId && editResult.storageId) {
+                await ctx.runMutation(internal.imageStorage.updateMessageSid, {
+                  storageId: editResult.storageId as Id<"_storage">,
+                  userId: typedUserId,
+                  messageSid: `${chatId}:${sendResult.messageId}`,
+                });
+              }
+              editSucceeded = true;
+            } else {
+              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+            }
+          } catch (error) {
+            console.error("[image-edit-bypass] generateAndStoreImage failed:", error);
+            const errorState = await ctx.runMutation(internal.users.recordApiError, {
+              userId: typedUserId,
+            });
+            if (errorState.consecutiveErrors === 1) {
+              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+            }
+          } finally {
+            clearTraceId();
+          }
+
+          // Deduct credit and track analytics on success
+          if (editSucceeded) {
+            await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
+            const newCredits = Math.max(0, user.credits - 1);
+            await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
+              phone: user.phone,
+              credits_remaining: newCredits,
+              tier: user.tier,
+              model: MODELS.IMAGE_GENERATION,
+              tools_used: ["generateImage"],
+            });
+            await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
+              phone: user.phone,
+              tier: user.tier,
+              is_new_session: sessionStarted,
+            });
+          }
+          return;
+        }
+        // intent === "analyze" → fall through to normal processing
       }
 
       if (!result) {
