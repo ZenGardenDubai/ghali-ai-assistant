@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, createPartFromBase64 } from "@google/genai";
 import { MODELS } from "./models";
 import { IMAGE_RETENTION_MS } from "./constants";
 
@@ -94,23 +94,10 @@ export const generateAndStoreImage = internalAction({
           chunks.push(String.fromCharCode(...imageBytes.subarray(i, i + chunkSize)));
         }
         const base64Image = btoa(chunks.join(""));
-        // When editing with a reference image, wrap with style-transfer instruction
-        // so Gemini preserves the subject's likeness instead of generating a new scene
-        const effectivePrompt = `Transform the person/subject in this image: ${prompt}. Preserve their face, appearance, and likeness.`;
-        contents = [
-          {
-            role: "user" as const,
-            parts: [
-              {
-                inlineData: {
-                  data: base64Image,
-                  mimeType: referenceMimeType,
-                },
-              },
-              { text: effectivePrompt },
-            ],
-          },
-        ];
+        // Use flat array format [imagePart, promptString] for native image editing.
+        // The role/parts chat format treats the image as context for generation;
+        // the flat array tells the model to transform the actual pixels.
+        contents = [createPartFromBase64(base64Image, referenceMimeType), prompt];
       } else {
         contents = prompt;
       }
