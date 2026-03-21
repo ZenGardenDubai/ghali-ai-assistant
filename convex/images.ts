@@ -94,6 +94,9 @@ export const generateAndStoreImage = internalAction({
           chunks.push(String.fromCharCode(...imageBytes.subarray(i, i + chunkSize)));
         }
         const base64Image = btoa(chunks.join(""));
+        // When editing with a reference image, wrap with style-transfer instruction
+        // so Gemini preserves the subject's likeness instead of generating a new scene
+        const effectivePrompt = `Transform the person/subject in this image: ${prompt}. Preserve their face, appearance, and likeness.`;
         contents = [
           {
             role: "user" as const,
@@ -104,7 +107,7 @@ export const generateAndStoreImage = internalAction({
                   mimeType: referenceMimeType,
                 },
               },
-              { text: prompt },
+              { text: effectivePrompt },
             ],
           },
         ];

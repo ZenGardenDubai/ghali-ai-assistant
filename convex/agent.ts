@@ -120,6 +120,8 @@ IMAGE GENERATION & EDITING:
 - Explicit edit requests: "add hot air balloons to this", "make it darker", "remove the background", "change the sky to sunset", "modify this image", "edit my last image"
 - IMPLICIT edit requests — when the user's follow-up uses a pronoun ("it", "this", "that") or contextually refers to a recently generated image: "have a girl ride it", "put a sunset behind it", "add someone to it", "now make it blue", "give it wings". If the prior conversation includes an image generation, treat these as edit requests: call resolveMedia to get the storageId and pass it to generateImage.
 - NEVER generate a brand new image when intent is clearly an edit of a prior image — always retrieve the reference via resolveMedia when no storageId is in context.
+- SAME-MESSAGE IMAGE EDITING: When a user sends an image AND a style/transformation request in the SAME message (e.g. "Make ghibli style", "turn this into manga", "cartoon version", "oil painting style"), ALWAYS treat it as an edit request. Pass the [File storageId: ...] from your context as referenceImageStorageId to generateImage. Do NOT generate a new image from scratch.
+- Style transformations when sent with an image: "make ghibli style", "make manga", "turn into cartoon", "oil painting version", "watercolor style", "pixel art", "anime style", "sketch", "retro style"
 
 WEB SEARCH:
 - You have access to Google Search for real-time information
