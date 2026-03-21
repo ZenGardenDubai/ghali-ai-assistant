@@ -42,7 +42,7 @@ Does the user want to EDIT or TRANSFORM the image (change style, add/remove elem
 
 Reply with exactly one word: edit or analyze`,
     });
-    const answer = result.text.trim().toLowerCase();
+    const answer = result.text.toLowerCase().match(/\b(edit|analyze)\b/)?.[1];
     return answer === "edit" ? "edit" : "analyze";
   } catch (error) {
     console.error("[classifyImageIntent] classification failed, defaulting to analyze:", error);
@@ -977,6 +977,79 @@ export const generateResponse = internalAction({
         );
       }
 
+      // Same-message image edit bypass: run even if processMedia failed — we only need the
+      // reference storageId for the image, not the extracted content. This prevents edit
+      // requests from failing with document_extraction_failed when OCR/description errors occur.
+      const isImageType = mediaContentType.startsWith("image/");
+      const refStorageId = result?.storageId ?? telegramStorageId;
+      if (isImageType && refStorageId && body.trim().length > 0 && creditCheck.status === "available") {
+        const intent = await classifyImageIntent(body);
+        if (intent === "edit") {
+          const traceId = crypto.randomUUID();
+          setTraceId(traceId);
+          let editSucceeded = false;
+          try {
+            const editResult = await ctx.runAction(internal.images.generateAndStoreImage, {
+              userId: typedUserId,
+              prompt: body,
+              aspectRatio: "9:16",
+              referenceImageStorageId: refStorageId,
+              traceId,
+            });
+
+            if (editResult.success && editResult.imageUrl) {
+              await ctx.runMutation(internal.users.resetApiErrors, { userId: typedUserId });
+              const sendResult = await guardedSendMedia(
+                editResult.description ?? "Here's your image.",
+                editResult.imageUrl,
+                "image"
+              );
+              // Associate Telegram message_id with generated image's storageId for future reply-to-image
+              if (isTelegram && chatId && sendResult.messageId && editResult.storageId) {
+                await ctx.runMutation(internal.imageStorage.updateMessageSid, {
+                  storageId: editResult.storageId as Id<"_storage">,
+                  userId: typedUserId,
+                  messageSid: `${chatId}:${sendResult.messageId}`,
+                });
+              }
+              editSucceeded = true;
+            } else {
+              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+            }
+          } catch (error) {
+            console.error("[image-edit-bypass] generateAndStoreImage failed:", error);
+            const errorState = await ctx.runMutation(internal.users.recordApiError, {
+              userId: typedUserId,
+            });
+            if (errorState.consecutiveErrors === 1) {
+              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+            }
+          } finally {
+            clearTraceId();
+          }
+
+          // Deduct credit and track analytics on success
+          if (editSucceeded) {
+            await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
+            const newCredits = Math.max(0, user.credits - 1);
+            await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
+              phone: user.phone,
+              credits_remaining: newCredits,
+              tier: user.tier,
+              model: MODELS.IMAGE_GENERATION,
+              tools_used: ["generateImage"],
+            });
+            await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
+              phone: user.phone,
+              tier: user.tier,
+              is_new_session: sessionStarted,
+            });
+          }
+          return;
+        }
+        // intent === "analyze" → fall through to normal processing
+      }
+
       if (!result) {
         await guardedSendMessage(TEMPLATES.document_extraction_failed.template);
         return;
@@ -1025,72 +1098,6 @@ export const generateResponse = internalAction({
           text: extracted,
           title: `${mediaContentType} — ${new Date().toISOString()}`,
         });
-      }
-
-      // Same-message image edit bypass: if the user sent an image + edit/transform text,
-      // call generateAndStoreImage directly instead of routing through the agent.
-      // The agent (Gemini Flash) reliably fails to forward referenceImageStorageId.
-      // LLM classification handles any language — not just English keywords.
-      if (isImage && mediaStorageId && body.trim().length > 0 && creditCheck.status === "available") {
-        const intent = await classifyImageIntent(body);
-        if (intent === "edit") {
-          const traceId = crypto.randomUUID();
-          setTraceId(traceId);
-          let editSucceeded = false;
-          try {
-            const result = await ctx.runAction(internal.images.generateAndStoreImage, {
-              userId: typedUserId,
-              prompt: body,
-              aspectRatio: "9:16",
-              referenceImageStorageId: mediaStorageId,
-              traceId,
-            });
-
-            if (result.success && result.imageUrl) {
-              const sendResult = await guardedSendMedia(
-                result.description ?? "Here's your image.",
-                result.imageUrl,
-                "image"
-              );
-              // Associate Telegram message_id with generated image's storageId for future reply-to-image
-              if (isTelegram && chatId && sendResult.messageId && result.storageId) {
-                await ctx.runMutation(internal.imageStorage.updateMessageSid, {
-                  storageId: result.storageId as Id<"_storage">,
-                  userId: typedUserId,
-                  messageSid: `${chatId}:${sendResult.messageId}`,
-                });
-              }
-              editSucceeded = true;
-            } else {
-              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
-            }
-          } catch (error) {
-            console.error("[image-edit-bypass] generateAndStoreImage failed:", error);
-            await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
-          } finally {
-            clearTraceId();
-          }
-
-          // Deduct credit and track analytics on success
-          if (editSucceeded) {
-            await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
-            const newCredits = Math.max(0, user.credits - 1);
-            await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
-              phone: user.phone,
-              credits_remaining: newCredits,
-              tier: user.tier,
-              model: MODELS.IMAGE_GENERATION,
-              tools_used: ["generateImage"],
-            });
-            await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
-              phone: user.phone,
-              tier: user.tier,
-              is_new_session: sessionStarted,
-            });
-          }
-          return;
-        }
-        // intent === "analyze" → fall through to normal agent processing
       }
     } else if (mediaUrl && mediaContentType) {
       // Unsupported media type
