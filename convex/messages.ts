@@ -35,7 +35,7 @@ async function classifyImageIntent(body: string): Promise<"edit" | "analyze"> {
     const result = await generateText({
       model: google(MODELS.FLASH),
       temperature: 0,
-      maxTokens: 5,
+      maxOutputTokens: 5,
       prompt: `The user sent an image with this message: "${body}"
 
 Does the user want to EDIT or TRANSFORM the image (change style, add/remove elements, modify appearance, apply filters), or do they want to ANALYZE or DESCRIBE it (understand content, translate text, answer a question)?
