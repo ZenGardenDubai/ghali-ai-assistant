@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.49.0...v0.49.1) (2026-03-21)
+
+
+### Bug Fixes
+
+* **images:** replace sharp with pure-JS jpeg-js + pngjs for Convex compatibility ([#326](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/326)) ([883f564](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/883f564ca66ede81d24b5da614663bd738e819ea))
+
 ## [0.49.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.11...v0.49.0) (2026-03-21)
 
 
