@@ -1,6 +1,6 @@
 {
   "name": "ghali-ai-assistant",
-  "version": "0.48.9",
+  "version": "0.48.10",
   "private": true,
   "packageManager": "pnpm@10.27.0",
   "scripts": {

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.10](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.9...v0.48.10) (2026-03-21)
+
+
+### Bug Fixes
+
+* **images:** omit imageConfig when editing to fix Gemini API rejection ([#319](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/319)) ([fc84fac](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/fc84facf420895f7e9017a85e3133ec8ca91fe53))
+
 ## [0.48.9](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.8...v0.48.9) (2026-03-21)
 
 
