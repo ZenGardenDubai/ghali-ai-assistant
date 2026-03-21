@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.4](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.3...v0.48.4) (2026-03-21)
+
+
+### Bug Fixes
+
+* always track media files regardless of messageSid for Telegram/360dialog ([#301](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/301)) ([31c1d1c](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/31c1d1c15cd33e0f2dabdcb6a9f38e000105c006))
+
 ## [0.48.3](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.2...v0.48.3) (2026-03-18)
 
 
