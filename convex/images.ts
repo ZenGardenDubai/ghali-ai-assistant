@@ -110,7 +110,7 @@ export const generateAndStoreImage = internalAction({
         // Convert JPEG to PNG to avoid Gemini blockReason: OTHER for real photos.
         // The Gemini API silently blocks image/jpeg inline data containing faces;
         // the same image as image/png succeeds (mirrors Python SDK pil_to_blob behaviour).
-        let finalBytes = imageBytes;
+        let finalBytes: Uint8Array = imageBytes;
         let finalMimeType = referenceMimeType;
         if (referenceMimeType === "image/jpeg" || referenceMimeType === "image/jpg") {
           console.log("[generateAndStoreImage] Converting JPEG to PNG to avoid Gemini blockReason:OTHER");
