@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.6](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.5...v0.48.6) (2026-03-21)
+
+
+### Bug Fixes
+
+* use flat array format for image style transfer API call ([#307](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/307)) ([2b5526b](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/2b5526b4f4a58b894b56e52ea3862b5602aa6fbd))
+
 ## [0.48.5](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.4...v0.48.5) (2026-03-21)
 
 
