@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.11](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.10...v0.48.11) (2026-03-21)
+
+
+### Bug Fixes
+
+* **images:** convert JPEG to PNG before Gemini API call ([#323](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/323)) ([67990a4](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/67990a43d69dc7c66eaeff172141a6dabea6ffbe))
+
 ## [0.48.10](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.9...v0.48.10) (2026-03-21)
 
 
