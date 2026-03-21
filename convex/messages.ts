@@ -159,6 +159,13 @@ export function extractImageFromSteps(
 }
 
 /**
+ * Regex for detecting style/transformation requests in a message body.
+ * Used to bypass the agent for same-message image style transfers.
+ */
+const STYLE_TRANSFER_PATTERNS =
+  /\b(ghibli|manga|anime|cartoon|pixar|disney|oil paint(?:ing)?|watercolor|sketch|pixel art|comic|retro|vintage|3d render|realistic|impressionist|pop art|gothic|cyberpunk|studio ghibli|make.{0,20}style|turn.{0,20}into|convert.{0,20}to|transform)\b/i;
+
+/**
  * Save an incoming WhatsApp message and schedule async processing.
  * Called by the HTTP webhook handler.
  */
@@ -997,6 +1004,60 @@ export const generateResponse = internalAction({
           text: extracted,
           title: `${mediaContentType} — ${new Date().toISOString()}`,
         });
+      }
+
+      // Same-message style transfer bypass: when the user sends an image and a style/
+      // transformation request in the same message, call generateAndStoreImage directly
+      // instead of routing through the agent. The agent reliably fails to forward
+      // referenceImageStorageId (issue #309) — this intent needs no LLM reasoning.
+      const isSameMessageStyleTransfer =
+        isImage &&
+        mediaStorageId !== null &&
+        body.trim().length > 0 &&
+        STYLE_TRANSFER_PATTERNS.test(body);
+
+      if (isSameMessageStyleTransfer) {
+        const styleResult = await ctx.runAction(internal.images.generateAndStoreImage, {
+          userId: typedUserId,
+          prompt: body,
+          aspectRatio: "9:16",
+          referenceImageStorageId: mediaStorageId ?? undefined,
+        });
+
+        if (styleResult.success && styleResult.imageUrl) {
+          const sendResult = await guardedSendMedia(
+            styleResult.description ?? "Here's your image.",
+            styleResult.imageUrl,
+            "image"
+          );
+          if (isTelegram && chatId && sendResult.messageId && styleResult.storageId) {
+            await ctx.runMutation(internal.imageStorage.updateMessageSid, {
+              storageId: styleResult.storageId as Id<"_storage">,
+              userId: typedUserId,
+              messageSid: `${chatId}:${sendResult.messageId}`,
+            });
+          }
+        } else {
+          await guardedSendMessage("Sorry, I couldn't transform that image. Please try again.");
+        }
+
+        if (creditCheck.status === "available") {
+          await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
+          const newCredits = Math.max(0, user.credits - 1);
+          await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
+            phone: user.phone,
+            credits_remaining: newCredits,
+            tier: user.tier,
+            model: MODELS.IMAGE_GENERATION,
+            tools_used: ["generateImage"],
+          });
+          await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
+            phone: user.phone,
+            tier: user.tier,
+            is_new_session: sessionStarted,
+          });
+        }
+        return;
       }
     } else if (mediaUrl && mediaContentType) {
       // Unsupported media type
