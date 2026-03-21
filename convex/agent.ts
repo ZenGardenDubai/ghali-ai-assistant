@@ -116,10 +116,13 @@ IMAGE GENERATION & EDITING:
 - Pass the user's EXACT words as the prompt — do NOT rewrite, embellish, or add details. Gemini handles prompt interpretation.
 - ALWAYS use 9:16 (portrait) aspect ratio unless the user explicitly asks for landscape or square — WhatsApp users are on phones
 - If the model declines, tell the user politely and suggest rephrasing
-- IMAGE EDITING: when users want to modify, edit, or add to an EXISTING image (theirs or previously generated), pass the image's storageId to generateImage via referenceImageStorageId. The storageId is available in the message context (e.g. "[File storageId: ...]"). If no storageId is in the context, call resolveMedia (mediaCategory: "image") first to get the storageId, then pass it to generateImage.
+- IMAGE EDITING: when users want to modify, edit, or add to an EXISTING image (theirs or previously generated), pass the image's storageId to generateImage via referenceImageStorageId.
+  - For user-sent images in the CURRENT message: use the [File storageId: ...] annotation already in your context.
+  - For FOLLOW-UP edits of a previously generated image (user sends ONLY text, no attachment — e.g. "Add balloons", "Make it darker", "Now make it Ghibli"): ALWAYS call resolveMedia(mediaCategory: "image") first. Do NOT attempt to parse or extract storageId from previous tool results in conversation history — use resolveMedia as the single reliable source.
+  - For follow-up edits of a previously UPLOADED image (user sent image earlier, now sends only text): also call resolveMedia(mediaCategory: "image") first.
 - Explicit edit requests: "add hot air balloons to this", "make it darker", "remove the background", "change the sky to sunset", "modify this image", "edit my last image"
-- IMPLICIT edit requests — when the user's follow-up uses a pronoun ("it", "this", "that") or contextually refers to a recently generated image: "have a girl ride it", "put a sunset behind it", "add someone to it", "now make it blue", "give it wings". If the prior conversation includes an image generation, treat these as edit requests: call resolveMedia to get the storageId and pass it to generateImage.
-- NEVER generate a brand new image when intent is clearly an edit of a prior image — always retrieve the reference via resolveMedia when no storageId is in context.
+- IMPLICIT edit requests — when the user's follow-up uses a pronoun ("it", "this", "that") or contextually refers to a recently generated image: "have a girl ride it", "put a sunset behind it", "add someone to it", "now make it blue", "give it wings". If the prior conversation includes an image generation, treat these as edit requests: call resolveMedia(mediaCategory: "image") to get the storageId and pass it to generateImage.
+- NEVER generate a brand new image when intent is clearly an edit of a prior image — always call resolveMedia first to retrieve the reference storageId.
 - SAME-MESSAGE IMAGE EDITING: When a user sends an image AND a style/transformation request in the SAME message (e.g. "Make ghibli style", "turn this into manga", "cartoon version", "oil painting style"), ALWAYS treat it as an edit request. Pass the [File storageId: ...] from your context as referenceImageStorageId to generateImage. Do NOT generate a new image from scratch.
 - Style transformations when sent with an image: "make ghibli style", "make manga", "turn into cartoon", "oil painting version", "watercolor style", "pixel art", "anime style", "sketch", "retro style"
 
@@ -553,7 +556,7 @@ const generateImage = createTool({
       .string()
       .optional()
       .describe(
-        "Convex storage ID of an existing image to edit/modify. Pass this when the user wants to modify an existing image — including implicit requests using pronouns like 'it', 'this', 'that' that refer to a recently generated image (e.g. 'add hot air balloons to this', 'make it darker', 'have a girl ride it'). Get the storageId from the message context [File storageId: ...] or by calling resolveMedia first."
+        "Convex storage ID of an existing image to edit/modify. Pass this when the user wants to modify an existing image — including implicit requests using pronouns like 'it', 'this', 'that' that refer to a recently generated image (e.g. 'add hot air balloons to this', 'make it darker', 'have a girl ride it'). For same-message edits: use the [File storageId: ...] from your context. For follow-up edits (user sends only text, no attachment): ALWAYS call resolveMedia(mediaCategory: 'image') first to get the storageId — never extract from previous tool results."
       ),
   }),
   handler: async (ctx, { prompt, aspectRatio, referenceImageStorageId }): Promise<string> => {

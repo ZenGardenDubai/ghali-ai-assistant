@@ -60,23 +60,41 @@ export const generateAndStoreImage = internalAction({
       if (refStorageId) {
         // Ownership check: verify the storageId belongs to this user
         // (could be in mediaFiles from uploads or generatedImages from prior generations)
+        console.log(
+          `[generateAndStoreImage] Ownership check — refStorageId: ${refStorageId}, userId: ${userId}`
+        );
         const [mediaUrl, generatedUrl] = await Promise.all([
           ctx.runQuery(internal.mediaStorage.getStorageUrl, { storageId: refStorageId, userId }),
           ctx.runQuery(internal.imageStorage.getGeneratedImageUrl, { storageId: refStorageId, userId }),
         ]);
+        console.log(
+          `[generateAndStoreImage] Ownership result — mediaUrl: ${mediaUrl ? "found" : "null"}, generatedUrl: ${generatedUrl ? "found" : "null"}`
+        );
         if (!mediaUrl && !generatedUrl) {
+          console.error(
+            `[generateAndStoreImage] Ownership FAILED — refStorageId: ${refStorageId} not found in mediaFiles or generatedImages for userId: ${userId}`
+          );
           return { success: false, error: "Reference image not found or does not belong to you." };
         }
 
         // Fetch the reference image from Convex storage
         const imageBlob = await ctx.storage.get(refStorageId);
         if (!imageBlob) {
+          console.error(
+            `[generateAndStoreImage] Storage fetch FAILED — refStorageId: ${refStorageId} not found in storage`
+          );
           return { success: false, error: "Reference image not found in storage." };
         }
 
         // Validate MIME type — only images can be used as references
         const referenceMimeType = imageBlob.type || "application/octet-stream";
+        console.log(
+          `[generateAndStoreImage] Reference image MIME type: ${referenceMimeType}, size: ${imageBlob.size} bytes`
+        );
         if (!referenceMimeType.startsWith("image/")) {
+          console.error(
+            `[generateAndStoreImage] MIME type check FAILED — expected image/*, got: ${referenceMimeType}`
+          );
           return { success: false, error: "Reference file must be an image." };
         }
 
@@ -127,6 +145,9 @@ export const generateAndStoreImage = internalAction({
       }
 
       if (!imageBase64 || !mimeType) {
+        console.error(
+          `[generateAndStoreImage] Gemini returned no image — isEditing: ${isEditing}, candidates: ${response.candidates?.length ?? 0}, parts: ${JSON.stringify(response.candidates?.[0]?.content?.parts?.map((p) => ({ hasText: !!p.text, hasInlineData: !!p.inlineData })) ?? [])}`
+        );
         if (user) {
           await ctx.scheduler.runAfter(0, internal.analytics.trackImageGenerated, {
             phone: user.phone,
