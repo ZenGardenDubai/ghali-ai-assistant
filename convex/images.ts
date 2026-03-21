@@ -125,7 +125,7 @@ export const generateAndStoreImage = internalAction({
         contents,
         config: {
           responseModalities: ["TEXT", "IMAGE"],
-          ...(isEditing ? {} : { imageConfig: { aspectRatio } }),
+          imageConfig: isEditing ? { imageSize: "1K" } : { aspectRatio, imageSize: "1K" },
         },
       });
 
