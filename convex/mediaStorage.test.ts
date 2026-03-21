@@ -500,3 +500,51 @@ describe("getStorageUrl", () => {
     expect(url).toBeNull();
   });
 });
+
+describe("trackMediaFile", () => {
+  it("registers a file and makes it retrievable via getStorageUrl when given a real messageSid", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+    const storageId = await storeBlob(t, "image/jpeg");
+
+    await t.mutation(internal.mediaStorage.trackMediaFile, {
+      userId,
+      storageId,
+      messageSid: "SM_whatsapp_123",
+      mediaType: "image/jpeg",
+      expiresAt: Date.now() + 86400000,
+    });
+
+    const url = await t.query(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId,
+    });
+
+    expect(url).toBeTruthy();
+  });
+
+  it("registers a Telegram file with a synthetic messageSid and makes it retrievable via getStorageUrl", async () => {
+    // Reproduces the Telegram image-editing bug: messageSid is null on Telegram,
+    // so we fall back to a synthetic `tg-<storageId>`. getStorageUrl must still
+    // find the file and return a URL for the ownership check to pass.
+    const t = convexTest(schema, modules);
+    const userId = await createTestUser(t);
+    const storageId = await storeBlob(t, "image/jpeg");
+
+    await t.mutation(internal.mediaStorage.trackMediaFile, {
+      userId,
+      storageId,
+      messageSid: `tg-${storageId}`,
+      mediaType: "image/jpeg",
+      expiresAt: Date.now() + 86400000,
+    });
+
+    const url = await t.query(internal.mediaStorage.getStorageUrl, {
+      storageId,
+      userId,
+    });
+
+    expect(url).toBeTruthy();
+    expect(typeof url).toBe("string");
+  });
+});

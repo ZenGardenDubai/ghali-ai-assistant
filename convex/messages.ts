@@ -972,11 +972,13 @@ export const generateResponse = internalAction({
       // For Telegram: processMedia returns storageId=null (isReprocessing=true),
       // so fall back to telegramStorageId which was set during the download step.
       const mediaStorageId = storageId ?? telegramStorageId;
-      if (messageSid && mediaStorageId) {
+      if (mediaStorageId) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
           userId: typedUserId,
           storageId: mediaStorageId,
-          messageSid,
+          // messageSid is WhatsApp/Twilio-only — always null for Telegram.
+          // Fall back to a synthetic key so the file is tracked regardless of channel.
+          messageSid: messageSid ?? `tg-${mediaStorageId}`,
           mediaType: mediaContentType,
           expiresAt: Date.now() + MEDIA_RETENTION_MS,
         });
