@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.48.8](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.7...v0.48.8) (2026-03-21)
+
+
+### Bug Fixes
+
+* track Telegram image before same-message edit bypass ownership check ([#314](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/314)) ([731be4b](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/731be4bbb7096d4faee7648b8c02737cf0e1378c))
+
 ## [0.48.7](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.48.6...v0.48.7) (2026-03-21)
 
 
