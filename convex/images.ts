@@ -121,7 +121,7 @@ export const generateAndStoreImage = internalAction({
             const chunks: Buffer[] = [];
             png.pack()
               .on("data", (chunk: Buffer) => chunks.push(chunk))
-              .on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))))
+              .on("end", () => resolve(Uint8Array.from(Buffer.concat(chunks))))
               .on("error", reject);
           });
           finalMimeType = "image/png";
