@@ -5,6 +5,7 @@ import {
   extractToolResultText,
   extractConvertedFileFromSteps,
   convertedFormatToWhatsAppType,
+  resolveMediaSid,
 } from "./messages";
 
 describe("parseImageToolResult", () => {
@@ -211,5 +212,29 @@ describe("convertedFormatToWhatsAppType", () => {
 
   it("defaults unknown formats to 'document'", () => {
     expect(convertedFormatToWhatsAppType("xyz")).toBe("document");
+  });
+});
+
+describe("resolveMediaSid", () => {
+  it("returns messageSid when provided", () => {
+    expect(resolveMediaSid("12345:67890", "storageAbc")).toBe("12345:67890");
+  });
+
+  it("returns inbound-<storageId> fallback when messageSid is undefined", () => {
+    expect(resolveMediaSid(undefined, "storageAbc")).toBe("inbound-storageAbc");
+  });
+
+  it("returns inbound-<storageId> fallback when messageSid is null", () => {
+    expect(resolveMediaSid(null, "storageXyz")).toBe("inbound-storageXyz");
+  });
+
+  it("returns inbound-<storageId> fallback when messageSid is empty string", () => {
+    expect(resolveMediaSid("", "storageDef")).toBe("inbound-storageDef");
+  });
+
+  it("includes storageId in fallback to ensure uniqueness per file", () => {
+    const sid1 = resolveMediaSid(undefined, "storage001");
+    const sid2 = resolveMediaSid(undefined, "storage002");
+    expect(sid1).not.toBe(sid2);
   });
 });

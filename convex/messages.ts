@@ -22,6 +22,18 @@ import { isNewSession } from "./lib/analytics";
 import { needsTermsAcceptance } from "./lib/termsGating";
 
 /**
+ * Resolve a messageSid for `trackMediaFile`. Uses the provided messageSid when
+ * available, or falls back to `inbound-<storageId>` — ensuring a file is always
+ * tracked even if the inbound message has no ID (e.g. certain WhatsApp flows).
+ */
+export function resolveMediaSid(
+  messageSid: string | null | undefined,
+  storageId: string
+): string {
+  return messageSid || `inbound-${storageId}`;
+}
+
+/**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption + optional storageId).
  * Returns the URL, caption, and optional storageId, or null if not an image result.
  */
@@ -841,16 +853,14 @@ export const generateResponse = internalAction({
       }
 
       // Track voice note in mediaFiles with transcript for future reply-to-voice
-      if (messageSid) {
-        await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
-          userId: typedUserId,
-          storageId: voiceResult.storageId,
-          messageSid,
-          mediaType: mediaContentType,
-          expiresAt: Date.now() + MEDIA_RETENTION_MS,
-          transcript: voiceResult.transcript,
-        });
-      }
+      await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
+        userId: typedUserId,
+        storageId: voiceResult.storageId,
+        messageSid: resolveMediaSid(messageSid, voiceResult.storageId),
+        mediaType: mediaContentType,
+        expiresAt: Date.now() + MEDIA_RETENTION_MS,
+        transcript: voiceResult.transcript,
+      });
 
       // Track voice note feature usage
       await ctx.scheduler.runAfter(0, internal.analytics.trackFeatureUsed, {
@@ -972,11 +982,11 @@ export const generateResponse = internalAction({
       // For Telegram: processMedia returns storageId=null (isReprocessing=true),
       // so fall back to telegramStorageId which was set during the download step.
       const mediaStorageId = storageId ?? telegramStorageId;
-      if (messageSid && mediaStorageId) {
+      if (mediaStorageId) {
         await ctx.runMutation(internal.mediaStorage.trackMediaFile, {
           userId: typedUserId,
           storageId: mediaStorageId,
-          messageSid,
+          messageSid: resolveMediaSid(messageSid, mediaStorageId),
           mediaType: mediaContentType,
           expiresAt: Date.now() + MEDIA_RETENTION_MS,
         });
