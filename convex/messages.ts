@@ -4,6 +4,8 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { ghaliAgent, getOrCreateChatThread, setTraceId, clearTraceId } from "./agent";
 import { MODELS } from "./models";
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
@@ -21,6 +23,32 @@ import { CREDITS_BASIC, CREDITS_PRO, CREDITS_LOW_THRESHOLD, MEDIA_RETENTION_MS, 
 import { getRecapInstruction } from "./lib/engagementRecap";
 import { isNewSession } from "./lib/analytics";
 import { needsTermsAcceptance } from "./lib/termsGating";
+
+/**
+ * Classify whether the user wants to EDIT an image or ANALYZE it.
+ * Uses Gemini Flash with max 5 tokens — fast, cheap, and multilingual.
+ * Returns "edit" for style/transform/modification requests, "analyze" for questions/description.
+ * Defaults to "analyze" on failure so non-edit messages always fall through to the agent.
+ */
+async function classifyImageIntent(body: string): Promise<"edit" | "analyze"> {
+  try {
+    const result = await generateText({
+      model: google(MODELS.FLASH),
+      temperature: 0,
+      maxTokens: 5,
+      prompt: `The user sent an image with this message: "${body}"
+
+Does the user want to EDIT or TRANSFORM the image (change style, add/remove elements, modify appearance, apply filters), or do they want to ANALYZE or DESCRIBE it (understand content, translate text, answer a question)?
+
+Reply with exactly one word: edit or analyze`,
+    });
+    const answer = result.text.trim().toLowerCase();
+    return answer === "edit" ? "edit" : "analyze";
+  } catch (error) {
+    console.error("[classifyImageIntent] classification failed, defaulting to analyze:", error);
+    return "analyze";
+  }
+}
 
 /**
  * Try to parse a generateImage tool result (JSON with imageUrl + caption + optional storageId).
@@ -997,6 +1025,72 @@ export const generateResponse = internalAction({
           text: extracted,
           title: `${mediaContentType} — ${new Date().toISOString()}`,
         });
+      }
+
+      // Same-message image edit bypass: if the user sent an image + edit/transform text,
+      // call generateAndStoreImage directly instead of routing through the agent.
+      // The agent (Gemini Flash) reliably fails to forward referenceImageStorageId.
+      // LLM classification handles any language — not just English keywords.
+      if (isImage && mediaStorageId && body.trim().length > 0 && creditCheck.status === "available") {
+        const intent = await classifyImageIntent(body);
+        if (intent === "edit") {
+          const traceId = crypto.randomUUID();
+          setTraceId(traceId);
+          let editSucceeded = false;
+          try {
+            const result = await ctx.runAction(internal.images.generateAndStoreImage, {
+              userId: typedUserId,
+              prompt: body,
+              aspectRatio: "9:16",
+              referenceImageStorageId: mediaStorageId,
+              traceId,
+            });
+
+            if (result.success && result.imageUrl) {
+              const sendResult = await guardedSendMedia(
+                result.description ?? "Here's your image.",
+                result.imageUrl,
+                "image"
+              );
+              // Associate Telegram message_id with generated image's storageId for future reply-to-image
+              if (isTelegram && chatId && sendResult.messageId && result.storageId) {
+                await ctx.runMutation(internal.imageStorage.updateMessageSid, {
+                  storageId: result.storageId as Id<"_storage">,
+                  userId: typedUserId,
+                  messageSid: `${chatId}:${sendResult.messageId}`,
+                });
+              }
+              editSucceeded = true;
+            } else {
+              await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+            }
+          } catch (error) {
+            console.error("[image-edit-bypass] generateAndStoreImage failed:", error);
+            await guardedSendMessage("Sorry, I couldn't generate the image. Please try again.");
+          } finally {
+            clearTraceId();
+          }
+
+          // Deduct credit and track analytics on success
+          if (editSucceeded) {
+            await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
+            const newCredits = Math.max(0, user.credits - 1);
+            await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
+              phone: user.phone,
+              credits_remaining: newCredits,
+              tier: user.tier,
+              model: MODELS.IMAGE_GENERATION,
+              tools_used: ["generateImage"],
+            });
+            await ctx.scheduler.runAfter(0, internal.analytics.trackMessageSent, {
+              phone: user.phone,
+              tier: user.tier,
+              is_new_session: sessionStarted,
+            });
+          }
+          return;
+        }
+        // intent === "analyze" → fall through to normal agent processing
       }
     } else if (mediaUrl && mediaContentType) {
       // Unsupported media type
