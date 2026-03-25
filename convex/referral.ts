@@ -98,8 +98,8 @@ export const applyReferral = internalMutation({
 /** Get or create the referral code and return the full Telegram deep link. */
 export const getReferralLink = internalAction({
   args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
-    const code = await ctx.runMutation(internal.referral.getOrCreateReferralCode, { userId });
+  handler: async (ctx, { userId }): Promise<string> => {
+    const code: string = await ctx.runMutation(internal.referral.getOrCreateReferralCode, { userId });
     const botUsername = process.env.TELEGRAM_BOT_USERNAME ?? "GhaliSmartBot";
     return `https://t.me/${botUsername}?start=${code}`;
   },
