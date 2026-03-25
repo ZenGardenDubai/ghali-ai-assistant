@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.49.2...v0.50.0) (2026-03-25)
+
+
+### Features
+
+* referral system — invite friends, earn credits (Telegram only) ([#335](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/335)) ([4e2613e](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/4e2613efcfaca6e426f6e35cddeaf84e247dc055))
+
 ## [0.49.2](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.49.1...v0.49.2) (2026-03-21)
 
 
