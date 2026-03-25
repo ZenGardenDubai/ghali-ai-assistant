@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { PostHogProvider } from "@/app/providers/posthog";
 import { GtmScript } from "@/app/gtm/gtm-script";
 import { GtmNoScript } from "@/app/gtm/gtm-noscript";
+import { GtagScript } from "@/app/gtm/gtag-script";
 import type { Metadata } from "next";
 
 const geistSans = Geist({
@@ -114,6 +115,7 @@ export function RootProviders({ children }: { children: React.ReactNode }) {
     <>
       <GtmScript />
       <GtmNoScript />
+      <GtagScript />
       <ClerkProvider>
         <PostHogProvider>{children}</PostHogProvider>
       </ClerkProvider>

@@ -13,6 +13,7 @@ import { dark } from "@clerk/themes";
 import Link from "next/link";
 import { CREDITS_PRO } from "@/convex/constants";
 import { TelegramIcon } from "@/app/components/landing/icons";
+import { trackGhaliChatStarted } from "@/lib/analytics";
 
 const TELEGRAM_URL = "https://t.me/GhaliSmartBot";
 
@@ -89,6 +90,7 @@ function TelegramButton({ label = "Open Telegram" }: { label?: string }) {
       href={TELEGRAM_URL}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => trackGhaliChatStarted({ location: "upgrade_telegram", href: TELEGRAM_URL })}
       className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#ED6B23] px-6 py-3 font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
     >
       <TelegramIcon className="h-4 w-4" />
