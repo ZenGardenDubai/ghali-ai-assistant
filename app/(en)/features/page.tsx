@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { CtaButton } from "@/app/components/landing/cta-button";
 
 export const metadata: Metadata = {
   title: "Ghali Features — AI Image Generation, Documents, Writing & More",
@@ -163,14 +164,13 @@ export default function FeaturesPage() {
             >
               عربي
             </Link>
-            <a
+            <CtaButton
               href={TELEGRAM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              location="features_nav"
               className="flex items-center gap-2 rounded-full bg-[#ED6B23] px-5 py-2.5 text-sm font-semibold transition-all hover:bg-[#d45e1f] hover:shadow-lg hover:shadow-[#ED6B23]/20"
             >
               Start Chatting
-            </a>
+            </CtaButton>
           </div>
         </div>
       </nav>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { TelegramIcon } from "@/app/components/landing/icons";
+import { trackGhaliChatStarted } from "@/lib/analytics";
 
 const TELEGRAM_URL = "https://t.me/GhaliSmartBot";
 
@@ -250,7 +251,11 @@ export default function AccountPage() {
               <div className="flex h-[200px] items-center justify-center">
                 <p className="text-sm text-white/30">
                   No account data found.{" "}
-                  <a href={TELEGRAM_URL} className="text-[#ED6B23] hover:underline">
+                  <a
+                    href={TELEGRAM_URL}
+                    className="text-[#ED6B23] hover:underline"
+                    onClick={() => trackGhaliChatStarted({ location: "account_message", href: TELEGRAM_URL })}
+                  >
                     Message Ghali
                   </a>{" "}
                   first to create your account.
@@ -384,6 +389,7 @@ export default function AccountPage() {
               href={TELEGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackGhaliChatStarted({ location: "account_chat", href: TELEGRAM_URL })}
               className="group flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4.5 transition-all hover:border-white/[0.12] hover:bg-white/[0.04]"
             >
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#2AABEE]/10 border border-[#2AABEE]/15 transition-colors group-hover:bg-[#2AABEE]/15">
