@@ -78,6 +78,7 @@ If the message means the same as one of these commands (in any language — Arab
 - "خصوصية" → privacy
 - "ذاكرتي" or "ma mémoire" → my memory
 - "مسح الكل" or "effacer tout" → clear everything
+- "دعوة" or "invite" → invite
 
 If the message is NOT a command (it's a question, greeting, or conversation), return ONLY the word "none".
 Return ONLY the command or "none", nothing else.`,

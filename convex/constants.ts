@@ -363,6 +363,7 @@ export const SYSTEM_COMMANDS: ReadonlySet<string> = new Set([
   "stop",
   "start",
   "delete",
+  "invite",
 ]);
 
 // ============================================================================
