@@ -78,19 +78,6 @@ Each message uses 1 credit.`,
     variables: ["credits"],
   },
 
-  credits_exhausted_basic: {
-    template: `*Credits Used Up* 😅
-
-You've used all {{maxCredits}} credits this month.
-
-*Resets:* {{resetDate}}
-
-Want 10x more? *Ghali Pro* — 600 credits/month for just $9.99/mo.
-
-Say *upgrade* to get started ⭐`,
-    variables: ["maxCredits", "resetDate"],
-  },
-
   credits_exhausted_basic_refer: {
     template: `*Credits Used Up* 😅
 

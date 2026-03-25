@@ -2,6 +2,13 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 
+const REFERRAL_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+function generateReferralCode(length = 6): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return Array.from(bytes, (b) => REFERRAL_CHARSET[b % REFERRAL_CHARSET.length]).join("");
+}
+
 /** Get or lazy-create a permanent 6-char referral code for a user. */
 export const getOrCreateReferralCode = internalMutation({
   args: { userId: v.id("users") },
@@ -13,7 +20,23 @@ export const getOrCreateReferralCode = internalMutation({
 
     if (existing) return existing.code;
 
-    const code = crypto.randomUUID().replace(/-/g, "").toUpperCase().slice(0, 6);
+    // Generate unique code with collision retry (36^6 ≈ 2.18B possibilities)
+    let code: string;
+    let attempts = 0;
+    do {
+      code = generateReferralCode();
+      const collision = await ctx.db
+        .query("referralCodes")
+        .withIndex("by_code", (q) => q.eq("code", code))
+        .unique();
+      if (!collision) break;
+      attempts++;
+    } while (attempts < 5);
+
+    if (attempts >= 5) {
+      throw new Error("Failed to generate unique referral code after 5 attempts");
+    }
+
     await ctx.db.insert("referralCodes", {
       userId,
       code,
