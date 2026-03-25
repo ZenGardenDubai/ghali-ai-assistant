@@ -93,18 +93,18 @@ Say *upgrade* to get started ⭐`,
   },
 
   referral_link: {
-    template: `🎁 *Invite Friends, Earn Credits*
+    template: `🎁 <b>Invite Friends, Earn Credits</b>
 
-Share your personal link and earn *+10 credits* for every friend who joins Ghali!
+Share your personal link and earn <b>+10 credits</b> for every friend who joins Ghali!
 
-🔗 *Your invite link:*
+🔗 <b>Your invite link:</b>
 {{link}}
 
-📊 *Your stats:*
+📊 <b>Your stats:</b>
 • Friends joined: {{count}}
 • Bonus credits earned: {{creditsEarned}}
 
-_Credits are awarded when your friend sends their first message._`,
+<i>Credits are awarded when your friend sends their first message.</i>`,
     variables: ["link", "count", "creditsEarned"],
   },
 

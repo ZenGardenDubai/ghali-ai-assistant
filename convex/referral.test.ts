@@ -190,6 +190,67 @@ describe("applyReferral", () => {
     expect(referrerDoc!.credits).toBe(60);
   });
 
+  it("skips non-Telegram referrer", async () => {
+    const t = convexTest(schema, modules);
+    const newUser = await createTelegramUser(t, "950");
+
+    // Create a WhatsApp referrer (non-tg: phone)
+    const whatsappReferrer = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971509999999",
+    });
+
+    const code = await t.mutation(internal.referral.getOrCreateReferralCode, {
+      userId: whatsappReferrer,
+    });
+
+    await t.mutation(internal.referral.applyReferral, {
+      newUserId: newUser,
+      code,
+    });
+
+    // WhatsApp referrer credits unchanged (60 base)
+    const referrerDoc = await t.run(async (ctx) => ctx.db.get(whatsappReferrer));
+    expect(referrerDoc!.credits).toBe(60);
+
+    // New user should NOT be marked as referred
+    const userDoc = await t.run(async (ctx) => ctx.db.get(newUser));
+    expect(userDoc!.referralBonusGiven).toBeUndefined();
+  });
+
+  it("skips if referredBy already set", async () => {
+    const t = convexTest(schema, modules);
+    const referrer1 = await createTelegramUser(t, "960");
+    const referrer2 = await createTelegramUser(t, "961");
+    const newUser = await createTelegramUser(t, "962");
+
+    const code1 = await t.mutation(internal.referral.getOrCreateReferralCode, {
+      userId: referrer1,
+    });
+    const code2 = await t.mutation(internal.referral.getOrCreateReferralCode, {
+      userId: referrer2,
+    });
+
+    // Apply first referral
+    await t.mutation(internal.referral.applyReferral, {
+      newUserId: newUser,
+      code: code1,
+    });
+
+    // Try to apply second referral — should be rejected
+    await t.mutation(internal.referral.applyReferral, {
+      newUserId: newUser,
+      code: code2,
+    });
+
+    // New user should still be referred by referrer1
+    const userDoc = await t.run(async (ctx) => ctx.db.get(newUser));
+    expect(userDoc!.referredBy).toBe(referrer1);
+
+    // Referrer2 should NOT have gotten credits
+    const referrer2Doc = await t.run(async (ctx) => ctx.db.get(referrer2));
+    expect(referrer2Doc!.credits).toBe(60);
+  });
+
   it("silently ignores invalid referral code", async () => {
     const t = convexTest(schema, modules);
     const newUser = await createTelegramUser(t, "1000");

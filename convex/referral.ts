@@ -83,7 +83,7 @@ export const applyReferral = internalMutation({
     if (!newUser.phone.startsWith("tg:")) return;
 
     // Skip if already referred
-    if (newUser.referralBonusGiven) return;
+    if (newUser.referralBonusGiven || newUser.referredBy) return;
 
     // Find the referral code
     const referralRecord = await ctx.db
@@ -96,9 +96,10 @@ export const applyReferral = internalMutation({
     // Skip self-referral
     if (referralRecord.userId === newUserId) return;
 
-    // Award +10 credits to referrer
+    // Award +10 credits to referrer (must also be Telegram)
     const referrer = await ctx.db.get(referralRecord.userId);
     if (!referrer) return;
+    if (!referrer.phone.startsWith("tg:")) return;
 
     await ctx.db.patch(referralRecord.userId, {
       credits: referrer.credits + 10,
