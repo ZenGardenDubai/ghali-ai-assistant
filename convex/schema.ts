@@ -68,6 +68,10 @@ export default defineSchema({
     telegramId: v.optional(v.string()),
     /** Messaging channel — determines how background senders route messages */
     channel: v.optional(v.union(v.literal("whatsapp"), v.literal("telegram"))),
+    /** ID of the user who referred this user via invite link */
+    referredBy: v.optional(v.id("users")),
+    /** True once the referral bonus has been awarded (prevents double-award) */
+    referralBonusGiven: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])
@@ -259,6 +263,16 @@ export default defineSchema({
   })
     .index("by_wamid", ["wamid"])
     .index("by_sentAt", ["sentAt"]),
+
+  referralCodes: defineTable({
+    userId: v.id("users"),
+    code: v.string(),
+    usageCount: v.number(),
+    creditsEarned: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_code", ["code"]),
 
   appConfig: defineTable({
     key: v.string(),

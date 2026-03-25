@@ -9,7 +9,7 @@ import { generateText } from "ai";
 import { getCurrentDateTime, fillTemplate, classifyCommand, isSystemCommand, isAdminCommand, isAffirmative, buildReplyToTextPrompt } from "./lib/utils";
 import { buildUserContext } from "./lib/userFiles";
 import { TEMPLATES } from "./templates";
-import { handleSystemCommand, renderSystemMessage, translateMessage } from "./lib/systemCommands";
+import { handleSystemCommand, renderSystemMessage, translateMessage, detectLanguage } from "./lib/systemCommands";
 import { PENDING_ACTION_EXPIRY_MS } from "./constants";
 import { handleAdminCommand } from "./lib/adminCommands";
 import { handleOnboarding } from "./lib/onboarding";
@@ -658,6 +658,24 @@ export const generateResponse = internalAction({
 
     // Handle system commands via templates (no AI generation)
     if (creditCheck.status === "free") {
+      // Handle invite command (needs ctx for referral data)
+      if (messageForCredits === "invite") {
+        const link = await ctx.runAction(internal.referral.getReferralLink, { userId: typedUserId });
+        const stats = await ctx.runQuery(internal.referral.getReferralStats, { userId: typedUserId });
+        const filled = fillTemplate(TEMPLATES.referral_link.template, {
+          link,
+          count: stats?.usageCount ?? 0,
+          creditsEarned: stats?.creditsEarned ?? 0,
+        });
+        const lang = await detectLanguage(body);
+        const response = await translateMessage(filled, lang);
+        const inviteKeyboard: InlineButton[][] | undefined = isTelegram
+          ? [[{ text: "📤 Share invite link", url: `https://t.me/share/url?url=${encodeURIComponent(link)}` }]]
+          : undefined;
+        await guardedSendMessage(response, inviteKeyboard);
+        return;
+      }
+
       const docCount = await ctx.runQuery(internal.rag.getDocumentCount, {
         userId: userId,
       });
@@ -766,7 +784,7 @@ export const generateResponse = internalAction({
       const templateKey =
         user.tier === "pro"
           ? "credits_exhausted_pro"
-          : "credits_exhausted_basic";
+          : "credits_exhausted_basic_refer";
       const message = fillTemplate(TEMPLATES[templateKey].template, {
         maxCredits,
         resetDate,

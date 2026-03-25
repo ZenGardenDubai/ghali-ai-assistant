@@ -59,6 +59,7 @@ import type * as outboundGuard from "../outboundGuard.js";
 import type * as outboundMessages from "../outboundMessages.js";
 import type * as proWrite from "../proWrite.js";
 import type * as rag from "../rag.js";
+import type * as referral from "../referral.js";
 import type * as rateLimiting from "../rateLimiting.js";
 import type * as reflection from "../reflection.js";
 import type * as reminders from "../reminders.js";
@@ -128,6 +129,7 @@ declare const fullApi: ApiFromModules<{
   outboundMessages: typeof outboundMessages;
   proWrite: typeof proWrite;
   rag: typeof rag;
+  referral: typeof referral;
   rateLimiting: typeof rateLimiting;
   reflection: typeof reflection;
   reminders: typeof reminders;

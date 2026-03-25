@@ -91,6 +91,36 @@ Say *upgrade* to get started ⭐`,
     variables: ["maxCredits", "resetDate"],
   },
 
+  credits_exhausted_basic_refer: {
+    template: `*Credits Used Up* 😅
+
+You've used all {{maxCredits}} credits this month.
+*Resets:* {{resetDate}}
+
+💡 *Earn free credits:* Invite a friend and get +10 credits when they join!
+Say *invite* to get your link.
+
+Or upgrade to *Ghali Pro* — 600 credits/month for $9.99/mo.
+Say *upgrade* to get started ⭐`,
+    variables: ["maxCredits", "resetDate"],
+  },
+
+  referral_link: {
+    template: `🎁 *Invite Friends, Earn Credits*
+
+Share your personal link and earn *+10 credits* for every friend who joins Ghali!
+
+🔗 *Your invite link:*
+{{link}}
+
+📊 *Your stats:*
+• Friends joined: {{count}}
+• Bonus credits earned: {{creditsEarned}}
+
+_Credits are awarded when your friend sends their first message._`,
+    variables: ["link", "count", "creditsEarned"],
+  },
+
   credits_exhausted_pro: {
     template: `*Credits Used Up* 🪙
 

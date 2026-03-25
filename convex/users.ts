@@ -149,6 +149,14 @@ export const findOrCreateTelegramUser = internalMutation({
       });
     }
 
+    // Apply referral if startParam is a valid 6-char uppercase alphanumeric code
+    if (startParam && /^[A-Z0-9]{6}$/.test(startParam)) {
+      await ctx.scheduler.runAfter(0, internal.referral.applyReferral, {
+        newUserId: userId,
+        code: startParam,
+      });
+    }
+
     // Fire analytics with channel + acquisition source
     await ctx.scheduler.runAfter(0, internal.analytics.trackUserNew, {
       phone,
