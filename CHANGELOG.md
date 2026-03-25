@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.50.1](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.50.0...v0.50.1) (2026-03-25)
+
+
+### Bug Fixes
+
+* add direct gtag.js for GA4 + Google Ads conversion tracking ([#337](https://github.com/ZenGardenDubai/ghali-ai-assistant/issues/337)) ([941b482](https://github.com/ZenGardenDubai/ghali-ai-assistant/commit/941b482895e6580d8670745a5958c5bc817dd4bc))
+
 ## [0.50.0](https://github.com/ZenGardenDubai/ghali-ai-assistant/compare/v0.49.2...v0.50.0) (2026-03-25)
 
 
