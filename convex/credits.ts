@@ -44,6 +44,67 @@ export const checkCredit = internalQuery({
 });
 
 /**
+ * Atomically check credit availability and deduct 1 credit in a single transaction.
+ * Prevents the race condition where concurrent checkCredit queries all see the same
+ * stale balance, allowing multiple requests to exceed the credit cap.
+ *
+ * Returns: { status: "available" | "exhausted" | "free", credits: number }
+ * - "available": credit was deducted; credits = new balance
+ * - "exhausted": no credits; nothing deducted; credits = 0
+ * - "free": system/admin command; nothing deducted; credits = current balance
+ */
+export const checkAndDeductCredit = internalMutation({
+  args: {
+    userId: v.id("users"),
+    message: v.string(),
+  },
+  handler: async (ctx, { userId, message }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (isSystemCommand(message)) {
+      return { status: "free" as const, credits: user.credits };
+    }
+
+    if (isAdminCommand(message) && user.isAdmin) {
+      return { status: "free" as const, credits: user.credits };
+    }
+
+    if (user.credits <= 0) {
+      return { status: "exhausted" as const, credits: 0 };
+    }
+
+    const newCredits = Math.max(0, user.credits - 1);
+    await ctx.db.patch(userId, { credits: newCredits });
+    return { status: "available" as const, credits: newCredits };
+  },
+});
+
+/**
+ * Refund 1 credit to a user. Call when an AI response fails after a credit was
+ * already deducted by checkAndDeductCredit, so the user is not charged for errors.
+ */
+export const refundCredit = internalMutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const tier = user.tier ?? "basic";
+    const cap = tier === "pro" ? CREDITS_PRO : CREDITS_BASIC;
+    const newCredits = Math.min(cap, user.credits + 1);
+    await ctx.db.patch(userId, { credits: newCredits });
+    return { credits: newCredits };
+  },
+});
+
+/**
  * Deduct 1 credit from a user. Call only after a successful AI response.
  * Returns the new credit balance.
  */

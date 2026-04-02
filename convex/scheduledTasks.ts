@@ -237,8 +237,9 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Check credits (pass "__scheduled__" to skip system command check)
-    const creditCheck = await ctx.runQuery(internal.credits.checkCredit, {
+    // Atomically check and deduct credit in one transaction to prevent race conditions.
+    // If deduction succeeds but delivery later fails, refundCredit is called.
+    const creditCheck = await ctx.runMutation(internal.credits.checkAndDeductCredit, {
       userId: task.userId,
       message: "__scheduled__",
     });
@@ -361,6 +362,9 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!aiSucceeded || !responseText) {
+      // Refund the credit deducted above — AI failure should not cost the user
+      await ctx.runMutation(internal.credits.refundCredit, { userId: task.userId });
+
       // Only notify on the FIRST consecutive AI failure (same discipline as messages.ts).
       // Suppresses notification during backoff AND on 2nd+ pre-breaker failures.
       const freshUser = await ctx.runQuery(internal.users.internalGetUser, { userId: task.userId });
@@ -517,7 +521,9 @@ export const executeScheduledTask = internalAction({
     }
 
     if (!delivered) {
-      // Delivery failed — mark error, reschedule cron, retry or disable one-off
+      // Delivery failed — refund the credit deducted at the start
+      await ctx.runMutation(internal.credits.refundCredit, { userId: task.userId });
+      // Mark error, reschedule cron, retry or disable one-off
       await ctx.runMutation(internal.scheduledTasks.markLastRun, {
         taskId,
         lastStatus: "error",
@@ -544,10 +550,7 @@ export const executeScheduledTask = internalAction({
       return;
     }
 
-    // Deduct credit after successful delivery
-    await ctx.runMutation(internal.credits.deductCredit, {
-      userId: task.userId,
-    });
+    // Credit was already deducted atomically at the start — no separate deduct needed
 
     // Mark success + clear credit notification flag
     await ctx.runMutation(internal.scheduledTasks.markLastRun, {
