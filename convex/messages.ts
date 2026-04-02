@@ -553,8 +553,9 @@ export const generateResponse = internalAction({
       // Fall through to AI with onboarding already marked done (nextStep: null)
     }
 
-    // Check credit availability (no deduction yet — only deduct after successful response)
-    const creditCheck = await ctx.runQuery(internal.credits.checkCredit, {
+    // Atomically check and deduct credit in one transaction to prevent race conditions.
+    // If deduction succeeds (status "available") but the AI later fails, refundCredit is called.
+    const creditCheck = await ctx.runMutation(internal.credits.checkAndDeductCredit, {
       userId: typedUserId,
       message: messageForCredits,
     });
@@ -806,6 +807,10 @@ export const generateResponse = internalAction({
       { userId: typedUserId }
     );
     if (!rateCheck.ok) {
+      // Refund the credit deducted above — rate-limited requests don't consume credits
+      if (creditCheck.status === "available") {
+        await ctx.runMutation(internal.credits.refundCredit, { userId: typedUserId });
+      }
       const message = fillTemplate(TEMPLATES.rate_limited.template, {
         retryAfterSeconds: rateCheck.retryAfterSeconds,
       });
@@ -1060,10 +1065,12 @@ export const generateResponse = internalAction({
             clearTraceId();
           }
 
-          // Deduct credit and track analytics on success
+          // Credit was already deducted atomically at the start. Refund on failure.
+          if (!editSucceeded) {
+            await ctx.runMutation(internal.credits.refundCredit, { userId: typedUserId });
+          }
           if (editSucceeded) {
-            await ctx.runMutation(internal.credits.deductCredit, { userId: typedUserId });
-            const newCredits = Math.max(0, user.credits - 1);
+            const newCredits = creditCheck.credits;
             await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
               phone: user.phone,
               credits_remaining: newCredits,
@@ -1216,12 +1223,13 @@ export const generateResponse = internalAction({
       clearTraceId();
     }
 
-    // Only deduct credit after successful AI response
+    // Credit was already deducted atomically at the start. Refund if AI failed.
+    if (!aiSucceeded && creditCheck.status === "available") {
+      await ctx.runMutation(internal.credits.refundCredit, { userId: typedUserId });
+    }
+
     if (aiSucceeded && creditCheck.status === "available") {
-      await ctx.runMutation(internal.credits.deductCredit, {
-        userId: typedUserId,
-      });
-      const newCredits = Math.max(0, user.credits - 1);
+      const newCredits = creditCheck.credits;
       await ctx.scheduler.runAfter(0, internal.analytics.trackCreditUsed, {
         phone: user.phone,
         credits_remaining: newCredits,
@@ -1284,12 +1292,12 @@ export const generateResponse = internalAction({
     if (
       aiSucceeded &&
       creditCheck.status === "available" &&
-      (Math.max(0, user.credits - 1)) <= CREDITS_LOW_THRESHOLD &&
-      user.credits > CREDITS_LOW_THRESHOLD
+      creditCheck.credits <= CREDITS_LOW_THRESHOLD &&
+      creditCheck.credits + 1 > CREDITS_LOW_THRESHOLD
     ) {
       const lowCreditMsg = fillTemplate(
         TEMPLATES.credits_low_warning.template,
-        { credits: Math.max(0, user.credits - 1) }
+        { credits: creditCheck.credits }
       );
       if (isTelegram && chatId) {
         ctx.scheduler.runAfter(2000, internal.telegram.guardedSendKeyboard, {

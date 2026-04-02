@@ -84,6 +84,137 @@ describe("checkCredit", () => {
   });
 });
 
+describe("checkAndDeductCredit", () => {
+  it("atomically deducts 1 credit and returns available", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const result = await t.mutation(internal.credits.checkAndDeductCredit, {
+      userId,
+      message: "What is AI?",
+    });
+
+    expect(result.status).toBe("available");
+    expect(result.credits).toBe(59);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(59);
+  });
+
+  it("returns exhausted and does not deduct when credits = 0", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.updateUser, {
+      userId,
+      fields: { credits: 0 },
+    });
+
+    const result = await t.mutation(internal.credits.checkAndDeductCredit, {
+      userId,
+      message: "Hello",
+    });
+
+    expect(result.status).toBe("exhausted");
+    expect(result.credits).toBe(0);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(0);
+  });
+
+  it("system commands return free and do not deduct", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    const result = await t.mutation(internal.credits.checkAndDeductCredit, {
+      userId,
+      message: "credits",
+    });
+
+    expect(result.status).toBe("free");
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(60);
+  });
+
+  it("prevents race condition: second call on 1-credit balance returns exhausted", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.users.updateUser, {
+      userId,
+      fields: { credits: 1 },
+    });
+
+    const first = await t.mutation(internal.credits.checkAndDeductCredit, {
+      userId,
+      message: "Hello",
+    });
+    expect(first.status).toBe("available");
+    expect(first.credits).toBe(0);
+
+    const second = await t.mutation(internal.credits.checkAndDeductCredit, {
+      userId,
+      message: "Hello again",
+    });
+    expect(second.status).toBe("exhausted");
+    expect(second.credits).toBe(0);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(0);
+  });
+});
+
+describe("refundCredit", () => {
+  it("adds 1 credit back after deduction", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    await t.mutation(internal.credits.checkAndDeductCredit, {
+      userId,
+      message: "Hello",
+    });
+
+    const result = await t.mutation(internal.credits.refundCredit, { userId });
+
+    expect(result.credits).toBe(60);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(60);
+  });
+
+  it("does not exceed the tier cap when refunding", async () => {
+    const t = convexTest(schema, modules);
+
+    const userId = await t.mutation(internal.users.findOrCreateUser, {
+      phone: "+971501234567",
+    });
+
+    // Already at cap
+    const result = await t.mutation(internal.credits.refundCredit, { userId });
+
+    expect(result.credits).toBe(60);
+
+    const user = await t.query(internal.users.getUser, { userId });
+    expect(user!.credits).toBe(60);
+  });
+});
+
 describe("deductCredit", () => {
   it("deducts 1 credit from user", async () => {
     const t = convexTest(schema, modules);
